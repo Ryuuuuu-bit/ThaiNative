@@ -155,7 +155,7 @@ function drawTorso(ctx, a, o, ox, oy) {
   }
 }
 
-function drawQuiver(ctx, ox, oy) { // กระบอกลูกธนูด้านหลัง (นักธนู)
+function drawQuiver(ctx, ox, oy) { // กระบอกลูกธนูด้านหลัง (พรานป่า)
   px(ctx, 8 + ox, 15 + oy, 4, 11, '#7b4a1e');
   px(ctx, 8 + ox, 15 + oy, 4, 1, '#4e2d10');
   px(ctx, 8 + ox, 12 + oy, 1, 3, '#ecf0f1'); px(ctx, 10 + ox, 11 + oy, 1, 4, '#e74c3c');

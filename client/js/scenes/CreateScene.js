@@ -25,7 +25,7 @@ export class CreateScene extends Phaser.Scene {
     this.add.tileSprite(480, 420, 480, 120, 'bg_mid').setScale(2);
     this.add.ellipse(250, 438, 170, 26, 0x000000, 0.45);
 
-    this.preview = this.add.sprite(250, 440, bakeCharacter(this, this.a), 'idle_0').setOrigin(0.5, 1).setScale(6);
+    this.preview = this.add.sprite(250, 440, bakeCharacter(this, this.a), 'idle_0').setOrigin(0.5, 1).setScale(5);
 
     this.bindDom();
     this.refresh();
@@ -89,6 +89,10 @@ export class CreateScene extends Phaser.Scene {
     document.querySelectorAll('.preview-anims button').forEach((b) => b.classList.toggle('active', b.dataset.anim === this.previewAnim));
 
     // สร้าง spritesheet ตามรูปลักษณ์ใหม่ แล้วเล่นท่าที่เลือก
+    // ภาพ PixelLab: ทรงผม/หน้าตามภาพต้นฉบับ → ซ่อนตัวเลือกใบหน้า
+    const pixellab = this.textures.exists(`pbase_${a.job}_${a.gender}`);
+    document.querySelector('.picker[data-part="face"]').classList.toggle('hidden', pixellab);
+
     const key = bakeCharacter(this, a);
     this.preview.setTexture(key);
     const loopable = ['idle', 'walk'].includes(this.previewAnim);

@@ -26,10 +26,10 @@ export const ITEMS = {
   prajiad:     { nameTh: 'ประเจียดแขน',       type: 'accessory', icon: '🎗️', price: 200, bonus: { STR: 2, DEX: 2 } },
 
   // ---------- Skin อาชีพ (ใบเปลี่ยนอาชีพ) ----------
-  skin_swordman: { nameTh: 'คัมภีร์เปลี่ยนอาชีพ: นักดาบ',  type: 'skin', icon: '📜', price: 500, job: 'swordman' },
-  skin_mage:     { nameTh: 'คัมภีร์เปลี่ยนอาชีพ: นักเวทย์', type: 'skin', icon: '📜', price: 500, job: 'mage' },
-  skin_archer:   { nameTh: 'คัมภีร์เปลี่ยนอาชีพ: นักธนู',  type: 'skin', icon: '📜', price: 500, job: 'archer' },
-  skin_boxer:    { nameTh: 'คัมภีร์เปลี่ยนอาชีพ: นักมวยไทย', type: 'skin', icon: '📜', price: 500, job: 'boxer' },
+  skin_swordman: { nameTh: 'คัมภีร์เปลี่ยนอาชีพ: ขุนศึก',  type: 'skin', icon: '📜', price: 500, job: 'swordman' },
+  skin_mage:     { nameTh: 'คัมภีร์เปลี่ยนอาชีพ: จอมขมังเวทย์', type: 'skin', icon: '📜', price: 500, job: 'mage' },
+  skin_archer:   { nameTh: 'คัมภีร์เปลี่ยนอาชีพ: พรานป่า',  type: 'skin', icon: '📜', price: 500, job: 'archer' },
+  skin_boxer:    { nameTh: 'คัมภีร์เปลี่ยนอาชีพ: นักมวยคาดเชือก', type: 'skin', icon: '📜', price: 500, job: 'boxer' },
 
   // ---------- ของดรอปจากผี (ขายได้อย่างเดียว) ----------
   glass_shard:  { nameTh: 'เศษถ้วยแก้วร้าว',  type: 'material', icon: '🥃', sell: 3 },
@@ -53,7 +53,7 @@ export function sellPrice(id) {
 /** NPC ร้านค้า */
 export const SHOPS = {
   mae_kha: {
-    nameTh: 'ป้าแม้น ร้านโชห่วย',
+    nameTh: 'ป้าติ๋ม ร้านโชห่วย',
     greeting: 'มาจ้ะหลาน ของดีราคาถูก ผีหลอกก็ไม่กลัว!',
     stock: ['hp_s', 'hp_m', 'mp_s', 'mp_m', 'yant_shirt', 'takrut', 'prajiad',
       'wood_sword', 'iron_dab', 'oak_staff', 'yant_staff', 'bamboo_bow', 'horn_bow', 'hand_wrap', 'mongkol',

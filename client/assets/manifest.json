@@ -184,5 +184,15 @@
         "idle": 2
       }
     }
+  },
+  "players": {
+    "archer_female": "assets/players/archer_female.png",
+    "archer_male": "assets/players/archer_male.png",
+    "boxer_female": "assets/players/boxer_female.png",
+    "boxer_male": "assets/players/boxer_male.png",
+    "mage_female": "assets/players/mage_female.png",
+    "mage_male": "assets/players/mage_male.png",
+    "swordman_female": "assets/players/swordman_female.png",
+    "swordman_male": "assets/players/swordman_male.png"
   }
 }

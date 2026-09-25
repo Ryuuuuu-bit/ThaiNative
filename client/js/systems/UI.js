@@ -8,6 +8,7 @@ import { STAT_KEYS, STAT_INFO, expToNext } from '/shared/stats.js';
 import { getDerived, allocateStat } from './Character.js';
 import * as Inv from './Inventory.js';
 import { SKILLS } from '/shared/data/skills.js';
+import { PORTRAITS } from '../gfx/SpriteFactory.js';
 
 const $ = (s) => document.querySelector(s);
 const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -85,15 +86,95 @@ export class UI {
     $('#hud-hp-fill').style.width = `${(c.hp / d.maxHp) * 100}%`;
     $('#hud-mp-fill').style.width = `${(c.mp / d.maxMp) * 100}%`;
     $('#hud-exp-fill').style.width = `${(c.exp / need) * 100}%`;
+    $('#hud-exp').textContent = `EXP ${c.exp} / ${need}  (${((c.exp / need) * 100).toFixed(1)}%)`;
     $('#hud-gold').textContent = c.gold.toLocaleString();
-    $('#quick-hp span').textContent = `${ITEMS.hp_s.icon} x${Inv.count(c, 'hp_s')}`;
-    $('#quick-mp span').textContent = `${ITEMS.mp_s.icon} x${Inv.count(c, 'mp_s')}`;
+    const hp = Inv.count(c, 'hp_s') + Inv.count(c, 'hp_m'), mp = Inv.count(c, 'mp_s') + Inv.count(c, 'mp_m');
+    $('#quick-hp .n').textContent = `x${hp}`; $('#quick-hp').classList.toggle('empty', !hp);
+    $('#quick-mp .n').textContent = `x${mp}`; $('#quick-mp').classList.toggle('empty', !mp);
+    this.drawPortrait();
+  }
+
+  /** รูปโปรไฟล์: ครอปส่วนหัวจากภาพตัวละครที่ย้อมสีแล้ว */
+  drawPortrait() {
+    const key = this.scene.player.texKey;
+    if (this.portraitKey === key) return;
+    this.portraitKey = key;
+    const cv = $('#hud-portrait'), ctx = cv.getContext('2d');
+    ctx.imageSmoothingEnabled = false;
+    ctx.clearRect(0, 0, cv.width, cv.height);
+    const src = PORTRAITS.get(key);
+    if (src) {
+      const size = Math.round(src.width * 0.75);
+      ctx.drawImage(src, Math.round((src.width - size) / 2), 0, size, size, 0, 0, cv.width, cv.height);
+    } else {
+      const fr = this.scene.textures.getFrame(key, 'idle_0');
+      ctx.drawImage(fr.source.image, fr.cutX + 6, fr.cutY + 2, 20, 20, 0, 0, cv.width, cv.height);
+    }
+  }
+
+  // ---------------- เป้าหมาย / บัฟ / มินิแมป / เขต ----------------
+  setTarget(mon) { this.target = mon; this.targetUntil = performance.now() + 4000; }
+
+  updateFrame(time) {
+    const p = this.scene.player;
+    // เป้าหมาย
+    const t = this.target, show = t && t.alive && performance.now() < this.targetUntil;
+    $('#target').classList.toggle('hidden', !show);
+    if (show) {
+      $('#t-lv').textContent = `Lv.${t.def.level}`;
+      $('#t-name').textContent = t.def.nameTh;
+      $('#t-fill').style.width = `${Math.max(0, t.hp / t.def.hp) * 100}%`;
+      $('#t-hp').textContent = `${Math.max(0, Math.ceil(t.hp))} / ${t.def.hp}`;
+    }
+    // บัฟ
+    const sig = p.buffs.map((b) => `${b.icon}${Math.ceil((b.until - time) / 1000)}`).join('|');
+    if (sig !== this.buffSig) {
+      this.buffSig = sig;
+      $('#hud-buffs').innerHTML = p.buffs.filter((b) => b.until > time)
+        .map((b) => `<span class="buff" title="${esc(b.name)}">${b.icon}<small>${Math.ceil((b.until - time) / 1000)}</small></span>`).join('');
+    }
+    // มินิแมป (อัปเดตทุก 200ms)
+    if (time - (this.mmAt || 0) > 200) {
+      this.mmAt = time;
+      const W = this.scene.physics.world.bounds.width;
+      const pct = (x) => `${(x / W) * 100}%`;
+      let html = `<i class="mm-dot npc" style="left:${pct(this.scene.npc.x)}"></i><i class="mm-dot me" style="left:${pct(p.x)}"></i>`;
+      this.scene.remotes.forEach((r) => (html += `<i class="mm-dot ally" style="left:${pct(r.x)}"></i>`));
+      this.scene.monsters.getChildren().forEach((m) => m.alive && (html += `<i class="mm-dot mob" style="left:${pct(m.x)}"></i>`));
+      $('#mm-dots').innerHTML = html;
+    }
+  }
+
+  setZone(name, announce = true) {
+    $('#zone-name').textContent = name;
+    if (announce) this.banner(name);
+  }
+
+  banner(text) {
+    const el = $('#banner');
+    el.textContent = text;
+    el.classList.remove('hidden');
+    el.style.animation = 'none'; void el.offsetWidth; el.style.animation = '';
+    clearTimeout(this.bannerT);
+    this.bannerT = setTimeout(() => el.classList.add('hidden'), 2200);
+  }
+
+  showDeath(ms) {
+    const el = $('#death');
+    el.classList.remove('hidden');
+    let left = Math.ceil(ms / 1000);
+    $('#death-t').textContent = left;
+    clearInterval(this.deathT);
+    this.deathT = setInterval(() => {
+      left--; $('#death-t').textContent = Math.max(0, left);
+      if (left <= 0) { clearInterval(this.deathT); el.classList.add('hidden'); }
+    }, 1000);
   }
 
   setOnline(on, count = 0) {
     const el = $('#net-status');
     el.className = `net ${on ? 'on' : 'off'}`;
-    el.textContent = on ? `● ออนไลน์ (${count + 1} คน)` : '● ออฟไลน์';
+    el.textContent = on ? `● ${count + 1} คนออนไลน์` : '● ออฟไลน์';
   }
 
   setMuted(m) { $('#mute-btn').textContent = m ? '🔇' : '🔊'; }
@@ -120,6 +201,8 @@ export class UI {
       const left = p.cooldownLeft(s.key, time);
       el.querySelector('.cd').style.height = left ? `${(left / s.cd) * 100}%` : '0';
       el.querySelector('.cdt').textContent = left ? (left / 1000).toFixed(left < 1000 ? 1 : 0) : '';
+      if (el.dataset.cd === '1' && !left) { el.classList.remove('ready'); void el.offsetWidth; el.classList.add('ready'); }
+      el.dataset.cd = left ? '1' : '0';
       el.classList.toggle('nomp', c.mp < s.mp);
     });
   }

@@ -33,7 +33,7 @@
             </div>
           </div>
           <div class="row picker" data-part="outfit"><span class="label">ชุด</span><button class="prev">◀</button><span class="val"></span><button class="next">▶</button></div>
-          <div class="row picker" data-part="hair"><span class="label">ทรงผม</span><button class="prev">◀</button><span class="val"></span><button class="next">▶</button></div>
+          <div class="row picker" data-part="hair"><span class="label">สีผม</span><button class="prev">◀</button><span class="val"></span><button class="next">▶</button></div>
           <div class="row picker" data-part="face"><span class="label">ใบหน้า</span><button class="prev">◀</button><span class="val"></span><button class="next">▶</button></div>
           <div class="label">อาชีพ</div>
           <div class="jobs" id="cc-jobs"></div>
@@ -48,28 +48,60 @@
 
       <!-- HUD ในเกม -->
       <section id="hud" class="hidden">
-        <div class="hud-box">
-          <div class="hud-name"><span id="hud-name"></span> <span class="lv">Lv.<b id="hud-lv">1</b></span> <span id="hud-job" class="job-tag"></span></div>
-          <div class="bar hp"><i id="hud-hp-fill"></i><span id="hud-hp"></span></div>
-          <div class="bar mp"><i id="hud-mp-fill"></i><span id="hud-mp"></span></div>
-          <div class="bar exp"><i id="hud-exp-fill"></i><span id="hud-exp"></span></div>
-          <div class="gold">฿ <b id="hud-gold">0</b></div>
+        <!-- กรอบผู้เล่น (ซ้ายบน) -->
+        <div class="pf">
+          <div class="pf-portrait"><canvas id="hud-portrait" width="44" height="44"></canvas><span class="pf-lv" id="hud-lv">1</span></div>
+          <div class="pf-info">
+            <div class="pf-name"><span id="hud-name"></span><span id="hud-job" class="job-tag"></span></div>
+            <div class="bar hp"><i id="hud-hp-fill"></i><span id="hud-hp"></span></div>
+            <div class="bar mp"><i id="hud-mp-fill"></i><span id="hud-mp"></span></div>
+            <div id="hud-buffs" class="buffs"></div>
+          </div>
         </div>
+
+        <!-- เป้าหมาย (กลางบน) -->
+        <div id="target" class="target hidden">
+          <div class="t-name"><span id="t-lv"></span> <b id="t-name"></b></div>
+          <div class="bar hp"><i id="t-fill"></i><span id="t-hp"></span></div>
+        </div>
+
+        <!-- ขวาบน: เขต / ออนไลน์ / มินิแมป / เมนู -->
         <div class="hud-right">
-          <div id="net-status" class="net off">● ออฟไลน์</div>
+          <div class="zone"><b id="zone-name"></b><span id="net-status" class="net off">● ออฟไลน์</span></div>
+          <div class="minimap"><div class="mm-town"></div><div id="mm-dots"></div></div>
           <div class="hud-buttons">
-            <button data-open="stats-panel">สถานะ (C)</button>
-            <button data-open="inv-panel">กระเป๋า (I)</button>
+            <button data-open="stats-panel" title="สถานะ (C)">📊<small>C</small></button>
+            <button data-open="inv-panel" title="กระเป๋า (I)">🎒<small>I</small></button>
+            <button data-open="help-panel" title="วิธีเล่น (H)">❔<small>H</small></button>
             <button id="mute-btn" title="เปิด/ปิดเสียง (M)">🔊</button>
           </div>
         </div>
-        <div class="quickbar">
-          <div class="slot" id="quick-hp">1 <span></span></div>
-          <div id="skillbar"></div>
-          <div class="slot" id="quick-mp">2 <span></span></div>
+
+        <!-- แถบแอ็กชัน (ล่างกลาง) -->
+        <div class="actionbar">
+          <div class="gold">฿ <b id="hud-gold">0</b></div>
+          <div class="slots">
+            <div class="slot pot" id="quick-hp"><span class="k">1</span><span class="ic">🧴</span><span class="n"></span></div>
+            <div id="skillbar"></div>
+            <div class="slot pot" id="quick-mp"><span class="k">2</span><span class="ic">🥥</span><span class="n"></span></div>
+          </div>
         </div>
+        <div class="expbar"><i id="hud-exp-fill"></i><span id="hud-exp"></span></div>
+
         <div id="prompt" class="prompt hidden"></div>
-        <div class="help">← → เดิน · ↑ กระโดด · Space โจมตี · Q W E R สกิล · F คุย NPC · M เสียง · Enter แชท</div>
+        <div id="banner" class="banner hidden"></div>
+        <div id="death" class="death hidden"><h2>คุณหมดสติ…</h2><p>ฟื้นที่ศาลพระภูมิใน <b id="death-t">3</b> วินาที</p></div>
+      </section>
+
+      <!-- วิธีเล่น -->
+      <section id="help-panel" class="panel window hidden">
+        <header>วิธีเล่น <button class="close">✕</button></header>
+        <div class="keys">
+          <div><kbd>←</kbd><kbd>→</kbd> เดิน</div><div><kbd>↑</kbd> กระโดด</div>
+          <div><kbd>Space</kbd> โจมตีปกติ (กดค้างได้)</div><div><kbd>Q</kbd><kbd>W</kbd><kbd>E</kbd><kbd>R</kbd> สกิล</div>
+          <div><kbd>1</kbd><kbd>2</kbd> ยา HP / MP</div><div><kbd>F</kbd> คุยกับ NPC</div>
+          <div><kbd>C</kbd> สถานะ · <kbd>I</kbd> กระเป๋า</div><div><kbd>M</kbd> เสียง · <kbd>Enter</kbd> แชท</div>
+        </div>
       </section>
 
       <!-- หน้าต่างสถานะ -->

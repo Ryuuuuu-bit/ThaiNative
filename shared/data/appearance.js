@@ -24,18 +24,18 @@ export const OUTFITS = [
   { nameTh: 'ชุดมหาดเล็ก',       top: '#1b4f72', bottom: '#154360', trim: '#f4d03f', pattern: 'trim' },
 ];
 
-// shape ใช้ใน SpriteFactory
+// สีผม 10 แบบ (ภาพ PixelLab ย้อมตาม color)  shape ใช้เฉพาะตอนวาดด้วยโค้ด (กรณีไม่มีภาพ PixelLab)
 export const HAIRSTYLES = [
-  { nameTh: 'สั้นเกรียน',     shape: 'buzz',     color: '#1a1a1a' },
-  { nameTh: 'รองทรง',        shape: 'short',    color: '#2b1d14' },
-  { nameTh: 'ผมยาวตรง',      shape: 'long',     color: '#111111' },
-  { nameTh: 'ผมมวยไทย',      shape: 'bun',      color: '#1a1a1a' },
-  { nameTh: 'ผมจุก',         shape: 'topknot',  color: '#141414' },
-  { nameTh: 'ผมเปีย',        shape: 'braid',    color: '#3b2314' },
-  { nameTh: 'ทรงดอกกระทุ่ม',  shape: 'spiky',    color: '#241a12' },
-  { nameTh: 'หางม้า',        shape: 'ponytail', color: '#4a2c17' },
-  { nameTh: 'ผมหยิกฟู',       shape: 'curly',    color: '#1e1410' },
-  { nameTh: 'ผมทัดดอกไม้',    shape: 'flower',   color: '#101010' },
+  { nameTh: 'ดำขลับ',       shape: 'short',    color: '#1c1c1c' },
+  { nameTh: 'น้ำตาลเข้ม',    shape: 'long',     color: '#4a2c17' },
+  { nameTh: 'น้ำตาลทอง',     shape: 'bun',      color: '#8b5a2b' },
+  { nameTh: 'บลอนด์ทอง',     shape: 'ponytail', color: '#d4a54a' },
+  { nameTh: 'แดงเพลิง',      shape: 'spiky',    color: '#b03a2e' },
+  { nameTh: 'ชมพูดอกบัว',    shape: 'flower',   color: '#e38fb0' },
+  { nameTh: 'ม่วงดอกอัญชัน', shape: 'curly',    color: '#6c3483' },
+  { nameTh: 'ฟ้าคราม',       shape: 'braid',    color: '#2e86c1' },
+  { nameTh: 'เขียวใบตอง',    shape: 'topknot',  color: '#3d8b3d' },
+  { nameTh: 'ขาวเงิน',       shape: 'buzz',     color: '#d5dbdb' },
 ];
 
 // eyes: dot | line | big | sharp | sleepy | wink | round | narrow | star | closed

@@ -81,6 +81,8 @@ export class Monster extends Phaser.Physics.Arcade.Sprite {
 
     const dx = player.x - this.x;
     const dy = player.y - this.y;
+    // ระยะห่างระหว่าง "ขอบ" hitbox (ไม่ใช่จุดกึ่งกลาง) → ตัวใหญ่/เล็กตีถึงเท่ากัน
+    const gap = this.gapTo(player);
     const aggro = player.alive && player.x > WORLD.townEndX &&
       Math.abs(dx) < AGGRO_X && Math.abs(dy) < AGGRO_Y;
     this.state = aggro ? 'chase' : 'patrol';
@@ -95,9 +97,9 @@ export class Monster extends Phaser.Physics.Arcade.Sprite {
         this.setFlipX(face < 0);
         if (dist <= d.attackRange && Math.abs(dy) < 60) this.tryAttack(time);
       } else {
-        if (dist > d.attackRange * 0.8) vx = face * d.speed;
+        if (gap > this.reach * 0.5) vx = face * d.speed;
         this.setFlipX(face < 0);
-        if (dist <= d.attackRange && Math.abs(dy) < 30) this.tryAttack(time);
+        if (gap <= this.reach && this.verticalOverlap(player, 6)) this.tryAttack(time);
       }
     } else {
       // เดินเตร็ดเตร่ในเขตของตัวเอง
@@ -120,6 +122,19 @@ export class Monster extends Phaser.Physics.Arcade.Sprite {
     }
   }
 
+  /** ระยะตีประชิด (ช่องว่างระหว่างขอบ hitbox) */
+  get reach() { return Math.round(this.def.attackRange * 0.6); }
+
+  gapTo(target) {
+    const a = this.body, b = target.body;
+    return Math.max(0, Math.abs(target.x - this.x) - (a.halfWidth + b.halfWidth));
+  }
+
+  verticalOverlap(target, tol = 0) {
+    const a = this.body, b = target.body;
+    return a.bottom + tol >= b.top && b.bottom + tol >= a.top;
+  }
+
   tryAttack(time) {
     if (time - this.lastAttack < this.def.attackCooldown) return;
     this.lastAttack = time;
@@ -137,6 +152,9 @@ export class Monster extends Phaser.Physics.Arcade.Sprite {
     this.setTintFill(0xffffff);
     this.scene.time.delayedCall(70, () => this.alive && this.clearTint());
     if (this.hp <= 0) return this.die();
+    this.scene.ui?.setTarget(this);
+    // มอนสเตอร์ Lv.8+ มี "เกราะ" ไม่สะดุ้งเวลาโดนตี (ไม่ถูกขัดจังหวะโจมตี)
+    if (this.def.level >= 8) { this.setVelocityX(dir * knock * 0.2); return; }
     this.state = 'hit';
     this.setVelocityX(dir * knock);
     this.play(`${this.key}:hit`);

@@ -57,6 +57,10 @@ export function computeDerived(s, job, level, bonus = {}) {
   };
 }
 
+export function hitChanceOf(accuracy, eva) {
+  return clamp(0.95 + (accuracy - 90 - eva) / 100, 0.6, 0.99);
+}
+
 /**
  * ทอยความเสียหาย 1 ครั้ง
  * @param {object} atk  { patk, matk, accuracy, critRate, critDmg }
@@ -66,7 +70,8 @@ export function computeDerived(s, job, level, bonus = {}) {
  * @returns {{hit:boolean, crit:boolean, dmg:number}}
  */
 export function rollDamage(atk, def, kind = 'physical', mult = 1, rng = Math.random) {
-  const hitChance = clamp((atk.accuracy - (def.eva || 0)) / 100, 0.3, 0.98);
+  // โอกาสโดน: ความแม่นยำ 90 เทียบกับการหลบ 0 = 95%  (ทุก 1 แต้มต่าง = ±1%)  ต่ำสุด 60% สูงสุด 99%
+  const hitChance = hitChanceOf(atk.accuracy, def.eva || 0);
   if (rng() > hitChance) return { hit: false, crit: false, dmg: 0 };
 
   const power = kind === 'magic' ? atk.matk : atk.patk;

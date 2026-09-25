@@ -19,6 +19,8 @@ export class BootScene extends Phaser.Scene {
       ...Object.entries(manifest.npc || {}).map(([key, e]) => ({ ...e, key })),
     ];
     entries.forEach((e) => this.load.spritesheet(e.key, e.file, { frameWidth: e.frameWidth, frameHeight: e.frameHeight }));
+    // ภาพต้นฉบับตัวละครผู้เล่น (ย้อมสี + สร้างท่าทางตอนสร้างตัวละคร)
+    Object.entries(manifest.players || {}).forEach(([k, file]) => this.load.image(`pbase_${k}`, file));
 
     this.load.once('complete', () => {
       entries.forEach((e) => this.registerSheet(e));

@@ -22,7 +22,7 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     scene.add.existing(this);
     scene.physics.add.existing(this);
     this.setOrigin(0.5, 1);
-    this.body.setSize(12, 29).setOffset(10, 10);   // hitbox เล็กกว่าภาพ
+    this.fitBody();
     this.setCollideWorldBounds(true);
     this.setDepth(10);
 
@@ -36,7 +36,7 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     this.buffs = [];           // [{ buff:{atkMul,critAdd,def}, until }]
     this.dashing = false;
 
-    this.nameTag = makeText(scene, x, y - 44, char.name, { fontSize: '7px', color: '#f3d98b' }).setOrigin(0.5).setDepth(11);
+    this.nameTag = makeText(scene, x, y - this.height - 2, char.name, { fontSize: '7px', color: '#f3d98b' }).setOrigin(0.5).setDepth(11);
 
     // เมื่อจบท่าโจมตี/โดนตี → กลับสู่สถานะปกติ
     this.on(EV.ANIMATION_COMPLETE, (anim) => {
@@ -50,6 +50,13 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
       }
     });
     this.playAnim('idle');
+  }
+
+  /** hitbox กว้าง 14 สูง ~80% ของตัว ชิดเท้า – คำนวณจากขนาดเฟรม (รองรับภาพทุกขนาด) */
+  fitBody() {
+    const fw = this.frame.width, fh = this.frame.height;
+    const h = Math.round(fh * 0.72), w = 14;
+    this.body.setSize(w, h).setOffset(Math.round((fw - w) / 2), fh - h - 1);
   }
 
   get job() { return JOBS[this.char.appearance.job]; }
@@ -81,7 +88,7 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
    *   ← → เดิน | ↑ กระโดด | Space โจมตีปกติ | Q W E R สกิล
    */
   update(time, input) {
-    this.nameTag.setPosition(this.x, this.y - 44);
+    this.nameTag.setPosition(this.x, this.y - this.height + 2);
     if (this.state === 'dead' || this.dashing) return;
 
     const onFloor = this.body.blocked.down || this.body.touching.down;
@@ -211,6 +218,7 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
   refreshAppearance() {
     this.texKey = bakeCharacter(this.scene, this.char.appearance);
     this.setTexture(this.texKey, 'idle_0');
+    this.fitBody();
     this.playAnim(this.state === 'dead' ? 'die' : 'idle', true);
   }
 

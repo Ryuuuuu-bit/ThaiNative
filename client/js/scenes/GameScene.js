@@ -60,7 +60,7 @@ export class GameScene extends Phaser.Scene {
 
     // ---------- Event / Timer ----------
     this.events.on('player-died', () => {
-      this.ui.toast('คุณถูกผีหลอกจนสลบ... ฟื้นที่ศาลพระภูมิ', 'warn');
+      this.ui.showDeath(2500);
       this.time.delayedCall(2500, () => this.player.respawn(SPAWN_X, W.groundY - 2));
     });
     this.time.addEvent({ delay: 1000, loop: true, callback: () => this.regenTick() });
@@ -116,7 +116,7 @@ export class GameScene extends Phaser.Scene {
     // NPC ร้านค้า
     this.npc = this.add.sprite(NPC_X, gy, 'npc_maekha', 'idle_0').setOrigin(0.5, 1).setDepth(6);
     this.npc.play('npc_maekha:idle');
-    makeText(this, NPC_X, gy - 56, 'ป้าแม้น [ร้านค้า]', { fontSize: '7px', color: '#82e0aa' }).setOrigin(0.5).setDepth(6);
+    makeText(this, NPC_X, gy - 56, 'ป้าติ๋ม [ร้านค้า]', { fontSize: '7px', color: '#82e0aa' }).setOrigin(0.5).setDepth(6);
   }
 
   // ------------------------------------------------------------
@@ -126,7 +126,7 @@ export class GameScene extends Phaser.Scene {
   //            F / ↓ คุย NPC | C สถานะ | I กระเป๋า | 1 2 ยา | M เปิด/ปิดเสียง | Enter แชท
   setupInput() {
     const kb = this.input.keyboard;
-    this.keys = kb.addKeys('LEFT,RIGHT,UP,DOWN,SPACE,Q,W,E,R,F,C,I,M,ONE,TWO,ENTER,ESC');
+    this.keys = kb.addKeys('LEFT,RIGHT,UP,DOWN,SPACE,Q,W,E,R,F,C,I,H,M,ONE,TWO,ENTER,ESC');
 
     const talk = () => { if (this.nearNpc()) { this.sfx.play('click'); this.ui.openShop('mae_kha'); } };
     kb.on('keydown-F', talk);
@@ -134,6 +134,7 @@ export class GameScene extends Phaser.Scene {
     kb.on('keydown-M', () => this.ui.setMuted(this.sfx.toggleMute()));
     kb.on('keydown-C', () => this.ui.toggle('stats-panel'));
     kb.on('keydown-I', () => this.ui.toggle('inv-panel'));
+    kb.on('keydown-H', () => this.ui.toggle('help-panel'));
     kb.on('keydown-ESC', () => this.ui.closeAll());
     kb.on('keydown-ENTER', () => this.ui.focusChat());
     kb.on('keydown-ONE', () => this.quickUse(['hp_s', 'hp_m']));
@@ -214,9 +215,12 @@ export class GameScene extends Phaser.Scene {
     this.bgFar.tilePositionX = cam.scrollX * 0.15;
     this.bgMid.tilePositionX = cam.scrollX * 0.35;
 
-    this.ui.prompt(this.nearNpc() ? 'กด F เพื่อคุยกับป้าแม้น' : '');
+    this.ui.prompt(this.nearNpc() ? 'กด F เพื่อคุยกับป้าติ๋ม' : '');
     this.ui.updateHud();
     this.ui.updateSkillBar(time);
+    this.ui.updateFrame(time);
+    const zone = this.player.x < WORLD.townEndX ? 'หมู่บ้านบางผี' : 'ป่าผีดุ';
+    if (zone !== this.zone) { this.ui.setZone(zone, !!this.zone); this.zone = zone; }
     this.sfx.music(this.player.x < WORLD.townEndX ? 'town' : 'wild');
   }
 }

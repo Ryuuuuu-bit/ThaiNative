@@ -18,7 +18,7 @@ export class RemotePlayer extends Phaser.GameObjects.Sprite {
 
     scene.add.existing(this);
     this.setOrigin(0.5, 1).setDepth(9).setAlpha(0.95);
-    this.nameTag = makeText(scene, info.x, info.y - 44, info.name, { fontSize: '7px', color: '#aed6f1' }).setOrigin(0.5).setDepth(9);
+    this.nameTag = makeText(scene, info.x, info.y - this.height, info.name, { fontSize: '7px', color: '#aed6f1' }).setOrigin(0.5).setDepth(9);
     this.hpBar = scene.add.rectangle(info.x, info.y - 40, 18, 2, 0x58d68d).setDepth(9);
     this.pushState(info);
   }
@@ -57,8 +57,8 @@ export class RemotePlayer extends Phaser.GameObjects.Sprite {
       this.currentAnim = latest.anim;
       this.play(`${this.texKey}:${latest.anim}`);
     }
-    this.nameTag.setPosition(this.x, this.y - 44);
-    this.hpBar.setPosition(this.x, this.y - 40);
+    this.nameTag.setPosition(this.x, this.y - this.height + 2);
+    this.hpBar.setPosition(this.x, this.y - this.height + 7);
   }
 
   destroy(fromScene) {

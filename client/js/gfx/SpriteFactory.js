@@ -7,6 +7,7 @@ import { MONSTER_ANIMS, drawMonsterFrame } from './MonsterArt.js';
 import { MONSTERS } from '/shared/data/monsters.js';
 import { JOBS } from '/shared/data/classes.js';
 import { appearanceKey } from '/shared/data/appearance.js';
+import { baseKey, recolorBase, drawPlayerFrame, frameSize } from './PlayerArt.js';
 
 function makeCanvas(w, h) {
   const c = document.createElement('canvas');
@@ -56,9 +57,24 @@ function bakeSheet(scene, key, fw, fh, animSpec, drawFrame) {
 // ------------------------------------------------------------
 //  ตัวละครผู้เล่น (สร้างตามรูปลักษณ์ที่เลือก + cache ด้วย key)
 // ------------------------------------------------------------
+/** ภาพตัวละครที่ย้อมสีแล้ว (ใช้ทำรูปโปรไฟล์บน HUD)  key → canvas */
+export const PORTRAITS = new Map();
+
 export function bakeCharacter(scene, appearance) {
   const key = appearanceKey(appearance);
   const weapon = JOBS[appearance.job].weapon;
+
+  // ▸ มีภาพ PixelLab ของอาชีพ/เพศนี้ → ย้อมสี + สร้างท่าทางจากภาพนั้น
+  const bk = baseKey(appearance);
+  if (scene.textures.exists(bk)) {
+    if (scene.textures.exists(key)) return key;
+    const base = recolorBase(scene.textures.get(bk).getSourceImage(), appearance);
+    PORTRAITS.set(key, base);
+    const { FW: pw, FH: ph } = frameSize(base);
+    return bakeSheet(scene, key, pw, ph, CHAR_ANIMS, (ctx, anim, i) => drawPlayerFrame(ctx, base, anim, i, weapon, pw, ph));
+  }
+
+  // ▸ ไม่มีภาพ → วาดด้วยโค้ด (paper-doll)
   const tmp = makeCanvas(FW, FH);
 
   return bakeSheet(scene, key, FW, FH, CHAR_ANIMS, (ctx, anim, i) => {
@@ -144,7 +160,7 @@ function bakeProjectiles(scene) {
   px(t.ctx, 0, 0, 4, 4, '#ffffff');
   scene.textures.addCanvas('particle', t.c);
 
-  // คลื่นดาบ (นักดาบ E)
+  // คลื่นดาบ (ขุนศึก E)
   t = makeCanvas(12, 26);
   for (let y = 0; y < 26; y++) {
     const w = Math.round(Math.sin((y / 25) * Math.PI) * 6);
@@ -152,13 +168,13 @@ function bakeProjectiles(scene) {
   }
   scene.textures.addCanvas('proj_wave', t.c);
 
-  // ศรทะลวง (นักธนู W)
+  // ศรทะลวง (พรานป่า W)
   t = makeCanvas(22, 5);
   px(t.ctx, 0, 2, 18, 1, '#f7dc6f'); px(t.ctx, 17, 0, 5, 5, '#ecf0f1'); px(t.ctx, 0, 0, 4, 5, '#e67e22');
   px(t.ctx, 2, 1, 14, 3, 'rgba(247,220,111,0.35)');
   scene.textures.addCanvas('proj_arrow_big', t.c);
 
-  // อุกกาบาต (นักเวทย์ R)
+  // อุกกาบาต (จอมขมังเวทย์ R)
   t = makeCanvas(14, 14);
   t.ctx.fillStyle = 'rgba(231,76,60,0.5)'; t.ctx.beginPath(); t.ctx.arc(7, 7, 7, 0, 7); t.ctx.fill();
   px(t.ctx, 3, 3, 8, 8, '#e67e22'); px(t.ctx, 5, 5, 4, 4, '#f4d03f'); px(t.ctx, 6, 6, 2, 2, '#fff');
@@ -169,6 +185,9 @@ function bakeProjectiles(scene) {
 //  ฉาก: ท้องฟ้า วัด ต้นไม้ พื้น เรือนไทย ร้านค้า ศาลพระภูมิ
 // ------------------------------------------------------------
 function bakeEnvironment(scene) {
+  const tex = scene.textures;
+  const orig = tex.addCanvas.bind(tex);
+  tex.addCanvas = (k, c) => (tex.exists(k) ? tex.get(k) : orig(k, c)); // ถ้ามีภาพจริงโหลดไว้แล้ว ไม่ต้องสร้างซ้ำ
   // ท้องฟ้ายามพลบค่ำ
   let t = makeCanvas(480, 270);
   const g = t.ctx.createLinearGradient(0, 0, 0, 270);
@@ -287,6 +306,7 @@ function bakeEnvironment(scene) {
   t = makeCanvas(8, 30); ctx = t.ctx;
   px(ctx, 3, 8, 2, 22, '#4d3319'); px(ctx, 1, 2, 6, 7, '#f39c12'); px(ctx, 2, 3, 4, 5, '#fdebd0'); px(ctx, 0, 1, 8, 1, '#7b241c');
   scene.textures.addCanvas('lantern', t.c);
+  tex.addCanvas = orig;
 }
 
 /** เรียกครั้งเดียวใน BootScene */

@@ -27,14 +27,16 @@ export class Combat {
 
   /** มอนสเตอร์ที่ยังมีชีวิตและชนกับสี่เหลี่ยม zone เรียงจากใกล้ไปไกล */
   monstersIn(zone, fromX) {
+    // ใช้ hitbox ฟิสิกส์ (body) ไม่ใช่กรอบภาพ → ไม่โดนจากขอบโปร่งใสของภาพ
     return this.monsters.getChildren()
-      .filter((m) => m.alive && Phaser.Geom.Intersects.RectangleToRectangle(zone, m.getBounds()))
+      .filter((m) => m.alive && Phaser.Geom.Intersects.RectangleToRectangle(zone, new Phaser.Geom.Rectangle(m.body.x, m.body.y, m.body.width, m.body.height)))
       .sort((a, b) => Math.abs(a.x - fromX) - Math.abs(b.x - fromX));
   }
 
   hit(mon, stats, kind, mult, dir, knock) {
     const r = rollDamage(stats, mon.defStats, kind, mult);
     mon.takeHit(r, dir, knock);
+    this.scene.ui.setTarget(mon);
     if (r.hit) this.sfx.play(r.crit ? 'crit' : 'hit');
     else this.sfx.play('miss');
     return r;
@@ -106,7 +108,7 @@ export class Combat {
 
     if (atk.style === 'melee') {
       const targets = this.monstersIn(this.frontZone(player, atk.range), player.x);
-      // นักดาบฟันโดนทุกตัวในระยะ / นักมวยโดนตัวที่ใกล้ที่สุด
+      // ขุนศึกฟันโดนทุกตัวในระยะ / นักมวยโดนตัวที่ใกล้ที่สุด
       const hitList = player.job.weapon === 'sword' ? targets : targets.slice(0, 1);
       hitList.forEach((m) => this.hit(m, stats, atk.kind, mult, f));
       if (special && hitList.length) this.popupText(player.x + f * 14, player.y - 44, 'ศอกกลับ!', '#f39c12');
@@ -116,15 +118,16 @@ export class Combat {
     }
   }
 
+  /** กล่องโจมตีด้านหน้า: เริ่มจากขอบ hitbox ผู้เล่นออกไป range หน่วย สูงเท่าตัวผู้เล่น + 6 */
   frontZone(player, range) {
-    const f = player.facing;
-    const x1 = f > 0 ? player.x - 4 : player.x - range - 6;
-    return new Phaser.Geom.Rectangle(x1, player.y - 34, range + 10, 34);
+    const b = player.body, f = player.facing;
+    const x1 = f > 0 ? b.right - 6 : b.left - range;
+    return new Phaser.Geom.Rectangle(x1, b.top - 6, range + 6, b.height + 6);
   }
 
   spawnShot(player, tex, speed, range, kind, mult, stats, dy, pierce) {
     const f = player.facing;
-    const shot = this.playerShots.create(player.x + f * 12, player.y - 20 + dy, tex);
+    const shot = this.playerShots.create(player.x + f * 12, player.body.center.y - 2 + dy, tex);
     shot.setFlipX(f < 0).setDepth(12);
     shot.body.setAllowGravity(false);
     shot.setVelocity(f * speed, dy * 4);
@@ -151,7 +154,7 @@ export class Combat {
       c.hp = Math.min(d.maxHp, c.hp + amt);
       this.popupText(player.x, player.y - 46, `+${amt} HP`, '#58d68d', 10);
     }
-    player.buffs.push({ buff: sk.buff, until: this.scene.time.now + sk.duration, name: sk.nameTh });
+    player.buffs.push({ buff: sk.buff, until: this.scene.time.now + sk.duration, name: sk.nameTh, icon: sk.icon });
     this.popupText(player.x, player.y - 56, sk.nameTh, '#f7dc6f', 9);
     this.burst(player.x, player.y - 18, 0xf7dc6f, 18);
 
@@ -250,8 +253,8 @@ export class Combat {
     if (!p.alive) return;
     const def = mon.def;
     if (def.projectile) {
-      const ang = Phaser.Math.Angle.Between(mon.x, mon.y - def.frame.h / 2, p.x, p.y - 18);
-      const shot = this.enemyShots.create(mon.x, mon.y - def.frame.h / 2, `proj_${def.projectile}`);
+      const ang = Phaser.Math.Angle.Between(mon.body.center.x, mon.body.center.y, p.body.center.x, p.body.center.y);
+      const shot = this.enemyShots.create(mon.body.center.x, mon.body.center.y, `proj_${def.projectile}`);
       shot.body.setAllowGravity(false);
       shot.setDepth(12);
       this.scene.physics.velocityFromRotation(ang, 140, shot.body.velocity);
@@ -260,8 +263,8 @@ export class Combat {
       this.sfx.play('enemyShot');
     } else {
       this.sfx.play('enemySwing');
-      const dx = Math.abs(p.x - mon.x), dy = Math.abs(p.y - mon.y);
-      if (dx <= def.attackRange + 10 && dy < 36) {
+      // โดนเมื่อช่องว่างระหว่างขอบ hitbox ≤ ระยะตี (+6 เผื่อผู้เล่นขยับ) และอยู่ระดับความสูงเดียวกัน
+      if (mon.gapTo(p) <= mon.reach + 6 && mon.verticalOverlap(p, 4)) {
         const d = p.combatStats();
         p.takeHit(rollDamage(mon.atkStats, { def: d.def, eva: d.eva }, 'physical', 1), mon.x);
       }
@@ -304,7 +307,8 @@ export class Combat {
       }
     }
     if (ups) {
-      this.scene.ui.toast(`🎉 เลเวลอัป! Lv.${c.level} (+${ups * 5} แต้มสถานะ กด C)`);
+      this.scene.ui.toast(`+${ups * 5} แต้มสถานะ (กด C เพื่ออัปค่าพลัง)`);
+      this.scene.ui.banner(`LEVEL UP!  Lv.${c.level}`);
       this.popupText(this.player.x, this.player.y - 50, 'LEVEL UP!', '#f1c40f', 12);
       this.burst(this.player.x, this.player.y - 20, 0xf1c40f, 24);
       this.sfx.play('levelup');

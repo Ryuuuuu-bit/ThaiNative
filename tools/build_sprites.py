@@ -127,6 +127,16 @@ def main():
         manifest['npc'][key] = {'file': f'assets/npc/{key}.png', 'frameWidth': W, 'frameHeight': H,
                                 'anims': {'idle': 2}, 'rates': {'idle': 2}}
 
+    # ตัวละครผู้เล่น: คัดลอกภาพต้นฉบับ (เกมย้อมสี + สร้างท่าทางเองตอนรัน)
+    pdir = os.path.join(SRC, 'players')
+    if os.path.isdir(pdir):
+        os.makedirs(os.path.join(OUT, 'players'), exist_ok=True)
+        manifest['players'] = {}
+        for f in sorted(os.listdir(pdir)):
+            if f.endswith('.png'):
+                Image.open(os.path.join(pdir, f)).save(os.path.join(OUT, 'players', f))
+                manifest['players'][f[:-4]] = f'assets/players/{f}'
+
     with open(os.path.join(OUT, 'manifest.json'), 'w', encoding='utf-8') as fp:
         json.dump(manifest, fp, ensure_ascii=False, indent=2)
     print('built', len(manifest['monsters']), 'monsters,', len(manifest['npc']), 'npc')
