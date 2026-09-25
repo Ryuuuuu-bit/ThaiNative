@@ -129,7 +129,7 @@ export class Monster extends Phaser.Physics.Arcade.Sprite {
   }
 
   /** โดนผู้เล่นตี */
-  takeHit(result, dir) {
+  takeHit(result, dir, knock = 70) {
     if (!this.alive) return;
     this.scene.combat.popup(this.x, this.y - this.def.frame.h, result);
     if (!result.hit) return;
@@ -138,7 +138,7 @@ export class Monster extends Phaser.Physics.Arcade.Sprite {
     this.scene.time.delayedCall(70, () => this.alive && this.clearTint());
     if (this.hp <= 0) return this.die();
     this.state = 'hit';
-    this.setVelocityX(dir * 70);
+    this.setVelocityX(dir * knock);
     this.play(`${this.key}:hit`);
   }
 

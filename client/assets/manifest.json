@@ -1,0 +1,188 @@
+{
+  "_comment": "สร้างโดย tools/build_sprites.py จากภาพ PixelLab – เฟรมเรียงแถวเดียวตามลำดับ anims",
+  "monsters": {
+    "phi_tuay_kaew": {
+      "file": "assets/monsters/phi_tuay_kaew.png",
+      "frameWidth": 27,
+      "frameHeight": 30,
+      "anims": {
+        "walk": 4,
+        "attack": 3,
+        "hit": 1,
+        "die": 4
+      },
+      "rates": {
+        "walk": 5,
+        "attack": 8,
+        "hit": 6,
+        "die": 8
+      }
+    },
+    "kuman_thong": {
+      "file": "assets/monsters/kuman_thong.png",
+      "frameWidth": 31,
+      "frameHeight": 42,
+      "anims": {
+        "walk": 4,
+        "attack": 3,
+        "hit": 1,
+        "die": 4
+      },
+      "rates": {
+        "walk": 6,
+        "attack": 8,
+        "hit": 6,
+        "die": 8
+      }
+    },
+    "krasue": {
+      "file": "assets/monsters/krasue.png",
+      "frameWidth": 38,
+      "frameHeight": 47,
+      "anims": {
+        "walk": 4,
+        "attack": 3,
+        "hit": 1,
+        "die": 4
+      },
+      "rates": {
+        "walk": 5,
+        "attack": 8,
+        "hit": 6,
+        "die": 8
+      }
+    },
+    "nang_tani": {
+      "file": "assets/monsters/nang_tani.png",
+      "frameWidth": 32,
+      "frameHeight": 43,
+      "anims": {
+        "walk": 4,
+        "attack": 3,
+        "hit": 1,
+        "die": 4
+      },
+      "rates": {
+        "walk": 5,
+        "attack": 8,
+        "hit": 6,
+        "die": 8
+      }
+    },
+    "phi_pob": {
+      "file": "assets/monsters/phi_pob.png",
+      "frameWidth": 48,
+      "frameHeight": 49,
+      "anims": {
+        "walk": 4,
+        "attack": 3,
+        "hit": 1,
+        "die": 4
+      },
+      "rates": {
+        "walk": 6,
+        "attack": 8,
+        "hit": 6,
+        "die": 8
+      }
+    },
+    "phi_jang_nang": {
+      "file": "assets/monsters/phi_jang_nang.png",
+      "frameWidth": 42,
+      "frameHeight": 52,
+      "anims": {
+        "walk": 4,
+        "attack": 3,
+        "hit": 1,
+        "die": 4
+      },
+      "rates": {
+        "walk": 6,
+        "attack": 8,
+        "hit": 6,
+        "die": 8
+      }
+    },
+    "phi_phrai": {
+      "file": "assets/monsters/phi_phrai.png",
+      "frameWidth": 42,
+      "frameHeight": 52,
+      "anims": {
+        "walk": 4,
+        "attack": 3,
+        "hit": 1,
+        "die": 4
+      },
+      "rates": {
+        "walk": 5,
+        "attack": 8,
+        "hit": 6,
+        "die": 8
+      }
+    },
+    "pret": {
+      "file": "assets/monsters/pret.png",
+      "frameWidth": 42,
+      "frameHeight": 84,
+      "anims": {
+        "walk": 4,
+        "attack": 3,
+        "hit": 1,
+        "die": 4
+      },
+      "rates": {
+        "walk": 6,
+        "attack": 8,
+        "hit": 6,
+        "die": 8
+      }
+    },
+    "saming": {
+      "file": "assets/monsters/saming.png",
+      "frameWidth": 69,
+      "frameHeight": 34,
+      "anims": {
+        "walk": 4,
+        "attack": 3,
+        "hit": 1,
+        "die": 4
+      },
+      "rates": {
+        "walk": 6,
+        "attack": 8,
+        "hit": 6,
+        "die": 8
+      }
+    },
+    "phi_ha": {
+      "file": "assets/monsters/phi_ha.png",
+      "frameWidth": 54,
+      "frameHeight": 48,
+      "anims": {
+        "walk": 4,
+        "attack": 3,
+        "hit": 1,
+        "die": 4
+      },
+      "rates": {
+        "walk": 5,
+        "attack": 8,
+        "hit": 6,
+        "die": 8
+      }
+    }
+  },
+  "npc": {
+    "npc_maekha": {
+      "file": "assets/npc/npc_maekha.png",
+      "frameWidth": 25,
+      "frameHeight": 46,
+      "anims": {
+        "idle": 2
+      },
+      "rates": {
+        "idle": 2
+      }
+    }
+  }
+}

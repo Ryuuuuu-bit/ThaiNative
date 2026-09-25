@@ -7,6 +7,7 @@ import { ITEMS, SHOPS, sellPrice } from '/shared/data/items.js';
 import { STAT_KEYS, STAT_INFO, expToNext } from '/shared/stats.js';
 import { getDerived, allocateStat } from './Character.js';
 import * as Inv from './Inventory.js';
+import { SKILLS } from '/shared/data/skills.js';
 
 const $ = (s) => document.querySelector(s);
 const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -31,6 +32,9 @@ export class UI {
       document.querySelectorAll('#shop-panel .tabs button').forEach((x) => x.classList.toggle('active', x === b));
       this.renderShop();
     }));
+
+    $('#mute-btn').onclick = () => this.setMuted(scene.sfx.toggleMute());
+    this.setMuted(scene.sfx.muted);
 
     // แชท
     const input = $('#chat-input');
@@ -90,6 +94,34 @@ export class UI {
     const el = $('#net-status');
     el.className = `net ${on ? 'on' : 'off'}`;
     el.textContent = on ? `● ออนไลน์ (${count + 1} คน)` : '● ออฟไลน์';
+  }
+
+  setMuted(m) { $('#mute-btn').textContent = m ? '🔇' : '🔊'; }
+
+  // ---------------- แถบสกิล QWER ----------------
+  buildSkillBar() {
+    const c = this.char;
+    this.skillJob = c.appearance.job;
+    this.skillLv = c.level;
+    $('#skillbar').innerHTML = SKILLS[this.skillJob].map((s) => `
+      <div class="skill ${c.level < s.unlock ? 'locked' : ''}" data-key="${s.key}">
+        <span class="k">${s.key}</span><span class="ic">${s.icon}</span><span class="mp">${s.mp}</span>
+        <div class="cd"></div><div class="cdt"></div>
+        <div class="tip"><b>${s.nameTh}</b> (${s.key}) · MP ${s.mp} · CD ${s.cd / 1000}s<br>${s.desc}${c.level < s.unlock ? `<br>🔒 ปลดล็อก Lv.${s.unlock}` : ''}</div>
+      </div>`).join('');
+    this.skillEls = [...document.querySelectorAll('#skillbar .skill')];
+  }
+
+  updateSkillBar(time) {
+    const c = this.char, p = this.scene.player;
+    if (this.skillJob !== c.appearance.job || this.skillLv !== c.level) this.buildSkillBar();
+    SKILLS[this.skillJob].forEach((s, i) => {
+      const el = this.skillEls[i];
+      const left = p.cooldownLeft(s.key, time);
+      el.querySelector('.cd').style.height = left ? `${(left / s.cd) * 100}%` : '0';
+      el.querySelector('.cdt').textContent = left ? (left / 1000).toFixed(left < 1000 ? 1 : 0) : '';
+      el.classList.toggle('nomp', c.mp < s.mp);
+    });
   }
 
   prompt(text) {
@@ -206,7 +238,8 @@ export class UI {
       }).join('') : '<div class="empty">ไม่มีของให้ขาย</div>';
     }
     $('#shop-list').innerHTML = html;
-    $('#shop-list').querySelectorAll('[data-buy]').forEach((b) => (b.onclick = () => this.result(Inv.buy(c, b.dataset.buy))));
-    $('#shop-list').querySelectorAll('[data-sell]').forEach((b) => (b.onclick = () => this.result(Inv.sell(c, b.dataset.sell))));
+    const trade = (r) => { this.scene.sfx.play(r.ok ? 'buy' : 'error'); this.result(r); };
+    $('#shop-list').querySelectorAll('[data-buy]').forEach((b) => (b.onclick = () => trade(Inv.buy(c, b.dataset.buy))));
+    $('#shop-list').querySelectorAll('[data-sell]').forEach((b) => (b.onclick = () => trade(Inv.sell(c, b.dataset.sell))));
   }
 }

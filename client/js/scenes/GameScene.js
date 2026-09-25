@@ -13,6 +13,7 @@ import { Network } from '../net/Network.js';
 import { getDerived, saveCharacter } from '../systems/Character.js';
 import { useItem, count } from '../systems/Inventory.js';
 import { makeText } from '../systems/util.js';
+import { sound } from '../systems/Sound.js';
 
 const NPC_X = 480;
 const SPAWN_X = WORLD.spawnX;
@@ -26,6 +27,7 @@ export class GameScene extends Phaser.Scene {
 
   create({ char }) {
     const W = WORLD;
+    this.sfx = sound;
     this.physics.world.setBounds(0, -200, W.width, W.height + 200);
 
     this.buildBackground();
@@ -114,17 +116,22 @@ export class GameScene extends Phaser.Scene {
     // NPC ร้านค้า
     this.npc = this.add.sprite(NPC_X, gy, 'npc_maekha', 'idle_0').setOrigin(0.5, 1).setDepth(6);
     this.npc.play('npc_maekha:idle');
-    makeText(this, NPC_X, gy - 44, 'ป้าแม้น [ร้านค้า]', { fontSize: '7px', color: '#82e0aa' }).setOrigin(0.5).setDepth(6);
+    makeText(this, NPC_X, gy - 56, 'ป้าแม้น [ร้านค้า]', { fontSize: '7px', color: '#82e0aa' }).setOrigin(0.5).setDepth(6);
   }
 
   // ------------------------------------------------------------
   //  Input
   // ------------------------------------------------------------
+  // ปุ่มควบคุม: ← → เดิน | ↑ กระโดด | Space โจมตีปกติ | Q W E R สกิล
+  //            F / ↓ คุย NPC | C สถานะ | I กระเป๋า | 1 2 ยา | M เปิด/ปิดเสียง | Enter แชท
   setupInput() {
     const kb = this.input.keyboard;
-    this.keys = kb.addKeys('LEFT,RIGHT,UP,SPACE,A,D,W,J,Z,E,C,I,ONE,TWO,ENTER,ESC');
+    this.keys = kb.addKeys('LEFT,RIGHT,UP,DOWN,SPACE,Q,W,E,R,F,C,I,M,ONE,TWO,ENTER,ESC');
 
-    kb.on('keydown-E', () => { if (this.nearNpc()) this.ui.openShop('mae_kha'); });
+    const talk = () => { if (this.nearNpc()) { this.sfx.play('click'); this.ui.openShop('mae_kha'); } };
+    kb.on('keydown-F', talk);
+    kb.on('keydown-DOWN', talk);
+    kb.on('keydown-M', () => this.ui.setMuted(this.sfx.toggleMute()));
     kb.on('keydown-C', () => this.ui.toggle('stats-panel'));
     kb.on('keydown-I', () => this.ui.toggle('inv-panel'));
     kb.on('keydown-ESC', () => this.ui.closeAll());
@@ -135,11 +142,14 @@ export class GameScene extends Phaser.Scene {
 
   readInput() {
     const k = this.keys, JD = Phaser.Input.Keyboard.JustDown;
+    const jump = JD(k.UP);
+    if (jump && this.player.body.blocked.down && this.player.alive) this.sfx.play('jump');
     return {
-      left: k.LEFT.isDown || k.A.isDown,
-      right: k.RIGHT.isDown || k.D.isDown,
-      jump: JD(k.SPACE) || JD(k.UP) || JD(k.W),
-      attack: k.J.isDown || k.Z.isDown,
+      left: k.LEFT.isDown,
+      right: k.RIGHT.isDown,
+      jump,
+      attack: k.SPACE.isDown,                         // กดค้างเพื่อตีต่อเนื่อง
+      skill: ['Q', 'W', 'E', 'R'].find((key) => k[key].isDown) || null,
     };
   }
 
@@ -147,7 +157,9 @@ export class GameScene extends Phaser.Scene {
     const c = this.player.char;
     const id = ids.find((i) => count(c, i) > 0);
     if (!id) return this.ui.toast('ไม่มียาเหลือแล้ว', 'warn');
-    this.ui.result(useItem(c, id));
+    const r = useItem(c, id);
+    if (r.ok) this.sfx.play('potion');
+    this.ui.result(r);
   }
 
   nearNpc() { return Math.abs(this.player.x - NPC_X) < 40 && this.player.alive; }
@@ -191,7 +203,7 @@ export class GameScene extends Phaser.Scene {
   }
 
   update(time) {
-    const input = this.ui.typing ? { left: false, right: false, jump: false, attack: false } : this.readInput();
+    const input = this.ui.typing ? { left: false, right: false, jump: false, attack: false, skill: null } : this.readInput();
     this.player.update(time, input);
     this.monsters.getChildren().forEach((m) => m.update(time, this.player));
     this.combat.update();
@@ -202,7 +214,9 @@ export class GameScene extends Phaser.Scene {
     this.bgFar.tilePositionX = cam.scrollX * 0.15;
     this.bgMid.tilePositionX = cam.scrollX * 0.35;
 
-    this.ui.prompt(this.nearNpc() ? 'กด E เพื่อคุยกับป้าแม้น' : '');
+    this.ui.prompt(this.nearNpc() ? 'กด F เพื่อคุยกับป้าแม้น' : '');
     this.ui.updateHud();
+    this.ui.updateSkillBar(time);
+    this.sfx.music(this.player.x < WORLD.townEndX ? 'town' : 'wild');
   }
 }

@@ -143,6 +143,26 @@ function bakeProjectiles(scene) {
   t = makeCanvas(4, 4);
   px(t.ctx, 0, 0, 4, 4, '#ffffff');
   scene.textures.addCanvas('particle', t.c);
+
+  // คลื่นดาบ (นักดาบ E)
+  t = makeCanvas(12, 26);
+  for (let y = 0; y < 26; y++) {
+    const w = Math.round(Math.sin((y / 25) * Math.PI) * 6);
+    px(t.ctx, 6 - Math.round(w / 3), y, Math.max(1, w), 1, y % 5 ? 'rgba(174,214,241,0.85)' : '#ffffff');
+  }
+  scene.textures.addCanvas('proj_wave', t.c);
+
+  // ศรทะลวง (นักธนู W)
+  t = makeCanvas(22, 5);
+  px(t.ctx, 0, 2, 18, 1, '#f7dc6f'); px(t.ctx, 17, 0, 5, 5, '#ecf0f1'); px(t.ctx, 0, 0, 4, 5, '#e67e22');
+  px(t.ctx, 2, 1, 14, 3, 'rgba(247,220,111,0.35)');
+  scene.textures.addCanvas('proj_arrow_big', t.c);
+
+  // อุกกาบาต (นักเวทย์ R)
+  t = makeCanvas(14, 14);
+  t.ctx.fillStyle = 'rgba(231,76,60,0.5)'; t.ctx.beginPath(); t.ctx.arc(7, 7, 7, 0, 7); t.ctx.fill();
+  px(t.ctx, 3, 3, 8, 8, '#e67e22'); px(t.ctx, 5, 5, 4, 4, '#f4d03f'); px(t.ctx, 6, 6, 2, 2, '#fff');
+  scene.textures.addCanvas('proj_meteor', t.c);
 }
 
 // ------------------------------------------------------------

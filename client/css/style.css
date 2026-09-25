@@ -116,7 +116,19 @@ button { font-family: inherit; cursor: pointer; }
 .hud-buttons { display: flex; gap: .3em; }
 .net { font-size: .75em; background: var(--panel); padding: .1em .6em; border-radius: 10px; }
 .net.on { color: #58d68d; } .net.off { color: #aaa; }
-.quickbar { position: absolute; bottom: 3%; left: 50%; transform: translateX(-50%); display: flex; gap: .4em; }
+.quickbar { position: absolute; bottom: 3%; left: 50%; transform: translateX(-50%); display: flex; gap: .4em; align-items: flex-end; }
+#skillbar { display: flex; gap: .3em; }
+.skill { position: relative; width: 3.1em; height: 3.1em; background: var(--panel); border: 2px solid var(--gold); border-radius: 8px; overflow: hidden; display: flex; align-items: center; justify-content: center; font-size: 1em; }
+.skill .ic { font-size: 1.35em; }
+.skill .k { position: absolute; top: 1px; left: 3px; font-size: .6em; font-weight: 600; color: var(--gold-soft); }
+.skill .mp { position: absolute; bottom: 1px; right: 3px; font-size: .55em; color: #85c1e9; }
+.skill .cd { position: absolute; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,.65); height: 0; }
+.skill .cdt { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-size: .8em; font-weight: 600; text-shadow: 0 1px 2px #000; }
+.skill.locked { filter: grayscale(1); opacity: .5; }
+.skill.nomp { border-color: #5d6d7e; }
+.skill .tip { display: none; position: absolute; }
+.skill:hover { overflow: visible; }
+.skill:hover .tip { display: block; bottom: 110%; left: 50%; transform: translateX(-50%); width: 14em; background: var(--panel); border: 1px solid var(--gold); border-radius: 6px; padding: .4em; font-size: .7em; z-index: 5; }
 .slot { background: var(--panel); border: 2px solid var(--gold); border-radius: 6px; padding: .2em .6em; font-size: .8em; min-width: 5em; }
 .slot span { color: var(--gold-soft); }
 .prompt { position: absolute; top: 58%; left: 50%; transform: translateX(-50%); background: rgba(0,0,0,.7); padding: .2em .8em; border-radius: 6px; color: var(--gold-soft); font-size: .85em; }
