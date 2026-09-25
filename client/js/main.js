@@ -1,5 +1,5 @@
 // ============================================================
-//  ThaiNative – จุดเริ่มต้นของเกม (Phaser 3)
+//  ThaiNative Online – จุดเริ่มต้นของเกม (Phaser 3)
 // ============================================================
 import { WORLD, VIEW } from '/shared/constants.js';
 import { BootScene } from './scenes/BootScene.js';

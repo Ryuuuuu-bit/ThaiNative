@@ -69,6 +69,7 @@ button { font-family: inherit; cursor: pointer; }
 #create-screen { position: absolute; inset: 0; display: flex; justify-content: space-between; padding: 2.5%; }
 .create-left { display: flex; flex-direction: column; justify-content: space-between; width: 45%; }
 .logo { margin: 0; font-size: 2.4em; color: var(--gold); text-shadow: 0 3px 0 #5b1a14, 0 0 12px rgba(212,175,55,.5); line-height: 1; }
+.logo .logo-online { color: var(--text); font-size: .6em; letter-spacing: .08em; vertical-align: middle; text-shadow: 0 2px 0 #5b1a14; }
 .logo small { display: block; font-size: .45em; color: var(--text); letter-spacing: .1em; margin-top: .3em; }
 .preview-anims { display: flex; gap: .3em; justify-content: center; }
 .preview-anims button, .seg button, .picker button, .hud-buttons button, .tabs button {

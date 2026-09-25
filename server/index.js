@@ -1,5 +1,5 @@
 // ============================================================
-//  ThaiNative – Game Server
+//  ThaiNative Online – Game Server
 //  Express (เสิร์ฟไฟล์เกม) + Socket.io (ระบบ Multiplayer แบบ Real-time)
 // ============================================================
 import express from 'express';
@@ -116,5 +116,5 @@ setInterval(() => {
 }, 1000 / TICK_RATE);
 
 httpServer.listen(PORT, () => {
-  console.log(`ThaiNative server running → http://localhost:${PORT}`);
+  console.log(`ThaiNative Online server running → http://localhost:${PORT}`);
 });

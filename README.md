@@ -1,4 +1,4 @@
-# ThaiNative – ตำนานผีไทย
+# ThaiNative Online – ไทยเนทีฟ ออนไลน์
 
 เกม RPG บนเว็บเบราว์เซอร์ มุมมอง 2D Side-scroller ธีมผีไทย
 สร้างด้วย **Phaser 3** (HTML5 Canvas/WebGL), JavaScript (ES Modules) และ CSS
