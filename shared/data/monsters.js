@@ -1,0 +1,101 @@
+// ============================================================
+//  มอนสเตอร์ผีไทย 10 ชนิด
+//  behavior: walker (เดินไล่) | flyer (ลอยไล่) | jumper (กระโดด) | ranged (ยิงระยะไกล)
+//  zone: ช่วงแกน X ที่เกิด (ยิ่งไกลหมู่บ้านยิ่งเก่ง)
+// ============================================================
+export const MONSTERS = {
+  phi_tuay_kaew: {
+    nameTh: 'ผีถ้วยแก้ว', nameEn: 'Glass Cup Spirit', level: 1,
+    desc: 'วิญญาณเร่ร่อนในถ้วยแก้ว ลอยวนไปมา อ่อนแอแต่ก่อกวน',
+    hp: 40, atk: 6, def: 0, eva: 3, acc: 85, speed: 40, behavior: 'flyer',
+    attackRange: 18, attackCooldown: 1400, exp: 8, gold: [2, 6],
+    frame: { w: 24, h: 24 }, zone: [700, 1100],
+    palette: { main: '#d6eaf8', dark: '#85c1e9', glow: '#aed6f1' },
+    drops: [{ item: 'glass_shard', chance: 0.5 }, { item: 'hp_s', chance: 0.15 }],
+  },
+  kuman_thong: {
+    nameTh: 'กุมารทอง', nameEn: 'Kuman Thong', level: 2,
+    desc: 'ดวงวิญญาณเด็กตัวทอง ซุกซน กระโดดเร็ว',
+    hp: 55, atk: 8, def: 1, eva: 8, acc: 90, speed: 70, behavior: 'jumper',
+    attackRange: 16, attackCooldown: 1000, exp: 12, gold: [4, 9],
+    frame: { w: 24, h: 26 }, zone: [800, 1300],
+    palette: { main: '#f4d03f', dark: '#b7950b', glow: '#fcf3cf' },
+    drops: [{ item: 'gold_leaf', chance: 0.4 }, { item: 'hp_s', chance: 0.2 }],
+  },
+  krasue: {
+    nameTh: 'กระสือ', nameEn: 'Krasue', level: 3,
+    desc: 'หัวผู้หญิงลอยได้พร้อมไส้ห้อย เรืองแสงสีเขียวยามค่ำคืน',
+    hp: 70, atk: 11, def: 1, eva: 10, acc: 90, speed: 55, behavior: 'flyer',
+    attackRange: 20, attackCooldown: 1200, exp: 18, gold: [6, 12],
+    frame: { w: 24, h: 34 }, zone: [1000, 1600],
+    palette: { main: '#f0d9c0', dark: '#1a1a1a', glow: '#58d68d' },
+    drops: [{ item: 'krasue_hair', chance: 0.4 }, { item: 'mp_s', chance: 0.2 }],
+  },
+  nang_tani: {
+    nameTh: 'ผีนางตานี', nameEn: 'Nang Tani', level: 4,
+    desc: 'หญิงสาวชุดเขียวสิงต้นกล้วยตานี ออกมายามเดือนเพ็ญ',
+    hp: 95, atk: 13, def: 2, eva: 6, acc: 92, speed: 45, behavior: 'walker',
+    attackRange: 20, attackCooldown: 1100, exp: 24, gold: [8, 15],
+    frame: { w: 24, h: 40 }, zone: [1200, 1800],
+    palette: { main: '#27ae60', dark: '#145a32', glow: '#f5eee6' },
+    drops: [{ item: 'banana_leaf', chance: 0.5 }, { item: 'hp_s', chance: 0.25 }],
+  },
+  phi_pob: {
+    nameTh: 'ผีปอบ', nameEn: 'Phi Pob', level: 5,
+    desc: 'ผีหิวโหยที่สิงร่างคน เดินหลังค่อม ตาแดงก่ำ',
+    hp: 130, atk: 16, def: 4, eva: 4, acc: 92, speed: 50, behavior: 'walker',
+    attackRange: 20, attackCooldown: 1000, exp: 32, gold: [10, 20],
+    frame: { w: 26, h: 36 }, zone: [1500, 2100],
+    palette: { main: '#7d6e5d', dark: '#3e342a', glow: '#e74c3c' },
+    drops: [{ item: 'rotten_cloth', chance: 0.5 }, { item: 'hp_m', chance: 0.1 }],
+  },
+  phi_jang_nang: {
+    nameTh: 'ผีจ้างหนัง', nameEn: 'Film Ghost', level: 6,
+    desc: 'ผีที่มาจ้างหนังกลางแปลงฉายให้ผีดู ขว้างม้วนฟิล์มจากระยะไกล',
+    hp: 120, atk: 18, def: 3, eva: 8, acc: 95, speed: 40, behavior: 'ranged',
+    attackRange: 150, attackCooldown: 1800, exp: 40, gold: [14, 26],
+    frame: { w: 24, h: 38 }, zone: [1800, 2400],
+    palette: { main: '#f8f9f9', dark: '#566573', glow: '#f7dc6f' },
+    projectile: 'film',
+    drops: [{ item: 'film_reel', chance: 0.4 }, { item: 'mp_m', chance: 0.1 }],
+  },
+  phi_phrai: {
+    nameTh: 'ผีพราย', nameEn: 'Phi Phrai', level: 7,
+    desc: 'ผีน้ำสาวผมยาว ลอยขึ้นจากบึง ตัวเปียกชื้นสีฟ้าซีด',
+    hp: 150, atk: 21, def: 4, eva: 12, acc: 95, speed: 55, behavior: 'flyer',
+    attackRange: 22, attackCooldown: 1100, exp: 50, gold: [16, 30],
+    frame: { w: 24, h: 40 }, zone: [2100, 2700],
+    palette: { main: '#aed6f1', dark: '#1b4f72', glow: '#d6eaf8' },
+    drops: [{ item: 'water_lily', chance: 0.4 }, { item: 'hp_m', chance: 0.15 }],
+  },
+  pret: {
+    nameTh: 'เปรต', nameEn: 'Pret', level: 8,
+    desc: 'ร่างสูงเท่าต้นตาล ผอมแห้ง ปากเท่ารูเข็ม เดินช้าแต่ถึกมาก',
+    hp: 260, atk: 24, def: 8, eva: 2, acc: 90, speed: 30, behavior: 'walker',
+    attackRange: 30, attackCooldown: 1600, exp: 70, gold: [20, 40],
+    frame: { w: 28, h: 64 }, zone: [2300, 2900],
+    palette: { main: '#a9a9a9', dark: '#4d4d4d', glow: '#f2f3f4' },
+    drops: [{ item: 'pret_bone', chance: 0.5 }, { item: 'hp_m', chance: 0.2 }],
+  },
+  saming: {
+    nameTh: 'ผีสมิง', nameEn: 'Saming', level: 9,
+    desc: 'เสือสมิงแปลงกายจากหมอผี ว่องไวและดุร้าย',
+    hp: 220, atk: 28, def: 6, eva: 16, acc: 100, speed: 90, behavior: 'walker',
+    attackRange: 24, attackCooldown: 850, exp: 85, gold: [25, 50],
+    frame: { w: 40, h: 28 }, zone: [2500, 3100],
+    palette: { main: '#e67e22', dark: '#1c1c1c', glow: '#f9e79f' },
+    drops: [{ item: 'saming_fang', chance: 0.4 }, { item: 'hp_m', chance: 0.2 }],
+  },
+  phi_ha: {
+    nameTh: 'ผีห่า', nameEn: 'Phi Ha (Plague Spirit)', level: 10,
+    desc: 'ผีโรคระบาดมาเป็นกลุ่มหมอกดำ ปล่อยลูกหมอกพิษระยะไกล',
+    hp: 320, atk: 30, def: 7, eva: 10, acc: 100, speed: 45, behavior: 'ranged',
+    attackRange: 170, attackCooldown: 1500, exp: 110, gold: [35, 70],
+    frame: { w: 32, h: 32 }, zone: [2700, 3150],
+    palette: { main: '#4a235a', dark: '#17202a', glow: '#a569bd' },
+    projectile: 'miasma',
+    drops: [{ item: 'dark_mist', chance: 0.5 }, { item: 'mp_m', chance: 0.2 }],
+  },
+};
+
+export const MONSTER_IDS = Object.keys(MONSTERS);

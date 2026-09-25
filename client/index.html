@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ThaiNative – ตำนานผีไทย</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Mitr:wght@400;600&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+  <div id="game-wrap">
+    <div id="game"></div>
+
+    <!-- ================= UI OVERLAY (DOM) ================= -->
+    <div id="ui">
+
+      <!-- หน้าสร้างตัวละคร -->
+      <section id="create-screen" class="hidden">
+        <div class="create-left">
+          <h1 class="logo">ThaiNative<small>ตำนานผีไทย</small></h1>
+          <div class="preview-anims">
+            <button data-anim="idle">ยืน</button><button data-anim="walk">เดิน</button>
+            <button data-anim="attack">โจมตี</button><button data-anim="hit">โดนตี</button><button data-anim="die">ตาย</button>
+          </div>
+        </div>
+        <div class="create-panel panel">
+          <label class="field">ชื่อตัวละคร <input id="cc-name" maxlength="16" placeholder="เช่น ไอ้ขวัญ" /></label>
+          <div class="row">
+            <span class="label">เพศ</span>
+            <div class="seg" id="cc-gender">
+              <button data-v="male">ชาย</button><button data-v="female">หญิง</button>
+            </div>
+          </div>
+          <div class="row picker" data-part="outfit"><span class="label">ชุด</span><button class="prev">◀</button><span class="val"></span><button class="next">▶</button></div>
+          <div class="row picker" data-part="hair"><span class="label">ทรงผม</span><button class="prev">◀</button><span class="val"></span><button class="next">▶</button></div>
+          <div class="row picker" data-part="face"><span class="label">ใบหน้า</span><button class="prev">◀</button><span class="val"></span><button class="next">▶</button></div>
+          <div class="label">อาชีพ</div>
+          <div class="jobs" id="cc-jobs"></div>
+          <div class="job-desc" id="cc-job-desc"></div>
+          <div class="cc-actions">
+            <button id="cc-random" class="btn ghost">🎲 สุ่ม</button>
+            <button id="cc-start" class="btn primary">เริ่มผจญภัย ▶</button>
+          </div>
+          <button id="cc-continue" class="btn link hidden">เล่นต่อจากเซฟเดิม</button>
+        </div>
+      </section>
+
+      <!-- HUD ในเกม -->
+      <section id="hud" class="hidden">
+        <div class="hud-box">
+          <div class="hud-name"><span id="hud-name"></span> <span class="lv">Lv.<b id="hud-lv">1</b></span> <span id="hud-job" class="job-tag"></span></div>
+          <div class="bar hp"><i id="hud-hp-fill"></i><span id="hud-hp"></span></div>
+          <div class="bar mp"><i id="hud-mp-fill"></i><span id="hud-mp"></span></div>
+          <div class="bar exp"><i id="hud-exp-fill"></i><span id="hud-exp"></span></div>
+          <div class="gold">฿ <b id="hud-gold">0</b></div>
+        </div>
+        <div class="hud-right">
+          <div id="net-status" class="net off">● ออฟไลน์</div>
+          <div class="hud-buttons">
+            <button data-open="stats-panel">สถานะ (C)</button>
+            <button data-open="inv-panel">กระเป๋า (I)</button>
+          </div>
+        </div>
+        <div class="quickbar">
+          <div class="slot" id="quick-hp">1 <span></span></div>
+          <div class="slot" id="quick-mp">2 <span></span></div>
+        </div>
+        <div id="prompt" class="prompt hidden"></div>
+        <div class="help">←→ เดิน · Space กระโดด · J/Z โจมตี · E คุย NPC · Enter แชท</div>
+      </section>
+
+      <!-- หน้าต่างสถานะ -->
+      <section id="stats-panel" class="panel window hidden">
+        <header>สถานะตัวละคร <button class="close">✕</button></header>
+        <div class="points">แต้มสถานะเหลือ: <b id="st-points">0</b></div>
+        <div id="st-list"></div>
+        <div id="st-derived" class="derived"></div>
+      </section>
+
+      <!-- กระเป๋า -->
+      <section id="inv-panel" class="panel window hidden">
+        <header>กระเป๋า <button class="close">✕</button></header>
+        <div id="inv-equip" class="equip"></div>
+        <div id="inv-list" class="item-list"></div>
+      </section>
+
+      <!-- ร้านค้า NPC -->
+      <section id="shop-panel" class="panel window wide hidden">
+        <header><span id="shop-title">ร้านค้า</span> <button class="close">✕</button></header>
+        <p id="shop-greet" class="greet"></p>
+        <div class="tabs"><button data-tab="buy" class="active">ซื้อ</button><button data-tab="sell">ขาย</button></div>
+        <div class="shop-gold">เงินของคุณ: ฿ <b id="shop-gold">0</b></div>
+        <div id="shop-list" class="item-list"></div>
+      </section>
+
+      <!-- แชท -->
+      <section id="chat" class="hidden">
+        <div id="chat-log"></div>
+        <input id="chat-input" maxlength="120" placeholder="กด Enter เพื่อพิมพ์..." />
+      </section>
+
+      <div id="toasts"></div>
+    </div>
+  </div>
+
+  <!-- Socket.io client (เสิร์ฟโดย server) – ถ้าเปิดแบบไม่มี server จะเล่นออฟไลน์ -->
+  <script src="/socket.io/socket.io.js"></script>
+  <script src="/vendor/phaser.min.js"></script>
+  <script type="module" src="js/main.js"></script>
+</body>
+</html>

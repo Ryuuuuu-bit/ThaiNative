@@ -1,0 +1,172 @@
+// ============================================================
+//  Player – ตัวละครผู้เล่น
+//  ▸ ระบบควบคุมการเคลื่อนไหว (เดิน / กระโดด / โจมตี)
+//  ▸ State machine ของ Animation: idle → walk → jump → attack → hit → dead
+// ============================================================
+import { WORLD } from '/shared/constants.js';
+import { JOBS } from '/shared/data/classes.js';
+import { bakeCharacter } from '../gfx/SpriteFactory.js';
+import { getDerived } from '../systems/Character.js';
+import { makeText } from '../systems/util.js';
+
+const EV = Phaser.Animations.Events;
+
+export class Player extends Phaser.Physics.Arcade.Sprite {
+  constructor(scene, x, y, char) {
+    const key = bakeCharacter(scene, char.appearance);
+    super(scene, x, y, key, 'idle_0');
+    this.char = char;          // ข้อมูลตัวละคร (stats, inventory ...)
+    this.texKey = key;
+
+    scene.add.existing(this);
+    scene.physics.add.existing(this);
+    this.setOrigin(0.5, 1);
+    this.body.setSize(12, 29).setOffset(10, 10);   // hitbox เล็กกว่าภาพ
+    this.setCollideWorldBounds(true);
+    this.setDepth(10);
+
+    this.state = 'idle';
+    this.facing = 1;           // 1 = ขวา, -1 = ซ้าย
+    this.lastAttack = 0;
+    this.combo = 0;
+    this.invulnUntil = 0;
+
+    this.nameTag = makeText(scene, x, y - 44, char.name, { fontSize: '7px', color: '#f3d98b' }).setOrigin(0.5).setDepth(11);
+
+    // เมื่อจบท่าโจมตี/โดนตี → กลับสู่สถานะปกติ
+    this.on(EV.ANIMATION_COMPLETE, (anim) => {
+      if (this.state === 'attack' || this.state === 'hit') this.state = 'idle';
+    });
+    // เฟรมที่ "ดาบ/หมัด โดนเป้า" หรือ "ปล่อยกระสุน" (เฟรมที่ 3 ของท่าโจมตี)
+    this.on(EV.ANIMATION_UPDATE, (anim, frame) => {
+      if (anim.key.endsWith(':attack') && frame.index === 3) scene.combat.playerStrike(this);
+    });
+    this.playAnim('idle');
+  }
+
+  get job() { return JOBS[this.char.appearance.job]; }
+  get derived() { return getDerived(this.char); }
+  get alive() { return this.state !== 'dead'; }
+
+  /** เล่น animation ตามชื่อท่า (ไม่เริ่มใหม่ถ้ากำลังเล่นท่าเดิมอยู่) */
+  playAnim(name, restart = false) {
+    this.play(`${this.texKey}:${name}`, !restart);
+  }
+
+  /**
+   * เรียกทุกเฟรมจาก GameScene
+   * @param {number} time
+   * @param {{left:boolean,right:boolean,jump:boolean,attack:boolean}} input
+   */
+  update(time, input) {
+    this.nameTag.setPosition(this.x, this.y - 44);
+    if (this.state === 'dead') return;
+
+    const onFloor = this.body.blocked.down || this.body.touching.down;
+    const locked = this.state === 'attack' || this.state === 'hit';
+    const speed = WORLD.maxSpeed;
+
+    // ---------- การเคลื่อนที่แนวนอน ----------
+    let vx = 0;
+    if (!locked) {
+      if (input.left) vx = -speed;
+      else if (input.right) vx = speed;
+    } else if (!onFloor) {
+      vx = this.body.velocity.x * 0.98;   // ตีกลางอากาศ: คงโมเมนตัม
+    }
+    this.setVelocityX(vx);
+    if (vx !== 0 && !locked) {
+      this.facing = Math.sign(vx);
+      this.setFlipX(this.facing < 0);
+    }
+
+    // ---------- กระโดด ----------
+    if (!locked && input.jump && onFloor) this.setVelocityY(WORLD.jumpVelocity);
+
+    // ---------- โจมตี (กดค้างเพื่อตีต่อเนื่องได้) ----------
+    if (!locked && input.attack) this.tryAttack(time);
+
+    // ---------- เลือก Animation ตามสถานะ ----------
+    if (this.state !== 'attack' && this.state !== 'hit') {
+      this.state = !onFloor ? 'jump' : vx !== 0 ? 'walk' : 'idle';
+      this.playAnim(this.state);
+    }
+
+    // กะพริบระหว่างอมตะหลังโดนตี
+    this.setAlpha(time < this.invulnUntil ? (Math.floor(time / 80) % 2 ? 0.5 : 1) : 1);
+  }
+
+  tryAttack(time) {
+    const atk = this.job.attack;
+    if (time - this.lastAttack < atk.cooldown) return;
+    if (atk.mpCost && this.char.mp < atk.mpCost) {
+      this.scene.ui.toast('MP ไม่พอ!', 'warn');
+      this.lastAttack = time;
+      return;
+    }
+    this.char.mp -= atk.mpCost;
+    this.lastAttack = time;
+    this.combo++;
+    this.state = 'attack';
+    this.playAnim('attack', true);
+  }
+
+  /** โดนโจมตี */
+  takeHit(result, fromX) {
+    if (!this.alive || this.scene.time.now < this.invulnUntil) return false;
+    this.scene.combat.popup(this.x, this.y - 36, result);
+    if (!result.hit) return false;
+
+    this.char.hp = Math.max(0, this.char.hp - result.dmg);
+    this.invulnUntil = this.scene.time.now + 700;
+    this.setTintFill(0xffffff);
+    this.scene.time.delayedCall(80, () => this.clearTint());
+
+    if (this.char.hp <= 0) { this.die(); return true; }
+
+    this.state = 'hit';
+    this.playAnim('hit', true);
+    const dir = Math.sign(this.x - fromX) || 1;
+    this.setVelocity(dir * 90, -120);  // กระเด็น
+    return true;
+  }
+
+  die() {
+    this.state = 'dead';
+    this.setVelocityX(0);
+    this.playAnim('die', true);
+    this.scene.events.emit('player-died');
+  }
+
+  respawn(x, y) {
+    const d = this.derived;
+    this.char.hp = d.maxHp;
+    this.char.mp = d.maxMp;
+    this.setPosition(x, y);
+    this.setVelocity(0, 0);
+    this.state = 'idle';
+    this.invulnUntil = this.scene.time.now + 2000;
+    this.playAnim('idle', true);
+  }
+
+  /** เปลี่ยนชุด/อาชีพ → สร้าง spritesheet ใหม่แล้วสลับ texture */
+  refreshAppearance() {
+    this.texKey = bakeCharacter(this.scene, this.char.appearance);
+    this.setTexture(this.texKey, 'idle_0');
+    this.playAnim(this.state === 'dead' ? 'die' : 'idle', true);
+  }
+
+  /** สถานะที่ส่งให้ server */
+  netState() {
+    return {
+      x: Math.round(this.x), y: Math.round(this.y),
+      anim: this.state === 'dead' ? 'die' : this.state,
+      flipX: this.flipX, hp: this.char.hp, maxHp: this.derived.maxHp, level: this.char.level,
+    };
+  }
+
+  destroy(fromScene) {
+    this.nameTag?.destroy();
+    super.destroy(fromScene);
+  }
+}

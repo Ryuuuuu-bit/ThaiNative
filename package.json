@@ -1,0 +1,21 @@
+{
+  "name": "thainative",
+  "version": "0.1.0",
+  "description": "ThaiNative - 2D side-scroller web RPG (Phaser 3 + Socket.io)",
+  "main": "server/index.js",
+  "scripts": {
+    "start": "node server/index.js",
+    "dev": "node --watch server/index.js"
+  },
+  "license": "UNLICENSED",
+  "dependencies": {
+    "express": "^5.2.1",
+    "phaser": "^3.90.0",
+    "socket.io": "^4.8.4"
+  },
+  "type": "module",
+  "private": true,
+  "engines": {
+    "node": ">=18"
+  }
+}
