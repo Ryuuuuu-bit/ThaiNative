@@ -59,6 +59,15 @@
           </div>
         </div>
 
+        <!-- สมาชิกปาร์ตี้ (ใต้กรอบผู้เล่น) -->
+        <div id="party-frames" class="party-frames hidden"></div>
+
+        <!-- เรดบอส (กลางบน) -->
+        <div id="boss-bar" class="boss-bar hidden">
+          <div class="bb-name"><b id="bb-name">👹 พญายักษ์ทมิฬ</b><span id="bb-state"></span></div>
+          <div class="bar boss"><i id="bb-fill"></i><span id="bb-hp"></span></div>
+        </div>
+
         <!-- เป้าหมาย (กลางบน) -->
         <div id="target" class="target hidden">
           <div class="t-name"><span id="t-lv"></span> <b id="t-name"></b></div>
@@ -68,12 +77,13 @@
         <!-- ขวาบน: เขต / ออนไลน์ / มินิแมป / เมนู -->
         <div class="hud-right">
           <div class="zone"><b id="zone-name"></b><span id="net-status" class="net off">● ออฟไลน์</span></div>
-          <div class="minimap"><div class="mm-town"></div><div id="mm-dots"></div></div>
+          <div class="minimap"><div class="mm-town"></div><div class="mm-arena"></div><div id="mm-dots"></div></div>
           <div class="hud-buttons">
             <button data-open="stats-panel" title="สถานะ (C)">📊<small>C</small></button>
             <button data-open="inv-panel" title="กระเป๋า (I)">🎒<small>I</small></button>
             <button data-open="skill-panel" title="สกิล (K)">📖<small>K</small></button>
             <button data-open="map-panel" title="แผนที่ (M)">🗺️<small>M</small></button>
+            <button data-open="social-panel" title="ปาร์ตี้ & ผู้เล่น (P)">👥<small>P</small></button>
             <button data-open="help-panel" title="วิธีเล่น (H)">❔<small>H</small></button>
             <button data-open="settings-panel" title="ตั้งค่า (ESC)">⚙️<small>Esc</small></button>
           </div>
@@ -93,6 +103,54 @@
         <div id="prompt" class="prompt hidden"></div>
         <div id="banner" class="banner hidden"></div>
         <div id="death" class="death hidden"><h2>คุณหมดสติ…</h2><p>ฟื้นที่ศาลพระภูมิใน <b id="death-t">3</b> วินาที</p></div>
+      </section>
+
+      <!-- คำเชิญ (ปาร์ตี้ / เทรด) -->
+      <div id="invite-box" class="invite-box hidden">
+        <p id="invite-text"></p>
+        <div><button id="invite-yes" class="btn primary">ตกลง</button><button id="invite-no" class="btn ghost">ปฏิเสธ</button></div>
+        <i id="invite-timer"></i>
+      </div>
+
+      <!-- เมนูเมื่อคลิกผู้เล่นอื่น -->
+      <div id="player-menu" class="player-menu hidden">
+        <b id="pm-name"></b>
+        <button data-act="party">🤝 เชิญเข้าปาร์ตี้</button>
+        <button data-act="trade">💱 ขอเทรด</button>
+        <button data-act="close">✕ ปิด</button>
+      </div>
+
+      <!-- ปาร์ตี้ & ผู้เล่นออนไลน์ (P) -->
+      <section id="social-panel" class="panel window hidden">
+        <header>ปาร์ตี้ & ผู้เล่นออนไลน์ <button class="close">✕</button></header>
+        <div class="soc-sec"><h4>ปาร์ตี้ของคุณ <small id="soc-party-info"></small></h4><div id="soc-party"></div></div>
+        <div class="soc-sec"><h4>ผู้เล่นในโลก</h4><div id="soc-players"></div></div>
+        <p class="hint">ปาร์ตี้สูงสุด 4 คน · ฆ่าผีแล้วเพื่อนที่อยู่ใกล้ได้ EXP 60% · พิมพ์ <b>/p ข้อความ</b> เพื่อคุยในปาร์ตี้ · คลิกที่ตัวผู้เล่นเพื่อเชิญ/เทรดได้เลย</p>
+      </section>
+
+      <!-- เทรด -->
+      <section id="trade-panel" class="panel window wide hidden">
+        <header><span>แลกเปลี่ยนกับ <b id="tr-with"></b></span> <button id="tr-x" class="close-trade">✕</button></header>
+        <div class="trade-cols">
+          <div class="tr-col">
+            <h4>ข้อเสนอของคุณ <span id="tr-my-status" class="tr-status"></span></h4>
+            <div id="tr-my" class="tr-offer"></div>
+            <div class="tr-gold">฿ <input id="tr-gold" type="number" min="0" value="0" /></div>
+            <h5>กระเป๋า (คลิกเพื่อใส่ · Shift+คลิก = ทั้งหมด)</h5>
+            <div id="tr-inv" class="tr-inv"></div>
+          </div>
+          <div class="tr-col">
+            <h4>ข้อเสนอของ <span id="tr-name2"></span> <span id="tr-their-status" class="tr-status"></span></h4>
+            <div id="tr-their" class="tr-offer"></div>
+            <div class="tr-gold">฿ <b id="tr-their-gold">0</b></div>
+          </div>
+        </div>
+        <div class="tr-actions">
+          <button id="tr-lock" class="btn ghost">🔒 ล็อกข้อเสนอ</button>
+          <button id="tr-confirm" class="btn primary" disabled>✔ ยืนยันแลก</button>
+          <button id="tr-cancel" class="btn ghost">ยกเลิก</button>
+        </div>
+        <p class="hint">ทั้งสองฝ่ายต้องล็อกข้อเสนอก่อน แล้วกดยืนยันพร้อมกัน · แก้ข้อเสนอเมื่อไหร่ การล็อกจะถูกปลดทั้งคู่</p>
       </section>
 
       <!-- Skill Tree (K) -->
@@ -133,6 +191,7 @@
           <div><kbd>Space</kbd> โจมตีปกติ (กดค้างได้)</div><div><kbd>Q</kbd><kbd>W</kbd><kbd>E</kbd><kbd>R</kbd><kbd>T</kbd> สกิลใน Hotbar</div>
           <div><kbd>F</kbd> คุยกับ NPC / ร้านค้า</div><div><kbd>K</kbd> คัมภีร์สกิล</div>
           <div><kbd>M</kbd> แผนที่โลก</div><div><kbd>Esc</kbd> ตั้งค่า / ปิดหน้าต่าง</div>
+          <div><kbd>P</kbd> ปาร์ตี้ / เทรด · คลิกที่ผู้เล่นอื่น</div><div>ลานพญายักษ์ (ตะวันออกสุด) = <b>เรดบอส</b></div>
           <div><kbd>1</kbd><kbd>2</kbd> ยา HP / MP</div><div><kbd>C</kbd> สถานะ · <kbd>I</kbd> กระเป๋า · <kbd>Enter</kbd> แชท</div>
         </div>
       </section>

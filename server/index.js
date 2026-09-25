@@ -10,6 +10,7 @@ import { fileURLToPath } from 'node:url';
 import { WORLD } from '../shared/constants.js';
 import { sanitizeAppearance } from '../shared/data/appearance.js';
 import { SKILL_BY_ID, MAX_SKILL_LV } from '../shared/data/skills.js';
+import { setupSocial } from './social.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.join(__dirname, '..');
@@ -26,6 +27,8 @@ const io = new Server(httpServer, { cors: { origin: '*' } });
 
 /** ข้อมูลผู้เล่นทั้งหมดในโลก  key = socket.id */
 const players = new Map();
+/** ปาร์ตี้ · เทรด · เรดบอส */
+const social = setupSocial(io, players);
 
 function publicPlayer(p) {
   return {
@@ -39,6 +42,7 @@ const cleanText = (s, max) => String(s ?? '').replace(/[<>]/g, '').trim().slice(
 
 io.on('connection', (socket) => {
   console.log(`[+] connect ${socket.id}`);
+  social.onConnection(socket);
 
   // 1) ผู้เล่นเข้าโลก
   socket.on('player:join', (data = {}) => {
@@ -48,7 +52,7 @@ io.on('connection', (socket) => {
       appearance: sanitizeAppearance(data.appearance),
       x: WORLD.spawnX, y: WORLD.spawnY,
       anim: 'idle', flipX: false, hp: 1, maxHp: 1, level: 1,
-      lastUpdate: Date.now(), lastChat: 0, lastSkill: 0,
+      lastUpdate: Date.now(), lastChat: 0, lastSkill: 0, partyId: null, tradeId: null,
     };
     players.set(socket.id, player);
 
@@ -121,18 +125,20 @@ io.on('connection', (socket) => {
 
   socket.on('disconnect', () => {
     console.log(`[-] disconnect ${socket.id}`);
+    social.onDisconnect(socket.id);
     if (players.delete(socket.id)) io.emit('player:left', socket.id);
   });
 });
 
 // Game loop ฝั่ง server: broadcast snapshot ตำแหน่งทุกคน
 setInterval(() => {
+  social.tick();
   if (players.size === 0) return;
   const snapshot = [...players.values()].map(p => ({
     id: p.id, x: Math.round(p.x), y: Math.round(p.y), anim: p.anim, flipX: p.flipX,
-    hp: p.hp, maxHp: p.maxHp, level: p.level,
+    hp: p.hp, maxHp: p.maxHp, level: p.level, party: p.partyId,
   }));
-  io.volatile.emit('world:snapshot', { t: Date.now(), players: snapshot });
+  io.volatile.emit('world:snapshot', { t: Date.now(), players: snapshot, boss: social.bossPublic() });
 }, 1000 / TICK_RATE);
 
 httpServer.listen(PORT, () => {

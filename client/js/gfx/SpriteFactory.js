@@ -7,7 +7,7 @@ import { MONSTER_ANIMS, drawMonsterFrame } from './MonsterArt.js';
 import { MONSTERS } from '/shared/data/monsters.js';
 import { JOBS } from '/shared/data/classes.js';
 import { appearanceKey } from '/shared/data/appearance.js';
-import { baseKey, recolorBase, drawPlayerFrame, frameSize } from './PlayerArt.js';
+import { baseKey, recolorBase, drawPlayerFrame, frameSize, PLAYER_ANIMS } from './PlayerArt.js';
 
 function makeCanvas(w, h) {
   const c = document.createElement('canvas');
@@ -71,7 +71,7 @@ export function bakeCharacter(scene, appearance) {
     const base = recolorBase(scene.textures.get(bk).getSourceImage(), appearance);
     PORTRAITS.set(key, base);
     const { FW: pw, FH: ph } = frameSize(base);
-    return bakeSheet(scene, key, pw, ph, CHAR_ANIMS, (ctx, anim, i) => drawPlayerFrame(ctx, base, anim, i, weapon, pw, ph));
+    return bakeSheet(scene, key, pw, ph, PLAYER_ANIMS, (ctx, anim, i) => drawPlayerFrame(ctx, base, anim, i, weapon, pw, ph));
   }
 
   // ▸ ไม่มีภาพ → วาดด้วยโค้ด (paper-doll)
@@ -318,6 +318,19 @@ function bakeEnvironment(scene) {
   t = makeCanvas(8, 30); ctx = t.ctx;
   px(ctx, 3, 8, 2, 22, '#4d3319'); px(ctx, 1, 2, 6, 7, '#f39c12'); px(ctx, 2, 3, 4, 5, '#fdebd0'); px(ctx, 0, 1, 8, 1, '#7b241c');
   scene.textures.addCanvas('lantern', t.c);
+
+  // ต้นมะพร้าว + กอกล้วย
+  t = makeCanvas(56, 104); ctx = t.ctx;
+  for (let y = 22; y < 104; y += 3) { const x = 26 + Math.sin(y / 18) * 4; px(ctx, x, y, 5, 3, y % 6 ? '#7d5a3a' : '#6b4a2e'); }
+  const frond = (dx, dy, len, droop) => {
+    ctx.strokeStyle = '#1e8449'; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(28, 22);
+    ctx.quadraticCurveTo(28 + dx * len * 0.6, 22 + dy, 28 + dx * len, 22 + droop); ctx.stroke();
+    ctx.strokeStyle = '#27ae60'; ctx.lineWidth = 1; ctx.stroke();
+  };
+  frond(-1, -10, 26, 10); frond(1, -10, 26, 10); frond(-1, -14, 18, -2); frond(1, -14, 18, -2); frond(-0.3, -16, 14, -10); frond(0.4, -12, 20, 16);
+  px(ctx, 24, 24, 4, 4, '#7e5109'); px(ctx, 29, 25, 4, 4, '#7e5109');
+  for (const [x, c] of [[8, '#27ae60'], [14, '#2ecc71'], [42, '#229954']]) { ctx.fillStyle = c; ctx.beginPath(); ctx.ellipse(x, 90, 6, 14, x > 28 ? 0.4 : -0.4, 0, 7); ctx.fill(); }
+  scene.textures.addCanvas('palm', t.c);
   tex.addCanvas = orig;
 }
 

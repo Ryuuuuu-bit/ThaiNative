@@ -17,9 +17,12 @@ export class BootScene extends Phaser.Scene {
     const entries = [
       ...Object.entries(manifest.monsters || {}).map(([id, e]) => ({ ...e, key: `mon_${id}`, monsterId: id })),
       ...Object.entries(manifest.npc || {}).map(([key, e]) => ({ ...e, key })),
+      ...Object.entries(manifest.bosses || {}).map(([id, e]) => ({ ...e, key: `boss_${id}` })),
     ];
     entries.forEach((e) => this.load.spritesheet(e.key, e.file, { frameWidth: e.frameWidth, frameHeight: e.frameHeight }));
     // ภาพต้นฉบับตัวละครผู้เล่น (ย้อมสี + สร้างท่าทางตอนสร้างตัวละคร)
+    // ฉากเมือง: บ้านเรือนไทย วัด ศาลา แผงตลาด ฉากหลัง
+    Object.entries(manifest.env || {}).forEach(([k, file]) => this.load.image(k, file));
     Object.entries(manifest.players || {}).forEach(([k, file]) => this.load.image(`pbase_${k}`, file));
 
     this.load.once('complete', () => {

@@ -8,6 +8,7 @@ import { JOBS } from '/shared/data/classes.js';
 import { bakeCharacter } from '../gfx/SpriteFactory.js';
 import { getDerived } from '../systems/Character.js';
 import { makeText } from '../systems/util.js';
+import { STRIKE_FRAME } from '../gfx/PlayerArt.js';
 import { SKILL_BY_ID, skillStats } from '/shared/data/skills.js';
 
 const EV = Phaser.Animations.Events;
@@ -44,7 +45,7 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     });
     // เฟรมที่ "ดาบ/หมัด โดนเป้า" หรือ "ปล่อยกระสุน" (เฟรมที่ 3 ของท่าโจมตี)
     this.on(EV.ANIMATION_UPDATE, (anim, frame) => {
-      if (anim.key.endsWith(':attack') && frame.index === 3) {
+      if (anim.key.endsWith(':attack') && frame.index === (STRIKE_FRAME[anim.frames.length] || 3)) {
         scene.combat.playerStrike(this, this.pendingSkill);
         this.pendingSkill = null;
       }

@@ -348,10 +348,11 @@ export class Combat {
     const def = mon.def;
     const gold = rand(def.gold[0], def.gold[1]);
     c.gold += gold;
-    const ups = gainExp(c, def.exp);
     this.popupText(mon.x, mon.y - def.frame.h - 8, `+${def.exp} EXP  +฿${gold}`, '#f7dc6f');
     this.sfx.play('ghostDie');
     this.scene.time.delayedCall(250, () => this.sfx.play('coin'));
+    this.grantExp(def.exp);
+    this.scene.social?.shareExp(def.exp);          // แบ่ง EXP ให้เพื่อนในปาร์ตี้ที่อยู่ใกล้
 
     for (const drop of def.drops) {
       if (Math.random() < drop.chance) {
@@ -359,6 +360,13 @@ export class Combat {
         this.scene.ui.toast(`ได้รับ ${ITEMS[drop.item].icon} ${ITEMS[drop.item].nameTh}`);
       }
     }
+    this.scene.saveSoon();
+  }
+
+  /** ได้ EXP (จากผี / ปาร์ตี้ / เรดบอส) + เอฟเฟกต์เลเวลอัป */
+  grantExp(amount) {
+    const c = this.player.char;
+    const ups = gainExp(c, amount);
     if (ups) {
       this.scene.ui.toast(`+${ups * 5} แต้มสถานะ (กด C เพื่ออัปค่าพลัง)`);
       this.scene.ui.banner(`LEVEL UP!  Lv.${c.level}`);
@@ -366,7 +374,7 @@ export class Combat {
       this.burst(this.player.x, this.player.y - 20, 0xf1c40f, 24);
       this.sfx.play('levelup');
     }
-    this.scene.saveSoon();
+    return ups;
   }
 
   // ============================================================

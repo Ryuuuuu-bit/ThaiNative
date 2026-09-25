@@ -47,7 +47,10 @@ export class UI {
       if (e.key === 'Enter') {
         const text = input.value.trim();
         if (text) {
-          if (scene.net.online) scene.net.sendChat(text);
+          if (/^\/p\s+/i.test(text)) {                        // /p ข้อความ = แชทปาร์ตี้
+            if (scene.social?.party) scene.social.partyChat(text.replace(/^\/p\s+/i, ''));
+            else this.toast('ยังไม่มีปาร์ตี้', 'warn');
+          } else if (scene.net.online) scene.net.sendChat(text);
           else this.chat({ name: scene.player.char.name, text }); // ออฟไลน์: แสดงเฉพาะเรา
         }
         input.value = '';
@@ -66,12 +69,14 @@ export class UI {
   toggle(id, force) {
     const el = $('#' + id);
     const show = force ?? el.classList.contains('hidden');
+    const was = !el.classList.contains('hidden');
     el.classList.toggle('hidden', !show);
+    if (show !== was) this.scene.sfx?.play(show ? 'open' : 'close');
     if (show) this.refreshPanels();
   }
 
-  closeAll() { document.querySelectorAll('.window').forEach((w) => w.classList.add('hidden')); }
-  anyOpen() { return [...document.querySelectorAll('.window')].some((w) => !w.classList.contains('hidden')); }
+  closeAll() { document.querySelectorAll('.window:not(#trade-panel)').forEach((w) => w.classList.add('hidden')); $('#player-menu')?.classList.add('hidden'); }
+  anyOpen() { return [...document.querySelectorAll('.window:not(#trade-panel)'), $('#player-menu')].some((w) => w && !w.classList.contains('hidden')); }
 
   // ---------------- HUD (อัปเดตเมื่อค่าเปลี่ยนเท่านั้น) ----------------
   updateHud() {
@@ -121,7 +126,7 @@ export class UI {
   updateFrame(time) {
     const p = this.scene.player;
     // เป้าหมาย
-    const t = this.target, show = t && t.alive && performance.now() < this.targetUntil;
+    const t = this.target, show = t && t.alive && !t.isBoss && performance.now() < this.targetUntil;   // บอสใช้แถบ HP ของตัวเอง
     $('#target').classList.toggle('hidden', !show);
     if (show) {
       $('#t-lv').textContent = `Lv.${t.def.level}`;
@@ -145,7 +150,7 @@ export class UI {
       const pct = (x) => `${(x / W) * 100}%`;
       let html = `<i class="mm-dot npc" style="left:${pct(this.scene.npc.x)}"></i><i class="mm-dot me" style="left:${pct(p.x)}"></i>`;
       this.scene.remotes.forEach((r) => (html += `<i class="mm-dot ally" style="left:${pct(r.x)}"></i>`));
-      this.scene.monsters.getChildren().forEach((m) => m.alive && (html += `<i class="mm-dot mob" style="left:${pct(m.x)}"></i>`));
+      this.scene.monsters.getChildren().forEach((m) => m.alive && (html += `<i class="mm-dot ${m.isBoss ? 'boss' : 'mob'}" style="left:${pct(m.x)}"></i>`));
       $('#mm-dots').innerHTML = html;
     }
   }
@@ -295,16 +300,17 @@ export class UI {
     const zones = [{ nameTh: 'หมู่บ้านบางผี', from: 0, to: WORLD.townEndX, town: true, sub: 'ปลอดภัย · ร้านค้า · ศาลพระภูมิ' }];
     // แบ่งเขตตามมอนสเตอร์ (เรียงตามเลเวล)
     const mons = Object.values(MONSTERS).sort((a, b) => a.level - b.level);
-    const bands = [[620, 1300], [1300, 2000], [2000, 2600], [2600, WORLD.width]];
+    const bands = [[WORLD.townEndX, 1680], [1680, 2380], [2380, 2980], [2980, WORLD.arenaX]];
     const names = ['ทุ่งผีน้อย', 'ป่ากล้วยตานี', 'บึงผีพราย', 'ดงเปรตสมิง'];
     bands.forEach(([a, b], i) => {
       const here = mons.filter((m) => m.zone[0] < b && m.zone[1] > a);
       const lv = here.length ? `Lv.${Math.min(...here.map((m) => m.level))}–${Math.max(...here.map((m) => m.level))}` : '';
       zones.push({ nameTh: names[i], from: a, to: b, sub: `${lv}<br>${here.map((m) => m.nameTh).join(' · ')}` });
     });
+    zones.push({ nameTh: '👹 ลานพญายักษ์', from: WORLD.arenaX, to: W, boss: true, sub: 'เรดบอส Lv.15<br>รวมพลังหลายคน · เกิดใหม่ทุก 2 นาที' });
     const plats = this.scene.platforms.getChildren().map((p) => `<i class="wm-plat" style="left:${pct(p.x)};width:${(p.width / W) * 100}%;top:${40 + (p.y / 270) * 40}%"></i>`).join('');
-    this.mapStatic = zones.map((z) => `<div class="wm-zone ${z.town ? 'town' : ''}" style="left:${pct(z.from)};width:${((z.to - z.from) / W) * 100}%"><b>${z.nameTh}</b><span>${z.sub}</span></div>`).join('') + plats
-      + `<span class="wm-pin" style="left:${pct(this.scene.npc.x)};top:84%">🏪</span><span class="wm-pin" style="left:${pct(100)};top:84%">⛩️</span>`;
+    this.mapStatic = zones.map((z) => `<div class="wm-zone ${z.town ? 'town' : ''} ${z.boss ? 'boss' : ''}" style="left:${pct(z.from)};width:${((z.to - z.from) / W) * 100}%"><b>${z.nameTh}</b><span>${z.sub}</span></div>`).join('') + plats
+      + `<span class="wm-pin" style="left:${pct(this.scene.npc.x)};top:84%">🏪</span><span class="wm-pin" style="left:${pct(240)};top:84%">⛩️</span><span class="wm-pin" style="left:${pct(110)};top:84%">🛕</span>`;
     this.updateMap();
   }
 
@@ -313,7 +319,7 @@ export class UI {
     const p = this.scene.player;
     let dots = `<i class="wm-dot me" style="left:${pct(p.x)};top:${y(p.y)}" title="${esc(p.char.name)}"></i>`;
     this.scene.remotes.forEach((r) => (dots += `<i class="wm-dot ally" style="left:${pct(r.x)};top:${y(r.y)}"></i>`));
-    this.scene.monsters.getChildren().forEach((m) => m.alive && (dots += `<i class="wm-dot mob" style="left:${pct(m.x)};top:${y(m.y)}"></i>`));
+    this.scene.monsters.getChildren().forEach((m) => m.alive && (dots += `<i class="wm-dot ${m.isBoss ? 'boss' : 'mob'}" style="left:${pct(m.x)};top:${y(m.y)}"></i>`));
     $('#world-map').innerHTML = this.mapStatic + dots;
   }
 
@@ -355,9 +361,10 @@ export class UI {
     setTimeout(() => el.remove(), 2400);
   }
 
-  chat({ name, text }) {
+  chat({ name, text, party }) {
     const log = $('#chat-log');
     const el = document.createElement('div');
+    if (party) el.className = 'party-msg';
     el.innerHTML = `<b>${esc(name)}:</b> ${esc(text)}`;
     log.appendChild(el);
     while (log.children.length > 8) log.firstChild.remove();

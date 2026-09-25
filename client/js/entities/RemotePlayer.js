@@ -12,6 +12,8 @@ export class RemotePlayer extends Phaser.GameObjects.Sprite {
     const key = bakeCharacter(scene, info.appearance);
     super(scene, info.x, info.y, key, 'idle_0');
     this.netId = info.id;
+    this.name = info.name;
+    this.level = info.level;
     this.texKey = key;
     this.buffer = [];          // [{t, x, y, anim, flipX}]
     this.currentAnim = '';
@@ -19,15 +21,19 @@ export class RemotePlayer extends Phaser.GameObjects.Sprite {
     scene.add.existing(this);
     this.setOrigin(0.5, 1).setDepth(9).setAlpha(0.95);
     this.nameTag = makeText(scene, info.x, info.y - this.height, info.name, { fontSize: '7px', color: '#aed6f1' }).setOrigin(0.5).setDepth(9);
-    this.hpBar = scene.add.rectangle(info.x, info.y - 40, 18, 2, 0x58d68d).setDepth(9);
+    this.hpBar = scene.add.rectangle(info.x, info.y - 40, 18, 2, 0xe59866).setDepth(9);
     this.pushState(info);
+    // คลิกที่ผู้เล่น → เมนูเชิญปาร์ตี้ / เทรด
+    this.setInteractive({ useHandCursor: true, pixelPerfect: false });
+    this.on('pointerdown', (pointer) => scene.social?.openPlayerMenu(this, pointer));
   }
 
   pushState(s) {
     this.buffer.push({ t: performance.now(), x: s.x, y: s.y, anim: s.anim, flipX: s.flipX });
     if (this.buffer.length > 30) this.buffer.shift();
-    if (s.maxHp) this.hpBar.width = 18 * Phaser.Math.Clamp(s.hp / s.maxHp, 0, 1);
+    if (s.maxHp) { this.hp = s.hp; this.maxHp = s.maxHp; this.hpBar.width = 18 * Phaser.Math.Clamp(s.hp / s.maxHp, 0, 1); }
     if (s.level) this.level = s.level;
+    if ('party' in s) this.partyId = s.party;
   }
 
   setAppearance(appearance) {
@@ -59,6 +65,13 @@ export class RemotePlayer extends Phaser.GameObjects.Sprite {
     }
     this.nameTag.setPosition(this.x, this.y - this.height + 2);
     this.hpBar.setPosition(this.x, this.y - this.height + 7);
+    // เพื่อนร่วมปาร์ตี้: ชื่อสีเขียว + แถบ HP สีเขียว
+    const ally = !!this.partyId && this.partyId === this.scene.social?.party?.id;
+    if (ally !== this.isAlly) {
+      this.isAlly = ally;
+      this.nameTag.setColor(ally ? '#82e0aa' : '#aed6f1');
+      this.hpBar.fillColor = ally ? 0x58d68d : 0xe59866;
+    }
   }
 
   /** เล่นท่าร่ายสกิล (ไม่รอ snapshot) */

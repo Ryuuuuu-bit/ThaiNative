@@ -25,6 +25,11 @@ MONSTERS = {
     'saming': 'walk', 'phi_ha': 'float',
 }
 NPC = {'npc_maekha': 'npc_maekha'}
+# ฉาก/สิ่งปลูกสร้างในเมือง (ภาพนิ่ง): key ในเกม → ไฟล์ใน assets_src/pixellab/env/
+ENV = {'house': 'house', 'temple': 'temple', 'stall': 'stall', 'spirit_house': 'spirit_house',
+       'sala': 'sala', 'palm': 'palm', 'bg_town': 'bg_town'}
+# บอสเรด
+BOSSES = {'phaya_yak': 'walk'}
 PAD_X, PAD_TOP = 5, 3
 ANIMS = {'walk': 4, 'attack': 3, 'hit': 1, 'die': 4}
 
@@ -126,6 +131,29 @@ def main():
         sheet(frames, W, H, os.path.join(OUT, 'npc', f'{key}.png'))
         manifest['npc'][key] = {'file': f'assets/npc/{key}.png', 'frameWidth': W, 'frameHeight': H,
                                 'anims': {'idle': 2}, 'rates': {'idle': 2}}
+
+    # ฉากเมือง
+    edir = os.path.join(SRC, 'env')
+    manifest['env'] = {}
+    if os.path.isdir(edir):
+        os.makedirs(os.path.join(OUT, 'env'), exist_ok=True)
+        for key, name in ENV.items():
+            src = os.path.join(edir, f'{name}.png')
+            if os.path.exists(src):
+                load_clean(src).save(os.path.join(OUT, 'env', f'{key}.png'))
+                manifest['env'][key] = f'assets/env/{key}.png'
+
+    # บอสเรด (สร้างท่าทางแบบเดียวกับผี)
+    manifest['bosses'] = {}
+    for bid, kind in BOSSES.items():
+        src = os.path.join(SRC, 'bosses', f'{bid}.png')
+        if not os.path.exists(src):
+            continue
+        os.makedirs(os.path.join(OUT, 'bosses'), exist_ok=True)
+        frames, W, H = frames_for(load_clean(src), kind)
+        sheet(frames, W, H, os.path.join(OUT, 'bosses', f'{bid}.png'))
+        manifest['bosses'][bid] = {'file': f'assets/bosses/{bid}.png', 'frameWidth': W, 'frameHeight': H,
+                                   'anims': ANIMS, 'rates': {'walk': 4, 'attack': 5, 'hit': 6, 'die': 5}}
 
     # ตัวละครผู้เล่น: คัดลอกภาพต้นฉบับ (เกมย้อมสี + สร้างท่าทางเองตอนรัน)
     pdir = os.path.join(SRC, 'players')

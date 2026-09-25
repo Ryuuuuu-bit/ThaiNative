@@ -78,27 +78,97 @@ export function recolorBase(img, a) {
 }
 
 // ---------------- เฟรมท่าทาง ----------------
-function drawLegsShift(ctx, base, x, y, dx) {
-  const cut = Math.round(base.height * 0.68);
-  ctx.drawImage(base, 0, 0, base.width, cut, x, y, base.width, cut);
-  ctx.drawImage(base, 0, cut, base.width, base.height - cut, x + dx, y + cut, base.width, base.height - cut);
+/** จำนวนเฟรมของตัวละคร PixelLab (ละเอียดกว่าแบบวาดด้วยโค้ด) */
+export const PLAYER_ANIMS = {
+  idle:   { frames: 6, rate: 6,  repeat: -1 },
+  walk:   { frames: 8, rate: 12, repeat: -1 },
+  attack: { frames: 6, rate: 18, repeat: 0 },   // เฟรมที่ 4 (index 3) = จังหวะโดนเป้า
+  hit:    { frames: 3, rate: 10, repeat: 0 },
+  die:    { frames: 6, rate: 7,  repeat: 0 },
+  jump:   { frames: 2, rate: 6,  repeat: -1 },
+};
+export const STRIKE_FRAME = { 4: 3, 6: 4 };  // จำนวนเฟรมท่าโจมตี → เฟรม (1-based) ที่ตีโดน
+
+/**
+ * วาดภาพต้นฉบับเป็น 2 ส่วน (ลำตัว / ขา) พร้อม transform แยก
+ *  o = { dx, dy, lean (เอียงลำตัว), legShear (เหวี่ยงขา), sx, sy (ยืด-ยุบ), rot }
+ */
+function drawPosed(ctx, base, bx, by, o = {}) {
+  const { dx = 0, dy = 0, lean = 0, legShear = 0, sx = 1, sy = 1, rot = 0, legSplit = 0 } = o;
+  const W = base.width, H = base.height;
+  const hip = Math.round(H * 0.64);
+  const footX = bx + W / 2 + dx, footY = by + H + dy;
+  ctx.save();
+  ctx.translate(footX, footY);
+  if (rot) ctx.rotate(rot);
+  ctx.scale(sx, sy);
+  ctx.translate(-W / 2, -H);
+  // ขา: เฉือนรอบสะโพก (เท้าเหวี่ยงไปหน้า-หลัง)
+  if (legSplit) {
+    // ก้าวยาว: วาดขาหลังเข้มกว่า เยื้องไปด้านหลัง แล้ววาดขาหน้าเยื้องไปด้านหน้า
+    ctx.save(); ctx.transform(1, 0, -legSplit / (H - hip), 1, legSplit * hip / (H - hip), 0);
+    ctx.globalAlpha = 0.9; ctx.filter = 'brightness(0.7)';
+    ctx.drawImage(base, 0, hip, W, H - hip, 0, hip, W, H - hip);
+    ctx.restore();
+    ctx.save(); ctx.transform(1, 0, legSplit / (H - hip), 1, -legSplit * hip / (H - hip), 0);
+    ctx.drawImage(base, 0, hip, W, H - hip, 0, hip, W, H - hip);
+    ctx.restore();
+  } else {
+    ctx.save(); ctx.transform(1, 0, legShear, 1, -legShear * hip, 0);
+    ctx.drawImage(base, 0, hip, W, H - hip, 0, hip, W, H - hip);
+    ctx.restore();
+  }
+  // ลำตัว+หัว: เอียงรอบสะโพก (lean > 0 = โน้มไปด้านหน้า)
+  ctx.save(); ctx.transform(1, 0, -lean, 1, lean * hip, 0);
+  ctx.drawImage(base, 0, 0, W, hip + 1, 0, 0, W, hip + 1);
+  ctx.restore();
+  ctx.restore();
 }
 
-function fx(ctx, weapon, cx, cy, w, h, kind) {
+function tintFrame(ctx, FW, FH, color) {
   ctx.save();
-  if (kind === 'slash') {
-    ctx.strokeStyle = 'rgba(255,255,255,0.9)'; ctx.lineWidth = 2;
-    ctx.beginPath(); ctx.arc(cx, cy, h * 0.42, -1.2, 0.9); ctx.stroke();
+  ctx.globalCompositeOperation = 'source-atop';
+  ctx.fillStyle = color; ctx.fillRect(0, 0, FW, FH);
+  ctx.restore();
+}
+
+function shadow(ctx, cx, FH, w, a = 0.28) {
+  ctx.save(); ctx.globalCompositeOperation = 'destination-over';
+  ctx.fillStyle = `rgba(0,0,0,${a})`;
+  ctx.beginPath(); ctx.ellipse(cx, FH - 1.5, w, 1.6, 0, 0, 7); ctx.fill();
+  ctx.restore();
+}
+
+/** เอฟเฟกต์ประจำอาวุธ – t = ความคืบหน้าของการฟัน (0..1) */
+function weaponFx(ctx, weapon, cx, cy, W, H, t) {
+  ctx.save();
+  if (weapon === 'sword') {                      // ดาบคู่: รอยฟันโค้งสีทอง-ขาว 2 ชั้น
+    const r = H * 0.5, a0 = -1.9 + t * 1.2, a1 = a0 + 1.9;
+    ctx.lineCap = 'round';
+    ctx.strokeStyle = 'rgba(249,231,159,0.55)'; ctx.lineWidth = 4;
+    ctx.beginPath(); ctx.arc(cx, cy, r, a0, a1); ctx.stroke();
+    ctx.strokeStyle = 'rgba(255,255,255,0.95)'; ctx.lineWidth = 1.5;
+    ctx.beginPath(); ctx.arc(cx, cy, r, a0 + 0.2, a1); ctx.stroke();
     ctx.strokeStyle = 'rgba(174,214,241,0.7)'; ctx.lineWidth = 1;
-    ctx.beginPath(); ctx.arc(cx, cy, h * 0.36, -1.0, 0.8); ctx.stroke();
-  } else if (kind === 'cast') {
-    ctx.fillStyle = 'rgba(175,122,197,0.5)'; ctx.beginPath(); ctx.arc(cx + w * 0.35, cy - h * 0.25, 5, 0, 7); ctx.fill();
-    ctx.fillStyle = '#f5eef8'; ctx.fillRect(cx + w * 0.35 - 1, cy - h * 0.25 - 1, 2, 2);
-  } else if (kind === 'impact') {
+    ctx.beginPath(); ctx.arc(cx - 2, cy + 2, r * 0.75, a0 + 0.5, a1 - 0.1); ctx.stroke();
+  } else if (weapon === 'staff') {               // ไม้เท้า: วงยันต์เรืองแสง
+    const ox = cx + W * 0.45, oy = cy - H * 0.3, rr = 3 + t * 5;
+    ctx.fillStyle = `rgba(187,143,206,${0.6 - t * 0.3})`; ctx.beginPath(); ctx.arc(ox, oy, rr, 0, 7); ctx.fill();
+    ctx.strokeStyle = 'rgba(247,220,111,0.9)'; ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.arc(ox, oy, rr + 2, 0, 7); ctx.stroke();
+    for (let k = 0; k < 4; k++) { const a = k * 1.57 + t * 2; ctx.fillStyle = '#fdfefe'; ctx.fillRect(ox + Math.cos(a) * (rr + 2) - 0.5, oy + Math.sin(a) * (rr + 2) - 0.5, 1.5, 1.5); }
+  } else if (weapon === 'bow') {                 // ธนู: สายสะบัด + ลมพุ่ง
+    ctx.fillStyle = 'rgba(253,254,254,0.9)';
+    ctx.fillRect(cx + W * 0.4, cy - 2, 10 + t * 6, 1);
+    ctx.fillStyle = 'rgba(214,234,248,0.6)';
+    ctx.fillRect(cx + W * 0.35, cy - 5, 6, 1); ctx.fillRect(cx + W * 0.35, cy + 2, 6, 1);
+  } else {                                       // หมัดคาดเชือก: ดาวกระแทก
+    const ix = cx + W * 0.5, iy = cy - 1, s = 3 + t * 3;
     ctx.fillStyle = '#f9e79f';
-    ctx.fillRect(cx + w * 0.42, cy - 1, 5, 2); ctx.fillRect(cx + w * 0.42 + 2, cy - 3, 2, 6);
-  } else if (kind === 'twang') {
-    ctx.fillStyle = 'rgba(253,254,254,0.9)'; ctx.fillRect(cx + w * 0.4, cy - 2, 8, 1);
+    ctx.beginPath();
+    for (let k = 0; k < 8; k++) { const a = k * Math.PI / 4, rr = k % 2 ? s * 0.45 : s; ctx.lineTo(ix + Math.cos(a) * rr, iy + Math.sin(a) * rr); }
+    ctx.fill();
+    ctx.fillStyle = '#fff'; ctx.fillRect(ix - 1, iy - 1, 2, 2);
   }
   ctx.restore();
 }
@@ -108,50 +178,85 @@ function fx(ctx, weapon, cx, cy, w, h, kind) {
  */
 export function drawPlayerFrame(ctx, base, anim, i, weapon, FW, FH) {
   ctx.imageSmoothingEnabled = false;
-  const bx = Math.round((FW - base.width) / 2), by = FH - 1 - base.height;
-  const cx = FW / 2, cy = by + base.height * 0.45;
+  const W = base.width, H = base.height;
+  const bx = Math.round((FW - W) / 2), by = FH - 2 - H;
+  const cx = FW / 2, cy = by + H * 0.45;
+  const light = weapon === 'wraps' || weapon === 'bow';
   switch (anim) {
-    case 'idle': ctx.drawImage(base, bx, by + [0, 0, 1, 1][i]); break;
-    case 'walk': {
-      const s = [0, 1, 2, 0, -1, -2][i];
-      drawLegsShift(ctx, base, bx, by + (i % 3 === 1 ? -1 : 0), s);
+    case 'idle': {        // หายใจ: ยืด-ยุบเบาๆ + ลำตัวโยก
+      const t = i / 6 * Math.PI * 2;
+      const sy = 1 + Math.sin(t) * 0.02, sx = 1 - Math.sin(t) * 0.012;
+      drawPosed(ctx, base, bx, by, { sx, sy, lean: weapon === 'wraps' ? 0.06 + Math.sin(t) * 0.03 : Math.sin(t) * 0.015, dy: 0 });
+      shadow(ctx, cx, FH, W * 0.32);
       break;
     }
-    case 'attack': {
-      const dx = [-2, 2, 4, 1][i];
-      if (i === 2) {                        // เฟรมโดนเป้า: ขยายเล็กน้อย
-        const w = Math.round(base.width * 1.06), h = Math.round(base.height * 1.06);
-        ctx.drawImage(base, bx + dx - (w - base.width) / 2, FH - 1 - h, w, h);
-      } else ctx.drawImage(base, bx + dx, by);
-      const kind = { sword: 'slash', staff: 'cast', bow: 'twang', wraps: 'impact' }[weapon];
-      if (i === 2) fx(ctx, weapon, cx + dx, cy, base.width, base.height, kind);
+    case 'walk': {        // วงจรก้าวเท้า 8 เฟรม: ขาเหวี่ยง ลำตัวโน้มหน้า ตัวเด้งขึ้นลง
+      const t = i / 8 * Math.PI * 2;
+      const stride = Math.sin(t) * (light ? 4 : 3.2);
+      const bob = -Math.abs(Math.cos(t)) * 1.5 + 0.5;
+      drawPosed(ctx, base, bx, by, { dy: Math.round(bob), lean: 0.07 + Math.abs(Math.sin(t)) * 0.02, legSplit: stride, sy: 1 + Math.abs(Math.cos(t)) * 0.015 });
+      shadow(ctx, cx, FH, W * 0.3 + Math.abs(stride) * 0.3);
       break;
     }
-    case 'hit': {
-      ctx.drawImage(base, bx - (i ? 2 : 3), by);
-      ctx.globalCompositeOperation = 'source-atop';
-      ctx.fillStyle = `rgba(255,70,70,${i ? 0.25 : 0.45})`; ctx.fillRect(0, 0, FW, FH);
-      ctx.globalCompositeOperation = 'source-over';
+    case 'attack': {      // 0-1 ง้าง, 2 พุ่ง, 3 โดน (ยืดสุด+เอฟเฟกต์), 4 ตามแรง, 5 คืนท่า
+      const P = {
+        sword: [{ dx: -2, lean: -0.12, sx: 0.96, sy: 1.04 }, { dx: -3, lean: -0.18, sx: 0.94, sy: 1.06 }, { dx: 3, lean: 0.12, legSplit: 3 },
+                { dx: 6, lean: 0.22, sx: 1.08, sy: 0.95, legSplit: 4 }, { dx: 5, lean: 0.16, legSplit: 3 }, { dx: 1, lean: 0.04 }],
+        staff: [{ dx: 0, lean: -0.06, sy: 1.04 }, { dx: -1, lean: -0.1, sy: 1.07, sx: 0.96 }, { dx: 1, lean: 0.05, sy: 1.02 },
+                { dx: 2, lean: 0.1, sx: 1.05, sy: 0.97 }, { dx: 1, lean: 0.06 }, { dx: 0, lean: 0.02 }],
+        bow:   [{ dx: -1, lean: -0.05 }, { dx: -2, lean: -0.1, sx: 0.97, sy: 1.03 }, { dx: -3, lean: -0.12, sx: 0.96, sy: 1.04 },
+                { dx: -1, lean: -0.02, sx: 1.03, sy: 0.98 }, { dx: -2, lean: -0.06 }, { dx: 0, lean: 0 }],
+        wraps: [{ dx: -1, lean: -0.05, legSplit: 2 }, { dx: 2, lean: 0.1, legSplit: 3 }, { dx: 5, lean: 0.2, sx: 1.06, legSplit: 4 },
+                { dx: 8, lean: 0.28, sx: 1.12, sy: 0.94, legSplit: 5 }, { dx: 5, lean: 0.14, legSplit: 3 }, { dx: 1, lean: 0.05, legSplit: 1 }],
+      }[weapon] || [];
+      const o = P[i] || {};
+      drawPosed(ctx, base, bx, by, o);
+      if (i === 3) weaponFx(ctx, weapon, cx + (o.dx || 0), cy, W, H, 0.3);
+      if (i === 4 && weapon !== 'bow') { ctx.globalAlpha = 0.55; weaponFx(ctx, weapon, cx + (o.dx || 0), cy, W, H, 0.9); ctx.globalAlpha = 1; }
+      if (i >= 2 && i <= 4 && weapon !== 'staff') {        // เส้นความเร็วด้านหลัง
+        ctx.fillStyle = 'rgba(255,255,255,0.35)';
+        for (let k = 0; k < 3; k++) ctx.fillRect(bx - 6 + (o.dx || 0) - k * 2, by + H * (0.3 + k * 0.18), 5, 1);
+      }
+      shadow(ctx, cx + (o.dx || 0), FH, W * 0.32);
       break;
     }
-    case 'die': {
-      // ล้มหงายไปด้านหลัง หมุนรอบเท้า (จุดหมุนเลื่อนไปทางขวาให้หัวไม่หลุดกรอบ)
-      const ang = [-18, -45, -72, -90][i] * Math.PI / 180;
-      const pivot0 = bx + base.width * 0.8, pivot1 = FW - 4;
-      ctx.save();
-      ctx.translate(pivot0 + (pivot1 - pivot0) * (i / 3), FH - 1);
-      ctx.rotate(ang);
-      ctx.globalAlpha = i === 3 ? 0.8 : 1;
-      ctx.drawImage(base, -base.width * 0.8, -base.height);
-      ctx.restore();
+    case 'hit': {         // สะดุ้งถอยหลัง แฟลชขาว → แดง
+      const o = [{ dx: -3, lean: -0.2, sx: 0.94, sy: 1.04 }, { dx: -4, lean: -0.14 }, { dx: -2, lean: -0.05 }][i];
+      drawPosed(ctx, base, bx, by, o);
+      tintFrame(ctx, FW, FH, ['rgba(255,255,255,0.75)', 'rgba(255,60,60,0.45)', 'rgba(255,60,60,0.2)'][i]);
+      shadow(ctx, cx + o.dx, FH, W * 0.3);
       break;
     }
-    case 'jump': drawLegsShift(ctx, base, bx, by - 2, 2); break;
+    case 'die': {         // เซ → ทรุดเข่า → ล้มหงาย → นอนราบ → จางหาย
+      if (i <= 1) {
+        drawPosed(ctx, base, bx, by, [{ dx: -2, lean: -0.15 }, { dx: -2, sy: 0.86, sx: 1.06, lean: 0.2 }][i]);
+        if (i === 0) tintFrame(ctx, FW, FH, 'rgba(255,255,255,0.5)');
+      } else {
+        const ang = [-40, -70, -90, -90][i - 2] * Math.PI / 180;
+        const pivot = bx + W * 0.8 + (FW - 4 - bx - W * 0.8) * ((i - 2) / 3);
+        // ยกจุดหมุนขึ้นให้ส่วนที่ต่ำที่สุดของร่างแตะพื้นพอดี (ไม่จมหายใต้กรอบ)
+        const sn = Math.sin(ang), cs = Math.cos(ang);
+        const lowest = Math.max(...[-W * 0.8, W * 0.2].flatMap((x) => [-H * 0.92, 0].map((y) => x * sn + y * cs)));
+        ctx.save();
+        ctx.translate(Math.min(pivot, FW - 2 - Math.max(0, H * 0.92 * Math.abs(sn) - W * 0.8)), FH - 2 - lowest);
+        ctx.rotate(ang);
+        ctx.globalAlpha = [1, 1, 0.85, 0.5][i - 2];
+        ctx.drawImage(base, -W * 0.8, -H * 0.92, W, H * 0.92);
+        ctx.restore();
+        if (i === 5) tintFrame(ctx, FW, FH, 'rgba(120,120,160,0.35)');
+      }
+      shadow(ctx, cx, FH, W * 0.4, 0.2);
+      break;
+    }
+    case 'jump': {        // ยืดตัวขึ้น ขาพับ
+      drawPosed(ctx, base, bx, by - 2, i === 0 ? { sy: 1.06, sx: 0.95, legShear: -0.25, lean: 0.05 } : { sy: 1.02, legShear: -0.35, lean: 0.08 });
+      break;
+    }
   }
 }
 
 export function frameSize(base) {
-  return { FW: Math.max(base.width + PAD_X * 2, base.height + 8), FH: base.height + PAD_TOP };
+  return { FW: Math.max(base.width + 30, base.height + 10), FH: base.height + 7 };
 }
 
 export { CHAR_ANIMS };

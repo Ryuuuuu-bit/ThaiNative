@@ -19,6 +19,7 @@ export class Network {
 
   /** ลงทะเบียน callback: on('init'|'joined'|'left'|'snapshot'|'appearance'|'chat'|'status', fn) */
   on(evt, fn) { this.handlers[evt] = fn; return this; }
+  get selfIdOrNull() { return this.online ? this.selfId : null; }
   emitLocal(evt, data) { this.handlers[evt]?.(data); }
 
   connect(name, appearance) {
@@ -47,7 +48,15 @@ export class Network {
     });
     s.on('chat', (m) => this.emitLocal('chat', m));
     s.on('skill:cast', (d) => this.emitLocal('skill', d));
+    // ระบบ MMO: ปาร์ตี้ · เทรด · เรดบอส → ส่งต่อด้วยชื่อ event เดิม
+    for (const ev of ['party:invite', 'party:state', 'party:exp', 'trade:request', 'trade:state', 'trade:closed', 'trade:complete',
+      'raid:state', 'raid:spawn', 'raid:attack', 'raid:impact', 'raid:dmg', 'raid:reward', 'raid:defeated']) {
+      s.on(ev, (d) => this.emitLocal(ev, d));
+    }
   }
+
+  /** ส่ง event ทั่วไปไป server (ออฟไลน์ = ไม่ทำอะไร) */
+  send(ev, data) { if (this.online) this.socket.emit(ev, data); }
 
   /** เรียกทุกเฟรม – ส่งจริงตาม NET.sendRate และเฉพาะเมื่อข้อมูลเปลี่ยน */
   sendState(time, state) {

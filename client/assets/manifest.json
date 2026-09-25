@@ -185,6 +185,33 @@
       }
     }
   },
+  "env": {
+    "house": "assets/env/house.png",
+    "temple": "assets/env/temple.png",
+    "stall": "assets/env/stall.png",
+    "spirit_house": "assets/env/spirit_house.png",
+    "sala": "assets/env/sala.png",
+    "bg_town": "assets/env/bg_town.png"
+  },
+  "bosses": {
+    "phaya_yak": {
+      "file": "assets/bosses/phaya_yak.png",
+      "frameWidth": 120,
+      "frameHeight": 111,
+      "anims": {
+        "walk": 4,
+        "attack": 3,
+        "hit": 1,
+        "die": 4
+      },
+      "rates": {
+        "walk": 4,
+        "attack": 5,
+        "hit": 6,
+        "die": 5
+      }
+    }
+  },
   "players": {
     "archer_female": "assets/players/archer_female.png",
     "archer_male": "assets/players/archer_male.png",

@@ -135,7 +135,7 @@ button { font-family: inherit; cursor: pointer; }
 .zone b { color: var(--gold-soft); font-weight: 600; }
 .net { font-size: .9em; } .net.on { color: #58d68d; } .net.off { color: #aaa; }
 .minimap { position: relative; height: 1.4em; overflow: hidden; }
-.mm-town { position: absolute; left: 0; top: 0; bottom: 0; width: 19.4%; background: rgba(88,214,141,.18); border-right: 1px dashed rgba(88,214,141,.6); }
+.mm-town { position: absolute; left: 0; top: 0; bottom: 0; width: 23.3%; background: rgba(88,214,141,.18); border-right: 1px dashed rgba(88,214,141,.6); }
 .mm-dot { position: absolute; top: 50%; width: .4em; height: .4em; margin: -.2em 0 0 -.2em; border-radius: 50%; }
 .mm-dot.me { width: .6em; height: .6em; margin: -.3em 0 0 -.3em; background: var(--gold); box-shadow: 0 0 4px var(--gold); z-index: 2; }
 .mm-dot.ally { background: #5dade2; }
@@ -283,3 +283,72 @@ kbd { display: inline-block; min-width: 1.6em; text-align: center; padding: 0 .3
 .set-row input[type=checkbox] { accent-color: var(--gold); width: 1.1em; height: 1.1em; }
 .set-row.foot { display: flex; justify-content: flex-end; }
 .skill.empty .ic { opacity: .25; }
+
+/* ============================================================
+   ระบบ MMO: ปาร์ตี้ · เทรด · เรดบอส
+   ============================================================ */
+.mm-arena { position: absolute; right: 0; top: 0; bottom: 0; width: 15.1%; background: rgba(142,68,173,.25); border-left: 1px dashed rgba(187,143,206,.7); }
+.mm-dot.boss { width: .7em; height: .7em; margin: -.35em 0 0 -.35em; background: #bb8fce; box-shadow: 0 0 6px #8e44ad; }
+.wm-zone.boss { background: rgba(142,68,173,.2); }
+.wm-dot.boss { width: 1em; height: 1em; margin: -.5em 0 0 -.5em; background: #bb8fce; box-shadow: 0 0 10px #8e44ad; z-index: 2; }
+
+/* กรอบสมาชิกปาร์ตี้ */
+.party-frames { position: absolute; top: 19%; left: 1.2%; display: flex; flex-direction: column; gap: .25em; width: 12em; }
+.party-frames .pm { display: flex; gap: .35em; align-items: center; background: var(--panel); border: 1px solid rgba(212,175,55,.55); border-radius: 6px; padding: .2em .4em; }
+.party-frames .pm.far { opacity: .55; }
+.party-frames .pm-job { font-size: 1.1em; }
+.party-frames .pm > div { flex: 1; min-width: 0; }
+.party-frames .pm-name { font-size: .7em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: #82e0aa; }
+.party-frames .pm-name small { color: var(--muted); }
+.bar.mini { height: .45em; margin: .1em 0 0; }
+#chat-log .party-msg b, #chat-log .party-msg { color: #82e0aa; }
+
+/* แถบเรดบอส */
+.boss-bar { position: absolute; top: 2%; left: 50%; transform: translateX(-50%); width: 22em; max-width: 40%; text-align: center;
+  background: linear-gradient(rgba(40,10,30,.92), rgba(20,6,18,.92)); border: 2px solid #8e44ad; border-radius: 8px; padding: .25em .6em .4em; box-shadow: 0 0 14px rgba(142,68,173,.6); }
+.bb-name { display: flex; justify-content: center; gap: .6em; font-size: .85em; color: #f5b7b1; }
+.bb-name span { color: #f39c12; animation: pulse .5s infinite alternate; }
+.bar.boss { height: 1.1em; }
+.bar.boss i { background: linear-gradient(90deg, #6c3483, #c0392b, #f39c12); }
+
+/* กล่องคำเชิญ */
+.invite-box { position: absolute; top: 24%; left: 50%; transform: translateX(-50%); z-index: 30; min-width: 18em; text-align: center;
+  background: var(--panel); border: 2px solid var(--gold); border-radius: 10px; padding: .7em 1em .9em; box-shadow: 0 6px 24px rgba(0,0,0,.6); overflow: hidden; }
+.invite-box p { margin: 0 0 .6em; } .invite-box b { color: var(--gold-soft); }
+.invite-box div { display: flex; gap: .6em; justify-content: center; }
+.invite-box i { position: absolute; left: 0; bottom: 0; height: 3px; background: var(--gold); width: 100%; }
+
+/* เมนูผู้เล่น */
+.player-menu { position: absolute; z-index: 25; display: flex; flex-direction: column; gap: .2em; min-width: 10em;
+  background: var(--panel); border: 1px solid var(--gold); border-radius: 8px; padding: .4em; box-shadow: 0 4px 16px rgba(0,0,0,.6); }
+.player-menu b { font-size: .8em; color: var(--gold-soft); padding: 0 .2em .2em; border-bottom: 1px solid rgba(212,175,55,.3); }
+.player-menu button { background: none; border: none; color: var(--text); text-align: left; padding: .25em .4em; border-radius: 4px; font-size: .85em; cursor: pointer; }
+.player-menu button:hover:not(:disabled) { background: rgba(212,175,55,.2); }
+.player-menu button:disabled { opacity: .4; cursor: default; }
+
+/* หน้าต่างปาร์ตี้ (P) */
+.soc-sec h4 { margin: .3em 0; color: var(--gold-soft); font-weight: 500; }
+.soc-row { display: flex; justify-content: space-between; align-items: center; gap: .5em; padding: .25em .3em; border-bottom: 1px solid rgba(255,255,255,.06); font-size: .85em; }
+.soc-row small { color: var(--muted); } .soc-row .ok { color: #82e0aa; }
+.btn.sm { padding: .15em .6em; font-size: .78em; border-width: 1px; }
+.empty { color: var(--muted); font-size: .8em; margin: .3em 0; }
+
+/* เทรด */
+.trade-cols { display: grid; grid-template-columns: 1fr 1fr; gap: .8em; }
+.tr-col { background: rgba(0,0,0,.25); border: 1px solid rgba(212,175,55,.3); border-radius: 8px; padding: .4em .6em; }
+.tr-col h4 { margin: 0 0 .3em; font-size: .9em; color: var(--gold-soft); font-weight: 500; }
+.tr-col h5 { margin: .5em 0 .2em; font-size: .72em; color: var(--muted); font-weight: 400; }
+.tr-status { font-size: .8em; } .tr-status .ok { color: #82e0aa; } .tr-status .lock { color: #f5b041; } .tr-status i { color: var(--muted); }
+.tr-offer { min-height: 3.2em; display: flex; flex-wrap: wrap; gap: .3em; }
+.tr-inv { display: flex; flex-wrap: wrap; gap: .25em; max-height: 7em; overflow: auto; }
+.tr-inv.disabled { opacity: .5; pointer-events: none; }
+.tr-item { position: relative; display: flex; align-items: center; gap: .25em; background: #1a1024; border: 1px solid rgba(212,175,55,.35); border-radius: 6px; padding: .15em .35em; font-size: .9em; cursor: pointer; }
+.tr-item small { font-size: .65em; color: var(--gold-soft); }
+.tr-item span { font-size: .65em; color: var(--muted); max-width: 7em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.tr-item.used { opacity: .35; cursor: default; }
+.tr-item:hover { border-color: var(--gold); }
+.tr-gold { margin-top: .4em; font-size: .85em; color: var(--gold-soft); }
+.tr-gold input { width: 8em; background: #120a1a; color: var(--text); border: 1px solid rgba(212,175,55,.5); border-radius: 4px; padding: .1em .3em; }
+.tr-actions { display: flex; gap: .6em; justify-content: center; margin-top: .7em; }
+.tr-actions .btn:disabled { opacity: .45; cursor: default; }
+.close-trade { background: none; border: none; color: var(--gold-soft); font-size: 1em; cursor: pointer; }
