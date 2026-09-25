@@ -2,6 +2,7 @@
 //  Combat – โจมตีปกติ, สกิล QWER, กระสุน, ตัวเลขดาเมจ, รางวัล
 // ============================================================
 import { rollDamage } from '/shared/stats.js';
+import { SKILL_BY_ID, skillStats } from '/shared/data/skills.js';
 import { ITEMS } from '/shared/data/items.js';
 import { WORLD } from '/shared/constants.js';
 import { getDerived, gainExp } from './Character.js';
@@ -19,7 +20,11 @@ export class Combat {
   bind(player, monsters) {
     this.player = player;
     this.monsters = monsters;
-    this.scene.physics.add.overlap(this.playerShots, monsters, (shot, mon) => this.onShotHitMonster(shot, mon));
+    // หมายเหตุ: Phaser อาจส่งอาร์กิวเมนต์สลับลำดับ (monster, shot) → แยกให้ถูกก่อนเสมอ
+    this.scene.physics.add.overlap(this.playerShots, monsters, (a, b) => {
+      const shot = this.playerShots.contains(a) ? a : b;
+      this.onShotHitMonster(shot, shot === a ? b : a);
+    });
     this.scene.physics.add.overlap(this.enemyShots, player, (a, b) => this.onShotHitPlayer(a === player ? b : a));
   }
 
@@ -33,9 +38,10 @@ export class Combat {
       .sort((a, b) => Math.abs(a.x - fromX) - Math.abs(b.x - fromX));
   }
 
-  hit(mon, stats, kind, mult, dir, knock) {
+  hit(mon, stats, kind, mult, dir, knock, effect) {
     const r = rollDamage(stats, mon.defStats, kind, mult);
     mon.takeHit(r, dir, knock);
+    if (r.hit && effect) mon.applyEffect(effect, r.dmg);
     this.scene.ui.setTarget(mon);
     if (r.hit) this.sfx.play(r.crit ? 'crit' : 'hit');
     else this.sfx.play('miss');
@@ -59,7 +65,7 @@ export class Combat {
           this.scene.time.delayedCall(i * (skill.interval || 0), () => {
             const targets = this.monstersIn(this.frontZone(player, skill.range), player.x);
             const list = skill.all ? targets : targets.slice(0, 1);
-            list.forEach((m) => this.hit(m, stats, skill.kind, skill.mult, f, skill.knock));
+            list.forEach((m) => this.hit(m, stats, skill.kind, skill.mult, f, skill.knock, skill.effect));
             if (list.length) this.scene.cameras.main.shake(70, 0.004);
             if (i > 0) this.sfx.play(skill.sfx);
           });
@@ -71,7 +77,7 @@ export class Combat {
         const n = skill.count || 1;
         for (let i = 0; i < n; i++) {
           const dy = (i - (n - 1) / 2) * (skill.spread || 0);
-          this.spawnShot(player, `proj_${skill.proj}`, skill.speed, skill.range, skill.kind, skill.mult, stats, dy, !!skill.pierce);
+          this.spawnShot(player, `proj_${skill.proj}`, skill.speed, skill.range, skill.kind, skill.mult, stats, dy, !!skill.pierce, skill.effect);
         }
         break;
       }
@@ -81,23 +87,70 @@ export class Combat {
           this.scene.time.delayedCall(i * skill.interval, () => {
             const zone = new Phaser.Geom.Rectangle(cx - skill.radius, player.y - 60, skill.radius * 2, 64);
             this.aoeFx(skill, cx, player.y);
-            this.monstersIn(zone, cx).forEach((m) => this.hit(m, stats, skill.kind, skill.mult, Math.sign(m.x - cx) || f));
+            this.monstersIn(zone, cx).forEach((m) => this.hit(m, stats, skill.kind, skill.mult, Math.sign(m.x - cx) || f, 70, skill.effect));
             if (i > 0) this.sfx.play(skill.sfx);
           });
         }
         break;
       }
       case 'strike': {
-        const target = this.monsters.getChildren()
-          .filter((m) => m.alive && Math.abs(m.x - player.x) <= skill.range && Math.abs(m.y - player.y) < 120)
-          .sort((a, b) => Math.abs(a.x - player.x) - Math.abs(b.x - player.x))[0];
+        const target = this.strikeTarget(player, skill);
         if (!target) { this.popupText(player.x, player.y - 46, 'ไม่มีเป้าหมาย', '#bdc3c7'); break; }
         this.lightningFx(target.x, target.y);
-        this.hit(target, stats, skill.kind, skill.mult, f);
+        this.hit(target, stats, skill.kind, skill.mult, f, 70, skill.effect);
         this.scene.cameras.main.shake(120, 0.006);
         break;
       }
     }
+  }
+
+  /** เป้าหมายของสกิลฟ้าผ่า: ผีที่ใกล้ที่สุดในระยะ */
+  strikeTarget(player, skill) {
+    return this.monsters.getChildren()
+      .filter((m) => m.alive && Math.abs(m.x - player.x) <= skill.range && Math.abs(m.y - player.y) < 120)
+      .sort((a, b) => Math.abs(a.x - player.x) - Math.abs(b.x - player.x))[0];
+  }
+
+  // ============================================================
+  //  VFX ของผู้เล่นคนอื่น (มาจาก server) – แสดงผลอย่างเดียว ไม่คำนวณดาเมจ
+  // ============================================================
+  remoteVfx(d, remote) {
+    const sk = skillStats(SKILL_BY_ID[d.skillId], d.lv);
+    if (!sk) return;
+    const s = this.scene, f = d.dir, x = d.x, y = d.y;
+    remote?.playCast(sk.type);
+    this.sfxNear(sk.sfx, x);
+    switch (sk.type) {
+      case 'melee': {
+        const g = s.add.graphics().setDepth(13);
+        g.lineStyle(3, 0xffffff, 0.8); g.beginPath();
+        g.arc(x + f * 4, y - 18, sk.range * 0.7, f > 0 ? -1.2 : Math.PI - 0.6, f > 0 ? 0.6 : Math.PI + 1.2); g.strokePath();
+        s.tweens.add({ targets: g, alpha: 0, duration: 250, onComplete: () => g.destroy() });
+        break;
+      }
+      case 'projectile': {
+        const n = sk.count || 1;
+        for (let i = 0; i < n; i++) {
+          const dy = (i - (n - 1) / 2) * (sk.spread || 0);
+          const img = s.add.image(x + f * 12, y - 20 + dy, `proj_${sk.proj}`).setFlipX(f < 0).setDepth(12).setAlpha(0.9);
+          s.tweens.add({ targets: img, x: img.x + f * sk.range, y: img.y + dy * (sk.range / sk.speed) * 4, duration: (sk.range / sk.speed) * 1000, onComplete: () => img.destroy() });
+        }
+        break;
+      }
+      case 'aoe': {
+        const cx = x + f * (sk.offset || 0);
+        for (let i = 0; i < sk.hits; i++) s.time.delayedCall(i * sk.interval, () => this.aoeFx(sk, cx, y));
+        break;
+      }
+      case 'strike': if (d.tx != null) this.lightningFx(d.tx, d.ty); break;
+      case 'buff': this.burst(x, y - 18, 0xf7dc6f, 16); break;
+      case 'dash': this.burst(x + f * (sk.distance / 2), y - 16, 0xaed6f1, 14); break;
+    }
+  }
+
+  /** เล่นเสียงของคนอื่นเฉพาะเมื่ออยู่ใกล้ (≤ 300 หน่วย) */
+  sfxNear(name, x) {
+    if (this.player && Math.abs(this.player.x - x) < 300) this.sfx.play(name);
   }
 
   basicAttack(player, stats, f) {
@@ -125,13 +178,13 @@ export class Combat {
     return new Phaser.Geom.Rectangle(x1, b.top - 6, range + 6, b.height + 6);
   }
 
-  spawnShot(player, tex, speed, range, kind, mult, stats, dy, pierce) {
+  spawnShot(player, tex, speed, range, kind, mult, stats, dy, pierce, effect) {
     const f = player.facing;
     const shot = this.playerShots.create(player.x + f * 12, player.body.center.y - 2 + dy, tex);
     shot.setFlipX(f < 0).setDepth(12);
     shot.body.setAllowGravity(false);
     shot.setVelocity(f * speed, dy * 4);
-    shot.setData({ startX: shot.x, range, kind, mult, stats, dir: f, pierce, hitSet: new Set() });
+    shot.setData({ startX: shot.x, range, kind, mult, stats, dir: f, pierce, effect, hitSet: new Set() });
     if (tex === 'proj_fireball') this.scene.tweens.add({ targets: shot, angle: f * 360, duration: 400, repeat: -1 });
     return shot;
   }
@@ -141,7 +194,7 @@ export class Combat {
     const d = shot.data.values;
     if (d.hitSet.has(mon)) return;
     d.hitSet.add(mon);
-    this.hit(mon, d.stats, d.kind, d.mult, d.dir);
+    this.hit(mon, d.stats, d.kind, d.mult, d.dir, 70, d.effect);
     this.burst(shot.x, shot.y, d.kind === 'magic' ? 0xf39c12 : 0xecf0f1);
     if (!d.pierce) shot.destroy();
   }
@@ -194,7 +247,7 @@ export class Combat {
         player.body.setAllowGravity(true);
         const zone = new Phaser.Geom.Rectangle(Math.min(startX, endX) - 8, player.y - 36, Math.abs(endX - startX) + 16, 38);
         const targets = this.monstersIn(zone, startX);
-        targets.forEach((m) => this.hit(m, stats, sk.kind, sk.mult, f, 120));
+        targets.forEach((m) => this.hit(m, stats, sk.kind, sk.mult, f, 120, sk.effect));
         if (targets.length) this.scene.cameras.main.shake(90, 0.005);
       },
     });
@@ -320,6 +373,7 @@ export class Combat {
   //  เอฟเฟกต์ทั่วไป
   // ============================================================
   popup(x, y, result) {
+    if (this.scene.settings?.damageNumbers === false) return;
     if (!result.hit) return this.popupText(x, y, 'MISS', '#bdc3c7');
     this.popupText(x, y, result.crit ? `${result.dmg}!` : `${result.dmg}`, result.crit ? '#f1c40f' : '#ffffff', result.crit ? 11 : 8);
   }

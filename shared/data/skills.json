@@ -1,0 +1,1051 @@
+{
+  "hotbarSlots": [
+    "Q",
+    "W",
+    "E",
+    "R",
+    "T"
+  ],
+  "maxSkillLevel": 5,
+  "spPerLevel": 1,
+  "startSp": 1,
+  "jobs": {
+    "mage": {
+      "nameTh": "จอมขมังเวทย์",
+      "skills": [
+        {
+          "id": "mage_akom",
+          "nameTh": "คาถาอาคม",
+          "icon": "📿",
+          "type": "projectile",
+          "kind": "magic",
+          "ultimate": false,
+          "unlockLevel": 1,
+          "desc": "ยิงลูกไฟอาคม 2 ลูก",
+          "effect": null,
+          "levels": [
+            {
+              "lv": 1,
+              "requireCharLevel": 1,
+              "mpCost": 6,
+              "cooldownMs": 1800,
+              "damageRatio": 1.3
+            },
+            {
+              "lv": 2,
+              "requireCharLevel": 3,
+              "mpCost": 7,
+              "cooldownMs": 1728,
+              "damageRatio": 1.495
+            },
+            {
+              "lv": 3,
+              "requireCharLevel": 5,
+              "mpCost": 7,
+              "cooldownMs": 1656,
+              "damageRatio": 1.69
+            },
+            {
+              "lv": 4,
+              "requireCharLevel": 7,
+              "mpCost": 8,
+              "cooldownMs": 1584,
+              "damageRatio": 1.885
+            },
+            {
+              "lv": 5,
+              "requireCharLevel": 9,
+              "mpCost": 8,
+              "cooldownMs": 1512,
+              "damageRatio": 2.08
+            }
+          ]
+        },
+        {
+          "id": "mage_yant",
+          "nameTh": "ยันต์ตรึงวิญญาณ",
+          "icon": "📜",
+          "type": "projectile",
+          "kind": "magic",
+          "ultimate": false,
+          "unlockLevel": 2,
+          "desc": "ยันต์ทะลุทุกตัว ตรึงศัตรูนิ่ง 1.8 วิ",
+          "effect": {
+            "stun": {
+              "ms": 1800
+            }
+          },
+          "levels": [
+            {
+              "lv": 1,
+              "requireCharLevel": 2,
+              "mpCost": 10,
+              "cooldownMs": 6000,
+              "damageRatio": 0.9
+            },
+            {
+              "lv": 2,
+              "requireCharLevel": 4,
+              "mpCost": 11,
+              "cooldownMs": 5760,
+              "damageRatio": 1.035
+            },
+            {
+              "lv": 3,
+              "requireCharLevel": 6,
+              "mpCost": 12,
+              "cooldownMs": 5520,
+              "damageRatio": 1.17
+            },
+            {
+              "lv": 4,
+              "requireCharLevel": 8,
+              "mpCost": 13,
+              "cooldownMs": 5280,
+              "damageRatio": 1.305
+            },
+            {
+              "lv": 5,
+              "requireCharLevel": 10,
+              "mpCost": 14,
+              "cooldownMs": 5040,
+              "damageRatio": 1.44
+            }
+          ]
+        },
+        {
+          "id": "mage_shield",
+          "nameTh": "เกราะยันต์เก้ายอด",
+          "icon": "🛡️",
+          "type": "buff",
+          "kind": null,
+          "ultimate": false,
+          "unlockLevel": 4,
+          "desc": "ฟื้น HP 20% ป้องกัน +20 นาน 8 วิ",
+          "effect": null,
+          "levels": [
+            {
+              "lv": 1,
+              "requireCharLevel": 4,
+              "mpCost": 15,
+              "cooldownMs": 16000,
+              "damageRatio": null,
+              "durationMs": 8000,
+              "healRatio": 0.2
+            },
+            {
+              "lv": 2,
+              "requireCharLevel": 6,
+              "mpCost": 17,
+              "cooldownMs": 15360,
+              "damageRatio": null,
+              "durationMs": 8800,
+              "healRatio": 0.22
+            },
+            {
+              "lv": 3,
+              "requireCharLevel": 8,
+              "mpCost": 18,
+              "cooldownMs": 14720,
+              "damageRatio": null,
+              "durationMs": 9600,
+              "healRatio": 0.24
+            },
+            {
+              "lv": 4,
+              "requireCharLevel": 10,
+              "mpCost": 20,
+              "cooldownMs": 14080,
+              "damageRatio": null,
+              "durationMs": 10400,
+              "healRatio": 0.26
+            },
+            {
+              "lv": 5,
+              "requireCharLevel": 12,
+              "mpCost": 21,
+              "cooldownMs": 13440,
+              "damageRatio": null,
+              "durationMs": 11200,
+              "healRatio": 0.28
+            }
+          ]
+        },
+        {
+          "id": "mage_thunder",
+          "nameTh": "อัสนีบาต",
+          "icon": "⚡",
+          "type": "strike",
+          "kind": "magic",
+          "ultimate": false,
+          "unlockLevel": 6,
+          "desc": "ฟ้าผ่าศัตรูที่ใกล้ที่สุด สะดุ้งชั่วครู่",
+          "effect": {
+            "stun": {
+              "ms": 600
+            }
+          },
+          "levels": [
+            {
+              "lv": 1,
+              "requireCharLevel": 6,
+              "mpCost": 14,
+              "cooldownMs": 5000,
+              "damageRatio": 2.4
+            },
+            {
+              "lv": 2,
+              "requireCharLevel": 8,
+              "mpCost": 15,
+              "cooldownMs": 4800,
+              "damageRatio": 2.76
+            },
+            {
+              "lv": 3,
+              "requireCharLevel": 10,
+              "mpCost": 17,
+              "cooldownMs": 4600,
+              "damageRatio": 3.12
+            },
+            {
+              "lv": 4,
+              "requireCharLevel": 12,
+              "mpCost": 18,
+              "cooldownMs": 4400,
+              "damageRatio": 3.48
+            },
+            {
+              "lv": 5,
+              "requireCharLevel": 14,
+              "mpCost": 20,
+              "cooldownMs": 4200,
+              "damageRatio": 3.84
+            }
+          ]
+        },
+        {
+          "id": "mage_kalp",
+          "nameTh": "เพลิงกัลป์ปราบผี",
+          "icon": "☄️",
+          "type": "aoe",
+          "kind": "magic",
+          "ultimate": true,
+          "unlockLevel": 8,
+          "desc": "ไฟกัลป์ถล่มด้านหน้า 4 ระลอก",
+          "effect": null,
+          "levels": [
+            {
+              "lv": 1,
+              "requireCharLevel": 8,
+              "mpCost": 35,
+              "cooldownMs": 22000,
+              "damageRatio": 2.2
+            },
+            {
+              "lv": 2,
+              "requireCharLevel": 10,
+              "mpCost": 39,
+              "cooldownMs": 21120,
+              "damageRatio": 2.53
+            },
+            {
+              "lv": 3,
+              "requireCharLevel": 12,
+              "mpCost": 42,
+              "cooldownMs": 20240,
+              "damageRatio": 2.86
+            },
+            {
+              "lv": 4,
+              "requireCharLevel": 14,
+              "mpCost": 46,
+              "cooldownMs": 19360,
+              "damageRatio": 3.19
+            },
+            {
+              "lv": 5,
+              "requireCharLevel": 16,
+              "mpCost": 49,
+              "cooldownMs": 18480,
+              "damageRatio": 3.52
+            }
+          ]
+        }
+      ]
+    },
+    "boxer": {
+      "nameTh": "นักมวยคาดเชือก",
+      "skills": [
+        {
+          "id": "boxer_jab",
+          "nameTh": "หมัดแย็บ",
+          "icon": "👊",
+          "type": "melee",
+          "kind": "physical",
+          "ultimate": false,
+          "unlockLevel": 1,
+          "desc": "แย็บรัว 3 หมัด",
+          "effect": null,
+          "levels": [
+            {
+              "lv": 1,
+              "requireCharLevel": 1,
+              "mpCost": 3,
+              "cooldownMs": 2000,
+              "damageRatio": 0.7
+            },
+            {
+              "lv": 2,
+              "requireCharLevel": 3,
+              "mpCost": 3,
+              "cooldownMs": 1920,
+              "damageRatio": 0.805
+            },
+            {
+              "lv": 3,
+              "requireCharLevel": 5,
+              "mpCost": 4,
+              "cooldownMs": 1840,
+              "damageRatio": 0.91
+            },
+            {
+              "lv": 4,
+              "requireCharLevel": 7,
+              "mpCost": 4,
+              "cooldownMs": 1760,
+              "damageRatio": 1.015
+            },
+            {
+              "lv": 5,
+              "requireCharLevel": 9,
+              "mpCost": 4,
+              "cooldownMs": 1680,
+              "damageRatio": 1.12
+            }
+          ]
+        },
+        {
+          "id": "boxer_kick",
+          "nameTh": "เตะก้านคอ",
+          "icon": "🦵",
+          "type": "melee",
+          "kind": "physical",
+          "ultimate": false,
+          "unlockLevel": 2,
+          "desc": "เตะแรง กระเด็นและมึนงง",
+          "effect": {
+            "stun": {
+              "ms": 700
+            }
+          },
+          "levels": [
+            {
+              "lv": 1,
+              "requireCharLevel": 2,
+              "mpCost": 6,
+              "cooldownMs": 4500,
+              "damageRatio": 2
+            },
+            {
+              "lv": 2,
+              "requireCharLevel": 4,
+              "mpCost": 7,
+              "cooldownMs": 4320,
+              "damageRatio": 2.3
+            },
+            {
+              "lv": 3,
+              "requireCharLevel": 6,
+              "mpCost": 7,
+              "cooldownMs": 4140,
+              "damageRatio": 2.6
+            },
+            {
+              "lv": 4,
+              "requireCharLevel": 8,
+              "mpCost": 8,
+              "cooldownMs": 3960,
+              "damageRatio": 2.9
+            },
+            {
+              "lv": 5,
+              "requireCharLevel": 10,
+              "mpCost": 8,
+              "cooldownMs": 3780,
+              "damageRatio": 3.2
+            }
+          ]
+        },
+        {
+          "id": "boxer_croc",
+          "nameTh": "จระเข้ฟาดหาง",
+          "icon": "🐊",
+          "type": "aoe",
+          "kind": "physical",
+          "ultimate": false,
+          "unlockLevel": 4,
+          "desc": "หมุนตัวเตะกลับหลัง โดนทุกตัวรอบตัว 2 ครั้ง",
+          "effect": null,
+          "levels": [
+            {
+              "lv": 1,
+              "requireCharLevel": 4,
+              "mpCost": 10,
+              "cooldownMs": 7000,
+              "damageRatio": 1.6
+            },
+            {
+              "lv": 2,
+              "requireCharLevel": 6,
+              "mpCost": 11,
+              "cooldownMs": 6720,
+              "damageRatio": 1.84
+            },
+            {
+              "lv": 3,
+              "requireCharLevel": 8,
+              "mpCost": 12,
+              "cooldownMs": 6440,
+              "damageRatio": 2.08
+            },
+            {
+              "lv": 4,
+              "requireCharLevel": 10,
+              "mpCost": 13,
+              "cooldownMs": 6160,
+              "damageRatio": 2.32
+            },
+            {
+              "lv": 5,
+              "requireCharLevel": 12,
+              "mpCost": 14,
+              "cooldownMs": 5880,
+              "damageRatio": 2.56
+            }
+          ]
+        },
+        {
+          "id": "boxer_waikru",
+          "nameTh": "ไหว้ครูรำมวย",
+          "icon": "🙏",
+          "type": "buff",
+          "kind": null,
+          "ultimate": false,
+          "unlockLevel": 6,
+          "desc": "ฟื้น HP 30% พลังโจมตี +40% นาน 12 วิ",
+          "effect": null,
+          "levels": [
+            {
+              "lv": 1,
+              "requireCharLevel": 6,
+              "mpCost": 15,
+              "cooldownMs": 22000,
+              "damageRatio": null,
+              "durationMs": 12000,
+              "healRatio": 0.3
+            },
+            {
+              "lv": 2,
+              "requireCharLevel": 8,
+              "mpCost": 17,
+              "cooldownMs": 21120,
+              "damageRatio": null,
+              "durationMs": 13200,
+              "healRatio": 0.33
+            },
+            {
+              "lv": 3,
+              "requireCharLevel": 10,
+              "mpCost": 18,
+              "cooldownMs": 20240,
+              "damageRatio": null,
+              "durationMs": 14400,
+              "healRatio": 0.36
+            },
+            {
+              "lv": 4,
+              "requireCharLevel": 12,
+              "mpCost": 20,
+              "cooldownMs": 19360,
+              "damageRatio": null,
+              "durationMs": 15600,
+              "healRatio": 0.39
+            },
+            {
+              "lv": 5,
+              "requireCharLevel": 14,
+              "mpCost": 21,
+              "cooldownMs": 18480,
+              "damageRatio": null,
+              "durationMs": 16800,
+              "healRatio": 0.42
+            }
+          ]
+        },
+        {
+          "id": "boxer_ngouy",
+          "nameTh": "หักงวงไอยรา",
+          "icon": "🐘",
+          "type": "dash",
+          "kind": "physical",
+          "ultimate": true,
+          "unlockLevel": 8,
+          "desc": "กระโดดทุ่มศอกลงกลางหัว แรงมาก + มึนงง",
+          "effect": {
+            "stun": {
+              "ms": 1500
+            }
+          },
+          "levels": [
+            {
+              "lv": 1,
+              "requireCharLevel": 8,
+              "mpCost": 25,
+              "cooldownMs": 18000,
+              "damageRatio": 4
+            },
+            {
+              "lv": 2,
+              "requireCharLevel": 10,
+              "mpCost": 28,
+              "cooldownMs": 17280,
+              "damageRatio": 4.6
+            },
+            {
+              "lv": 3,
+              "requireCharLevel": 12,
+              "mpCost": 30,
+              "cooldownMs": 16560,
+              "damageRatio": 5.2
+            },
+            {
+              "lv": 4,
+              "requireCharLevel": 14,
+              "mpCost": 33,
+              "cooldownMs": 15840,
+              "damageRatio": 5.8
+            },
+            {
+              "lv": 5,
+              "requireCharLevel": 16,
+              "mpCost": 35,
+              "cooldownMs": 15120,
+              "damageRatio": 6.4
+            }
+          ]
+        }
+      ]
+    },
+    "swordman": {
+      "nameTh": "ขุนศึก",
+      "skills": [
+        {
+          "id": "sword_twin",
+          "nameTh": "ฟันดาบคู่",
+          "icon": "⚔️",
+          "type": "melee",
+          "kind": "physical",
+          "ultimate": false,
+          "unlockLevel": 1,
+          "desc": "ฟันไขว้ 2 ครั้ง โดนทุกตัวด้านหน้า",
+          "effect": null,
+          "levels": [
+            {
+              "lv": 1,
+              "requireCharLevel": 1,
+              "mpCost": 5,
+              "cooldownMs": 2500,
+              "damageRatio": 1
+            },
+            {
+              "lv": 2,
+              "requireCharLevel": 3,
+              "mpCost": 6,
+              "cooldownMs": 2400,
+              "damageRatio": 1.15
+            },
+            {
+              "lv": 3,
+              "requireCharLevel": 5,
+              "mpCost": 6,
+              "cooldownMs": 2300,
+              "damageRatio": 1.3
+            },
+            {
+              "lv": 4,
+              "requireCharLevel": 7,
+              "mpCost": 7,
+              "cooldownMs": 2200,
+              "damageRatio": 1.45
+            },
+            {
+              "lv": 5,
+              "requireCharLevel": 9,
+              "mpCost": 7,
+              "cooldownMs": 2100,
+              "damageRatio": 1.6
+            }
+          ]
+        },
+        {
+          "id": "sword_thrust",
+          "nameTh": "แทงทะลวง",
+          "icon": "🗡️",
+          "type": "dash",
+          "kind": "physical",
+          "ultimate": false,
+          "unlockLevel": 2,
+          "desc": "พุ่งแทงทะลุแนวศัตรู (อมตะระหว่างพุ่ง)",
+          "effect": null,
+          "levels": [
+            {
+              "lv": 1,
+              "requireCharLevel": 2,
+              "mpCost": 8,
+              "cooldownMs": 6000,
+              "damageRatio": 1.7
+            },
+            {
+              "lv": 2,
+              "requireCharLevel": 4,
+              "mpCost": 9,
+              "cooldownMs": 5760,
+              "damageRatio": 1.955
+            },
+            {
+              "lv": 3,
+              "requireCharLevel": 6,
+              "mpCost": 10,
+              "cooldownMs": 5520,
+              "damageRatio": 2.21
+            },
+            {
+              "lv": 4,
+              "requireCharLevel": 8,
+              "mpCost": 10,
+              "cooldownMs": 5280,
+              "damageRatio": 2.465
+            },
+            {
+              "lv": 5,
+              "requireCharLevel": 10,
+              "mpCost": 11,
+              "cooldownMs": 5040,
+              "damageRatio": 2.72
+            }
+          ]
+        },
+        {
+          "id": "sword_wind",
+          "nameTh": "ดาบวายุ",
+          "icon": "🌪️",
+          "type": "projectile",
+          "kind": "physical",
+          "ultimate": false,
+          "unlockLevel": 4,
+          "desc": "คลื่นดาบทะลุทุกตัว",
+          "effect": null,
+          "levels": [
+            {
+              "lv": 1,
+              "requireCharLevel": 4,
+              "mpCost": 10,
+              "cooldownMs": 5000,
+              "damageRatio": 1.5
+            },
+            {
+              "lv": 2,
+              "requireCharLevel": 6,
+              "mpCost": 11,
+              "cooldownMs": 4800,
+              "damageRatio": 1.725
+            },
+            {
+              "lv": 3,
+              "requireCharLevel": 8,
+              "mpCost": 12,
+              "cooldownMs": 4600,
+              "damageRatio": 1.95
+            },
+            {
+              "lv": 4,
+              "requireCharLevel": 10,
+              "mpCost": 13,
+              "cooldownMs": 4400,
+              "damageRatio": 2.175
+            },
+            {
+              "lv": 5,
+              "requireCharLevel": 12,
+              "mpCost": 14,
+              "cooldownMs": 4200,
+              "damageRatio": 2.4
+            }
+          ]
+        },
+        {
+          "id": "sword_guard",
+          "nameTh": "ตั้งการ์ดดาบคู่",
+          "icon": "🛡️",
+          "type": "buff",
+          "kind": null,
+          "ultimate": false,
+          "unlockLevel": 6,
+          "desc": "ป้องกัน +25 โจมตี +15% นาน 10 วิ",
+          "effect": null,
+          "levels": [
+            {
+              "lv": 1,
+              "requireCharLevel": 6,
+              "mpCost": 12,
+              "cooldownMs": 18000,
+              "damageRatio": null,
+              "durationMs": 10000,
+              "healRatio": 0.1
+            },
+            {
+              "lv": 2,
+              "requireCharLevel": 8,
+              "mpCost": 13,
+              "cooldownMs": 17280,
+              "damageRatio": null,
+              "durationMs": 11000,
+              "healRatio": 0.11
+            },
+            {
+              "lv": 3,
+              "requireCharLevel": 10,
+              "mpCost": 14,
+              "cooldownMs": 16560,
+              "damageRatio": null,
+              "durationMs": 12000,
+              "healRatio": 0.12
+            },
+            {
+              "lv": 4,
+              "requireCharLevel": 12,
+              "mpCost": 16,
+              "cooldownMs": 15840,
+              "damageRatio": null,
+              "durationMs": 13000,
+              "healRatio": 0.13
+            },
+            {
+              "lv": 5,
+              "requireCharLevel": 14,
+              "mpCost": 17,
+              "cooldownMs": 15120,
+              "damageRatio": null,
+              "durationMs": 14000,
+              "healRatio": 0.14
+            }
+          ]
+        },
+        {
+          "id": "sword_pikat",
+          "nameTh": "เพลงดาบพิฆาต",
+          "icon": "🔥",
+          "type": "aoe",
+          "kind": "physical",
+          "ultimate": true,
+          "unlockLevel": 8,
+          "desc": "ร่ายเพลงดาบรอบตัว 6 ครั้ง",
+          "effect": null,
+          "levels": [
+            {
+              "lv": 1,
+              "requireCharLevel": 8,
+              "mpCost": 28,
+              "cooldownMs": 20000,
+              "damageRatio": 1.3
+            },
+            {
+              "lv": 2,
+              "requireCharLevel": 10,
+              "mpCost": 31,
+              "cooldownMs": 19200,
+              "damageRatio": 1.495
+            },
+            {
+              "lv": 3,
+              "requireCharLevel": 12,
+              "mpCost": 34,
+              "cooldownMs": 18400,
+              "damageRatio": 1.69
+            },
+            {
+              "lv": 4,
+              "requireCharLevel": 14,
+              "mpCost": 36,
+              "cooldownMs": 17600,
+              "damageRatio": 1.885
+            },
+            {
+              "lv": 5,
+              "requireCharLevel": 16,
+              "mpCost": 39,
+              "cooldownMs": 16800,
+              "damageRatio": 2.08
+            }
+          ]
+        }
+      ]
+    },
+    "archer": {
+      "nameTh": "พรานป่า",
+      "skills": [
+        {
+          "id": "arch_quick",
+          "nameTh": "ศรฉับไว",
+          "icon": "🏹",
+          "type": "projectile",
+          "kind": "physical",
+          "ultimate": false,
+          "unlockLevel": 1,
+          "desc": "ยิงเร็ว 2 ดอกพร้อมกัน",
+          "effect": null,
+          "levels": [
+            {
+              "lv": 1,
+              "requireCharLevel": 1,
+              "mpCost": 4,
+              "cooldownMs": 1800,
+              "damageRatio": 1
+            },
+            {
+              "lv": 2,
+              "requireCharLevel": 3,
+              "mpCost": 4,
+              "cooldownMs": 1728,
+              "damageRatio": 1.15
+            },
+            {
+              "lv": 3,
+              "requireCharLevel": 5,
+              "mpCost": 5,
+              "cooldownMs": 1656,
+              "damageRatio": 1.3
+            },
+            {
+              "lv": 4,
+              "requireCharLevel": 7,
+              "mpCost": 5,
+              "cooldownMs": 1584,
+              "damageRatio": 1.45
+            },
+            {
+              "lv": 5,
+              "requireCharLevel": 9,
+              "mpCost": 6,
+              "cooldownMs": 1512,
+              "damageRatio": 1.6
+            }
+          ]
+        },
+        {
+          "id": "arch_poison",
+          "nameTh": "ศรพิษพรานไพร",
+          "icon": "🐍",
+          "type": "projectile",
+          "kind": "physical",
+          "ultimate": false,
+          "unlockLevel": 2,
+          "desc": "ศรอาบพิษ ดาเมจต่อเนื่อง 5 ครั้ง",
+          "effect": {
+            "poison": {
+              "ticks": 5,
+              "every": 700,
+              "ratio": 0.35
+            }
+          },
+          "levels": [
+            {
+              "lv": 1,
+              "requireCharLevel": 2,
+              "mpCost": 8,
+              "cooldownMs": 5000,
+              "damageRatio": 0.9
+            },
+            {
+              "lv": 2,
+              "requireCharLevel": 4,
+              "mpCost": 9,
+              "cooldownMs": 4800,
+              "damageRatio": 1.035
+            },
+            {
+              "lv": 3,
+              "requireCharLevel": 6,
+              "mpCost": 10,
+              "cooldownMs": 4600,
+              "damageRatio": 1.17
+            },
+            {
+              "lv": 4,
+              "requireCharLevel": 8,
+              "mpCost": 10,
+              "cooldownMs": 4400,
+              "damageRatio": 1.305
+            },
+            {
+              "lv": 5,
+              "requireCharLevel": 10,
+              "mpCost": 11,
+              "cooldownMs": 4200,
+              "damageRatio": 1.44
+            }
+          ]
+        },
+        {
+          "id": "arch_pierce",
+          "nameTh": "ศรทะลวงเกราะ",
+          "icon": "🎯",
+          "type": "projectile",
+          "kind": "physical",
+          "ultimate": false,
+          "unlockLevel": 4,
+          "desc": "ศรพลังสูงทะลุทุกตัว",
+          "effect": null,
+          "levels": [
+            {
+              "lv": 1,
+              "requireCharLevel": 4,
+              "mpCost": 10,
+              "cooldownMs": 6000,
+              "damageRatio": 2.1
+            },
+            {
+              "lv": 2,
+              "requireCharLevel": 6,
+              "mpCost": 11,
+              "cooldownMs": 5760,
+              "damageRatio": 2.415
+            },
+            {
+              "lv": 3,
+              "requireCharLevel": 8,
+              "mpCost": 12,
+              "cooldownMs": 5520,
+              "damageRatio": 2.73
+            },
+            {
+              "lv": 4,
+              "requireCharLevel": 10,
+              "mpCost": 13,
+              "cooldownMs": 5280,
+              "damageRatio": 3.045
+            },
+            {
+              "lv": 5,
+              "requireCharLevel": 12,
+              "mpCost": 14,
+              "cooldownMs": 5040,
+              "damageRatio": 3.36
+            }
+          ]
+        },
+        {
+          "id": "arch_hawk",
+          "nameTh": "ตาเหยี่ยว",
+          "icon": "🦅",
+          "type": "buff",
+          "kind": null,
+          "ultimate": false,
+          "unlockLevel": 6,
+          "desc": "โจมตี +30% คริ +30% นาน 10 วิ",
+          "effect": null,
+          "levels": [
+            {
+              "lv": 1,
+              "requireCharLevel": 6,
+              "mpCost": 14,
+              "cooldownMs": 20000,
+              "damageRatio": null,
+              "durationMs": 10000
+            },
+            {
+              "lv": 2,
+              "requireCharLevel": 8,
+              "mpCost": 15,
+              "cooldownMs": 19200,
+              "damageRatio": null,
+              "durationMs": 11000
+            },
+            {
+              "lv": 3,
+              "requireCharLevel": 10,
+              "mpCost": 17,
+              "cooldownMs": 18400,
+              "damageRatio": null,
+              "durationMs": 12000
+            },
+            {
+              "lv": 4,
+              "requireCharLevel": 12,
+              "mpCost": 18,
+              "cooldownMs": 17600,
+              "damageRatio": null,
+              "durationMs": 13000
+            },
+            {
+              "lv": 5,
+              "requireCharLevel": 14,
+              "mpCost": 20,
+              "cooldownMs": 16800,
+              "damageRatio": null,
+              "durationMs": 14000
+            }
+          ]
+        },
+        {
+          "id": "arch_rain",
+          "nameTh": "ห่าฝนธนู",
+          "icon": "🌧️",
+          "type": "aoe",
+          "kind": "physical",
+          "ultimate": true,
+          "unlockLevel": 8,
+          "desc": "ธนูตกเป็นห่าฝน 5 ระลอก",
+          "effect": null,
+          "levels": [
+            {
+              "lv": 1,
+              "requireCharLevel": 8,
+              "mpCost": 26,
+              "cooldownMs": 18000,
+              "damageRatio": 1.25
+            },
+            {
+              "lv": 2,
+              "requireCharLevel": 10,
+              "mpCost": 29,
+              "cooldownMs": 17280,
+              "damageRatio": 1.438
+            },
+            {
+              "lv": 3,
+              "requireCharLevel": 12,
+              "mpCost": 31,
+              "cooldownMs": 16560,
+              "damageRatio": 1.625
+            },
+            {
+              "lv": 4,
+              "requireCharLevel": 14,
+              "mpCost": 34,
+              "cooldownMs": 15840,
+              "damageRatio": 1.813
+            },
+            {
+              "lv": 5,
+              "requireCharLevel": 16,
+              "mpCost": 36,
+              "cooldownMs": 15120,
+              "damageRatio": 2
+            }
+          ]
+        }
+      ]
+    }
+  }
+}

@@ -7,6 +7,7 @@ import { JOBS, JOB_IDS } from '/shared/data/classes.js';
 import { bakeCharacter } from '../gfx/SpriteFactory.js';
 import { newCharacter, loadCharacter, saveCharacter } from '../systems/Character.js';
 import { sound } from '../systems/Sound.js';
+import { loadSettings } from '../systems/Settings.js';
 
 const $ = (s) => document.querySelector(s);
 const PARTS = { outfit: OUTFITS, hair: HAIRSTYLES, face: FACES };
@@ -29,6 +30,7 @@ export class CreateScene extends Phaser.Scene {
 
     this.bindDom();
     this.refresh();
+    sound.applySettings(loadSettings());
     sound.music('town');
     // เสียงคลิกทุกปุ่มในหน้าสร้างตัวละคร
     $('#create-screen').addEventListener('click', (e) => { if (e.target.closest('button')) sound.play('click'); });

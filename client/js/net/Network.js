@@ -46,6 +46,7 @@ export class Network {
       this.emitLocal('snapshot', snap);
     });
     s.on('chat', (m) => this.emitLocal('chat', m));
+    s.on('skill:cast', (d) => this.emitLocal('skill', d));
   }
 
   /** เรียกทุกเฟรม – ส่งจริงตาม NET.sendRate และเฉพาะเมื่อข้อมูลเปลี่ยน */
@@ -60,4 +61,14 @@ export class Network {
 
   sendAppearance(appearance) { if (this.online) this.socket.emit('player:appearance', appearance); }
   sendChat(text) { if (this.online) this.socket.emit('chat', text); }
+
+  /** แจ้งการใช้สกิล (ให้คนอื่นเห็น VFX)  tx,ty = ตำแหน่งเป้าหมายของสกิลแบบ strike */
+  sendSkill(sk, player) {
+    if (!this.online) return;
+    const t = sk.type === 'strike' ? player.scene.combat.strikeTarget(player, sk) : null;
+    this.socket.emit('skill:cast', {
+      skillId: sk.id, lv: sk.lv, x: Math.round(player.x), y: Math.round(player.y), dir: player.facing,
+      tx: t ? t.x : undefined, ty: t ? t.y : undefined,
+    });
+  }
 }

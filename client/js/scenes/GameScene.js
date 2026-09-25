@@ -14,6 +14,8 @@ import { getDerived, saveCharacter } from '../systems/Character.js';
 import { useItem, count } from '../systems/Inventory.js';
 import { makeText } from '../systems/util.js';
 import { sound } from '../systems/Sound.js';
+import { SKILL_SLOTS } from '/shared/data/skills.js';
+import { loadSettings } from '../systems/Settings.js';
 
 const NPC_X = 480;
 const SPAWN_X = WORLD.spawnX;
@@ -28,6 +30,8 @@ export class GameScene extends Phaser.Scene {
   create({ char }) {
     const W = WORLD;
     this.sfx = sound;
+    this.settings = loadSettings();
+    this.sfx.applySettings(this.settings);
     this.physics.world.setBounds(0, -200, W.width, W.height + 200);
 
     this.buildBackground();
@@ -36,7 +40,7 @@ export class GameScene extends Phaser.Scene {
     // ---------- ผู้เล่น ----------
     this.player = new Player(this, SPAWN_X, W.groundY - 2, char);
     this.physics.add.collider(this.player, this.solids);
-    this.physics.add.collider(this.player, this.platforms);
+    this.physics.add.collider(this.player, this.platforms, null, () => this.time.now > (this.player.dropUntil || 0));
 
     // ---------- มอนสเตอร์ (ชนิดละ 2 ตัว) ----------
     this.monsters = this.add.group();
@@ -126,20 +130,24 @@ export class GameScene extends Phaser.Scene {
   //            F / ↓ คุย NPC | C สถานะ | I กระเป๋า | 1 2 ยา | M เปิด/ปิดเสียง | Enter แชท
   setupInput() {
     const kb = this.input.keyboard;
-    this.keys = kb.addKeys('LEFT,RIGHT,UP,DOWN,SPACE,Q,W,E,R,F,C,I,H,M,ONE,TWO,ENTER,ESC');
+    this.keys = kb.addKeys('LEFT,RIGHT,UP,DOWN,SPACE,Q,W,E,R,T,F,C,I,H,K,M,ONE,TWO,ENTER,ESC');
 
-    const talk = () => { if (this.nearNpc()) { this.sfx.play('click'); this.ui.openShop('mae_kha'); } };
-    kb.on('keydown-F', talk);
-    kb.on('keydown-DOWN', talk);
-    kb.on('keydown-M', () => this.ui.setMuted(this.sfx.toggleMute()));
+    // F = คุยกับ NPC / เปิดร้านค้า
+    kb.on('keydown-F', () => { if (this.nearNpc()) { this.sfx.play('click'); this.ui.openShop('mae_kha'); } });
+    // ↓ = ลงจากแพลตฟอร์มไม้ (ทะลุลงไป 0.3 วิ)
+    kb.on('keydown-DOWN', () => { if (this.player.body.blocked.down || this.player.body.touching.down) this.player.dropUntil = this.time.now + 300; });
+    kb.on('keydown-M', () => this.ui.toggle('map-panel'));     // แผนที่โลก
+    kb.on('keydown-K', () => this.ui.toggle('skill-panel'));   // Skill Tree
     kb.on('keydown-C', () => this.ui.toggle('stats-panel'));
     kb.on('keydown-I', () => this.ui.toggle('inv-panel'));
     kb.on('keydown-H', () => this.ui.toggle('help-panel'));
-    kb.on('keydown-ESC', () => this.ui.closeAll());
+    // ESC = ปิดหน้าต่างที่เปิดอยู่ ถ้าไม่มีหน้าต่างเปิด → เปิดตั้งค่า
+    kb.on('keydown-ESC', () => (this.ui.anyOpen() ? this.ui.closeAll() : this.ui.toggle('settings-panel', true)));
     kb.on('keydown-ENTER', () => this.ui.focusChat());
     kb.on('keydown-ONE', () => this.quickUse(['hp_s', 'hp_m']));
     kb.on('keydown-TWO', () => this.quickUse(['mp_s', 'mp_m']));
   }
+
 
   readInput() {
     const k = this.keys, JD = Phaser.Input.Keyboard.JustDown;
@@ -150,7 +158,7 @@ export class GameScene extends Phaser.Scene {
       right: k.RIGHT.isDown,
       jump,
       attack: k.SPACE.isDown,                         // กดค้างเพื่อตีต่อเนื่อง
-      skill: ['Q', 'W', 'E', 'R'].find((key) => k[key].isDown) || null,
+      skill: SKILL_SLOTS.find((key) => k[key].isDown) || null,   // Hotbar Q W E R T
     };
   }
 
@@ -179,7 +187,8 @@ export class GameScene extends Phaser.Scene {
       .on('left', (id) => { this.remotes.get(id)?.destroy(); this.remotes.delete(id); this.ui.setOnline(true, this.remotes.size); })
       .on('snapshot', ({ players }) => players.forEach((p) => this.remotes.get(p.id)?.pushState(p)))
       .on('appearance', ({ id, appearance }) => this.remotes.get(id)?.setAppearance(appearance))
-      .on('chat', (m) => this.ui.chat(m));
+      .on('chat', (m) => this.ui.chat(m))
+      .on('skill', (d) => this.combat.remoteVfx(d, this.remotes.get(d.id)));   // สกิลของผู้เล่นอื่น
 
     net.connect(char.name, char.appearance);
   }

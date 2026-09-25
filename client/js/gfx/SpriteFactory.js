@@ -179,6 +179,18 @@ function bakeProjectiles(scene) {
   t.ctx.fillStyle = 'rgba(231,76,60,0.5)'; t.ctx.beginPath(); t.ctx.arc(7, 7, 7, 0, 7); t.ctx.fill();
   px(t.ctx, 3, 3, 8, 8, '#e67e22'); px(t.ctx, 5, 5, 4, 4, '#f4d03f'); px(t.ctx, 6, 6, 2, 2, '#fff');
   scene.textures.addCanvas('proj_meteor', t.c);
+
+  // ยันต์ตรึงวิญญาณ (จอมขมังเวทย์)
+  t = makeCanvas(10, 14);
+  px(t.ctx, 0, 0, 10, 14, '#f7dc6f'); px(t.ctx, 1, 1, 8, 12, '#fcf3cf');
+  px(t.ctx, 3, 2, 4, 1, '#c0392b'); px(t.ctx, 4, 3, 2, 6, '#c0392b'); px(t.ctx, 2, 6, 6, 1, '#c0392b'); px(t.ctx, 3, 10, 4, 1, '#c0392b');
+  scene.textures.addCanvas('proj_yant', t.c);
+
+  // ศรพิษ (พรานป่า)
+  t = makeCanvas(14, 5);
+  px(t.ctx, 0, 2, 12, 1, '#6e4520'); px(t.ctx, 11, 1, 3, 3, '#58d68d'); px(t.ctx, 0, 1, 3, 3, '#1e8449');
+  px(t.ctx, 4, 0, 1, 1, 'rgba(88,214,141,.8)'); px(t.ctx, 7, 4, 1, 1, 'rgba(88,214,141,.8)');
+  scene.textures.addCanvas('proj_arrow_poison', t.c);
 }
 
 // ------------------------------------------------------------

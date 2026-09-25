@@ -61,6 +61,13 @@ export class RemotePlayer extends Phaser.GameObjects.Sprite {
     this.hpBar.setPosition(this.x, this.y - this.height + 7);
   }
 
+  /** เล่นท่าร่ายสกิล (ไม่รอ snapshot) */
+  playCast(type) {
+    if (type === 'buff') { this.setTintFill(0xf7dc6f); this.scene.time.delayedCall(120, () => this.clearTint()); return; }
+    this.currentAnim = 'attack';
+    this.play(`${this.texKey}:attack`, false);
+  }
+
   destroy(fromScene) {
     this.nameTag?.destroy();
     this.hpBar?.destroy();

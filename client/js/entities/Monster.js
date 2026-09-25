@@ -73,6 +73,13 @@ export class Monster extends Phaser.Physics.Arcade.Sprite {
     this.hpBar.setPosition(this.x - 10, this.y - h - 3).setSize(20 * (this.hp / d.hp), 3);
     this.label.setPosition(this.x, this.y - h - 9);
 
+    // ติดสถานะมึนงง/ตรึง → ขยับไม่ได้
+    if (time < (this.stunnedUntil || 0)) {
+      this.setVelocity(0, this.isFlyer ? 0 : this.body.velocity.y);
+      if (this.anims.isPlaying) this.anims.pause();
+      return;
+    } else if (this.anims.isPaused) { this.anims.resume(); this.clearTint(); }
+
     if (this.state === 'attack' || this.state === 'hit') {
       if (this.isFlyer) this.setVelocity(this.body.velocity.x * 0.9, this.body.velocity.y * 0.9);
       else this.setVelocityX(this.body.velocity.x * 0.9);
@@ -141,6 +148,31 @@ export class Monster extends Phaser.Physics.Arcade.Sprite {
     this.state = 'attack';
     this.setVelocityX(0);
     this.play(`${this.key}:attack`);
+  }
+
+  /** สถานะผิดปกติจากสกิล */
+  applyEffect(effect, dmg) {
+    if (!this.alive || !effect) return;
+    const s = this.scene;
+    if (effect.stun) {
+      this.stunnedUntil = Math.max(this.stunnedUntil || 0, s.time.now + effect.stun.ms);
+      if (this.state === 'attack') this.state = 'chase';
+      this.setTint(0x85c1e9);
+      s.combat.popupText(this.x, this.y - this.def.frame.h - 6, 'มึนงง!', '#85c1e9', 7);
+    }
+    if (effect.poison) {
+      const { ticks, every, ratio } = effect.poison;
+      const per = Math.max(1, Math.round(dmg * ratio));
+      this.poisonTimer?.remove();
+      this.setTint(0x82e0aa);
+      this.poisonTimer = s.time.addEvent({ delay: every, repeat: ticks - 1, callback: () => {
+        if (!this.alive) return this.poisonTimer?.remove();
+        this.hp -= per;
+        s.combat.popupText(this.x, this.y - this.def.frame.h, `${per}`, '#58d68d', 7);
+        if (this.hp <= 0) this.die();
+        else if (this.poisonTimer.getRepeatCount() === 0) this.clearTint();
+      } });
+    }
   }
 
   /** โดนผู้เล่นตี */

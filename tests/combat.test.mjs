@@ -53,14 +53,26 @@ for (const [id, job] of Object.entries(JOBS)) {
 const v = Object.values(dps);
 assert.ok(Math.max(...v) / Math.min(...v) < 2.5, `DPS spread ok ${JSON.stringify(dps)}`);
 
-// 6) ข้อมูลสกิลครบ 4 ปุ่มทุกอาชีพ และค่าถูกต้อง
+// 6) สกิล 20 แบบ: อาชีพละ 5, id ไม่ซ้ำ, สเกลตามเลเวล, เงื่อนไขการเรียน
+import { SKILL_BY_ID, skillStats, canLearn, MAX_SKILL_LV, reqCharLevel } from '../shared/data/skills.js';
+assert.equal(Object.keys(SKILL_BY_ID).length, 20, '20 skills');
 for (const [job, list] of Object.entries(SKILLS)) {
-  assert.deepEqual(list.map((s) => s.key), ['Q', 'W', 'E', 'R'], job);
+  assert.equal(list.length, 5, `${job} has 5 skills`);
+  assert.equal(list.filter((s) => s.ultimate).length, 1, `${job} has 1 ultimate`);
   for (const s of list) {
-    assert.ok(s.cd > 0 && s.mp >= 0, `${job} ${s.key}`);
-    if (s.type !== 'buff') assert.ok(s.mult > 0, `${job} ${s.key} mult`);
+    const a1 = skillStats(s, 1), a5 = skillStats(s, MAX_SKILL_LV);
+    assert.ok(a1.cd > 0 && a1.mp > 0, `${s.id} cost`);
+    assert.ok(a5.cd < a1.cd && a5.mp >= a1.mp, `${s.id} scales cd/mp`);
+    if (s.type !== 'buff') assert.ok(a5.mult > a1.mult, `${s.id} scales dmg`);
   }
 }
+const ch = { appearance: { job: 'mage' }, level: 1, sp: 1, skills: {} };
+assert.equal(canLearn(ch, 'mage_akom').ok, true, 'learn lv1 skill');
+assert.equal(canLearn(ch, 'mage_kalp').ok, false, 'ultimate locked at lv1');
+assert.equal(canLearn(ch, 'boxer_jab').ok, false, 'other job skill');
+assert.equal(canLearn({ ...ch, sp: 0 }, 'mage_akom').ok, false, 'no SP');
+assert.equal(canLearn({ ...ch, skills: { mage_akom: 1 } }, 'mage_akom').ok, false, 'lv2 needs char lv3');
+assert.equal(reqCharLevel(SKILL_BY_ID.mage_akom, 2), 3);
 
 // 7) EXP เพิ่มขึ้นตามเลเวล
 assert.ok(expToNext(2) > expToNext(1));

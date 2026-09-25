@@ -7,7 +7,11 @@ import { ITEMS, SHOPS, sellPrice } from '/shared/data/items.js';
 import { STAT_KEYS, STAT_INFO, expToNext } from '/shared/stats.js';
 import { getDerived, allocateStat } from './Character.js';
 import * as Inv from './Inventory.js';
-import { SKILLS } from '/shared/data/skills.js';
+import { SKILLS, SKILL_SLOTS, SKILL_BY_ID, MAX_SKILL_LV, skillStats, canLearn } from '/shared/data/skills.js';
+import { MONSTERS } from '/shared/data/monsters.js';
+import { WORLD } from '/shared/constants.js';
+import { learnSkill, assignHotbar } from './Character.js';
+import { saveSettings, toggleFullscreen } from './Settings.js';
 import { PORTRAITS } from '../gfx/SpriteFactory.js';
 
 const $ = (s) => document.querySelector(s);
@@ -34,8 +38,7 @@ export class UI {
       this.renderShop();
     }));
 
-    $('#mute-btn').onclick = () => this.setMuted(scene.sfx.toggleMute());
-    this.setMuted(scene.sfx.muted);
+    this.bindSettings();
 
     // แชท
     const input = $('#chat-input');
@@ -133,8 +136,10 @@ export class UI {
       $('#hud-buffs').innerHTML = p.buffs.filter((b) => b.until > time)
         .map((b) => `<span class="buff" title="${esc(b.name)}">${b.icon}<small>${Math.ceil((b.until - time) / 1000)}</small></span>`).join('');
     }
+    // แผนที่โลก (ถ้าเปิดอยู่) อัปเดตทุก 300ms
+    if (!$('#map-panel').classList.contains('hidden') && time - (this.wmAt || 0) > 300) { this.wmAt = time; this.updateMap(); }
     // มินิแมป (อัปเดตทุก 200ms)
-    if (time - (this.mmAt || 0) > 200) {
+    if (this.scene.settings.minimap && time - (this.mmAt || 0) > 200) {
       this.mmAt = time;
       const W = this.scene.physics.world.bounds.width;
       const pct = (x) => `${(x / W) * 100}%`;
@@ -177,34 +182,163 @@ export class UI {
     el.textContent = on ? `● ${count + 1} คนออนไลน์` : '● ออฟไลน์';
   }
 
-  setMuted(m) { $('#mute-btn').textContent = m ? '🔇' : '🔊'; }
+  setMuted() { /* ย้ายไปอยู่ในหน้าตั้งค่า */ }
 
   // ---------------- แถบสกิล QWER ----------------
+  // ============================================================
+  //  Hotbar (Q W E R T) – รับการลากสกิลมาวาง / คลิกขวาเพื่อถอด
+  // ============================================================
+  hotbarSig() { const c = this.char; return JSON.stringify([c.appearance.job, c.hotbar, c.skills]); }
+
   buildSkillBar() {
     const c = this.char;
-    this.skillJob = c.appearance.job;
-    this.skillLv = c.level;
-    $('#skillbar').innerHTML = SKILLS[this.skillJob].map((s) => `
-      <div class="skill ${c.level < s.unlock ? 'locked' : ''}" data-key="${s.key}">
-        <span class="k">${s.key}</span><span class="ic">${s.icon}</span><span class="mp">${s.mp}</span>
+    this.skillSig = this.hotbarSig();
+    $('#skillbar').innerHTML = SKILL_SLOTS.map((key) => {
+      const id = c.hotbar[key], lv = c.skills[id] || 0;
+      if (!id || !lv) return `<div class="skill empty" data-key="${key}"><span class="k">${key}</span><span class="ic">＋</span>
+        <div class="tip">ช่อง ${key} ว่าง – กด K แล้วลากสกิลมาวาง</div></div>`;
+      const s = skillStats(SKILL_BY_ID[id], lv);
+      return `<div class="skill" data-key="${key}" data-id="${id}"><span class="k">${key}</span><span class="ic">${s.icon}</span><span class="mp">${s.mp}</span>
         <div class="cd"></div><div class="cdt"></div>
-        <div class="tip"><b>${s.nameTh}</b> (${s.key}) · MP ${s.mp} · CD ${s.cd / 1000}s<br>${s.desc}${c.level < s.unlock ? `<br>🔒 ปลดล็อก Lv.${s.unlock}` : ''}</div>
-      </div>`).join('');
+        <div class="tip"><b>${s.nameTh}</b> Lv.${lv} (${key})<br>MP ${s.mp} · CD ${(s.cd / 1000).toFixed(1)}s${s.mult ? ` · ดาเมจ x${s.mult}` : ''}<br>${s.desc}</div></div>`;
+    }).join('');
     this.skillEls = [...document.querySelectorAll('#skillbar .skill')];
+    this.skillEls.forEach((el) => this.makeDropSlot(el, el.dataset.key));
   }
 
   updateSkillBar(time) {
     const c = this.char, p = this.scene.player;
-    if (this.skillJob !== c.appearance.job || this.skillLv !== c.level) this.buildSkillBar();
-    SKILLS[this.skillJob].forEach((s, i) => {
-      const el = this.skillEls[i];
-      const left = p.cooldownLeft(s.key, time);
+    if (this.skillSig !== this.hotbarSig()) this.buildSkillBar();
+    this.skillEls.forEach((el) => {
+      const id = el.dataset.id;
+      if (!id) return;
+      const s = skillStats(SKILL_BY_ID[id], c.skills[id]);
+      const left = p.cooldownLeft(id, time);
       el.querySelector('.cd').style.height = left ? `${(left / s.cd) * 100}%` : '0';
       el.querySelector('.cdt').textContent = left ? (left / 1000).toFixed(left < 1000 ? 1 : 0) : '';
       if (el.dataset.cd === '1' && !left) { el.classList.remove('ready'); void el.offsetWidth; el.classList.add('ready'); }
       el.dataset.cd = left ? '1' : '0';
       el.classList.toggle('nomp', c.mp < s.mp);
     });
+  }
+
+  /** ทำให้ element เป็นช่องรับการลากวางสกิล */
+  makeDropSlot(el, key) {
+    el.addEventListener('dragover', (e) => { e.preventDefault(); el.classList.add('drop-over'); });
+    el.addEventListener('dragleave', () => el.classList.remove('drop-over'));
+    el.addEventListener('drop', (e) => {
+      e.preventDefault(); el.classList.remove('drop-over');
+      const id = e.dataTransfer.getData('text/skill');
+      if (id) this.assign(key, id);
+    });
+    el.addEventListener('contextmenu', (e) => { e.preventDefault(); if (this.char.hotbar[key]) this.assign(key, null); });
+  }
+
+  assign(key, id) {
+    if (!assignHotbar(this.char, key, id)) return this.toast('ต้องเรียนสกิลก่อนจึงติดตั้งได้', 'warn');
+    this.scene.sfx.play('click');
+    this.toast(id ? `ติดตั้ง ${SKILL_BY_ID[id].nameTh} ที่ช่อง ${key}` : `ถอดสกิลออกจากช่อง ${key}`);
+    this.refreshPanels(); this.scene.saveSoon();
+  }
+
+  // ============================================================
+  //  Skill Tree (K)
+  // ============================================================
+  renderSkillTree() {
+    const c = this.char, job = c.appearance.job;
+    $('#sk-job').textContent = JOBS[job].nameTh;
+    $('#sk-sp').textContent = c.sp;
+    $('#sk-tree').innerHTML = SKILLS[job].map((base) => {
+      const lv = c.skills[base.id] || 0;
+      const cur = skillStats(base, Math.max(1, lv)), next = lv < MAX_SKILL_LV ? skillStats(base, lv + 1) : null;
+      const chk = canLearn(c, base.id);
+      const locked = c.level < base.reqLv;
+      const stat = (st) => `MP ${st.mp} · CD ${(st.cd / 1000).toFixed(1)}s${st.mult ? `<br>ดาเมจ x${st.mult}` : ''}${st.duration ? `<br>นาน ${(st.duration / 1000).toFixed(0)}s` : ''}`;
+      const slotKey = SKILL_SLOTS.find((k) => c.hotbar[k] === base.id);
+      return `<div class="sk-card ${base.ultimate ? 'ult' : ''} ${locked ? 'locked' : ''} ${lv ? '' : 'unlearned'}">
+        <div class="sk-icon" draggable="${lv > 0}" data-id="${base.id}" title="ลากไปวางที่ Hotbar">${base.icon}</div>
+        <div class="sk-name">${base.nameTh}${base.ultimate ? ' ★' : ''}</div>
+        <div class="sk-pips">${Array.from({ length: MAX_SKILL_LV }, (_, i) => `<i class="${i < lv ? 'on' : ''}"></i>`).join('')}</div>
+        <div class="sk-lv">Lv.${lv} / ${MAX_SKILL_LV}</div>
+        <div class="sk-desc">${base.desc}</div>
+        <div class="sk-stat">${lv ? stat(cur) : stat(skillStats(base, 1))}${next && lv ? `<br><span style="color:#58d68d">→ Lv.${lv + 1}: ${next.mult ? `x${next.mult}` : `MP ${next.mp}`}</span>` : ''}</div>
+        <button class="sk-up" data-learn="${base.id}" ${chk.ok ? '' : 'disabled'}>${lv ? '+ อัปเลเวล' : '+ เรียน'}</button>
+        <div class="sk-req">${chk.ok || lv >= MAX_SKILL_LV ? '' : chk.reason}</div>
+        <div class="sk-assign">${SKILL_SLOTS.map((k) => `<button data-as="${k}" data-id="${base.id}" class="${slotKey === k ? 'on' : ''}" ${lv ? '' : 'disabled'}>${k}</button>`).join('')}</div>
+      </div>`;
+    }).join('');
+
+    $('#sk-tree').querySelectorAll('[data-learn]').forEach((b) => (b.onclick = () => {
+      const r = learnSkill(c, b.dataset.learn);
+      this.scene.sfx.play(r.ok ? 'buff' : 'error');
+      this.toast(r.msg, r.ok ? '' : 'warn');
+      this.refreshPanels(); this.scene.saveSoon();
+    }));
+    $('#sk-tree').querySelectorAll('[data-as]').forEach((b) => (b.onclick = () => this.assign(b.dataset.as, b.dataset.id)));
+    $('#sk-tree').querySelectorAll('.sk-icon[draggable="true"]').forEach((ic) => {
+      ic.addEventListener('dragstart', (e) => { e.dataTransfer.setData('text/skill', ic.dataset.id); e.dataTransfer.effectAllowed = 'copy'; });
+    });
+
+    // Hotbar ในหน้าต่างสกิล (ช่องรับวาง)
+    $('#sk-hotbar').innerHTML = SKILL_SLOTS.map((k) => {
+      const id = c.hotbar[k];
+      return `<div class="hb-slot ${id ? 'filled' : ''}" data-key="${k}" title="คลิกขวาเพื่อถอด"><span class="k">${k}</span>${id ? SKILL_BY_ID[id].icon : ''}</div>`;
+    }).join('');
+    $('#sk-hotbar').querySelectorAll('.hb-slot').forEach((el) => this.makeDropSlot(el, el.dataset.key));
+  }
+
+  // ============================================================
+  //  แผนที่โลก (M)
+  // ============================================================
+  renderMap() {
+    const W = WORLD.width, pct = (x) => `${(x / W) * 100}%`;
+    const zones = [{ nameTh: 'หมู่บ้านบางผี', from: 0, to: WORLD.townEndX, town: true, sub: 'ปลอดภัย · ร้านค้า · ศาลพระภูมิ' }];
+    // แบ่งเขตตามมอนสเตอร์ (เรียงตามเลเวล)
+    const mons = Object.values(MONSTERS).sort((a, b) => a.level - b.level);
+    const bands = [[620, 1300], [1300, 2000], [2000, 2600], [2600, WORLD.width]];
+    const names = ['ทุ่งผีน้อย', 'ป่ากล้วยตานี', 'บึงผีพราย', 'ดงเปรตสมิง'];
+    bands.forEach(([a, b], i) => {
+      const here = mons.filter((m) => m.zone[0] < b && m.zone[1] > a);
+      const lv = here.length ? `Lv.${Math.min(...here.map((m) => m.level))}–${Math.max(...here.map((m) => m.level))}` : '';
+      zones.push({ nameTh: names[i], from: a, to: b, sub: `${lv}<br>${here.map((m) => m.nameTh).join(' · ')}` });
+    });
+    const plats = this.scene.platforms.getChildren().map((p) => `<i class="wm-plat" style="left:${pct(p.x)};width:${(p.width / W) * 100}%;top:${40 + (p.y / 270) * 40}%"></i>`).join('');
+    this.mapStatic = zones.map((z) => `<div class="wm-zone ${z.town ? 'town' : ''}" style="left:${pct(z.from)};width:${((z.to - z.from) / W) * 100}%"><b>${z.nameTh}</b><span>${z.sub}</span></div>`).join('') + plats
+      + `<span class="wm-pin" style="left:${pct(this.scene.npc.x)};top:84%">🏪</span><span class="wm-pin" style="left:${pct(100)};top:84%">⛩️</span>`;
+    this.updateMap();
+  }
+
+  updateMap() {
+    const W = WORLD.width, pct = (x) => `${(x / W) * 100}%`, y = (v) => `${Math.min(84, 40 + (v / 270) * 44)}%`;
+    const p = this.scene.player;
+    let dots = `<i class="wm-dot me" style="left:${pct(p.x)};top:${y(p.y)}" title="${esc(p.char.name)}"></i>`;
+    this.scene.remotes.forEach((r) => (dots += `<i class="wm-dot ally" style="left:${pct(r.x)};top:${y(r.y)}"></i>`));
+    this.scene.monsters.getChildren().forEach((m) => m.alive && (dots += `<i class="wm-dot mob" style="left:${pct(m.x)};top:${y(m.y)}"></i>`));
+    $('#world-map').innerHTML = this.mapStatic + dots;
+  }
+
+  // ============================================================
+  //  ตั้งค่า (ESC)
+  // ============================================================
+  bindSettings() {
+    const st = this.scene.settings;
+    const sync = () => {
+      $('#set-bgm-on').checked = st.bgmOn; $('#set-bgm').value = Math.round(st.bgmVol * 100); $('#set-bgm-v').textContent = `${Math.round(st.bgmVol * 100)}`;
+      $('#set-sfx-on').checked = st.sfxOn; $('#set-sfx').value = Math.round(st.sfxVol * 100); $('#set-sfx-v').textContent = `${Math.round(st.sfxVol * 100)}`;
+      $('#set-dmg').checked = st.damageNumbers; $('#set-mm').checked = st.minimap;
+      document.querySelector('.minimap').classList.toggle('hidden', !st.minimap);
+    };
+    const apply = () => { this.scene.sfx.applySettings(st); saveSettings(st); sync(); };
+    $('#set-bgm-on').onchange = (e) => { st.bgmOn = e.target.checked; apply(); };
+    $('#set-sfx-on').onchange = (e) => { st.sfxOn = e.target.checked; apply(); };
+    $('#set-bgm').oninput = (e) => { st.bgmVol = e.target.value / 100; apply(); };
+    $('#set-sfx').oninput = (e) => { st.sfxVol = e.target.value / 100; apply(); };
+    $('#set-sfx').onchange = () => this.scene.sfx.play('coin');
+    $('#set-dmg').onchange = (e) => { st.damageNumbers = e.target.checked; apply(); };
+    $('#set-mm').onchange = (e) => { st.minimap = e.target.checked; apply(); };
+    $('#set-fullscreen').onclick = () => toggleFullscreen();
+    $('#set-close').onclick = () => this.toggle('settings-panel', false);
+    apply();
   }
 
   prompt(text) {
@@ -242,6 +376,8 @@ export class UI {
     if (!$('#stats-panel').classList.contains('hidden')) this.renderStats();
     if (!$('#inv-panel').classList.contains('hidden')) this.renderInventory();
     if (!$('#shop-panel').classList.contains('hidden')) this.renderShop();
+    if (!$('#skill-panel').classList.contains('hidden')) this.renderSkillTree();
+    if (!$('#map-panel').classList.contains('hidden')) this.renderMap();
     this.updateHud();
   }
 

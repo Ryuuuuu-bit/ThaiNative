@@ -4,7 +4,7 @@
 // ============================================================
 import { ITEMS, sellPrice } from '/shared/data/items.js';
 import { JOBS } from '/shared/data/classes.js';
-import { getDerived } from './Character.js';
+import { getDerived, resetSkills } from './Character.js';
 
 const SLOT_OF = { weapon: 'weapon', armor: 'armor', accessory: 'accessory' };
 
@@ -43,11 +43,12 @@ export function useItem(c, id) {
   if (it.type === 'skin') {                  // Skin อาชีพ: ถือไว้ถาวร เปลี่ยนไปมาได้
     if (c.appearance.job === it.job) return { ok: false, msg: 'ใช้อาชีพนี้อยู่แล้ว' };
     c.appearance = { ...c.appearance, job: it.job };
+    resetSkills(c); // สกิลเป็นของแต่ละอาชีพ → คืน SP ให้เรียนใหม่
     const w = c.equipment.weapon;
     if (w && !ITEMS[w].jobs.includes(it.job)) { c.equipment.weapon = null; addItem(c, w); }
     const d = getDerived(c);
     c.hp = Math.min(c.hp, d.maxHp); c.mp = Math.min(c.mp, d.maxMp);
-    return { ok: true, msg: `เปลี่ยนอาชีพเป็น ${JOBS[it.job].nameTh}!`, jobChanged: true };
+    return { ok: true, msg: `เปลี่ยนอาชีพเป็น ${JOBS[it.job].nameTh}! (คืน SP ทั้งหมด กด K เพื่อเรียนสกิล)`, jobChanged: true };
   }
 
   if (SLOT_OF[it.type]) return equip(c, id);

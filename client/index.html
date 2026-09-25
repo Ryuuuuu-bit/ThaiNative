@@ -72,8 +72,10 @@
           <div class="hud-buttons">
             <button data-open="stats-panel" title="สถานะ (C)">📊<small>C</small></button>
             <button data-open="inv-panel" title="กระเป๋า (I)">🎒<small>I</small></button>
+            <button data-open="skill-panel" title="สกิล (K)">📖<small>K</small></button>
+            <button data-open="map-panel" title="แผนที่ (M)">🗺️<small>M</small></button>
             <button data-open="help-panel" title="วิธีเล่น (H)">❔<small>H</small></button>
-            <button id="mute-btn" title="เปิด/ปิดเสียง (M)">🔊</button>
+            <button data-open="settings-panel" title="ตั้งค่า (ESC)">⚙️<small>Esc</small></button>
           </div>
         </div>
 
@@ -93,14 +95,45 @@
         <div id="death" class="death hidden"><h2>คุณหมดสติ…</h2><p>ฟื้นที่ศาลพระภูมิใน <b id="death-t">3</b> วินาที</p></div>
       </section>
 
+      <!-- Skill Tree (K) -->
+      <section id="skill-panel" class="panel window wide hidden">
+        <header><span>คัมภีร์สกิล · <b id="sk-job"></b></span><span class="sp">SP <b id="sk-sp">0</b> <button class="close">✕</button></span></header>
+        <p class="hint">กด <b>+</b> เพื่อเรียน/อัปสกิล · <b>ลากไอคอน</b> ไปวางที่ช่อง Q W E R T หรือ <b>คลิกปุ่มตัวอักษร</b> เพื่อติดตั้ง · คลิกขวาที่ช่องเพื่อถอดออก</p>
+        <div id="sk-tree" class="sk-tree"></div>
+        <div class="sk-hotbar-wrap"><span>Hotbar</span><div id="sk-hotbar" class="sk-hotbar"></div></div>
+      </section>
+
+      <!-- แผนที่โลก (M) -->
+      <section id="map-panel" class="panel window wide hidden">
+        <header>แผนที่ · ดินแดนบางผี <button class="close">✕</button></header>
+        <div id="world-map" class="world-map"></div>
+        <div class="map-legend"><span><i class="lg me"></i>คุณ</span><span><i class="lg ally"></i>ผู้เล่นอื่น</span><span><i class="lg npc"></i>NPC</span><span><i class="lg mob"></i>มอนสเตอร์</span></div>
+      </section>
+
+      <!-- ตั้งค่า (ESC) -->
+      <section id="settings-panel" class="panel window hidden">
+        <header>ตั้งค่า <button class="close">✕</button></header>
+        <div class="set-group">
+          <div class="set-row"><label><input type="checkbox" id="set-bgm-on" /> เพลงประกอบ (BGM)</label><input type="range" id="set-bgm" min="0" max="100" /><span id="set-bgm-v"></span></div>
+          <div class="set-row"><label><input type="checkbox" id="set-sfx-on" /> เสียงเอฟเฟกต์ (SFX)</label><input type="range" id="set-sfx" min="0" max="100" /><span id="set-sfx-v"></span></div>
+        </div>
+        <div class="set-group">
+          <div class="set-row"><label><input type="checkbox" id="set-dmg" /> แสดงตัวเลขดาเมจ</label></div>
+          <div class="set-row"><label><input type="checkbox" id="set-mm" /> แสดงมินิแมป</label></div>
+          <div class="set-row"><button id="set-fullscreen" class="btn ghost">⛶ เต็มจอ (Fullscreen)</button></div>
+        </div>
+        <div class="set-row foot"><button id="set-close" class="btn primary">กลับเข้าเกม</button></div>
+      </section>
+
       <!-- วิธีเล่น -->
       <section id="help-panel" class="panel window hidden">
         <header>วิธีเล่น <button class="close">✕</button></header>
         <div class="keys">
-          <div><kbd>←</kbd><kbd>→</kbd> เดิน</div><div><kbd>↑</kbd> กระโดด</div>
-          <div><kbd>Space</kbd> โจมตีปกติ (กดค้างได้)</div><div><kbd>Q</kbd><kbd>W</kbd><kbd>E</kbd><kbd>R</kbd> สกิล</div>
-          <div><kbd>1</kbd><kbd>2</kbd> ยา HP / MP</div><div><kbd>F</kbd> คุยกับ NPC</div>
-          <div><kbd>C</kbd> สถานะ · <kbd>I</kbd> กระเป๋า</div><div><kbd>M</kbd> เสียง · <kbd>Enter</kbd> แชท</div>
+          <div><kbd>←</kbd><kbd>→</kbd> เดิน</div><div><kbd>↑</kbd> กระโดด · <kbd>↓</kbd> ลงจากแพลตฟอร์ม</div>
+          <div><kbd>Space</kbd> โจมตีปกติ (กดค้างได้)</div><div><kbd>Q</kbd><kbd>W</kbd><kbd>E</kbd><kbd>R</kbd><kbd>T</kbd> สกิลใน Hotbar</div>
+          <div><kbd>F</kbd> คุยกับ NPC / ร้านค้า</div><div><kbd>K</kbd> คัมภีร์สกิล</div>
+          <div><kbd>M</kbd> แผนที่โลก</div><div><kbd>Esc</kbd> ตั้งค่า / ปิดหน้าต่าง</div>
+          <div><kbd>1</kbd><kbd>2</kbd> ยา HP / MP</div><div><kbd>C</kbd> สถานะ · <kbd>I</kbd> กระเป๋า · <kbd>Enter</kbd> แชท</div>
         </div>
       </section>
 

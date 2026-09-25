@@ -64,8 +64,18 @@ export class Sound {
     const d = this.noiseBuf.getChannelData(0);
     for (let i = 0; i < len; i++) d[i] = Math.random() * 2 - 1;
 
+    if (this.cfg) this.applySettings(this.cfg);
     this.scheduler = setInterval(() => this.schedule(), 25);
     if (this.wanted) this.music(this.wanted);
+  }
+
+  /** ใช้ค่าจากหน้าต่างตั้งค่า { bgmOn, bgmVol, sfxOn, sfxVol } */
+  applySettings(cfg) {
+    this.cfg = cfg;
+    if (!this.ctx) return;
+    const t = this.ctx.currentTime;
+    this.musicBus.gain.setTargetAtTime(cfg.bgmOn ? cfg.bgmVol * 0.55 : 0, t, 0.05);
+    this.sfxBus.gain.setTargetAtTime(cfg.sfxOn ? cfg.sfxVol : 0, t, 0.05);
   }
 
   toggleMute() {
@@ -115,7 +125,7 @@ export class Sound {
   //  เสียงเอฟเฟกต์
   // ------------------------------------------------------------
   play(name) {
-    if (!this.ctx || this.muted) return;
+    if (!this.ctx || this.muted || this.cfg?.sfxOn === false) return;
     const T = (...a) => this.tone(...a), N = (...a) => this.noise(...a);
     switch (name) {
       case 'swing':      N(0.12, { freq: 1200, to: 3200, vol: 0.25 }); break;
@@ -164,7 +174,7 @@ export class Sound {
 
   schedule() {
     const tr = TRACKS[this.track];
-    if (!tr || this.muted) { if (this.ctx) this.nextTime = this.ctx.currentTime + 0.1; return; }
+    if (!tr || this.muted || this.cfg?.bgmOn === false) { if (this.ctx) this.nextTime = this.ctx.currentTime + 0.1; return; }
     const stepDur = 60 / tr.bpm / 2;
     while (this.nextTime < this.ctx.currentTime + 0.12) {
       const delay = Math.max(0, this.nextTime - this.ctx.currentTime);

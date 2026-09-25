@@ -9,6 +9,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { WORLD } from '../shared/constants.js';
 import { sanitizeAppearance } from '../shared/data/appearance.js';
+import { SKILL_BY_ID, MAX_SKILL_LV } from '../shared/data/skills.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.join(__dirname, '..');
@@ -47,7 +48,7 @@ io.on('connection', (socket) => {
       appearance: sanitizeAppearance(data.appearance),
       x: WORLD.spawnX, y: WORLD.spawnY,
       anim: 'idle', flipX: false, hp: 1, maxHp: 1, level: 1,
-      lastUpdate: Date.now(), lastChat: 0,
+      lastUpdate: Date.now(), lastChat: 0, lastSkill: 0,
     };
     players.set(socket.id, player);
 
@@ -90,7 +91,26 @@ io.on('connection', (socket) => {
     io.emit('player:appearance', { id: p.id, appearance: p.appearance });
   });
 
-  // 4) แชท (จำกัด 1 ข้อความ / 0.5 วินาที)
+  // 4) ใช้สกิล (Q W E R T) → ตรวจสอบ แล้วกระจายให้ผู้เล่นอื่นเห็นเอฟเฟกต์
+  socket.on('skill:cast', (d = {}) => {
+    const p = players.get(socket.id);
+    const sk = SKILL_BY_ID[d.skillId];
+    const now = Date.now();
+    if (!p || !sk) return;
+    if (sk.job !== p.appearance.job) return;                  // ใช้ได้เฉพาะสกิลอาชีพตัวเอง
+    if (now - p.lastSkill < 150) return;                       // กันสแปม
+    const x = Number(d.x) || 0, y = Number(d.y) || 0;
+    if (Math.abs(x - p.x) > 120 || Math.abs(y - p.y) > 120) return; // ตำแหน่งต้องใกล้ที่ server รู้
+    p.lastSkill = now;
+    socket.broadcast.emit('skill:cast', {
+      id: p.id, skillId: sk.id,
+      lv: clamp(Math.round(Number(d.lv) || 1), 1, MAX_SKILL_LV),
+      x: Math.round(x), y: Math.round(y), dir: d.dir === -1 ? -1 : 1,
+      tx: Number.isFinite(d.tx) ? Math.round(d.tx) : null, ty: Number.isFinite(d.ty) ? Math.round(d.ty) : null,
+    });
+  });
+
+  // 4.1) แชท (จำกัด 1 ข้อความ / 0.5 วินาที)
   socket.on('chat', (text) => {
     const p = players.get(socket.id);
     if (!p || Date.now() - p.lastChat < 500) return;

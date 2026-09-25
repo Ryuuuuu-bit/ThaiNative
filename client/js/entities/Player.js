@@ -8,7 +8,7 @@ import { JOBS } from '/shared/data/classes.js';
 import { bakeCharacter } from '../gfx/SpriteFactory.js';
 import { getDerived } from '../systems/Character.js';
 import { makeText } from '../systems/util.js';
-import { SKILLS } from '/shared/data/skills.js';
+import { SKILL_BY_ID, skillStats } from '/shared/data/skills.js';
 
 const EV = Phaser.Animations.Events;
 
@@ -61,7 +61,6 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
 
   get job() { return JOBS[this.char.appearance.job]; }
   get derived() { return getDerived(this.char); }
-  get skills() { return SKILLS[this.char.appearance.job]; }
 
   /** ค่าสถานะรวมบัฟ (ใช้ตอนคำนวณดาเมจ) */
   combatStats(time = this.scene.time.now) {
@@ -150,18 +149,25 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     return Math.max(0, (this.cooldowns[key] || 0) - time);
   }
 
+  /** กดปุ่ม Hotbar (Q W E R T) → ร่ายสกิลที่ติดตั้งในช่องนั้น */
   trySkill(time, key) {
-    const sk = this.skills.find((s) => s.key === key);
-    if (!sk) return;
+    const id = this.char.hotbar?.[key];
     const ui = this.scene.ui, sfx = this.scene.sfx;
-    if (this.char.level < sk.unlock) { ui.toast(`สกิล ${sk.nameTh} ปลดล็อกที่ Lv.${sk.unlock}`, 'warn'); sfx.play('error'); this.cooldowns[key] = time + 600; return; }
-    if (this.cooldownLeft(key, time) > 0) return;
-    if (this.char.mp < sk.mp) { ui.toast('MP ไม่พอ!', 'warn'); sfx.play('error'); this.cooldowns[key] = time + 400; return; }
+    if (!id) {
+      if (time - (this.cooldowns[`_${key}`] ?? -9999) > 1500) { ui.toast(`ช่อง ${key} ว่าง – กด K เพื่อเรียน/ติดตั้งสกิล`, 'warn'); this.cooldowns[`_${key}`] = time; }
+      return;
+    }
+    const lv = this.char.skills?.[id] || 0;
+    if (!lv || SKILL_BY_ID[id]?.job !== this.char.appearance.job) return;
+    const sk = skillStats(SKILL_BY_ID[id], lv);
+    if (this.cooldownLeft(id, time) > 0) return;
+    if (this.char.mp < sk.mp) { ui.toast('MP ไม่พอ!', 'warn'); sfx.play('error'); this.cooldowns[id] = time + 400; return; }
 
     this.char.mp -= sk.mp;
-    this.cooldowns[key] = time + sk.cd;
+    this.cooldowns[id] = time + sk.cd;
     this.lastAttack = time;
     sfx.play(sk.sfx);
+    this.scene.net?.sendSkill(sk, this);   // แจ้ง server → ผู้เล่นอื่นเห็น VFX
 
     // บัฟ / พุ่ง ทำงานทันที  ส่วนสกิลโจมตีรอเฟรมที่ 3 ของท่าโจมตี
     if (sk.type === 'buff') { this.scene.combat.castBuff(this, sk); return; }
@@ -170,6 +176,7 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     this.state = 'attack';
     this.playAnim('attack', true);
   }
+
 
   /** โดนโจมตี */
   takeHit(result, fromX) {
