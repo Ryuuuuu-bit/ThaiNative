@@ -698,3 +698,9 @@ kbd { display: inline-block; min-width: 1.6em; text-align: center; padding: 0 .3
 .wmap-region { position: absolute; transform: translate(-50%, -50%); pointer-events: none; white-space: nowrap; font-size: .72em; color: #fff3c4; text-shadow: 0 1px 2px #000, 0 0 6px rgba(0,0,0,.9); letter-spacing: .02em; background: rgba(20,10,30,.45); padding: .05em .5em; border-radius: 10px; border: 1px solid rgba(212,175,55,.35); }
 .wmap-legend { display: flex; flex-wrap: wrap; gap: .3em 1em; margin-top: .5em; font-size: .78em; color: var(--muted); }
 #travel-panel { width: 54em; max-width: 96%; }
+.item.under { opacity: .72; } .need-lv { color: #f1948a; font-size: .8em; margin-left: .3em; }
+.item .ic img[src*='g_'][src*='leg'] { filter: drop-shadow(0 0 3px #f4d03f); }
+.lb-tabs { float: right; display: inline-flex; gap: .3em; font-size: .75em; }
+.lb-tabs button { padding: .05em .6em; }
+.soc-row.lb.me { background: rgba(212,175,55,.12); border-radius: 4px; }
+.chat-whisper, #chat-log .whisper-msg, #chat-log .whisper-msg b { color: #f5b7b1 !important; }

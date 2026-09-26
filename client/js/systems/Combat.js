@@ -5,6 +5,7 @@ import { rollDamage } from '/shared/stats.js';
 import { SKILL_BY_ID, skillStats } from '/shared/data/skills.js';
 import { ITEMS } from '/shared/data/items.js';
 import { MONSTERS } from '/shared/data/monsters.js';
+import { rollGearDrop } from '/shared/data/gear.js';
 import { WORLD } from '/shared/constants.js';
 import { getDerived, gainExp } from './Character.js';
 import { PATH_LV } from '/shared/data/classes.js';
@@ -43,6 +44,7 @@ export class Combat {
   /** ตีเป้าหมาย 1 ครั้ง — ออนไลน์: ส่งให้ server ทอยดาเมจ (ผลกลับมาทาง mob:dmg / raid:dmg) · ออฟไลน์: ทอยเอง */
   hit(mon, stats, kind, mult, dir, knock, effect, meta = null) {
     if (mon.hitOnline?.(meta || {}, dir, knock)) { this.scene.ui.setTarget(mon); return null; }
+    if (this.scene.net?.online) return null;                   // ออนไลน์: server เท่านั้นที่ตัดสินดาเมจ (ผีที่ยังไม่ซิงค์ = ตีไม่ได้ชั่วคราว)
     const r = rollDamage(stats, mon.defStats, kind, mult);
     mon.takeHit(r, dir, knock);
     if (r.hit && effect) mon.applyEffect(effect, r.dmg);
@@ -59,7 +61,7 @@ export class Combat {
     if (mine && d.poison) {
       this.popupText(target.x + rand(-6, 6), target.y - target.displayHeight * 0.6, `${d.dmg}`, '#58d68d', 7);
     } else if (mine) {
-      target.takeHit({ hit: d.hit, crit: d.crit, dmg: d.dmg, stun: d.stun, poison: d.poison }, d.dir || 1, d.knock ?? 70, true);
+      target.takeHit({ hit: d.hit, crit: d.crit, dmg: d.dmg, stun: d.stun, poison: d.poisoned }, d.dir || 1, d.knock ?? 70, true);
       if (d.hit) this.sfx.play(d.crit ? 'crit' : 'hit'); else this.sfx.play('miss');
     } else if (d.hit && this.scene.settings?.damageNumbers !== false && Math.abs(target.x - this.player.x) < 400) {
       this.popupText(target.x + rand(-14, 14), target.y - target.displayHeight * 0.6, d.crit ? `${d.dmg}!` : `${d.dmg}`, d.poison ? '#82e0aa' : d.crit ? '#f5b041' : '#d5d8dc', d.crit ? 9 : 7);
@@ -391,6 +393,8 @@ export class Combat {
         this.scene.ui.loot(`🎁 ได้รับ ${ITEMS[drop.item].icon} ${ITEMS[drop.item].nameTh}`);
       }
     }
+    const gear = rollGearDrop(def.level, bl.dropMul);           // ออฟไลน์: อุปกรณ์ขั้นสูง (หายาก)
+    if (gear) { addItem(c, gear); this.scene.ui.loot(`✨ ได้รับ ${ITEMS[gear].nameTh} (Lv.${ITEMS[gear].lv})`); this.scene.ui.banner(`✨ ดรอปหายาก! ${ITEMS[gear].nameTh}`); }
     this.scene.saveSoon();
   }
 
@@ -408,7 +412,12 @@ export class Combat {
       this.sfx.play('ghostDie');
       this.scene.time.delayedCall(250, () => this.sfx.play('coin'));
       this.scene.ui.loot(`☠️ ${def.nameTh}: +${r.exp} EXP · +฿${r.gold}`);
-      for (const it of r.items || []) { addItem(c, it.id, it.qty || 1); this.scene.ui.loot(`🎁 ได้รับ ${ITEMS[it.id].icon} ${ITEMS[it.id].nameTh}`); }
+      for (const it of r.items || []) {
+        addItem(c, it.id, it.qty || 1);
+        const I = ITEMS[it.id];
+        this.scene.ui.loot(`${it.rare ? '✨' : '🎁'} ได้รับ ${I.icon} ${I.nameTh}${I.lv ? ` (Lv.${I.lv})` : ''}`);
+        if (it.rare) { this.scene.ui.banner(`✨ ดรอปหายาก! ${I.nameTh}`); this.sfx.play('levelup'); }
+      }
     }
     this.grantExp(r.exp || 0);
     this.scene.village?.questEvent('kill', r.mon);

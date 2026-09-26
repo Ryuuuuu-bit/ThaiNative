@@ -6,9 +6,10 @@
 // ============================================================
 import { PARTY, WORLD } from '../shared/constants.js';
 import { ITEMS } from '../shared/data/items.js';
+import { LEGEND_IDS, rollGearDrop } from '../shared/data/gear.js';
 import { RAID_BOSS as RB } from '../shared/data/raid.js';
 import { rollDamage } from '../shared/stats.js';
-import { combatDerived, attackSpec } from '../shared/character.js';
+import { combatDerived, attackSpec, attackGate } from '../shared/character.js';
 
 const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
 const int = (v, lo, hi) => clamp(Math.floor(Number(v) || 0), lo, hi);
@@ -87,7 +88,7 @@ export function setupSocial(io, players) {
   function spawnBoss() {
     const n = [...players.values()].filter(inArena).length;
     boss.maxHp = Number(process.env.RAID_HP) || RB.maxHp + Math.max(0, n - 1) * RB.hpPerExtraPlayer;
-    Object.assign(boss, { alive: true, hp: boss.maxHp, x: RB.spawnX, dir: -1, anim: 'walk', attacking: null, nextAttackAt: Date.now() + 2500 });
+    Object.assign(boss, { alive: true, hp: boss.maxHp, x: RB.spawnX, dir: -1, anim: 'walk', attacking: null, poison: null, nextAttackAt: Date.now() + 2500 });
     boss.contrib.clear();
     io.emit('raid:spawn', { maxHp: boss.maxHp });
     io.emit('chat', { id: null, name: '👹 เรดบอส', text: `${RB.nameTh} ปรากฏตัวที่ลานพญายักษ์ (สุดทางตะวันออก)!` });
@@ -155,7 +156,7 @@ export function setupSocial(io, players) {
   }
 
   /** แบ่ง EXP ให้เพื่อนปาร์ตี้ที่อยู่ใกล้ (เรียกจาก mobs ตอนผีตาย) */
-  function shareExp(p, exp) {
+  function shareExp(p, exp, exclude = []) {
     const party = p && parties.get(p.partyId);
     if (!party) return;
     const share = Math.round(exp * PARTY.shareRatio);
@@ -177,7 +178,10 @@ export function setupSocial(io, players) {
     p.raidT = now;
     if (p.raidTokens < 1) return;
     p.raidTokens -= 1;
-    const spec = attackSpec(p.char, p.appearance?.job, d?.sk || null, !!d?.combo);
+    const sk = typeof d?.sk === 'string' ? d.sk : null;
+    const gate = attackGate(p, sk, !!d?.combo, now);
+    if (!gate) return;
+    const spec = attackSpec(p.char, p.appearance?.job, sk, gate === 'combo');
     if (!spec) return;
     const r = rollDamage(combatDerived(p.char, p.char.buffs, now), { def: RB.def, eva: RB.eva }, spec.kind, spec.mult);
     if (!r.hit) return io.to(p.id).emit('raid:dmg', { id: p.id, hit: false, dmg: 0, crit: false, hp: Math.round(boss.hp) });
@@ -196,6 +200,7 @@ export function setupSocial(io, players) {
 
   function defeatBoss(killer) {
     boss.alive = false;
+    boss.poison = null;
     boss.attacking = null;
     boss.anim = 'die';
     boss.respawnAt = Date.now() + RB.respawnMs;
@@ -207,6 +212,14 @@ export function setupSocial(io, players) {
       const mult = 0.5 + Math.min(1, share * 2);               // มีส่วนร่วมมาก ได้มาก (50%–150%)
       const items = RB.rewards.items.map(([iid, q]) => ({ id: iid, qty: q }));
       for (const [iid, chance] of RB.rewards.rare) if (Math.random() < chance) items.push({ id: iid, qty: 1 });
+      // อุปกรณ์ตำนาน: อันดับ 1 = 12% · คนอื่น 4% (ได้ชิ้นของสายตัวเองก่อน)
+      const rank = ranking.findIndex((r) => r[0] === id) + 1, pj = players.get(id)?.char?.path;
+      if (Math.random() < (rank === 1 ? 0.12 : 0.04)) {
+        const pool = LEGEND_IDS.filter((g) => !pj || ITEMS[g].job === pj);
+        items.push({ id: pool[Math.floor(Math.random() * pool.length)], qty: 1 });
+      }
+      // อุปกรณ์ขั้นสูง Lv.26–30: 35%
+      if (Math.random() < 0.35) { const g = rollGearDrop(28, 1 / 0.012); if (g) items.push({ id: g, qty: 1 }); }
       emitTo(id, 'raid:reward', {
         exp: Math.round(RB.rewards.exp * mult), gold: Math.round(RB.rewards.gold * mult), items,
         share: Math.round(share * 100), rank: ranking.findIndex((r) => r[0] === id) + 1,
@@ -263,6 +276,7 @@ export function setupSocial(io, players) {
     // แบ่ง EXP: ผู้ฆ่าแจ้งจำนวน EXP ที่ได้ → server แจกให้สมาชิกที่อยู่ใกล้
     // (party:exp จาก client ถูกยกเลิก — server แบ่ง EXP ให้ปาร์ตี้เองตอนผีตาย ผ่าน shareExp)
     socket.on('party:chat', (text) => {
+      if (typeof text !== 'string') return;
       const p = me(), party = p && parties.get(p.partyId);
       const msg = String(text ?? '').replace(/[<>]/g, '').trim().slice(0, 120);
       if (!party || !msg || Date.now() - (p.lastChat || 0) < 500) return;

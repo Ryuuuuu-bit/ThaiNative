@@ -58,8 +58,18 @@ function startPos(d) {
 }
 const cleanText = (s, max) => String(s ?? '').replace(/[<>]/g, '').trim().slice(0, max);
 
+// กันเซิร์ฟเวอร์ล่ม: ข้อความผิดรูปแบบ (null ฯลฯ) จาก client ต้องไม่ทำให้ทั้งโลกหลุด
+process.on('uncaughtException', (e) => console.error('[uncaught]', e));
+process.on('unhandledRejection', (e) => console.error('[unhandled]', e));
+
 io.on('connection', (socket) => {
   console.log(`[+] connect ${socket.id}`);
+  // ห่อทุก handler: payload null/undefined → {} และจับ error ไว้ (ไม่ให้ process ตาย)
+  const rawOn = socket.on.bind(socket);
+  socket.on = (ev, fn) => rawOn(ev, (...args) => {
+    if (args[0] === null || args[0] === undefined) args[0] = {};
+    try { return fn(...args); } catch (e) { console.error(`[socket ${ev}]`, e?.message || e); }
+  });
   social.onConnection(socket);
   mobs.onConnection(socket);
 
@@ -136,6 +146,10 @@ io.on('connection', (socket) => {
       }
       p.x = to.arriveX;
     } else if (d.kind === 'respawn') p.x = map.respawnX;
+    else if (d.kind === 'home') {                               // ยันต์คืนถิ่น (คูลดาวน์ 8 วิ กันสแปม)
+      if (Date.now() - (p.homeAt || 0) < 8000) return socket.emit('player:warp:reject', { x: Math.round(p.x), y: Math.round(p.y) });
+      p.homeAt = Date.now(); p.x = MAPS.village.arriveX;
+    }
     else return;
     p.y = WORLD.spawnY;
     p.wp = (p.wp || 0) + 1;
@@ -171,11 +185,21 @@ io.on('connection', (socket) => {
 
   // 4.1) แชท (จำกัด 1 ข้อความ / 0.5 วินาที)
   socket.on('chat', (text) => {
+    if (typeof text !== 'string') return;
     const p = players.get(socket.id);
     if (!p || Date.now() - p.lastChat < 500) return;
     p.lastChat = Date.now();
     const msg = cleanText(text, 120);
-    if (msg) io.emit('chat', { id: p.id, name: p.name, text: msg });
+    if (!msg) return;
+    const wm = msg.match(/^\/w\s+(\S+)\s+(.+)$/i);                              // /w ชื่อ ข้อความ = กระซิบ
+    if (wm) {
+      const t = [...players.values()].find((q) => q.name === wm[1]);
+      if (!t) return socket.emit('chat', { id: null, name: '📢 ระบบ', text: `ไม่พบผู้เล่นชื่อ "${wm[1]}" ที่ออนไลน์อยู่` });
+      io.to(t.id).emit('chat', { id: p.id, name: `[กระซิบจาก ${p.name}]`, text: wm[2], whisper: true, from: p.name });
+      if (t.id !== p.id) socket.emit('chat', { id: p.id, name: `[กระซิบถึง ${t.name}]`, text: wm[2], whisper: true });
+      return;
+    }
+    io.emit('chat', { id: p.id, name: p.name, text: msg });
   });
 
   socket.on('disconnect', () => {
@@ -192,7 +216,7 @@ setInterval(() => {
   mobs.tick();
   const snapshot = [...players.values()].map(p => ({
     id: p.id, x: Math.round(p.x), y: Math.round(p.y), anim: p.anim, flipX: p.flipX,
-    hp: p.hp, maxHp: p.maxHp, level: p.level, party: p.partyId,
+    hp: p.hp, maxHp: p.maxHp, level: p.level, party: p.partyId, wp: p.wp || 0,
   }));
   io.volatile.emit('world:snapshot', { t: Date.now(), players: snapshot, boss: social.bossPublic() });
 }, 1000 / TICK_RATE);

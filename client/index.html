@@ -119,6 +119,7 @@
             <button data-open="social-panel" title="ปาร์ตี้ & ผู้เล่น (P)">👥<small>P</small></button>
             <button data-open="quest-panel" title="สมุดเควส (J)">📋<small>J</small></button>
             <button data-open="help-panel" title="วิธีเล่น (H)">❔<small>H</small></button>
+            <button id="btn-home" title="ยันต์คืนถิ่น · กลับหมู่บ้าน (B)">🏠<small>B</small></button>
             <button data-open="settings-panel" title="ตั้งค่า (ESC)">⚙️<small>Esc</small></button>
           </div>
         </div>
@@ -209,7 +210,8 @@
         <header>ปาร์ตี้ & ผู้เล่นออนไลน์ <button class="close">✕</button></header>
         <div class="soc-sec"><h4>ปาร์ตี้ของคุณ <small id="soc-party-info"></small></h4><div id="soc-party"></div></div>
         <div class="soc-sec"><h4>ผู้เล่นในโลก</h4><div id="soc-players"></div></div>
-        <p class="hint">ปาร์ตี้สูงสุด 4 คน · ฆ่าผีแล้วเพื่อนที่อยู่ใกล้ได้ EXP 60% · พิมพ์ <b>/p ข้อความ</b> เพื่อคุยในปาร์ตี้ · คลิกที่ตัวผู้เล่นเพื่อเชิญ/เทรดได้เลย</p>
+        <div class="soc-sec"><h4>🏆 ตารางอันดับ <span class="lb-tabs"><button data-lb="level" class="active">เลเวล</button><button data-lb="enhance">ตีบวก</button></span></h4><div id="soc-lb"></div></div>
+        <p class="hint">ปาร์ตี้สูงสุด 4 คน · ฆ่าผีแล้วเพื่อนที่อยู่ใกล้ได้ EXP 60% · <b>/p ข้อความ</b> = คุยในปาร์ตี้ · <b>/w ชื่อ ข้อความ</b> = กระซิบ · คลิกที่ตัวผู้เล่นเพื่อเชิญ/เทรดได้เลย</p>
       </section>
 
       <!-- เทรด -->
@@ -295,6 +297,10 @@
           <div><kbd>J</kbd> สมุดเควส (รับเควสที่ผู้ใหญ่ชัย)</div><div>🗺️ 20 แมพล่าผี 5 ภาค: แมพละผี 1 ชนิด · ประตูขวา = แมพถัดไป · ประตูซ้าย = เลือกวาร์ป · กองไฟ = จุดพัก/ฟื้น</div><div>🌿 เก็บสมุนไพร (F) · หีบสมบัติ · ค่าหัวพรานบุญ (Map 1)</div><div>🎣 ท่าน้ำซ้ายสุดของหมู่บ้าน: กด F ตกปลา → ป้าสาทำอาหาร</div>
           <div>⚔️ แนวต่อสู้ = อาวุธที่ถือ (ดาบ / ไม้เท้า / ธนู / มือเปล่า) · สกิลใช้ได้เมื่อถืออาวุธตรงแนว</div><div>🎖️ Lv.10 เลือกสายหลักกับผู้ใหญ่ชัย: สกิลสายหลักอัปถึง Lv.5 + ท่าไม้ตาย · สายอื่นถึง Lv.2</div>
           <div><kbd>1</kbd><kbd>2</kbd> ยา HP / MP</div><div><kbd>C</kbd> สถานะ · <kbd>I</kbd> กระเป๋า · <kbd>Enter</kbd> แชท</div>
+          <div><kbd>B</kbd> ยันต์คืนถิ่น (ร่าย 2.5 วิ กลับหมู่บ้าน)</div><div><kbd>Tab</kbd> สลับอาวุธ</div>
+          <div>💬 <b>/w ชื่อ ข้อความ</b> กระซิบ · <b>/r ข้อความ</b> ตอบกลับ · <b>/p</b> แชทปาร์ตี้</div><div>🏆 ตารางอันดับอยู่ในหน้าต่างผู้เล่น (P)</div>
+          <div>⚔️ ลานฝึกวิชา (ซ้ายของวัด): ครูประจำ 4 อาชีพขายอาวุธ/ชุด/เครื่องประดับ Lv.1–20</div><div>✨ อุปกรณ์ Lv.22–30 ดรอปจากผีตามเลเวลแมพ/หีบสมบัติ · ✦ชิ้นตำนานจากพญายักษ์</div>
+          <div>💍 เครื่องประดับใส่ได้ 2 ชิ้น · อุปกรณ์มีเลเวลขั้นต่ำ</div>
         </div>
       </section>
 

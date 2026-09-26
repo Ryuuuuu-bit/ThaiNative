@@ -3,12 +3,15 @@
 //  type: consumable | weapon | armor | accessory | skin | material
 //  ราคาขายคืน = 50% ของราคาซื้อ (หรือ sell ที่กำหนดไว้)
 // ============================================================
+import { GEAR, gearShopStock } from './gear.js';
+
 export const ITEMS = {
   // ---------- ยาฟื้นฟู ----------
   hp_s:  { nameTh: 'ยาหม่องแดง (HP +60)',   type: 'consumable', icon: '🧴', price: 25,  effect: { hp: 60 } },
   hp_m:  { nameTh: 'ยาดมสมุนไพร (HP +180)', type: 'consumable', icon: '🌿', price: 70,  effect: { hp: 180 } },
   mp_s:  { nameTh: 'น้ำมะพร้าว (MP +30)',   type: 'consumable', icon: '🥥', price: 20,  effect: { mp: 30 } },
   mp_m:  { nameTh: 'ชาตะไคร้ (MP +90)',    type: 'consumable', icon: '🍵', price: 60,  effect: { mp: 90 } },
+  yant_home: { nameTh: 'ยันต์คืนถิ่น (วาร์ปกลับหมู่บ้าน)', type: 'home', icon: '🏠', price: 40, desc: 'ร่าย 2.5 วิ (ห้ามขยับ/โดนตี) แล้ววาร์ปกลับหมู่บ้าน · ปุ่ม B' },
 
   // ---------- อาวุธ (ใครก็ถือได้ · wtype = แนวต่อสู้/สกิลที่ใช้ได้ · แสดงในมือตัวละคร) ----------
   wood_sword:  { nameTh: 'ดาบไม้ฝึก',        type: 'weapon', icon: '🗡️', price: 80,  sell: 10, wtype: 'sword', bonus: { atk: 6 } },
@@ -154,6 +157,9 @@ export const ITEMS = {
   hua_mu:    { nameTh: 'หัวหมูบวงสรวง',    type: 'offering', icon: '🐷', price: 400 },
 };
 
+// อุปกรณ์ตามอาชีพ 200 ชิ้น (shared/data/gear.js)
+Object.assign(ITEMS, GEAR);
+
 export function sellPrice(id) {
   const it = ITEMS[id];
   if (!it) return 0;
@@ -165,7 +171,7 @@ export const SHOPS = {
   mae_kha: {
     nameTh: 'ยายติ๋ม ร้านยาและของใช้',
     greeting: 'มาจ้ะหลาน ยาดีของยาย ผีหลอกก็ไม่กลัว!',
-    stock: ['hp_s', 'hp_m', 'mp_s', 'mp_m', 'garland', 'nam_daeng', 'khai_tom', 'hua_mu',
+    stock: ['hp_s', 'hp_m', 'mp_s', 'mp_m', 'yant_home', 'garland', 'nam_daeng', 'khai_tom', 'hua_mu',
       'reset_water', 'skin_swordman', 'skin_mage', 'skin_archer', 'skin_boxer'],
     tabs: ['buy', 'sell', 'brew'],
   },
@@ -187,6 +193,27 @@ export const SHOPS = {
       'cos_outfit_royal', 'cos_outfit_kinnari', 'cos_outfit_pob', 'cos_outfit_nakleng', 'cos_outfit_sky'],
     tabs: ['buy', 'sell'],
   },
+  // ---------- ครูประจำอาชีพ (ขายอุปกรณ์สายตัวเอง Lv.1–20) ----------
+  kru_sword: {
+    nameTh: 'ครูเหม สำนักดาบบางผี', job: 'swordman',
+    greeting: 'ดาบดีต้องคู่กับใจนิ่ง… เลือกอาวุธและเกราะที่เหมาะกับฝีมือเจ้าเถิด',
+    stock: gearShopStock('swordman'), tabs: ['buy', 'sell'],
+  },
+  kru_mage: {
+    nameTh: 'หลวงตาเผือก หมอธรรมป่าช้า', job: 'mage',
+    greeting: 'อาคมจะขลังได้ ต้องมีของดีติดตัว… มาดูเครื่องรางของข้าก่อน',
+    stock: gearShopStock('mage'), tabs: ['buy', 'sell'],
+  },
+  kru_archer: {
+    nameTh: 'พรานแก้ว ค่ายพรานไพร', job: 'archer',
+    greeting: 'ตาไว มือนิ่ง ลมไม่แรง… ธนูดี ๆ ต้องแบบนี้เลยจ้ะ',
+    stock: gearShopStock('archer'), tabs: ['buy', 'sell'],
+  },
+  kru_boxer: {
+    nameTh: 'ครูแดง ค่ายมวยวัดบางผี', job: 'boxer',
+    greeting: 'ไหว้ครูให้ดี ใจสู้ให้ถึง! อุปกรณ์มวยครบ มาเลือกเอา',
+    stock: gearShopStock('boxer'), tabs: ['buy', 'sell'],
+  },
   pa_sa: {
     nameTh: 'ป้าสา ครัวริมน้ำ',
     greeting: 'ได้ปลามาเหรอลูก เอามาให้ป้าทำกับข้าวให้ อร่อยจนผีต้องร้องขอ!',
@@ -196,7 +223,7 @@ export const SHOPS = {
 };
 
 export const STARTING_GOLD = 150;
-export const STARTING_ITEMS = [{ id: 'hp_s', qty: 3 }, { id: 'mp_s', qty: 2 },
+export const STARTING_ITEMS = [{ id: 'hp_s', qty: 3 }, { id: 'mp_s', qty: 2 }, { id: 'yant_home', qty: 3 },
   { id: 'wood_sword', qty: 1 }, { id: 'oak_staff', qty: 1 }, { id: 'bamboo_bow', qty: 1 }];   // อาวุธฝึกให้ลองทุกแนว
 
 /** แนวต่อสู้ตามชนิดอาวุธ → id สายใน classes.js */

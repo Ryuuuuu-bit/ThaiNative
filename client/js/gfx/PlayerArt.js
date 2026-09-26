@@ -57,7 +57,7 @@ export function enhGlow(lv) {
 export function heldInfo(a, img) {
   const it = ITEMS[a.weapon];
   if (!img || !it || it.wtype === 'wraps') return null;
-  const gp = GRIP[a.weapon] || WTYPE_GRIP[it.wtype];
+  const gp = GRIP[a.weapon] || it.grip || WTYPE_GRIP[it.wtype];           // อุปกรณ์อาชีพ: จุดจับคำนวณจากภาพ (gear_art.js)
   return { img, wtype: it.wtype, gx: gp.g[0], gy: gp.g[1], scale: gp.s, rot0: gp.r || 0, ox: gp.ox || 0, oy: gp.oy || 0, glow: enhGlow(a.wenh) };
 }
 

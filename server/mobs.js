@@ -9,8 +9,9 @@ import { WORLD } from '../shared/constants.js';
 import { MONSTERS, MONSTER_IDS } from '../shared/data/monsters.js';
 import { MAPS, mapAt } from '../shared/data/maps.js';
 import { rollDamage } from '../shared/stats.js';
-import { combatDerived, attackSpec, blessingsOf } from '../shared/character.js';
+import { combatDerived, attackSpec, blessingsOf, attackGate } from '../shared/character.js';
 import { dayPhase, dayIndex, moonOf, nightMods, isNight } from '../shared/data/world.js';
+import { rollGearDrop } from '../shared/data/gear.js';
 
 const AGGRO_X = 170, AGGRO_Y = 90, RESPAWN_MS = 9000, ATTACK_MS = 650;
 const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
@@ -66,7 +67,7 @@ export function setupMobs(io, players, opts = {}) {
     const [lo, hi] = bounds(m);
     if (m.poison && now >= m.poison.next) {                         // พิษติ๊ก (server นับเอง)
       const q = m.poison, by = players.get(q.by);
-      if (by && q.left > 0) { q.left--; q.next = now + q.every; damage(m, by, q.per, false, { poison: true }); if (m.st === 'dead') return; }
+      if (by && q.left > 0) { q.left--; q.next = now + q.every; damage(m, by, q.per, false, { poison: true, tick: true }); if (m.st === 'dead') return; }
       if (!by || q.left <= 0) m.poison = null;
     }
     if (now < m.stunUntil) { m.kvx = 0; return; }
@@ -135,17 +136,20 @@ export function setupMobs(io, players, opts = {}) {
     if (!p || !m || m.st === 'dead' || !p.char) return;
     if (mapAt(p.x).id !== m.map.id || Math.abs(p.x - m.x) > 420) return;       // ต้องอยู่แมพเดียวกัน ใกล้พอ
     const now = Date.now();
-    p.hitWin = now - (p.hitWinAt || 0) > 1000 ? 0 : p.hitWin || 0;             // จำกัด 40 ครั้ง/วินาที
+    p.hitWin = now - (p.hitWinAt || 0) > 1000 ? 0 : p.hitWin || 0;             // จำกัด 120 ครั้ง/วินาที
     if (!p.hitWin) p.hitWinAt = now;
-    if (++p.hitWin > 40) return;
-    const spec = attackSpec(p.char, p.appearance?.job, typeof d.sk === 'string' ? d.sk : null, !!d.combo);
+    if (++p.hitWin > 120) return;                                            // สกิลวงกว้างตีหลายตัวพร้อมกันได้
+    const sk = typeof d.sk === 'string' ? d.sk : null;
+    const gate = attackGate(p, sk, !!d.combo, now);
+    if (!gate) return;
+    const spec = attackSpec(p.char, p.appearance?.job, sk, gate === 'combo');
     if (!spec) return;
     const dir = d.dir === -1 ? -1 : 1, knock = clamp(Number(d.knock) || 70, 0, 300);
     const r = rollDamage(combatDerived(p.char, p.char.buffs, now), { def: m.d.def, eva: m.d.eva }, spec.kind, spec.mult);
     if (!r.hit) return socket.emit('mob:dmg', { gi: m.gi, by: p.id, hit: false, crit: false, dmg: 0, dir, knock, hp: Math.round(m.hp) });
     const fx = {};
     if (spec.effect?.stun) { m.stunUntil = Math.max(m.stunUntil, now + clamp(spec.effect.stun.ms, 0, 2500)); fx.stun = spec.effect.stun.ms; }
-    if (spec.effect?.poison) { const q = spec.effect.poison; m.poison = { by: p.id, per: Math.max(1, Math.round(r.dmg * q.ratio)), left: q.ticks, every: q.every, next: now + q.every }; fx.poison = true; }
+    if (spec.effect?.poison) { const q = spec.effect.poison; m.poison = { by: p.id, per: Math.max(1, Math.round(r.dmg * q.ratio)), left: q.ticks, every: q.every, next: now + q.every }; fx.poisoned = true; }
     damage(m, p, r.dmg, r.crit, { ...fx, dir, knock });
   }
 
@@ -187,9 +191,11 @@ export function setupMobs(io, players, opts = {}) {
       if (isKiller) {
         out.gold = Math.round(rand(d.gold[0], d.gold[1]) * tm.gold * bl.goldMul);
         out.items = (d.drops || []).filter((dr) => Math.random() < dr.chance * bl.dropMul).map((dr) => ({ id: dr.item, qty: 1 }));
+        const gear = rollGearDrop(d.level, bl.dropMul);            // อุปกรณ์ขั้นสูงตามเลเวลผี (หายาก)
+        if (gear) out.items.push({ id: gear, qty: 1, rare: true });
       }
       io.to(p.id).emit('mob:reward', out);
-      shareExp(p, exp);
+      if (isKiller) shareExp(p, exp, assist);                      // แบ่ง EXP ปาร์ตี้เฉพาะของคนตีจบ (คนช่วยตีได้ของตัวเองแล้ว)
     };
     reward(killer, true);
     for (const id of assist) { const p = players.get(id); if (p) reward(p, false); }

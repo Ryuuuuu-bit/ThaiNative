@@ -78,6 +78,7 @@ export function useItem(c, id) {
   }
 
   if (it.type === 'costume') return wearCostume(c, id);
+  if (it.type === 'home') return { ok: true, home: true };                    // ยันต์คืนถิ่น: GameScene.recall() ร่าย แล้วค่อยหักของ
 
   if (it.type === 'herb') return { ok: false, msg: `${it.nameTh}: ให้ยายติ๋มปรุงยา หรือป้าสาทำอาหาร` };
   if (it.type === 'fish') return { ok: false, msg: `${it.nameTh}: นำไปให้ป้าสาทำอาหาร หรือขายได้` };
@@ -90,6 +91,7 @@ export function useItem(c, id) {
 
 /** ถวายของที่ศาลพระภูมิ → ได้พร (ถวายซ้ำชนิดเดิม = ต่อเวลา สูงสุด 60 นาที) */
 export function makeOffering(c, key) {
+  if (tradeLock.on) return LOCKED;
   const o = OFFERINGS[key];
   if (!o || !count(c, o.item)) return { ok: false, msg: `ไม่มี${o?.nameTh ?? 'ของถวาย'} (ซื้อได้ที่ร้านยายติ๋ม)` };
   removeItem(c, o.item);
@@ -101,10 +103,12 @@ export function makeOffering(c, key) {
   return { ok: true, msg: `ถวาย${o.nameTh} ได้รับพร: ${o.blessTh} (${o.minutes} นาที)` };
 }
 
-export function equip(c, id) {
+export function equip(c, id, forceSlot = null) {
   if (tradeLock.on) return LOCKED;
   const it = ITEMS[id];
-  const slot = SLOT_OF[it.type];
+  if (it.lv && c.level < it.lv) return { ok: false, msg: `ต้อง Lv.${it.lv} ขึ้นไปถึงจะสวม ${it.nameTh} ได้` };
+  let slot = forceSlot || SLOT_OF[it.type];
+  if (!forceSlot && it.type === 'accessory' && c.equipment.accessory && !c.equipment.accessory2) slot = 'accessory2';   // ข้างแรกไม่ว่าง → ใส่ข้างที่ 2
   removeItem(c, id);
   if (c.equipment[slot]) addItem(c, c.equipment[slot]);
   c.equipment[slot] = id;

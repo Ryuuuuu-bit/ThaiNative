@@ -81,6 +81,8 @@ export class Social {
     };
     // ปาร์ตี้ / ผู้เล่น (P)
     $('#social-panel').addEventListener('click', (e) => {
+      const w = e.target.closest('[data-act="whisper"]');
+      if (w) { const inp = $('#chat-input'); inp.value = `/w ${w.dataset.name} `; this.ui.closeAll(); inp.focus(); return; }
       const b = e.target.closest('button[data-act]');
       if (!b) return;
       const { act, id } = b.dataset;
@@ -226,8 +228,36 @@ export class Social {
     $('#soc-players').innerHTML = !this.net.online ? '<p class="empty">ออฟไลน์อยู่</p>' : list.length
       ? list.map((r) => `<div class="soc-row"><span>${esc(r.name)} <small>Lv.${r.level || '?'} · ห่าง ${Math.round(Math.abs(r.x - this.player.x) / 10)} ม.</small></span>
           <span>${inParty.has(r.netId) ? '<small class="ok">ในปาร์ตี้</small>' : `<button class="btn ghost sm" data-act="invite" data-id="${r.netId}">🤝 เชิญ</button>`}
-          <button class="btn ghost sm" data-act="trade" data-id="${r.netId}">💱 เทรด</button></span></div>`).join('')
+          <button class="btn ghost sm" data-act="trade" data-id="${r.netId}">💱 เทรด</button>
+          <button class="btn ghost sm" data-act="whisper" data-name="${esc(r.name)}">💬</button></span></div>`).join('')
       : '<p class="empty">ยังไม่มีผู้เล่นอื่นออนไลน์</p>';
+    this.renderLeaderboard();
+  }
+
+  /** ตารางอันดับจาก server (แคช 30 วิ) */
+  async renderLeaderboard(force = false) {
+    const el = $('#soc-lb');
+    if (!el) return;
+    if (!this.lbBound) {
+      this.lbBound = true;
+      document.querySelectorAll('[data-lb]').forEach((b) => (b.onclick = () => {
+        this.lbTab = b.dataset.lb;
+        document.querySelectorAll('[data-lb]').forEach((x) => x.classList.toggle('active', x === b));
+        this.renderLeaderboard();
+      }));
+    }
+    if (force || !this.lb || Date.now() - (this.lbAt || 0) > 30000) {
+      if (this.lbLoading) return;
+      this.lbLoading = true;
+      try { this.lb = await fetch('/api/leaderboard').then((r) => r.json()); this.lbAt = Date.now(); } catch { this.lb = null; }
+      this.lbLoading = false;
+    }
+    const tab = this.lbTab || 'level', rows = this.lb?.[tab] || [];
+    const medal = (i) => ['🥇', '🥈', '🥉'][i] || `${i + 1}.`;
+    const mine = this.player.char.name;
+    el.innerHTML = rows.length ? rows.map((r, i) => `<div class="soc-row lb ${r.name === mine ? 'me' : ''}"><span>${medal(i)} ${esc(r.name)}</span>
+      <small>${tab === 'level' ? `Lv.${r.level}` : `<b class="enh t${Math.min(5, Math.floor(r.enh / 4))}">+${r.enh}</b> · Lv.${r.level}`} · ${JOBS[r.path]?.nameTh ?? 'ชาวบ้าน'}</small></div>`).join('')
+      : `<p class="empty">${this.net.online ? 'ยังไม่มีข้อมูล' : 'ออฟไลน์อยู่'}</p>`;
   }
 
   // ============================================================

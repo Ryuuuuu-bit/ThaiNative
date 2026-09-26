@@ -241,6 +241,7 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     this.state = 'dead';
     this.dashing = false;
     this.buffs = [];
+    this.scene.sendChar?.();                                      // บัฟหายตอนตาย → แจ้ง server
     this.scene.sfx.play('die');
     this.setVelocityX(0);
     this.playAnim('die', true);

@@ -7,7 +7,7 @@ import { ITEMS } from '/shared/data/items.js';
 import { MONSTERS } from '/shared/data/monsters.js';
 import { WORLD } from '/shared/constants.js';
 import { rollFish, RECIPES, BREWS, ENHANCE, QUESTS, QUEST_BY_ID } from '/shared/data/village.js';
-import { addItem, removeItem, count } from './Inventory.js';
+import { addItem, removeItem, count, tradeLock } from './Inventory.js';
 import { getDerived, choosePath, syncAppearance } from './Character.js';
 import { AURA_TH, AURA_COLOR } from '../gfx/Aura.js';
 import { JOBS, JOB_IDS, PATH_LV } from '/shared/data/classes.js';
@@ -16,7 +16,7 @@ import { itemIcon } from './util.js';
 
 const $ = (s) => document.querySelector(s);
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
-const SLOT_TH = { weapon: 'อาวุธ', armor: 'เสื้อ', accessory: 'เครื่องราง' };
+const SLOT_TH = { weapon: 'อาวุธ', armor: 'ชุดเกราะ', accessory: 'เครื่องประดับ 1', accessory2: 'เครื่องประดับ 2' };
 const MAX_ACTIVE = 3;
 
 /** ช่วงท่าน้ำที่ตกปลาได้ (ปลายสะพานไม้) */
@@ -200,6 +200,7 @@ export class Village {
 
   cook(r, who = 'ป้าสา') {
     const c = this.char;
+    if (tradeLock.on) return { ok: false, msg: 'กำลังเทรดอยู่ – ปิดหน้าต่างเทรดก่อน' };
     if (!Object.entries(r.need).every(([id, n]) => count(c, id) >= n)) return { ok: false, msg: 'วัตถุดิบไม่พอ' };
     if (c.gold < r.fee) return { ok: false, msg: 'เงินไม่พอจ่ายค่าแรง' };
     Object.entries(r.need).forEach(([id, n]) => removeItem(c, id, n));
@@ -236,6 +237,7 @@ export class Village {
 
   enhance(slot) {
     const c = this.char, s = this.scene, lv = c.enhance[slot] || 0;
+    if (tradeLock.on) return s.ui.toast('กำลังเทรดอยู่ – ปิดหน้าต่างเทรดก่อน', 'warn');
     const cost = ENHANCE.cost(lv), ore = ENHANCE.ore(lv), fang = ENHANCE.fang(lv);
     if (!c.equipment[slot] || lv >= ENHANCE.max || c.gold < cost || count(c, 'black_iron') < ore || count(c, 'yak_fang') < fang) return;
     const guard = lv >= 10 && this.useGuard && count(c, 'yant_guard') > 0;

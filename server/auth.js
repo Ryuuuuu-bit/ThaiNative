@@ -103,6 +103,25 @@ export function setupAuth(app) {
     res.json({ ok: true });
   }));
 
+  // ตารางอันดับ (สาธารณะ · แคช 30 วิ): เลเวลสูงสุด / ตีบวกสูงสุด
+  let lbCache = null, lbAt = 0;
+  api.get('/leaderboard', wrap(async (req, res) => {
+    if (!lbCache || Date.now() - lbAt > 30000) {
+      const rows = (await req.store.topCharacters(300)).filter((r) => r && r.name);
+      const clean = rows.map((r) => {
+        const enh = r.enhance || {}, eq = r.equipment || {};
+        const best = Math.max(0, ...Object.entries(enh).filter(([slot]) => eq[slot]).map(([, v]) => +v || 0));
+        return { name: String(r.name).slice(0, 16), level: Math.min(30, +r.level || 1), path: typeof r.path === 'string' ? r.path : null, enh: Math.min(20, best) };
+      });
+      lbCache = {
+        level: clean.slice(0, 20),
+        enhance: [...clean].filter((r) => r.enh > 0).sort((a, b) => b.enh - a.enh || b.level - a.level).slice(0, 20),
+      };
+      lbAt = Date.now();
+    }
+    res.json(lbCache);
+  }));
+
   api.post('/logout', auth(async (req, res) => {
     await req.store.deleteSession(req.token);
     res.json({ ok: true });

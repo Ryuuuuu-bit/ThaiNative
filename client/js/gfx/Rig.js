@@ -355,6 +355,10 @@ export const MONSTER_RIG = {
   npc_lung_dam:  { h: 48, kind: 'biped', hip: 0.7, neck: 0.3, swing: 0.2 },
   npc_pa_sa:     { h: 44, kind: 'biped', hip: 0.72, neck: 0.3, swing: 0.2 },
   npc_mae_choy:  { h: 43, kind: 'biped', hip: 0.72, neck: 0.3, swing: 0.2 },
+  npc_kru_sword:  { h: 45, kind: 'biped', hip: 0.72, neck: 0.3, swing: 0.2 },
+  npc_kru_mage:   { h: 44, kind: 'biped', hip: 0.72, neck: 0.3, swing: 0.2 },
+  npc_kru_archer: { h: 45, kind: 'biped', hip: 0.72, neck: 0.3, swing: 0.2 },
+  npc_kru_boxer:  { h: 46, kind: 'biped', hip: 0.72, neck: 0.3, swing: 0.2 },
   npc_phran_bun: { h: 46, kind: 'biped', hip: 0.7, neck: 0.3, swing: 0.2 },
   npc_maekha:    { h: 44, kind: 'biped', hip: 0.72, neck: 0.3, swing: 0.2 },
   // ---- ผีป่าช้า: ภาพ PixelLab ยังไม่มา → ใช้ภาพผีตัวอื่นย้อมสีเป็นตัวแทนชั่วคราว (fallback) ----

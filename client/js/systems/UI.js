@@ -23,9 +23,10 @@ import { gainExp, syncAppearance } from './Character.js';
 
 const $ = (s) => document.querySelector(s);
 const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
-const SLOT_TH = { weapon: 'อาวุธ', armor: 'เสื้อ', accessory: 'เครื่องราง' };
+const SLOT_TH = { weapon: 'อาวุธ', armor: 'ชุดเกราะ', accessory: 'เครื่องประดับ 1', accessory2: 'เครื่องประดับ 2' };
 /** ป้ายแนวของอาวุธ / สายของชุด */
-const itemTag = (it) => it.wtype ? ` · แนว${JOBS[WTYPE_JOB[it.wtype]].nameTh}` : it.path ? ` · ชุดสาย${JOBS[it.path].nameTh}` : '';
+const itemTag = (it) => (it.lv ? ` · Lv.${it.lv}` : '') + (it.legend ? ' · ✦ตำนาน' : '') + (it.wtype ? ` · แนว${JOBS[WTYPE_JOB[it.wtype]].nameTh}`
+  : it.job ? ` · สาย${JOBS[it.job].nameTh}` : it.path ? ` · ชุดสาย${JOBS[it.path].nameTh}` : '');
 
 export class UI {
   /** @param {Phaser.Scene} scene GameScene */
@@ -60,7 +61,8 @@ export class UI {
       if (e.key === 'Enter') {
         const text = input.value.trim();
         if (text) {
-          if (/^\/gm\b/i.test(text)) this.gmCommand(text);     // /gm … = คำสั่งแอดมิน
+          if (/^\/r\s+/i.test(text) && this.lastWhisper) scene.net.sendChat(`/w ${this.lastWhisper} ${text.replace(/^\/r\s+/i, '')}`);   // /r = ตอบกระซิบล่าสุด
+          else if (/^\/gm\b/i.test(text)) this.gmCommand(text);     // /gm … = คำสั่งแอดมิน
           else if (/^\/p\s+/i.test(text)) {                        // /p ข้อความ = แชทปาร์ตี้
             if (scene.social?.party) scene.social.partyChat(text.replace(/^\/p\s+/i, ''));
             else this.toast('ยังไม่มีปาร์ตี้', 'warn');
@@ -71,6 +73,10 @@ export class UI {
         input.blur();
       } else if (e.key === 'Escape') input.blur();
     });
+    // พิมพ์ในช่องกรอกใดก็ได้ → ปิดคีย์บอร์ดเกม + ล้างปุ่มค้าง (ไม่งั้นตัวละครเดินเองหลังพิมพ์เสร็จ)
+    const isField = (el) => el && /^(INPUT|TEXTAREA|SELECT)$/.test(el.tagName) && el.type !== 'checkbox' && el.type !== 'range';
+    document.addEventListener('focusin', (e) => { if (isField(e.target)) { scene.input.keyboard.enabled = false; scene.input.keyboard.resetKeys(); } });
+    document.addEventListener('focusout', (e) => { if (isField(e.target)) { scene.input.keyboard.resetKeys(); scene.input.keyboard.enabled = true; } });
     $('#chat-toggle').onclick = () => { $('#chat').classList.toggle('collapsed'); input.blur(); };
     input.addEventListener('focus', () => { scene.input.keyboard.enabled = false; $('#chat').classList.remove('collapsed'); });
     input.addEventListener('blur', () => (scene.input.keyboard.enabled = true));
@@ -100,7 +106,7 @@ export class UI {
       case 'sp': c.sp = (c.sp || 0) + n(a1, 10); say(`SP → ${c.sp}`); break;
       case 'stat': c.statPoints = (c.statPoints || 0) + n(a1, 10); say(`แต้มสถานะ → ${c.statPoints}`); break;
       case 'enh': {
-        const slot = ['weapon', 'armor', 'accessory'].includes(a1) ? a1 : 'weapon';
+        const slot = ['weapon', 'armor', 'accessory', 'accessory2'].includes(a1) ? a1 : 'weapon';
         (c.enhance ||= {})[slot] = Math.min(ENHANCE.max, n(a2, ENHANCE.max));
         if (syncAppearance(c)) this.scene.onAppearanceChanged(); say(`ตีบวก ${slot} → +${c.enhance[slot]}`); break;
       }
@@ -482,10 +488,11 @@ export class UI {
     setTimeout(() => el.remove(), ms);
   }
 
-  chat({ name, text, party }) {
+  chat({ name, text, party, whisper, from }) {
     const log = $('#chat-log');
     const el = document.createElement('div');
     if (party) el.className = 'party-msg';
+    if (whisper) { el.className = 'whisper-msg'; if (from) this.lastWhisper = from; }
     el.innerHTML = `<b>${esc(name)}:</b> ${esc(text)}`;
     log.appendChild(el);
     while (log.children.length > 8) log.firstChild.remove();
@@ -493,6 +500,7 @@ export class UI {
 
   /** ผลลัพธ์จาก Inventory → แจ้งเตือน + รีเฟรช */
   result(r) {
+    if (r.home) { this.closeAll(); return this.scene.recall(); }
     if (r.msg) this.toast(r.msg, r.ok ? '' : 'warn');
     if (r.jobChanged) this.scene.onAppearanceChanged();
     this.hudCache = '';
@@ -589,9 +597,9 @@ export class UI {
     if (!c.inventory.length) { $('#inv-list').innerHTML = '<div class="empty">กระเป๋าว่างเปล่า</div>'; return; }
     // แท็บกรอง + เรียงลำดับ
     const CAT = { all: ['ทั้งหมด', () => true], gear: ['อุปกรณ์', (t) => ['weapon', 'armor', 'accessory'].includes(t)], cos: ['ชุดแต่งตัว', (t) => t === 'costume'],
-      use: ['ยา/อาหาร', (t) => ['consumable', 'food', 'reset', 'skin', 'offering'].includes(t)],
+      use: ['ยา/อาหาร', (t) => ['consumable', 'home', 'food', 'reset', 'skin', 'offering'].includes(t)],
       mat: ['วัตถุดิบ', (t) => ['material', 'herb', 'fish'].includes(t)] };
-    const ORDER = ['weapon', 'armor', 'accessory', 'costume', 'consumable', 'food', 'reset', 'skin', 'offering', 'herb', 'fish', 'material'];
+    const ORDER = ['weapon', 'armor', 'accessory', 'costume', 'home', 'consumable', 'food', 'reset', 'skin', 'offering', 'herb', 'fish', 'material'];
     const cat = this.invCat || 'all', sort = this.invSort || 'type';
     const list = c.inventory.filter((s) => CAT[cat][1](ITEMS[s.id].type)).sort((a, b) => {
       const A = ITEMS[a.id], B = ITEMS[b.id];
@@ -604,7 +612,8 @@ export class UI {
     // เทียบค่าพลังกับของที่ใส่อยู่ช่องเดียวกัน
     const SLOT = { weapon: 'weapon', armor: 'armor', accessory: 'accessory' };
     const diff = (it) => {
-      const slot = SLOT[it.type]; if (!slot) return '';
+      let slot = SLOT[it.type]; if (!slot) return '';
+      if (slot === 'accessory' && c.equipment.accessory && !c.equipment.accessory2) slot = 'accessory2';   // จะใส่ข้างที่ว่าง
       const cur = ITEMS[c.equipment[slot]]?.bonus || {}, nb = it.bonus || {};
       const keys = [...new Set([...Object.keys(cur), ...Object.keys(nb)])];
       const parts = keys.map((k) => { const d = (nb[k] || 0) - (cur[k] || 0); if (!d) return ''; const v = k === 'crit' ? `${+(d * 100).toFixed(1)}%` : Math.abs(d);
@@ -613,7 +622,7 @@ export class UI {
     };
     $('#inv-list').innerHTML = tabs + (list.length ? list.map((s) => {
       const it = ITEMS[s.id], lock = Inv.isLocked(c, s.id);
-      const action = { consumable: 'ใช้', food: 'กิน', offering: 'ถวาย', weapon: 'ถือ', armor: 'สวม', accessory: 'สวม', costume: 'แต่ง', reset: 'ใช้', skin: c.path === it.job ? 'ใช้อยู่' : 'เปลี่ยนสาย' }[it.type];
+      const action = { home: 'ใช้', consumable: 'ใช้', food: 'กิน', offering: 'ถวาย', weapon: 'ถือ', armor: 'สวม', accessory: 'สวม', costume: 'แต่ง', reset: 'ใช้', skin: c.path === it.job ? 'ใช้อยู่' : 'เปลี่ยนสาย' }[it.type];
       const job = itemTag(it) || (it.type === 'costume' ? ` · ชุดแต่งตัว${it.rare ? ' ✨หายาก' : ''}` : '');
       return `<div class="item inv"><span class="ic">${itemIcon(s.id, it.icon)}</span>
         <span>${esc(it.nameTh)} <span class="meta">x${s.qty}${job}</span>${diff(it)}</span>
@@ -660,15 +669,21 @@ export class UI {
     const qtyBar = `<div class="qty-bar"><span>จำนวน:</span>${QTY.map(([n, l]) => `<button data-qty="${n}" class="${q === n ? 'active' : ''}">${l}</button>`).join('')}
       <label class="qty-custom ${custom ? 'active' : ''}">ระบุ <input type="number" id="shop-qty-in" min="1" max="9999" value="${custom ? q : ''}" placeholder="เช่น 25" /></label></div>`;
     if (this.shopTab === 'buy') {
-      html = qtyBar + shop.stock.map((id) => {
+      // ร้านครูอาชีพ: กรองตามประเภท
+      const GF = { all: 'ทั้งหมด', weapon: 'อาวุธ', armor: 'ชุดเกราะ', accessory: 'เครื่องประดับ', ok: 'สวมได้ตอนนี้' };
+      const gf = shop.job ? (this.gearFilter || 'all') : 'all';
+      const filterBar = shop.job ? `<div class="qty-bar gear-filter"><span>แสดง:</span>${Object.entries(GF).map(([k, l]) => `<button data-gf="${k}" class="${k === gf ? 'active' : ''}">${l}</button>`).join('')}</div>` : '';
+      const stock = shop.stock.filter((id) => gf === 'all' || (gf === 'ok' ? (ITEMS[id].lv || 1) <= c.level : ITEMS[id].type === gf));
+      html = (shop.job ? filterBar : qtyBar) + stock.map((id) => {
         const it = ITEMS[id];
+        const under = it.lv && c.level < it.lv;
         const owned = it.type === 'skin' && Inv.count(c, id);
         const n = it.type === 'skin' ? 1 : Math.max(1, Math.min(q, Math.floor(c.gold / it.price)));
         const job = itemTag(it) ? `<span class="meta">${itemTag(it)}</span>` : it.desc ? `<span class="meta"> · ${esc(it.desc)}</span>` : '';
         const bonus = it.bonus ? `<span class="meta"> ${Object.entries(it.bonus).map(([k, v]) => `${k.toUpperCase()}+${k === 'crit' ? v * 100 + '%' : v}`).join(' ')}</span>` : '';
         const food = it.buff ? `<span class="meta"> ${esc(it.buff.textTh)}</span>` : '';
         const have = Inv.count(c, id);
-        return `<div class="item"><span class="ic">${itemIcon(id, it.icon)}</span><span>${esc(it.nameTh)}${have ? ` <span class="meta">(มี ${have})</span>` : ''}${job}${bonus}${food}</span>
+        return `<div class="item ${under ? 'under' : ''}"><span class="ic">${itemIcon(id, it.icon)}</span><span>${esc(it.nameTh)}${have ? ` <span class="meta">(มี ${have})</span>` : ''}${job}${bonus}${food}${under ? ' <span class="need-lv">🔒 ต้อง Lv.' + it.lv + '</span>' : ''}</span>
           <span class="price">฿${(it.price * n).toLocaleString()}</span>
           <button data-buy="${id}" data-n="${n}" ${owned || c.gold < it.price ? 'disabled' : ''}>${owned ? 'มีแล้ว' : n > 1 ? `ซื้อ x${n}` : 'ซื้อ'}</button></div>`;
       }).join('');
@@ -688,6 +703,7 @@ export class UI {
     }
     $('#shop-list').innerHTML = html;
     const trade = (r) => { this.scene.sfx.play(r.ok ? 'buy' : 'error'); this.result(r); };
+    $('#shop-list').querySelectorAll('[data-gf]').forEach((b) => (b.onclick = () => { this.gearFilter = b.dataset.gf; this.scene.sfx.play('click'); this.renderShop(); }));
     $('#shop-list').querySelectorAll('[data-qty]').forEach((b) => (b.onclick = () => { this.shopQty = +b.dataset.qty; this.scene.sfx.play('click'); this.renderShop(); }));
     const qin = $('#shop-qty-in');
     if (qin) {

@@ -102,6 +102,13 @@ class PgStore {
       `INSERT INTO characters (account_id, data, updated_at) VALUES ($1, $2, now())
        ON CONFLICT (account_id) DO UPDATE SET data = EXCLUDED.data, updated_at = now()`, [accountId, data]);
   }
+  /** ตารางอันดับ: เลเวล/EXP + ตีบวกสูงสุด (ข้อมูลย่อ) */
+  async topCharacters(limit = 300) {
+    const { rows } = await this.pool.query(
+      `SELECT data->>'name' AS name, data->'level' AS level, data->'exp' AS exp, data->'enhance' AS enhance, data->'path' AS path, data->'equipment' AS equipment
+         FROM characters ORDER BY (data->>'level')::int DESC NULLS LAST, (data->>'exp')::int DESC NULLS LAST LIMIT $1`, [limit]);
+    return rows;
+  }
 }
 
 // ============================================================
@@ -129,6 +136,10 @@ class MemoryStore {
   async deleteSession(token) { this.sessions.delete(token); }
   async getCharacter(id) { return this.chars.get(id) || null; }
   async saveCharacter(id, data) { this.chars.set(id, data); }
+  async topCharacters(limit = 300) {
+    return [...this.chars.values()].sort((a, b) => (b.level || 0) - (a.level || 0) || (b.exp || 0) - (a.exp || 0)).slice(0, limit)
+      .map((d) => ({ name: d.name, level: d.level, exp: d.exp, enhance: d.enhance, path: d.path, equipment: d.equipment }));
+  }
 }
 
 export async function createStore() {

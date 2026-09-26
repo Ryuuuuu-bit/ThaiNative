@@ -22,6 +22,7 @@ import { Network } from '../net/Network.js';
 import { getDerived, saveCharacter } from '../systems/Character.js';
 import { account } from '../net/Account.js';
 import { useItem, count, equip, unequip, tradeLock } from '../systems/Inventory.js';
+import * as Inv from '../systems/Inventory.js';
 import { makeText } from '../systems/util.js';
 import { ITEMS } from '/shared/data/items.js';
 import { sound } from '../systems/Sound.js';
@@ -39,6 +40,11 @@ const NPCS = [
   { id: 'smith', key: 'npc_lung_dam',  x: 846,   nameTh: 'ลุงดำ', role: 'ช่างตีเหล็ก', color: '#f5b041', tint: 0x7f8c8d, flip: true },
   { id: 'tailor', key: 'npc_mae_choy', x: 380,   nameTh: 'แม่ช้อย', role: 'ร้านชุดแต่งตัว', color: '#f5b7b1', tint: 0xf5b7b1, flip: true },
   { id: 'cook',  key: 'npc_pa_sa',     x: -300,  nameTh: 'ป้าสา', role: 'ครัว·รับซื้อปลา', color: '#85c1e9', tint: 0xf5cba7, flip: true },
+  // ลานฝึกวิชา: ครูประจำ 4 อาชีพ (ขายอุปกรณ์สายตัวเอง)
+  { id: 'kru_sword',  key: 'npc_kru_sword',  x: -200, nameTh: 'ครูเหม',     role: 'สำนักดาบ',      color: '#f1948a', tint: 0xe6b0aa, flip: true },
+  { id: 'kru_mage',   key: 'npc_kru_mage',   x: -125, nameTh: 'หลวงตาเผือก', role: 'หมอธรรม·อาคม', color: '#bb8fce', tint: 0xd2b4de, flip: true },
+  { id: 'kru_archer', key: 'npc_kru_archer', x: -50,  nameTh: 'พรานแก้ว',   role: 'ค่ายพรานไพร',  color: '#82e0aa', tint: 0xa9dfbf, flip: true },
+  { id: 'kru_boxer',  key: 'npc_kru_boxer',  x: 25,   nameTh: 'ครูแดง',     role: 'ค่ายมวย',      color: '#f5b041', tint: 0xf5cba7, flip: true },
 ];
 const SPAWN_X = WORLD.spawnX;
 
@@ -194,6 +200,18 @@ export class GameScene extends Phaser.Scene {
     [-420, -160, 200, 340, 500, 680, 800, 940].forEach((x) => this.add.image(x, gy, 'lantern').setOrigin(0.5, 1).setDepth(2));
     this.buildRiver(img, label);
 
+    // ลานฝึกวิชา 4 สำนัก: ป้าย + หุ่นฝึก/เป้าธนู/กระสอบทราย/ธงยันต์
+    label(-88, gy - 106, '⚔️ ลานฝึกวิชา 4 สำนัก', '#f7dc6f', '8px');
+    const tg = this.add.graphics().setDepth(1);
+    tg.fillStyle(0x6e4b2a).fillRect(-236, gy - 96, 3, 96).fillRect(60, gy - 96, 3, 96).fillRect(-240, gy - 98, 305, 4);   // ซุ้มไม้
+    tg.fillStyle(0xc0392b).fillRect(-232, gy - 94, 292, 3);
+    tg.fillStyle(0x8b5a2b).fillRect(-168, gy - 26, 4, 26).fillRect(-175, gy - 22, 18, 3);                                   // หุ่นฝึกดาบ
+    tg.fillStyle(0xd4ac0d).fillCircle(-166, gy - 30, 5);
+    tg.fillStyle(0xf2efe6).fillCircle(-18, gy - 22, 9); tg.fillStyle(0xc0392b).fillCircle(-18, gy - 22, 6); tg.fillStyle(0xf2efe6).fillCircle(-18, gy - 22, 3);  // เป้าธนู
+    tg.fillStyle(0x6e4b2a).fillRect(-19, gy - 13, 2, 13);
+    tg.fillStyle(0x6e4b2a).fillRect(50, gy - 60, 2, 12); tg.fillStyle(0xa04000).fillRoundedRect(44, gy - 48, 14, 26, 4);                // กระสอบทราย
+    tg.fillStyle(0x4a235a).fillRect(-92, gy - 40, 2, 40); tg.fillStyle(0xf4d03f).fillTriangle(-90, gy - 40, -74, gy - 35, -90, gy - 30);   // ธงยันต์
+
     // ชาวบ้าน NPC
     this.npcs = NPCS.map((n) => {
       const real = this.textures.exists(n.key);
@@ -233,12 +251,14 @@ export class GameScene extends Phaser.Scene {
   //            F / ↓ คุย NPC | C สถานะ | I กระเป๋า | 1 2 ยา | M เปิด/ปิดเสียง | Enter แชท
   setupInput() {
     const kb = this.input.keyboard;
-    this.keys = kb.addKeys('LEFT,RIGHT,UP,DOWN,SPACE,Q,W,E,R,T,F,C,I,H,J,K,M,P,ONE,TWO,ENTER,ESC,TAB');
+    this.keys = kb.addKeys('LEFT,RIGHT,UP,DOWN,SPACE,Q,W,E,R,T,F,C,I,H,J,K,M,P,B,ONE,TWO,ENTER,ESC,TAB');
     kb.addCapture('TAB');
     kb.on('keydown-TAB', () => !this.ui.typing && this.cycleWeapon());      // สลับอาวุธ (ดาบ→ไม้เท้า→ธนู→มือเปล่า)
 
     // F = คุยกับ NPC / เปิดร้านค้า
     kb.on('keydown-F', () => this.interact());
+    kb.on('keydown-B', () => !this.ui.typing && this.recall());               // ยันต์คืนถิ่น
+    document.getElementById('btn-home')?.addEventListener('click', () => this.recall());
     kb.on('keydown-SPACE', () => this.village.fishing && this.village.press());
     kb.on('keydown-J', () => this.village.openQuests());      // สมุดเควส
     // ↓ = ลงจากแพลตฟอร์มไม้ (ทะลุลงไป 0.3 วิ)
@@ -339,6 +359,7 @@ export class GameScene extends Phaser.Scene {
     } else if (spot.id === 'smith') this.ui.openShop('lung_dam');
     else if (spot.id === 'cook') this.ui.openShop('pa_sa');
     else if (spot.id === 'tailor') this.ui.openShop('tailor');
+    else if (spot.id.startsWith('kru_')) this.ui.openShop(spot.id);
     else if (spot.id === 'quest') this.village.openQuests();
     else if (spot.id === 'fish') this.village.startFishing();
     else if (spot.id === 'warp') this.world.useGate();
@@ -408,8 +429,18 @@ export class GameScene extends Phaser.Scene {
     const net = (this.net = new Network());
     const addRemote = (p) => { if (!this.remotes.has(p.id)) this.remotes.set(p.id, new RemotePlayer(this, p)); };
 
-    net.on('status', (on) => this.ui.setOnline(on, this.remotes.size))
-      .on('init', ({ players, serverTime, dayMs }) => { players.forEach(addRemote); this.ui.setOnline(true, this.remotes.size); if (serverTime) this.clock?.sync(serverTime, dayMs); })
+    net.on('status', (on) => {
+      if (!on) {                                                  // หลุดการเชื่อมต่อ → ล้างสถานะออนไลน์ทั้งหมด (ต่อใหม่จะได้ข้อมูลสด)
+        this.remotes.forEach((r) => r.destroy()); this.remotes.clear();
+        if (this.social) { this.social.party = null; this.social.renderParty(); this.social.closeTrade(); }
+      } else this.sendChar();
+      this.ui.setOnline(on, this.remotes.size);
+    })
+      .on('init', ({ players, serverTime, dayMs }) => {
+        const ids = new Set(players.map((p) => p.id));
+        for (const [id, r] of this.remotes) if (!ids.has(id)) { r.destroy(); this.remotes.delete(id); }   // ผีค้าง (ออกไปตอนเราหลุด)
+        players.forEach(addRemote); this.ui.setOnline(true, this.remotes.size); if (serverTime) this.clock?.sync(serverTime, dayMs);
+      })
       .on('joined', (p) => { addRemote(p); this.ui.chat({ name: '📢 ระบบ', text: `${p.name} เข้าสู่โลก` }); this.ui.setOnline(true, this.remotes.size); })
       .on('left', (id) => { this.remotes.get(id)?.destroy(); this.remotes.delete(id); this.ui.setOnline(true, this.remotes.size); })
       .on('snapshot', ({ t, players, boss }) => {
@@ -436,6 +467,47 @@ export class GameScene extends Phaser.Scene {
     this.time.addEvent({ delay: 8000, loop: true, callback: () => this.sendChar() });
   }
 
+  /** ยันต์คืนถิ่น: ร่าย 2.5 วิ (ขยับ/โดนตี/ตาย = ยกเลิก) → วาร์ปกลับหมู่บ้าน */
+  recall() {
+    const p = this.player, c = p.char;
+    if (this.recalling || this.warping) return;
+    if (this.map.id === 'village') return this.ui.toast('อยู่ในหมู่บ้านแล้ว', 'warn');
+    if (!p.alive) return;
+    if (!Inv.count(c, 'yant_home')) return this.ui.toast('ไม่มียันต์คืนถิ่น (ซื้อได้ที่ร้านยายติ๋ม ฿40)', 'warn');
+    if (Inv.tradeLock.on) return this.ui.toast('กำลังเทรดอยู่', 'warn');
+    const hp0 = c.hp, x0 = p.x, T = 2500, t0 = this.time.now;
+    this.recalling = true;
+    this.sfx.play('buff');
+    const ring = this.add.ellipse(p.x, p.y - 1, 34, 9, 0x76d7c4, 0.35).setDepth(8).setBlendMode(Phaser.BlendModes.ADD);
+    const bar = document.getElementById('fish-ui'), fill = document.getElementById('fish-zone');
+    bar.classList.remove('hidden'); document.getElementById('fish-bar').classList.remove('hidden');
+    document.getElementById('fish-msg').textContent = '🏠 กำลังร่ายยันต์คืนถิ่น… (ห้ามขยับ)';
+    const end = (ok, msg) => {
+      this.recalling = false; ev.remove(); ring.destroy(); bar.classList.add('hidden');
+      if (!ok) return msg && this.ui.toast(msg, 'warn');
+      Inv.removeItem(c, 'yant_home', 1);
+      const to = MAPS.village;
+      this.net.send('player:warp', { kind: 'home' });
+      this.cameras.main.fadeOut(220, 10, 30, 30);
+      this.cameras.main.once(Phaser.Cameras.Scene2D.Events.FADE_OUT_COMPLETE, () => {
+        p.setPosition(to.arriveX, WORLD.groundY - 2).setVelocity(0, 0);
+        this.setMap(to);
+        this.cameras.main.centerOn(p.x, p.y).fadeIn(320, 10, 30, 30);
+        this.combat.burst(p.x, p.y - 20, 0x76d7c4, 18);
+        this.saveSoon();
+      });
+    };
+    const ev = this.time.addEvent({ delay: 50, loop: true, callback: () => {
+      ring.setPosition(p.x, p.y - 1).setScale(1 + Math.sin(this.time.now / 90) * 0.1);
+      const k = Math.min(1, (this.time.now - t0) / T);
+      fill.style.width = `${k * 100}%`;
+      if (!p.alive) return end(false);
+      if (Math.abs(p.x - x0) > 6) return end(false, 'ขยับตัว — ยกเลิกการร่ายยันต์');
+      if (c.hp < hp0) return end(false, 'โดนโจมตี — ยกเลิกการร่ายยันต์');
+      if (k >= 1) end(true);
+    } });
+  }
+
   /** ข้อมูลตัวละครที่ server ใช้คำนวณดาเมจ/รางวัล (สถานะ อุปกรณ์ สกิล พร บัฟ) */
   charPayload() { return charPayload(this.player.char, this.player.buffs || []); }
   sendChar() { if (this.net?.online) this.net.send('player:char', this.charPayload()); }
@@ -459,7 +531,9 @@ export class GameScene extends Phaser.Scene {
 
   saveSoon() {
     clearTimeout(this._saveT);
-    this._saveT = setTimeout(() => { saveCharacter(this.player.char); this.sendChar(); }, 800);
+    this._saveT = setTimeout(() => saveCharacter(this.player.char), 800);
+    clearTimeout(this._charT);                                    // ค่าพลัง/สกิล/อุปกรณ์ → ส่งให้ server ทันที (ไม่ต้องรอเซฟ)
+    this._charT = setTimeout(() => this.sendChar(), 40);
   }
 
   update(time) {

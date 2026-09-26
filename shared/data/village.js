@@ -50,6 +50,8 @@ export const GATHER_MS = 1400;
 /** หีบสมบัติโบราณ: โผล่บนแพลตฟอร์มในป่าเป็นระยะ */
 export const CHEST = { everyMs: 150000, lifeMs: 100000 };
 /** ชุดแต่งตัวที่ดรอปจากหีบสมบัติ (ร้านไม่ขาย) */
+import { rollGearDrop } from './gear.js';
+
 export const CHEST_COSTUMES = ['cos_head_peacockq', 'cos_head_jade', 'cos_head_asura', 'cos_face_skull', 'cos_back_bat'];
 export function rollChest(level, rnd = Math.random) {
   const items = [];
@@ -59,6 +61,7 @@ export function rollChest(level, rnd = Math.random) {
   if (rnd() < 0.08) items.push({ id: ['amulet_coin', 'amulet_ganesh', 'amulet_somdej', 'amulet_pidta'][Math.floor(rnd() * 4)], qty: 1 });
   if (rnd() < 0.04) items.push({ id: 'yant_guard', qty: 1 });                       // ยันต์กันลดขั้น (หายาก)
   if (rnd() < 0.03) items.push({ id: CHEST_COSTUMES[Math.floor(rnd() * CHEST_COSTUMES.length)], qty: 1 }); // ชุดแต่งตัวหายาก
+  if (rnd() < 0.08) { const g = rollGearDrop(level + 2, 1 / 0.012, rnd); if (g) items.push({ id: g, qty: 1 }); }  // อุปกรณ์ตามเลเวล (8%)
   return { gold, items };
 }
 
@@ -98,6 +101,7 @@ export const ENHANCE = {
     weapon: (lv) => ({ atk: lv * 3, matk: lv * 3 }),
     armor: (lv) => ({ def: lv * 2, hp: lv * 15 }),
     accessory: (lv) => ({ def: lv, CRI: Math.floor(lv / 2) }),
+    accessory2: (lv) => ({ def: lv, CRI: Math.floor(lv / 2) }),
   },
 };
 

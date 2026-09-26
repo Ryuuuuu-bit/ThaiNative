@@ -34,7 +34,7 @@ export function newCharacter(name, appearance) {
     hp: 0, mp: 0,
     gold: STARTING_GOLD,
     inventory: STARTING_ITEMS.map((i) => ({ ...i })),
-    equipment: { weapon: null, armor: null, accessory: null },
+    equipment: { weapon: null, armor: null, accessory: null, accessory2: null },
     sp: START_SP,                 // Skill Point
     skills: {},                   // { skillId: level }
     hotbar: emptyHotbar(),        // { Q: skillId|null, W, E, R, T }
@@ -174,7 +174,8 @@ function migrate(c) {
   if (!c.skills || typeof c.skills !== 'object') c.skills = {};
   if (!c.hotbar) c.hotbar = emptyHotbar();
   for (const k of SKILL_SLOTS) if (!(k in c.hotbar)) c.hotbar[k] = null;
-  if (!c.equipment) c.equipment = { weapon: null, armor: null, accessory: null };
+  if (!c.equipment) c.equipment = { weapon: null, armor: null, accessory: null, accessory2: null };
+  if (!('accessory2' in c.equipment)) c.equipment.accessory2 = null;             // เครื่องประดับข้างที่ 2
   if (!c.inventory) c.inventory = [];
   if (!c.costume) c.costume = {};
   if (typeof c.sp !== 'number') {

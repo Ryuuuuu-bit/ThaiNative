@@ -333,9 +333,9 @@ export class Monster extends Phaser.Physics.Arcade.Sprite {
     if (!this.alive) return;
     this.scene.combat.popup(this.x, this.y - this.def.frame.h, result);
     if (!result.hit) return;
-    const net = this.synced;
+    const net = fromServer || this.synced;
     if (fromServer) { if (result.stun) this.showStun(result.stun); if (result.poison) this.setTint(0x82e0aa); }
-    if (net) this.hp = Math.max(1, this.hp - result.dmg);   // server ตัดสินตาย · แสดง HP ล่วงหน้า
+    if (net) this.hp = Math.max(1, this.hp - result.dmg);   // server ตัดสินตาย (mob:die) · แสดง HP ล่วงหน้า
     else this.hp -= result.dmg;
     this.setTintFill(0xffffff);
     this.scene.time.delayedCall(70, () => this.alive && this.clearTint());
