@@ -20,12 +20,15 @@ import { UI } from '../systems/UI.js';
 import { Network } from '../net/Network.js';
 import { getDerived, saveCharacter } from '../systems/Character.js';
 import { account } from '../net/Account.js';
-import { useItem, count } from '../systems/Inventory.js';
+import { useItem, count, equip, unequip, tradeLock } from '../systems/Inventory.js';
 import { makeText } from '../systems/util.js';
 import { ITEMS } from '/shared/data/items.js';
 import { sound } from '../systems/Sound.js';
 import { SKILL_SLOTS } from '/shared/data/skills.js';
 import { loadSettings } from '../systems/Settings.js';
+
+const HP_POTS = ['hp_s', 'hp_m', 'pot_aloe', 'pot_turmeric'];   // ปุ่ม 1 / กินอัตโนมัติ (เล็ก→ใหญ่)
+const MP_POTS = ['mp_s', 'mp_m', 'pot_anchan'];
 
 const NPC_X = 720;
 /** ชาวบ้าน (Map 1) – key = ภาพ, fb = ภาพสำรองถ้ายังไม่มี (ย้อมสีจากป้าติ๋มเดิม) */
@@ -228,7 +231,9 @@ export class GameScene extends Phaser.Scene {
   //            F / ↓ คุย NPC | C สถานะ | I กระเป๋า | 1 2 ยา | M เปิด/ปิดเสียง | Enter แชท
   setupInput() {
     const kb = this.input.keyboard;
-    this.keys = kb.addKeys('LEFT,RIGHT,UP,DOWN,SPACE,Q,W,E,R,T,F,C,I,H,J,K,M,P,ONE,TWO,ENTER,ESC');
+    this.keys = kb.addKeys('LEFT,RIGHT,UP,DOWN,SPACE,Q,W,E,R,T,F,C,I,H,J,K,M,P,ONE,TWO,ENTER,ESC,TAB');
+    kb.addCapture('TAB');
+    kb.on('keydown-TAB', () => !this.ui.typing && this.cycleWeapon());      // สลับอาวุธ (ดาบ→ไม้เท้า→ธนู→มือเปล่า)
 
     // F = คุยกับ NPC / เปิดร้านค้า
     kb.on('keydown-F', () => this.interact());
@@ -245,8 +250,8 @@ export class GameScene extends Phaser.Scene {
     // ESC = ปิดหน้าต่างที่เปิดอยู่ ถ้าไม่มีหน้าต่างเปิด → เปิดตั้งค่า
     kb.on('keydown-ESC', () => (this.ui.anyOpen() ? this.ui.closeAll() : this.ui.toggle('settings-panel', true)));
     kb.on('keydown-ENTER', () => this.ui.focusChat());
-    kb.on('keydown-ONE', () => this.quickUse(['hp_s', 'hp_m']));
-    kb.on('keydown-TWO', () => this.quickUse(['mp_s', 'mp_m']));
+    kb.on('keydown-ONE', () => this.quickUse(HP_POTS));
+    kb.on('keydown-TWO', () => this.quickUse(MP_POTS));
   }
 
 
@@ -263,12 +268,39 @@ export class GameScene extends Phaser.Scene {
     };
   }
 
-  quickUse(ids) {
+  quickUse(ids, quiet = false) {
     const c = this.player.char;
     const id = ids.find((i) => count(c, i) > 0);
-    if (!id) return this.ui.toast('ไม่มียาเหลือแล้ว', 'warn');
+    if (!id) return quiet ? null : this.ui.toast('ไม่มียาเหลือแล้ว', 'warn');
     const r = useItem(c, id);
     if (r.ok) this.sfx.play('potion');
+    if (quiet && r.ok) { this.ui.loot(`🧪 กินยาอัตโนมัติ: ${ITEMS[id].nameTh}`); this.ui.result({ ok: true }); }
+    else if (!quiet) this.ui.result(r);
+    return r;
+  }
+
+  /** กินยาอัตโนมัติเมื่อ HP/MP ต่ำกว่า % ที่ตั้งไว้ (ตั้งค่า → การต่อสู้) */
+  autoPotion(time) {
+    const p = this.player, set = this.settings || {};
+    if (!p.alive || tradeLock.on || time < (this.nextAutoPot || 0)) return;
+    const c = p.char, d = getDerived(c);
+    if (set.autoHp && c.hp / d.maxHp * 100 < set.autoHp && this.quickUse(HP_POTS, true)?.ok) { this.nextAutoPot = time + 1500; return; }
+    if (set.autoMp && c.mp / d.maxMp * 100 < set.autoMp && this.quickUse(MP_POTS, true)?.ok) this.nextAutoPot = time + 1500;
+  }
+
+  /** Tab: สลับอาวุธวนไปเรื่อยๆ (อาวุธในกระเป๋า + มือเปล่า) → แนวต่อสู้/Hotbar เปลี่ยนตาม */
+  cycleWeapon() {
+    const c = this.player.char;
+    if (!this.player.alive || tradeLock.on) return;
+    const cur = c.equipment.weapon || null;
+    const W = ['sword', 'staff', 'bow', 'wraps'];
+    const ring = [...new Set([cur, ...c.inventory.filter((s) => ITEMS[s.id]?.type === 'weapon').map((s) => s.id)].filter(Boolean))]
+      .sort((a, b) => W.indexOf(ITEMS[a].wtype) - W.indexOf(ITEMS[b].wtype) || ITEMS[a].price - ITEMS[b].price);
+    ring.push(null);                                                     // มือเปล่า = ท้ายวง
+    if (ring.length < 2) return this.ui.toast('ไม่มีอาวุธให้สลับ', 'warn');
+    const next = ring[(ring.indexOf(cur) + 1) % ring.length];
+    const r = next ? equip(c, next) : unequip(c, 'weapon');
+    this.sfx.play('swing');
     this.ui.result(r);
   }
 
@@ -457,6 +489,7 @@ export class GameScene extends Phaser.Scene {
     this.ui.prompt(spot ? spot.prompt : '');
     this.ui.updateHud();
     this.ui.updateSkillBar(time);
+    this.autoPotion(time);
     this.ui.updateFrame(time);
     const px = this.player.x;
     const zone = mp.id === 'village' ? (px < FISH_SPOT.to + 40 ? 'ท่าน้ำบางผี' : 'หมู่บ้านบางผี')

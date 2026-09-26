@@ -8,6 +8,7 @@ export const DEFAULT_SETTINGS = {
   sfxOn: true, sfxVol: 0.8,     // เสียงเอฟเฟกต์
   damageNumbers: true,          // ตัวเลขดาเมจลอย
   minimap: true,                // มินิแมปมุมขวาบน
+  autoHp: 0, autoMp: 0,         // กินยาอัตโนมัติเมื่อต่ำกว่า % (0 = ปิด)
 };
 
 export function loadSettings() {

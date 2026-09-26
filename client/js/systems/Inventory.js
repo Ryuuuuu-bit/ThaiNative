@@ -130,20 +130,54 @@ export function buy(c, id, qty = 1) {
   if (tradeLock.on) return LOCKED;
   const it = ITEMS[id];
   if (!it?.price) return { ok: false, msg: 'ร้านไม่ขายของนี้' };
+  if (it.type === 'skin') qty = 1;
+  qty = Math.max(1, Math.floor(qty));
   if (it.type === 'skin' && count(c, id)) return { ok: false, msg: 'มีคัมภีร์นี้แล้ว' };
   const cost = it.price * qty;
   if (c.gold < cost) return { ok: false, msg: 'เงินไม่พอ' };
   c.gold -= cost;
   addItem(c, id, qty);
-  return { ok: true, msg: `ซื้อ ${it.nameTh} (-฿${cost})` };
+  return { ok: true, msg: `ซื้อ ${it.nameTh}${qty > 1 ? ` x${qty}` : ''} (-฿${cost.toLocaleString()})` };
+}
+
+/** ล็อกไอเทม (กันขายพลาด / ไม่รวมในขายทั้งหมด) */
+export const isLocked = (c, id) => !!c.locked?.includes(id);
+export function toggleLock(c, id) {
+  c.locked = c.locked || [];
+  if (isLocked(c, id)) c.locked = c.locked.filter((x) => x !== id); else c.locked.push(id);
+  return isLocked(c, id);
+}
+
+/** ของที่นับเป็น "ของดรอป" สำหรับปุ่มขายทั้งหมด: วัตถุดิบที่ร้านไม่ขาย (ไม่รวมแร่ตีบวก) · kind='fish' = ปลาที่ตกได้ */
+export function bulkSellList(c, kind = 'drop') {
+  return c.inventory.filter((s) => {
+    const it = ITEMS[s.id];
+    if (!it || isLocked(c, s.id) || !sellPrice(s.id)) return false;
+    return kind === 'fish' ? it.type === 'fish' : it.type === 'material' && !it.price;
+  });
+}
+
+/** ขายหลายอย่างพร้อมกัน → { ok, msg, gold } */
+export function sellMany(c, list) {
+  if (tradeLock.on) return LOCKED;
+  let gold = 0, n = 0;
+  for (const s of list.map((x) => ({ ...x }))) {
+    if (!removeItem(c, s.id, s.qty)) continue;
+    gold += sellPrice(s.id) * s.qty; n += s.qty;
+  }
+  c.gold += gold;
+  return n ? { ok: true, msg: `ขาย ${n} ชิ้น (+฿${gold.toLocaleString()})`, gold } : { ok: false, msg: 'ไม่มีของให้ขาย' };
 }
 
 export function sell(c, id, qty = 1) {
   if (tradeLock.on) return LOCKED;
+  if (isLocked(c, id)) return { ok: false, msg: 'ไอเทมนี้ถูกล็อกไว้ (ปลดล็อกในกระเป๋า)' };
+  qty = Math.min(qty, count(c, id));
+  if (qty <= 0) return { ok: false, msg: 'ไม่มีของพอขาย' };
   const it = ITEMS[id];
   if (it?.type === 'skin') return { ok: false, msg: 'ขายคัมภีร์ไม่ได้' };
   if (!removeItem(c, id, qty)) return { ok: false, msg: 'ไม่มีของพอขาย' };
   const gain = sellPrice(id) * qty;
   c.gold += gain;
-  return { ok: true, msg: `ขาย ${it.nameTh} (+฿${gain})` };
+  return { ok: true, msg: `ขาย ${it.nameTh}${qty > 1 ? ` x${qty}` : ''} (+฿${gain.toLocaleString()})` };
 }

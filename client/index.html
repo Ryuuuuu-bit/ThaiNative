@@ -13,6 +13,7 @@
   <canvas id="title-bg" class="hidden"></canvas>
   <button id="title-caption" class="hidden" title="คลิกเพื่อเปลี่ยนฉาก"></button>
   <button id="title-sound" class="hidden" title="เปิด/ปิดเสียง">🔊</button>
+  <div id="title-credit" class="hidden">Develop by.Ryuu</div>
   <div id="game-wrap">
     <div id="game"></div>
 
@@ -126,6 +127,7 @@
         <div class="expbar"><i id="hud-exp-fill"></i><span id="hud-exp"></span></div>
 
         <div id="quest-track" class="quest-track hidden"></div>
+        <div id="loot-log" class="loot-log"></div>
         <div id="fish-ui" class="fish-ui hidden">
           <p id="fish-msg"></p>
           <div id="fish-bar" class="fish-bar hidden"><i id="fish-zone"></i><b id="fish-needle"></b></div>
@@ -253,6 +255,11 @@
           <div class="set-row"><label><input type="checkbox" id="set-mm" /> แสดงมินิแมป</label></div>
           <div class="set-row"><button id="set-fullscreen" class="btn ghost">⛶ เต็มจอ (Fullscreen)</button></div>
         </div>
+        <div class="set-group">
+          <div class="set-row"><span>🧪 กินยา HP อัตโนมัติเมื่อต่ำกว่า</span><select id="set-auto-hp"><option value="0">ปิด</option><option value="30">30%</option><option value="50">50%</option><option value="70">70%</option></select></div>
+          <div class="set-row"><span>🧪 กินยา MP อัตโนมัติเมื่อต่ำกว่า</span><select id="set-auto-mp"><option value="0">ปิด</option><option value="20">20%</option><option value="40">40%</option><option value="60">60%</option></select></div>
+          <div class="set-row"><small class="meta">Tab = สลับอาวุธ · Hotbar จำแยกตามอาวุธแต่ละแนว</small></div>
+        </div>
         <div class="set-group acc-group">
           <div class="set-row"><span>บัญชี: <b id="acc-name">—</b> <small id="acc-badge" class="acc-badge"></small></span></div>
           <p id="acc-note" class="hint"></p>
@@ -287,6 +294,7 @@
         <header>สถานะตัวละคร <button class="close">✕</button></header>
         <div class="points">แต้มสถานะเหลือ: <b id="st-points">0</b></div>
         <div id="st-list"></div>
+        <div id="st-actions" class="st-actions"></div>
         <div id="st-derived" class="derived"></div>
       </section>
 

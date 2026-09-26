@@ -364,10 +364,11 @@ export class Combat {
     this.scene.village?.questEvent('kill', mon.id);
     this.scene.forest?.onKill(mon.id);
 
+    this.scene.ui.loot(`☠️ ${def.nameTh}: +${exp} EXP · +฿${gold}`);
     for (const drop of def.drops) {
       if (Math.random() < drop.chance * bl.dropMul) {
         addItem(c, drop.item);
-        this.scene.ui.toast(`ได้รับ ${ITEMS[drop.item].icon} ${ITEMS[drop.item].nameTh}`);
+        this.scene.ui.loot(`🎁 ได้รับ ${ITEMS[drop.item].icon} ${ITEMS[drop.item].nameTh}`);
       }
     }
     this.scene.saveSoon();
@@ -378,6 +379,7 @@ export class Combat {
     const def = mon.def, m = mon.mods, bl = this.player.blessingMods();
     const exp = Math.round(def.exp * m.exp * bl.expMul);
     this.popupText(mon.x, mon.y - def.frame.h - 8, `+${exp} EXP (ช่วยตี)`, '#aed6f1');
+    this.scene.ui.loot(`🤝 ช่วยตี ${def.nameTh}: +${exp} EXP`);
     this.grantExp(exp);
     this.scene.village?.questEvent('kill', mon.id);
     this.scene.forest?.onKill(mon.id);

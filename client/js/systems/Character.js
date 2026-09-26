@@ -45,9 +45,24 @@ export function newCharacter(name, appearance) {
 
 /** รูปลักษณ์ตามของที่สวม/สายหลัก (เรียกทุกครั้งที่เปลี่ยนอาวุธ/ชุด/สาย) → true ถ้าภาพเปลี่ยน */
 export function syncAppearance(c) {
-  const before = JSON.stringify(c.appearance);
+  const before = JSON.stringify(c.appearance), oldStyle = c.appearance?.job;
   c.appearance = sanitizeAppearance({ ...c.appearance, weapon: c.equipment.weapon, armor: c.equipment.armor, path: c.path });
+  if (oldStyle && oldStyle !== c.appearance.job) swapHotbar(c, oldStyle, c.appearance.job);
   return before !== JSON.stringify(c.appearance);
+}
+
+/** Hotbar แยกตามแนวต่อสู้: เปลี่ยนอาวุธ → เก็บชุดเดิม แล้วโหลดชุดของแนวใหม่ (ครั้งแรกจัดสกิลที่เรียนแล้วให้อัตโนมัติ) */
+function swapHotbar(c, from, to) {
+  c.hotbars = c.hotbars || {};
+  if (c.hotbar) c.hotbars[from] = { ...c.hotbar };
+  let hb = c.hotbars[to];
+  if (!hb) {
+    hb = emptyHotbar();
+    const learned = Object.keys(c.skills || {}).filter((id) => SKILL_BY_ID[id]?.job === to && c.skills[id] > 0);
+    SKILL_SLOTS.forEach((k, i) => { hb[k] = learned[i] || null; });
+  }
+  for (const k of SKILL_SLOTS) if (hb[k] && !(c.skills?.[hb[k]] > 0)) hb[k] = null;   // สกิลที่ถูกล้างไปแล้ว
+  c.hotbar = { ...emptyHotbar(), ...hb };
 }
 
 /** แนวต่อสู้ปัจจุบัน (ตามอาวุธที่ถือ) */
@@ -109,10 +124,12 @@ export function learnSkill(c, id) {
   if (!r.ok) return { ok: false, msg: r.reason };
   c.sp--;
   c.skills[id] = (c.skills[id] || 0) + 1;
-  // เรียนครั้งแรก → ใส่ช่อง Hotbar ที่ว่างให้อัตโนมัติ
-  if (c.skills[id] === 1 && !Object.values(c.hotbar).includes(id)) {
-    const free = SKILL_SLOTS.find((k) => !c.hotbar[k]);
-    if (free) c.hotbar[free] = id;
+  // เรียนครั้งแรก → ใส่ Hotbar ของแนวนั้น (แนวปัจจุบัน = แถบบนจอ, แนวอื่น = แถบที่เก็บไว้)
+  const job = SKILL_BY_ID[id].job;
+  const hb = job === c.appearance.job ? c.hotbar : c.hotbars?.[job];
+  if (c.skills[id] === 1 && hb && !Object.values(hb).includes(id)) {
+    const free = SKILL_SLOTS.find((k) => !hb[k]);
+    if (free) hb[free] = id;
   }
   return { ok: true, msg: `${SKILL_BY_ID[id].nameTh} Lv.${c.skills[id]}` };
 }
@@ -133,6 +150,7 @@ export function assignHotbar(c, key, id) {
 export function resetSkills(c) {
   c.skills = {};
   c.hotbar = emptyHotbar();
+  c.hotbars = {};
   c.sp = totalSp(c);
 }
 

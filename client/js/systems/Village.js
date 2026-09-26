@@ -181,12 +181,19 @@ export class Village {
         return `<span class="${have >= n ? 'ok' : 'miss'}">${itemIcon(id, ITEMS[id].icon)}${esc(ITEMS[id].nameTh)} ${have}/${n}</span>`;
       }).join(' ');
       const can = Object.entries(r.need).every(([id, n]) => count(c, id) >= n) && c.gold >= r.fee;
+      // ทำได้สูงสุดกี่ชุด (ตามวัตถุดิบและเงิน)
+      const max = Math.min(...Object.entries(r.need).map(([id, n]) => Math.floor(count(c, id) / n)), r.fee ? Math.floor(c.gold / r.fee) : 99);
       const eff = it.buff ? `${esc(it.buff.textTh)} · ${it.buff.minutes} นาที` : '';
       return `<div class="item"><span class="ic">${itemIcon(r.out, it.icon)}</span>
         <span>${esc(it.nameTh)} <span class="meta">${eff}</span><div class="need">${needs} · ค่าแรง ฿${r.fee}</div></span>
-        <span></span><button data-craft="${i}" ${can ? '' : 'disabled'}>ทำ</button></div>`;
+        <span class="craft-btns"><button data-craft="${i}" ${can ? '' : 'disabled'}>ทำ</button>${max > 1 ? `<button data-craft="${i}" data-n="${max}">ทำ x${max}</button>` : ''}</span><span></span></div>`;
     }).join('') + `<p class="hint">${hint}</p>`;
-    el.querySelectorAll('[data-craft]').forEach((b) => (b.onclick = () => this.ui.result(this.cook(list[+b.dataset.craft], who))));
+    el.querySelectorAll('[data-craft]').forEach((b) => (b.onclick = () => {
+      const n = +b.dataset.n || 1, r = list[+b.dataset.craft];
+      let done = 0, res;
+      while (done < n && (res = this.cook(r, who)).ok) done++;
+      this.ui.result(done > 1 ? { ok: true, msg: `${who}ทำ ${ITEMS[r.out].icon} ${ITEMS[r.out].nameTh} x${done} ให้แล้ว!` } : res);
+    }));
   }
 
   cook(r, who = 'ป้าสา') {

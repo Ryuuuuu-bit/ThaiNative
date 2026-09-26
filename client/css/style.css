@@ -501,6 +501,46 @@ kbd { display: inline-block; min-width: 1.6em; text-align: center; padding: 0 .3
 #title-sound { position: fixed; right: 1.2vw; top: 1.4vh; z-index: 5; font-size: clamp(14px, 2.2vh, 22px); width: 2.2em; height: 2.2em; border-radius: 50%;
   color: #fff; background: rgba(10,5,20,.55); border: 1px solid rgba(212,175,55,.5); }
 #title-sound.hint::after { content: 'คลิกเพื่อเปิดเสียง'; position: absolute; right: 115%; top: 50%; transform: translateY(-50%); white-space: nowrap;
-  font-size: .6em; color: #f5e6b8; background: rgba(10,5,20,.7); padding: .2em .6em; border-radius: 6px; animation: pulse 1.6s infinite; }
-@keyframes pulse { 50% { opacity: .45; } }
+  font-size: .6em; color: #f5e6b8; background: rgba(10,5,20,.7); padding: .2em .6em; border-radius: 6px; animation: blink 1.6s infinite; }
+@keyframes blink { 50% { opacity: .45; } }
 .actionbar .gold .px-ico { width: 1.3em; height: 1.3em; margin: -.2em 0; }
+
+/* ---------- QOL: ลงแต้มสถานะ ---------- */
+.stat-row.q { grid-template-columns: 2.6em 1fr 3.4em auto; }
+.stat-row .v .add { color: #58d68d; font-size: .85em; margin-left: .15em; }
+.st-btns { display: flex; gap: 2px; }
+.st-btns button { min-width: 1.9em; padding: 0 .3em; font-size: .78em; }
+.st-btns button.minus { background: #7b241c; }
+.st-actions { display: flex; gap: .4em; justify-content: flex-end; flex-wrap: wrap; margin-top: .5em; }
+.btn.sm { font-size: .8em; padding: .3em .7em; }
+.derived em.up { color: #58d68d; font-style: normal; }
+.hud-buttons button.alert::after { content: ''; position: absolute; top: -.25em; right: -.25em; width: .6em; height: .6em; border-radius: 50%;
+  background: #e74c3c; border: 1px solid #fff; box-shadow: 0 0 6px #e74c3c; animation: blink 1.2s infinite; }
+.sk-ups { display: flex; gap: 2px; width: 100%; }
+.sk-ups .sk-up { flex: 1; }
+.sk-ups .sk-up.max { flex: 0 0 auto; padding: 0 .35em; font-size: .75em; }
+
+/* ---------- QOL: ร้านค้า / กระเป๋า ---------- */
+.qty-bar, .bulk-bar, .inv-tools { display: flex; align-items: center; gap: .3em; flex-wrap: wrap; margin-bottom: .2em; font-size: .85em; }
+.qty-bar button, .inv-tabs button { background: #1d1229; color: #e8dcc0; border: 1px solid rgba(212,175,55,.35); border-radius: 6px; padding: .1em .6em; font: inherit; }
+.qty-bar button.active, .inv-tabs button.active { background: var(--gold); color: #2a1b3a; }
+.inv-tools { justify-content: space-between; }
+.inv-tabs { display: flex; gap: .25em; flex-wrap: wrap; }
+#inv-sort { font: inherit; background: #1d1229; color: #e8dcc0; border: 1px solid rgba(212,175,55,.35); border-radius: 6px; padding: .1em .3em; }
+.item.inv { grid-template-columns: 1.8em 1fr auto auto auto; }
+.item .lock { background: none; border: none; font-size: .95em; opacity: .45; padding: 0 .1em; }
+.item .lock.on { opacity: 1; }
+.item.locked { opacity: .7; }
+.item .cmp { font-size: .7em; color: var(--muted); }
+.item .cmp .upv { color: #58d68d; margin-right: .3em; } .item .cmp .dnv { color: #f1948a; margin-right: .3em; }
+#title-credit { position: fixed; right: 1.2vw; bottom: 1.4vh; z-index: 5; font: 500 clamp(11px, 1.5vh, 16px) 'Mitr', sans-serif; letter-spacing: .06em;
+  color: #f5e6b8; text-shadow: 0 1px 3px #000, 0 0 8px rgba(212,175,55,.5); pointer-events: none; }
+.craft-btns { display: flex; gap: 3px; }
+.loot-log { position: absolute; right: 1.2%; bottom: 7%; display: flex; flex-direction: column; align-items: flex-end; gap: .15em; pointer-events: none; font-size: .72em; }
+.loot-log div { background: rgba(20,11,29,.75); border: 1px solid rgba(212,175,55,.35); border-radius: 6px; padding: .1em .55em; color: #f5e6b8;
+  text-shadow: 0 1px 2px #000; transition: opacity 1s; animation: lootin .25s ease-out; }
+.loot-log div.fade { opacity: 0; }
+@keyframes lootin { from { transform: translateX(20px); opacity: 0; } }
+#stats-panel { max-height: 94%; overflow-y: auto; }
+#stats-panel .stat-row.q { padding: .15em 0; }
+#stats-panel .stat-row .d { font-size: .72em; }
