@@ -307,7 +307,10 @@ export class Combat {
     if (!p.alive) return;
     const def = mon.def;
     if (def.projectile) {
-      const ang = Phaser.Math.Angle.Between(mon.body.center.x, mon.body.center.y, p.body.center.x, p.body.center.y);
+      // ออนไลน์: ยิงไปหาเป้าจริงที่ server เลือก (อาจเป็นผู้เล่นคนอื่น) – โดนเราก็ต่อเมื่อกระสุนผ่านตัวเรา
+      const rt = mon.targetId && mon.targetId !== this.scene.net?.selfId ? this.scene.remotes?.get(mon.targetId) : null;
+      const tx = rt ? rt.x : p.body.center.x, ty = rt ? rt.y - 16 : p.body.center.y;
+      const ang = Phaser.Math.Angle.Between(mon.body.center.x, mon.body.center.y, tx, ty);
       const shot = this.enemyShots.create(mon.body.center.x, mon.body.center.y, `proj_${def.projectile}`);
       shot.body.setAllowGravity(false);
       shot.setDepth(12);
@@ -367,6 +370,17 @@ export class Combat {
         this.scene.ui.toast(`ได้รับ ${ITEMS[drop.item].icon} ${ITEMS[drop.item].nameTh}`);
       }
     }
+    this.scene.saveSoon();
+  }
+
+  /** ช่วยเพื่อนตีผี (ทำดาเมจ ≥15%) → ได้ EXP เต็ม + นับเควส (เงิน/ของดรอปเป็นของคนตีจบ) */
+  onAssist(mon) {
+    const def = mon.def, m = mon.mods, bl = this.player.blessingMods();
+    const exp = Math.round(def.exp * m.exp * bl.expMul);
+    this.popupText(mon.x, mon.y - def.frame.h - 8, `+${exp} EXP (ช่วยตี)`, '#aed6f1');
+    this.grantExp(exp);
+    this.scene.village?.questEvent('kill', mon.id);
+    this.scene.forest?.onKill(mon.id);
     this.scene.saveSoon();
   }
 

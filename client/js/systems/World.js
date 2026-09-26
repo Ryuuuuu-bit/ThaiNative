@@ -216,7 +216,7 @@ export class World {
     cam.fadeOut(260, 10, 30, 30);
     cam.once(Phaser.Cameras.Scene2D.Events.FADE_OUT_COMPLETE, () => {
       if (!s.player.alive) { s.warping = false; cam.fadeIn(200); return; }   // ตายระหว่างวาร์ป → ยกเลิก
-      s.net.send('player:warp', { kind: 'travel', to: toId });
+      s.net.send('player:warp', { kind: 'travel', to: toId, x: Math.round(s.player.x) });
       s.player.setPosition(to.arriveX, WORLD.groundY - 2).setVelocity(0, 0);
       s.setMap(to);
       cam.centerOn(s.player.x, s.player.y);

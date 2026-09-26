@@ -12,6 +12,7 @@ import { MAPS, mapAt, gateNear } from '../shared/data/maps.js';
 import { sanitizeAppearance } from '../shared/data/appearance.js';
 import { SKILL_BY_ID, MAX_SKILL_LV } from '../shared/data/skills.js';
 import { setupSocial } from './social.js';
+import { setupMobs } from './mobs.js';
 import { setupAuth } from './auth.js';
 import { DAY_MS_DEFAULT } from '../shared/data/world.js';
 
@@ -35,6 +36,8 @@ const io = new Server(httpServer, { cors: { origin: '*' } });
 const players = new Map();
 /** ปาร์ตี้ · เทรด · เรดบอส */
 const social = setupSocial(io, players);
+/** ผีในแมพล่าผี (server คุม ทุกคนเห็นตรงกัน) */
+const mobs = setupMobs(io, players);
 
 function publicPlayer(p) {
   return {
@@ -55,6 +58,7 @@ const cleanText = (s, max) => String(s ?? '').replace(/[<>]/g, '').trim().slice(
 io.on('connection', (socket) => {
   console.log(`[+] connect ${socket.id}`);
   social.onConnection(socket);
+  mobs.onConnection(socket);
 
   // 1) ผู้เล่นเข้าโลก
   socket.on('player:join', (data = {}) => {
@@ -68,6 +72,7 @@ io.on('connection', (socket) => {
       lastUpdate: Date.now(), lastChat: 0, lastSkill: 0, partyId: null, tradeId: null,
     };
     players.set(socket.id, player);
+    mobs.touch(player);
 
     // ส่งสถานะโลกทั้งหมดให้คนที่เพิ่งเข้า
     socket.emit('world:init', {
@@ -107,6 +112,9 @@ io.on('connection', (socket) => {
   socket.on('player:warp', (d = {}) => {
     const p = players.get(socket.id);
     if (!p) return;
+    // ตำแหน่งล่าสุดที่ client ส่งมาอาจยังไม่ถึง (แท็บช้า/เน็ตหน่วง) → ยอมรับตำแหน่งที่แนบมาถ้าใกล้และอยู่แมพเดียวกัน
+    const cx = Number(d.x);
+    if (Number.isFinite(cx) && Math.abs(cx - p.x) <= 300 && mapAt(cx).id === mapAt(p.x).id) p.x = cx;
     const map = mapAt(p.x);
     if (d.kind === 'travel') {                                  // ยืนที่ประตูไหนก็ได้ → ไปแมพที่เลเวลถึง
       const to = MAPS[d.to];
@@ -116,6 +124,7 @@ io.on('connection', (socket) => {
     else return;
     p.y = WORLD.spawnY;
     p.wp = (p.wp || 0) + 1;
+    mobs.touch(p);
   });
 
   // 3) เปลี่ยนรูปลักษณ์ / อาชีพ (เช่น ซื้อ Skin จากร้าน)
@@ -165,6 +174,7 @@ io.on('connection', (socket) => {
 setInterval(() => {
   social.tick();
   if (players.size === 0) return;
+  mobs.tick();
   const snapshot = [...players.values()].map(p => ({
     id: p.id, x: Math.round(p.x), y: Math.round(p.y), anim: p.anim, flipX: p.flipX,
     hp: p.hp, maxHp: p.maxHp, level: p.level, party: p.partyId,

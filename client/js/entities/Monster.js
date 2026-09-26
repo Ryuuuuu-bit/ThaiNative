@@ -2,6 +2,8 @@
 //  Monster – ผีไทย + AI พื้นฐาน
 //  behavior: walker | flyer | jumper | ranged
 //  state: patrol → chase → attack → hit → dead → (respawn)
+//  ▸ ออนไลน์: server คุมผี (server/mobs.js) → ตัวนี้เป็น "หุ่น" ตามตำแหน่ง/HP/ท่าจาก server (ทุกคนเห็นตรงกัน)
+//  ▸ ออฟไลน์/ต่อ server ไม่ได้: ใช้ AI ในเครื่องแบบเดิม
 // ============================================================
 import { MONSTERS } from '/shared/data/monsters.js';
 import { WORLD } from '/shared/constants.js';
@@ -12,13 +14,15 @@ const EV = Phaser.Animations.Events;
 const AGGRO_X = 170, AGGRO_Y = 90, RESPAWN_MS = 9000;
 
 export class Monster extends Phaser.Physics.Arcade.Sprite {
-  constructor(scene, id) {
+  constructor(scene, id, gi = -1) {
     const def = MONSTERS[id];
     const x = rand(def.zone[0], def.zone[1]);
     super(scene, x, WORLD.groundY - 40, `mon_${id}`, 'walk_0');
     this.id = id;
     this.def = def;
     this.key = `mon_${id}`;
+    this.gi = gi;                                // ลำดับผีทั้งเกม (ตรงกับ server)
+    this.srv = null;                             // สถานะล่าสุดจาก server
 
     scene.add.existing(this);
     scene.physics.add.existing(this);
@@ -63,6 +67,7 @@ export class Monster extends Phaser.Physics.Arcade.Sprite {
   /** ผีแมพอื่น: หยุดนิ่ง/ซ่อน · กลับมาแมพนี้: ถ้าหลุดออกนอกเขตให้กลับเข้าเขต */
   setOnMap(on) {
     this.setActive(on);
+    this.srv = null;                              // ออก/เข้าแมพ → รอสถานะใหม่จาก server
     if (!on) {
       this.body.setVelocity(0, 0);
       this.body.moves = false;
@@ -72,8 +77,68 @@ export class Monster extends Phaser.Physics.Arcade.Sprite {
     this.body.moves = true;
     const [a, b] = this.bounds;
     if (this.state !== 'dead' && (this.x < a || this.x > b || this.y > WORLD.groundY + 40)) this.reset(rand(this.def.zone[0], this.def.zone[1]));
-    const show = this.state !== 'dead' && this.state !== 'dormant';
+    // ออนไลน์: ซ่อนไว้จนกว่า server ส่งตำแหน่งจริงมา (ไม่เห็นผีวาร์ปไปมา/ผีที่ตายแล้วโผล่)
+    this.awaitSync = !!this.scene.net?.online;
+    this.onMapAt = this.scene.time.now;
+    const show = this.state !== 'dead' && this.state !== 'dormant' && !this.awaitSync;
     this.setVisible(show); this.showUi(show);
+  }
+
+  /** ได้สถานะจาก server ภายใน 1.5 วิ = ผีตัวนี้ server คุม */
+  get synced() { return !!this.srv && this.scene.time.now - this.srvAt < 1500 && !!this.scene.net?.online; }
+
+  /** สถานะจาก server: [gi, x, y, hp, st(0 เดิน 1 ไล่ 2 ตี 3 ตาย), dir, atkSeq, targetId, stun, hit, vx] */
+  applyServer(a, time) {
+    const [, x, y, hp, st, dir, atk, target, stun, hit, vx] = a;
+    const first = !this.srv;
+    this.srv = { x, y, st, dir, vx, target };
+    this.srvAt = time;
+    this.targetId = target || null;
+    if (st === 3) {                                // ตายแล้ว (บน server)
+      if (this.state !== 'dead') this.dieVisual(!first && this.visible);
+      this.awaitSync = false;
+      return;
+    }
+    if (this.state === 'dead' || first) {          // เกิดใหม่ / เพิ่งเข้าแมพ
+      if (this.state === 'dead') this.reset(x);
+      this.setPosition(x, this.isFlyer ? y : this.y);
+      this.srvAtk = atk; this.srvHit = hit;
+    }
+    if (this.awaitSync) {
+      this.awaitSync = false;
+      if (this.active) { this.setVisible(true); this.showUi(true); }
+    }
+    this.hp = Math.min(this.hp, hp);
+    if (hp > this.hp && first) this.hp = hp;
+    if (stun) this.stunnedUntil = Math.max(this.stunnedUntil || 0, time + 120);
+    if (atk !== this.srvAtk) { this.srvAtk = atk; this.netAttack(); }
+    if (hit && !this.srvHit && this.state !== 'hit' && this.def.level < 8 && this.active) {   // คนอื่นตีโดน → สะดุ้ง
+      this.state = 'hit'; this.anims.timeScale = 1; this.play(`${this.key}:hit`);
+    }
+    this.srvHit = hit;
+  }
+
+  /** server สั่งโจมตี */
+  netAttack() {
+    if (!this.alive) return;
+    this.state = 'attack';
+    this.setVelocityX(0);
+    this.anims.timeScale = 1;
+    this.play(`${this.key}:attack`);
+  }
+
+  /** เดินตามตำแหน่งจาก server (นุ่มนวล ไม่กระตุก) */
+  follow() {
+    const s = this.srv;
+    let dx = s.x - this.x;
+    if (Math.abs(dx) > 90) { this.x = s.x; dx = 0; }
+    let vx = Math.abs(dx) < 1 ? 0 : Phaser.Math.Clamp(dx * 7, -240, 240);
+    const busy = this.state === 'attack' || this.state === 'hit';
+    if (busy) vx *= 0.35;
+    this.setVelocityX(vx);
+    if (this.isFlyer) this.setVelocityY(Phaser.Math.Clamp((s.y - this.y) * 6, -200, 200));
+    this.setFlipX(s.dir < 0);
+    if (!busy) { this.state = s.st === 1 ? 'chase' : 'patrol'; this.animateMove(Math.abs(s.vx) > 2 ? s.vx : vx * 0.3); }
   }
 
   /** ตัวคูณตามเวลา (กลางคืน/เดือนดับ) */
@@ -112,8 +177,8 @@ export class Monster extends Phaser.Physics.Arcade.Sprite {
     this.body.setVelocity(0, 0);
     this.setAlpha(1).clearTint();
     this.body.enable = true;
-    this.setVisible(this.active);                // เกิดใหม่ตอนผู้เล่นอยู่แมพอื่น → ยังซ่อนไว้
-    this.showUi(this.active);
+    this.setVisible(this.active && !this.awaitSync);   // เกิดใหม่ตอนผู้เล่นอยู่แมพอื่น → ยังซ่อนไว้
+    this.showUi(this.active && !this.awaitSync);
     this.play(`${this.key}:walk`);
   }
 
@@ -122,6 +187,8 @@ export class Monster extends Phaser.Physics.Arcade.Sprite {
   update(time, player) {
     this.checkNightOnly();
     if (!this.alive) return;
+    // รอ server นานเกิน (ต่อไม่ได้) → แสดงผีแล้วใช้ AI ในเครื่อง
+    if (this.awaitSync && time - (this.onMapAt || 0) > 1500) { this.awaitSync = false; this.setVisible(true); this.showUi(true); }
     // กันโดนกระแทก/ผลักจนหลุดเขต
     const [lo, hi] = this.bounds;
     if (this.x < lo) { this.x = lo; if (this.body.velocity.x < 0) this.body.velocity.x = 0; }
@@ -138,6 +205,8 @@ export class Monster extends Phaser.Physics.Arcade.Sprite {
       if (this.anims.isPlaying) this.anims.pause();
       return;
     } else if (this.anims.isPaused) { this.anims.resume(); this.clearTint(); }
+
+    if (this.synced) return this.follow();
 
     if (this.state === 'attack' || this.state === 'hit') {
       if (this.isFlyer) this.setVelocity(this.body.velocity.x * 0.9, this.body.velocity.y * 0.9);
@@ -229,6 +298,7 @@ export class Monster extends Phaser.Physics.Arcade.Sprite {
     if (!this.alive || !effect) return;
     const s = this.scene;
     if (effect.stun) {
+      if (this.synced) s.net.send('mob:hit', { gi: this.gi, dmg: 0, stun: effect.stun.ms });
       this.stunnedUntil = Math.max(this.stunnedUntil || 0, s.time.now + effect.stun.ms);
       if (this.state === 'attack') this.state = 'chase';
       this.setTint(0x85c1e9);
@@ -241,8 +311,9 @@ export class Monster extends Phaser.Physics.Arcade.Sprite {
       this.setTint(0x82e0aa);
       this.poisonTimer = s.time.addEvent({ delay: every, repeat: ticks - 1, callback: () => {
         if (!this.alive) return this.poisonTimer?.remove();
-        this.hp -= per;
         s.combat.popupText(this.x, this.y - this.def.frame.h, `${per}`, '#58d68d', 7);
+        if (this.synced) { s.net.send('mob:hit', { gi: this.gi, dmg: per }); this.hp = Math.max(1, this.hp - per); return; }
+        this.hp -= per;
         if (this.hp <= 0) this.die();
         else if (this.poisonTimer.getRepeatCount() === 0) this.clearTint();
       } });
@@ -254,10 +325,14 @@ export class Monster extends Phaser.Physics.Arcade.Sprite {
     if (!this.alive) return;
     this.scene.combat.popup(this.x, this.y - this.def.frame.h, result);
     if (!result.hit) return;
-    this.hp -= result.dmg;
+    const net = this.synced;
+    if (net) {                                     // ออนไลน์: ส่งดาเมจให้ server (server ตัดสินตาย) · แสดง HP ล่วงหน้า
+      this.scene.net.send('mob:hit', { gi: this.gi, dmg: result.dmg, dir, knock });
+      this.hp = Math.max(1, this.hp - result.dmg);
+    } else this.hp -= result.dmg;
     this.setTintFill(0xffffff);
     this.scene.time.delayedCall(70, () => this.alive && this.clearTint());
-    if (this.hp <= 0) return this.die();
+    if (!net && this.hp <= 0) return this.die();
     this.scene.ui?.setTarget(this);
     // มอนสเตอร์ Lv.8+ มี "เกราะ" ไม่สะดุ้งเวลาโดนตี (ไม่ถูกขัดจังหวะโจมตี)
     if (this.def.level >= 8) { this.setVelocityX(dir * knock * 0.2); return; }
@@ -265,6 +340,19 @@ export class Monster extends Phaser.Physics.Arcade.Sprite {
     this.setVelocityX(dir * knock);
     this.anims.timeScale = 1;
     this.play(`${this.key}:hit`);
+  }
+
+  /** ตาย (ภาพ/สถานะอย่างเดียว ไม่ให้รางวัล) */
+  dieVisual(anim = true) {
+    this.state = 'dead';
+    this.hp = 0;
+    this.body.enable = false;
+    this.poisonTimer?.remove();
+    this.showUi(false);
+    this.anims.timeScale = 1;
+    if (anim && this.active && this.visible) this.play(`${this.key}:die`);
+    else this.setVisible(false);
+    if (this.scene.ui?.target === this) this.scene.ui.setTarget?.(null);
   }
 
   die() {

@@ -57,7 +57,9 @@ export class GameScene extends Phaser.Scene {
 
     // ---------- มอนสเตอร์ (ชนิดละ 2 ตัว) ----------
     this.monsters = this.add.group();
-    MONSTER_IDS.forEach((id) => { for (let i = 0; i < (MONSTERS[id].count ?? 2); i++) this.monsters.add(new Monster(this, id)); });
+    // gi = ลำดับผีทั้งเกม (server/mobs.js สร้างเรียงแบบเดียวกัน → อ้างถึงผีตัวเดียวกันได้)
+    this.mobByGi = [];
+    MONSTER_IDS.forEach((id) => { for (let i = 0; i < (MONSTERS[id].count ?? 2); i++) { const m = new Monster(this, id, this.mobByGi.length); this.mobByGi.push(m); this.monsters.add(m); } });
     // ---------- เรดบอส (server เป็นผู้คุม) ----------
     this.boss = new RaidBoss(this);
     this.monsters.add(this.boss);
@@ -379,6 +381,14 @@ export class GameScene extends Phaser.Scene {
         players.forEach((p) => this.remotes.get(p.id)?.pushState(p));
         this.boss.setServer(boss);
         if (t) this.clock?.sync(t);
+      })
+      .on('mob:state', ({ l }) => { const t = this.time.now; for (const a of l) this.mobByGi[a[0]]?.applyServer(a, t); })
+      .on('mob:die', ({ gi, killer, assist }) => {
+        const m = this.mobByGi[gi];
+        if (!m || m.state === 'dead') { if (m && killer === this.net.selfId) this.combat.onMonsterKilled(m); return; }
+        if (killer === this.net.selfId) this.combat.onMonsterKilled(m);                 // ตีจบ: EXP + เงิน + ของดรอป
+        else if (assist?.includes(this.net.selfId)) this.combat.onAssist(m);            // ช่วยตี: ได้ EXP
+        m.dieVisual(true);
       })
       .on('appearance', ({ id, appearance }) => this.remotes.get(id)?.setAppearance(appearance))
       .on('chat', (m) => this.ui.chat(m))
