@@ -3,7 +3,7 @@
 //  หมู่บ้าน (NPC ร้านค้า) → ป่าผีดุ (มอนสเตอร์ 10 ชนิด) + ผู้เล่นออนไลน์
 // ============================================================
 import { WORLD, VIEW } from '/shared/constants.js';
-import { MONSTER_IDS } from '/shared/data/monsters.js';
+import { MONSTER_IDS, MONSTERS } from '/shared/data/monsters.js';
 import { Player } from '../entities/Player.js';
 import { Monster } from '../entities/Monster.js';
 import { RemotePlayer } from '../entities/RemotePlayer.js';
@@ -27,6 +27,8 @@ const SPAWN_X = WORLD.spawnX;
 const PLATFORMS = [
   [1170, 190, 64], [1340, 162, 80], [1720, 186, 64], [1900, 158, 48], [2080, 172, 96],
   [2420, 150, 64], [2630, 190, 80], [2980, 166, 96], [3260, 186, 64],
+  // ป่าช้าผีตายโหง
+  [3760, 176, 80], [3980, 150, 64], [4200, 184, 96], [4460, 160, 64], [4700, 182, 80],
 ];
 
 export class GameScene extends Phaser.Scene {
@@ -49,7 +51,7 @@ export class GameScene extends Phaser.Scene {
 
     // ---------- มอนสเตอร์ (ชนิดละ 2 ตัว) ----------
     this.monsters = this.add.group();
-    MONSTER_IDS.forEach((id) => { for (let i = 0; i < 2; i++) this.monsters.add(new Monster(this, id)); });
+    MONSTER_IDS.forEach((id) => { for (let i = 0; i < (MONSTERS[id].count ?? 2); i++) this.monsters.add(new Monster(this, id)); });
     // ---------- เรดบอส (server เป็นผู้คุม) ----------
     this.boss = new RaidBoss(this);
     this.monsters.add(this.boss);
@@ -179,6 +181,25 @@ export class GameScene extends Phaser.Scene {
     }
     this.add.rectangle(ax, gy, W.width - ax, 3, 0x6e2c2c, 0.6).setOrigin(0, 0).setDepth(6);   // พื้นลานสีเลือดหมู
     this.arenaFog = this.add.rectangle(ax, 0, W.width - ax, W.height, 0x4a235a, 0.12).setOrigin(0).setDepth(-1);
+
+    // ---------------- ป่าช้าผีตายโหง ----------------
+    const gx = W.graveX;
+    this.add.image(gx - 20, gy, 'sign').setOrigin(0.5, 1).setDepth(2);
+    label(gx - 20, gy - 38, '⚰️ ป่าช้าผีตายโหง Lv.11+', '#c39bd3', '7px');
+    this.add.rectangle(gx, 0, ax - gx, W.height, 0x1b2631, 0.14).setOrigin(0).setDepth(-1);   // หมอกป่าช้า
+    const g = this.add.graphics().setDepth(1);
+    for (let x = gx + 40; x < ax - 40; x += 70 + ((x * 37) % 50)) {
+      const k = (x * 13) % 3;
+      if (k === 0) {                                     // ป้ายหลุมศพ
+        g.fillStyle(0x7f8c8d, 1).fillRect(x - 5, gy - 14, 10, 14).fillCircle(x, gy - 14, 5);
+        g.fillStyle(0x566573, 1).fillRect(x - 3, gy - 12, 6, 1).fillRect(x - 3, gy - 9, 6, 1);
+      } else if (k === 1) {                              // ต้นไม้ตาย
+        g.fillStyle(0x3b2f2f, 1).fillRect(x - 2, gy - 34, 4, 34).fillRect(x - 10, gy - 28, 10, 2).fillRect(x + 2, gy - 22, 9, 2).fillRect(x - 8, gy - 34, 2, 7);
+      } else {                                           // เจดีย์เก็บกระดูก
+        g.fillStyle(0xbfc9ca, 1).fillRect(x - 7, gy - 10, 14, 10).fillTriangle(x - 7, gy - 10, x + 7, gy - 10, x, gy - 30);
+        g.fillStyle(0xd4ac0d, 1).fillRect(x - 1, gy - 34, 2, 5);
+      }
+    }
   }
 
   // ------------------------------------------------------------
@@ -327,7 +348,7 @@ export class GameScene extends Phaser.Scene {
     this.ui.updateSkillBar(time);
     this.ui.updateFrame(time);
     const px = this.player.x;
-    const zone = px < WORLD.townEndX ? 'หมู่บ้านบางผี' : px >= WORLD.arenaX ? 'ลานพญายักษ์' : 'ป่าผีดุ';
+    const zone = px < WORLD.townEndX ? 'หมู่บ้านบางผี' : px >= WORLD.arenaX ? 'ลานพญายักษ์' : px >= WORLD.graveX ? 'ป่าช้าผีตายโหง' : 'ป่าผีดุ';
     if (zone !== this.zone) { this.ui.setZone(zone, !!this.zone); this.zone = zone; }
     const night = this.clock.light < 0.35;
     this.sfx.music(

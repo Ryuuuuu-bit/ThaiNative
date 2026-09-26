@@ -1,5 +1,5 @@
 // ============================================================
-//  มอนสเตอร์ผีไทย 10 ชนิด
+//  มอนสเตอร์ผีไทย 20 ชนิด
 //  behavior: walker (เดินไล่) | flyer (ลอยไล่) | jumper (กระโดด) | ranged (ยิงระยะไกล)
 //  zone: ช่วงแกน X ที่เกิด (ยิ่งไกลหมู่บ้านยิ่งเก่ง)
 // ============================================================
@@ -95,6 +95,87 @@ export const MONSTERS = {
     palette: { main: '#4a235a', dark: '#17202a', glow: '#a569bd' },
     projectile: 'miasma',
     drops: [{ item: 'dark_mist', chance: 0.5 }, { item: 'mp_m', chance: 0.2 }],
+  },
+  // ---------------- ป่าช้าผีตายโหง (X 3650–4950) : Lv.11–18 ----------------
+  krahang: {
+    nameTh: 'ผีกระหัง', nameEn: 'Krahang', level: 11,
+    desc: 'ชายนุ่งผ้าเตี่ยว ใช้กระด้งเป็นปีก สากตำข้าวเป็นหาง บินโฉบยามค่ำ',
+    hp: 300, atk: 31, def: 5, eva: 14, acc: 100, speed: 65, behavior: 'flyer',
+    attackRange: 20, attackCooldown: 1100, exp: 120, gold: [35, 70],
+    frame: { w: 32, h: 32 }, zone: [3650, 4200],
+    drops: [{ item: 'rice_basket', chance: 0.45 }, { item: 'hp_m', chance: 0.15 }],
+  },
+  khamot: {
+    nameTh: 'ผีโขมด', nameEn: 'Khamot (Will-o\'-wisp)', level: 11,
+    desc: 'ดวงไฟผีลอยวูบวาบกลางบึง ล่อคนหลงทาง ว่องไวหลบเก่ง',
+    hp: 220, atk: 28, def: 3, eva: 26, acc: 105, speed: 80, behavior: 'flyer',
+    attackRange: 18, attackCooldown: 900, exp: 115, gold: [30, 60],
+    frame: { w: 24, h: 24 }, zone: [3650, 4300], nightOnly: true,
+    drops: [{ item: 'wisp_ember', chance: 0.5 }, { item: 'mp_m', chance: 0.15 }],
+  },
+  phi_dip: {
+    nameTh: 'ผีดิบ', nameEn: 'Phi Dip (Zombie)', level: 12,
+    desc: 'ศพที่ลุกขึ้นจากหลุมดิน เดินช้าแต่ถึกและตีหนัก',
+    hp: 420, atk: 33, def: 10, eva: 2, acc: 95, speed: 28, behavior: 'walker',
+    attackRange: 20, attackCooldown: 1500, exp: 140, gold: [40, 80],
+    frame: { w: 28, h: 40 }, zone: [3700, 4400],
+    drops: [{ item: 'grave_soil', chance: 0.5 }, { item: 'hp_m', chance: 0.2 }],
+  },
+  nang_takhian: {
+    nameTh: 'นางตะเคียน', nameEn: 'Nang Takhian', level: 12,
+    desc: 'วิญญาณหญิงสิงต้นตะเคียน สวมเกราะไม้ ยิงหนามไม้จากระยะไกล',
+    hp: 360, atk: 34, def: 8, eva: 8, acc: 100, speed: 35, behavior: 'ranged',
+    attackRange: 160, attackCooldown: 1600, exp: 145, gold: [40, 85],
+    frame: { w: 28, h: 44 }, zone: [3800, 4500], projectile: 'miasma',
+    drops: [{ item: 'takhian_wood', chance: 0.45 }, { item: 'mp_m', chance: 0.2 }],
+  },
+  tai_hong: {
+    nameTh: 'ผีตายโหง', nameEn: 'Tai Hong', level: 13,
+    desc: 'วิญญาณแค้นที่ตายร้าย ร่างโชกเลือด ออร่าแดงฉาน พุ่งเข้าใส่ไม่ยั้ง',
+    hp: 380, atk: 40, def: 6, eva: 10, acc: 105, speed: 70, behavior: 'walker',
+    attackRange: 22, attackCooldown: 900, exp: 160, gold: [45, 90],
+    frame: { w: 28, h: 42 }, zone: [3900, 4600],
+    drops: [{ item: 'blood_cloth', chance: 0.45 }, { item: 'hp_m', chance: 0.2 }],
+  },
+  phi_phong: {
+    nameTh: 'ผีโพง', nameEn: 'Phi Phong', level: 13,
+    desc: 'ผีป่าจมูกเรืองแสง ออกหากินของดิบยามดึก',
+    hp: 400, atk: 38, def: 7, eva: 12, acc: 100, speed: 60, behavior: 'walker', nightOnly: true,
+    attackRange: 22, attackCooldown: 1000, exp: 165, gold: [45, 90],
+    frame: { w: 30, h: 40 }, zone: [4000, 4700],
+    drops: [{ item: 'phong_glow', chance: 0.45 }, { item: 'hp_m', chance: 0.2 }],
+  },
+  kong_koi: {
+    nameTh: 'ผีกองกอย', nameEn: 'Kong Koi', level: 14,
+    desc: 'ผีป่าขาเดียว กระโดดดึ๋งๆ ไล่ล่าเร็วมาก',
+    hp: 380, atk: 42, def: 7, eva: 20, acc: 105, speed: 85, behavior: 'jumper',
+    attackRange: 20, attackCooldown: 950, exp: 180, gold: [50, 95],
+    frame: { w: 26, h: 34 }, zone: [4100, 4800],
+    drops: [{ item: 'kongkoi_hair', chance: 0.45 }, { item: 'hp_m', chance: 0.2 }],
+  },
+  phi_lang_kluang: {
+    nameTh: 'ผีหลังกลวง', nameEn: 'Hollow-back Ghost', level: 14,
+    desc: 'ผีหญิงงามด้านหน้า แต่หลังกลวงเห็นซี่โครง ร่ายคำสาปจากไกล',
+    hp: 440, atk: 42, def: 8, eva: 10, acc: 105, speed: 50, behavior: 'ranged',
+    attackRange: 150, attackCooldown: 1500, exp: 185, gold: [50, 100],
+    frame: { w: 28, h: 44 }, zone: [4200, 4850], projectile: 'film',
+    drops: [{ item: 'rib_bone', chance: 0.45 }, { item: 'mp_m', chance: 0.2 }],
+  },
+  phi_chamot: {
+    nameTh: 'ผีจะมอด', nameEn: 'Phi Chamot', level: 15,
+    desc: 'วิญญาณสัตว์เลื้อยคลานแห่งพงไพร คลานหมอบในความมืดแล้วจู่โจม',
+    hp: 480, atk: 46, def: 9, eva: 14, acc: 105, speed: 80, behavior: 'walker',
+    attackRange: 26, attackCooldown: 900, exp: 200, gold: [55, 110],
+    frame: { w: 44, h: 26 }, zone: [4300, 4900],
+    drops: [{ item: 'chamot_scale', chance: 0.45 }, { item: 'hp_m', chance: 0.25 }],
+  },
+  pret_asura: {
+    nameTh: 'เปรตอสุรกาย', nameEn: 'Pret Asura', level: 18, elite: true, count: 1,
+    desc: 'จอมเปรตยักษ์ตาแดงเขาดำ เจ้าแห่งป่าช้า (มินิบอส)',
+    hp: 1600, atk: 60, def: 15, eva: 4, acc: 110, speed: 30, behavior: 'walker',
+    attackRange: 40, attackCooldown: 1700, exp: 650, gold: [150, 300],
+    frame: { w: 40, h: 80 }, zone: [4600, 4900],
+    drops: [{ item: 'asura_horn', chance: 0.6 }, { item: 'hp_m', chance: 0.5 }, { item: 'takrut', chance: 0.1 }],
   },
 };
 

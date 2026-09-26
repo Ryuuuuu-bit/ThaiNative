@@ -267,4 +267,25 @@ export const MONSTER_RIG = {
   phi_ha:        { kind: 'float', waveFrom: 0.05, waveAmp: 2.5, waveFreq: 0.5 },
   phaya_yak:     { kind: 'heavy', hip: 0.64, neck: 0.25, swing: 0.3 },
   npc_maekha:    { kind: 'biped', hip: 0.72, neck: 0.3, swing: 0.2 },
+  // ---- ผีป่าช้า: ภาพ PixelLab ยังไม่มา → ใช้ภาพผีตัวอื่นย้อมสีเป็นตัวแทนชั่วคราว (fallback) ----
+  krahang:         { kind: 'float', waveFrom: 0.5, waveAmp: 2, fallback: { from: 'phi_ha', tint: '#8d6e63', scale: 0.9 } },
+  khamot:          { kind: 'float', waveFrom: 0.1, waveAmp: 1.5, waveFreq: 0.6, fallback: { from: 'phi_tuay_kaew', tint: '#f5b041' } },
+  phi_dip:         { kind: 'heavy', hip: 0.68, neck: 0.4, swing: 0.25, fallback: { from: 'phi_pob', tint: '#7d8f69' } },
+  nang_takhian:    { kind: 'float', waveFrom: 0.55, waveAmp: 1.5, fallback: { from: 'nang_tani', tint: '#6e4b2a' } },
+  tai_hong:        { kind: 'biped', hip: 0.7, neck: 0.4, swing: 0.4, fallback: { from: 'phi_pob', tint: '#c0392b' } },
+  phi_phong:       { kind: 'biped', hip: 0.7, neck: 0.4, swing: 0.35, fallback: { from: 'phi_pob', tint: '#2c3e50' } },
+  kong_koi:        { kind: 'hop', hip: 0.66, neck: 0.45, fallback: { from: 'kuman_thong', tint: '#4e342e', scale: 1.1 } },
+  phi_lang_kluang: { kind: 'float', waveFrom: 0.55, waveAmp: 2, fallback: { from: 'phi_phrai', tint: '#d7bde2' } },
+  phi_chamot:      { kind: 'quad', hip: 0.6, neck: 0.02, swing: 0.3, fallback: { from: 'saming', tint: '#1e8449' } },
+  pret_asura:      { kind: 'heavy', hip: 0.55, neck: 0.18, swing: 0.22, fallback: { from: 'pret', tint: '#922b21', scale: 1.25 } },
 };
+
+/** ภาพตัวแทน: ย้อมสี (+ย่อ/ขยาย) ภาพผีตัวอื่น ใช้ระหว่างรอภาพจริง */
+export function tintedCopy(src, tint, scale = 1) {
+  const w = Math.round(src.width * scale), h = Math.round(src.height * scale);
+  const { c, ctx } = canvas(w, h);
+  ctx.drawImage(src, 0, 0, w, h);
+  ctx.globalCompositeOperation = 'source-atop';
+  ctx.globalAlpha = 0.5; ctx.fillStyle = tint; ctx.fillRect(0, 0, w, h);
+  return c;
+}

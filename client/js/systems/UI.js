@@ -306,8 +306,8 @@ export class UI {
     const zones = [{ nameTh: 'หมู่บ้านบางผี', from: 0, to: WORLD.townEndX, town: true, sub: 'ปลอดภัย · ร้านค้า · ศาลพระภูมิ' }];
     // แบ่งเขตตามมอนสเตอร์ (เรียงตามเลเวล)
     const mons = Object.values(MONSTERS).sort((a, b) => a.level - b.level);
-    const bands = [[WORLD.townEndX, 1680], [1680, 2380], [2380, 2980], [2980, WORLD.arenaX]];
-    const names = ['ทุ่งผีน้อย', 'ป่ากล้วยตานี', 'บึงผีพราย', 'ดงเปรตสมิง'];
+    const bands = [[WORLD.townEndX, 1680], [1680, 2380], [2380, 2980], [2980, WORLD.graveX], [WORLD.graveX, WORLD.arenaX]];
+    const names = ['ทุ่งผีน้อย', 'ป่ากล้วยตานี', 'บึงผีพราย', 'ดงเปรตสมิง', 'ป่าช้าผีตายโหง'];
     bands.forEach(([a, b], i) => {
       const here = mons.filter((m) => m.zone[0] < b && m.zone[1] > a);
       const lv = here.length ? `Lv.${Math.min(...here.map((m) => m.level))}–${Math.max(...here.map((m) => m.level))}` : '';

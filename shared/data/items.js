@@ -45,6 +45,17 @@ export const ITEMS = {
   dark_mist:    { nameTh: 'หมอกดำผีห่า',      type: 'material', icon: '🌫️', sell: 30 },
   yak_fang:     { nameTh: 'เขี้ยวพญายักษ์',     type: 'material', icon: '🐗', sell: 120 },
   ha_essence:   { nameTh: 'แก่นวิญญาณผีห่า',    type: 'material', icon: '🔥', sell: 60 },
+  // ป่าช้าผีตายโหง
+  rice_basket:  { nameTh: 'กระด้งผีกระหัง',     type: 'material', icon: '🧺', sell: 34 },
+  wisp_ember:   { nameTh: 'ประกายไฟผีโขมด',     type: 'material', icon: '✴️', sell: 34 },
+  grave_soil:   { nameTh: 'ดินหลุมผีดิบ',       type: 'material', icon: '⚱️', sell: 38 },
+  takhian_wood: { nameTh: 'แก่นไม้ตะเคียน',     type: 'material', icon: '🪵', sell: 40 },
+  blood_cloth:  { nameTh: 'ผ้าเปื้อนเลือดตายโหง', type: 'material', icon: '🩸', sell: 44 },
+  phong_glow:   { nameTh: 'จมูกเรืองแสงผีโพง',  type: 'material', icon: '🔆', sell: 44 },
+  kongkoi_hair: { nameTh: 'ขนผีกองกอย',        type: 'material', icon: '🪶', sell: 48 },
+  rib_bone:     { nameTh: 'ซี่โครงผีหลังกลวง',  type: 'material', icon: '🦴', sell: 50 },
+  chamot_scale: { nameTh: 'เกล็ดผีจะมอด',       type: 'material', icon: '🐊', sell: 55 },
+  asura_horn:   { nameTh: 'เขาเปรตอสุรกาย',     type: 'material', icon: '🦬', sell: 220 },
 
   // ---------- ของถวายศาลพระภูมิ (กด F ที่ศาล) ----------
   garland:   { nameTh: 'พวงมาลัยดาวเรือง', type: 'offering', icon: '🌼', price: 30 },

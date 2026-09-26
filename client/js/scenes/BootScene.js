@@ -3,7 +3,7 @@
 //  ภาพไหนไม่มีไฟล์ → สร้างด้วยโค้ดแทนอัตโนมัติ (SpriteFactory)
 // ============================================================
 import { generateAll, bakeRigMonster } from '../gfx/SpriteFactory.js';
-import { MONSTER_RIG } from '../gfx/Rig.js';
+import { MONSTER_RIG, tintedCopy } from '../gfx/Rig.js';
 import { MONSTERS } from '/shared/data/monsters.js';
 
 export class BootScene extends Phaser.Scene {
@@ -31,11 +31,19 @@ export class BootScene extends Phaser.Scene {
 
     this.load.once('complete', () => {
       entries.forEach((e) => this.registerSheet(e));
-      for (const id of Object.keys(bases)) {
-        if (!this.textures.exists(`mbase_${id}`) || !MONSTER_RIG[id]) continue;
+      const bake = (id, img) => {
         const key = MONSTERS[id] ? `mon_${id}` : id.startsWith('npc_') ? id : `boss_${id}`;
-        const info = bakeRigMonster(this, key, this.textures.get(`mbase_${id}`).getSourceImage(), MONSTER_RIG[id]);
+        const info = bakeRigMonster(this, key, img, MONSTER_RIG[id]);
         if (MONSTERS[id]) MONSTERS[id].frame = { w: info.fw, h: info.fh, bodyW: info.bodyW, bodyH: info.bodyH, floatPad: info.floatPad };
+      };
+      for (const id of Object.keys(bases)) {
+        if (this.textures.exists(`mbase_${id}`) && MONSTER_RIG[id]) bake(id, this.textures.get(`mbase_${id}`).getSourceImage());
+      }
+      // ผีที่ยังไม่มีภาพจริง → ใช้ภาพตัวแทน (ย้อมสีจากผีตัวอื่น)
+      for (const id of Object.keys(MONSTERS)) {
+        const fb = MONSTER_RIG[id]?.fallback;
+        if (bases[id] || !fb || !this.textures.exists(`mbase_${fb.from}`)) continue;
+        bake(id, tintedCopy(this.textures.get(`mbase_${fb.from}`).getSourceImage(), fb.tint, fb.scale));
       }
       generateAll(this);           // สร้างเฉพาะภาพที่ยังไม่มี
       this.goNext();
