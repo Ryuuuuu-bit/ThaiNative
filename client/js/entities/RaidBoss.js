@@ -120,31 +120,27 @@ export class RaidBoss extends Phaser.Physics.Arcade.Sprite {
     this.aura.setScale(1 + Math.sin(this.scene.time.now / 300) * 0.08, 1);
   }
 
-  /** โดนผู้เล่น (เรา) ตี → ส่งดาเมจให้ server */
+  /** โดนผู้เล่น (เรา) ตี → ส่งคำขอให้ server ทอยดาเมจ (ผลกลับทาง raid:dmg) */
+  hitOnline(meta) {
+    if (!this.alive || !this.scene.net?.online) return false;
+    this.scene.net.send('raid:hit', { sk: meta.sk || null, combo: !!meta.combo });
+    return true;
+  }
+
   takeHit(result) {
     if (!this.alive) return;
     this.scene.combat.popup(this.x, this.y - this.displayHeight * 0.7, result);
     if (!result.hit) return;
     this.hp = Math.max(1, this.hp - result.dmg);
-    this.scene.net.send('raid:hit', { dmg: result.dmg, crit: !!result.crit });
     this.setTintFill(0xffffff);
     this.scene.time.delayedCall(60, () => { if (!this.alive) return; this.clearTint(); if (this.key === 'mon_saming') this.setTint(0x7dcea0); });
     this.scene.ui?.setTarget(this);
   }
 
-  /** บอสต้านทานการมึนงง, พิษยังทำงาน */
-  applyEffect(effect, dmg) {
+  /** บอสต้านทานการมึนงง (พิษ: server จัดการ) */
+  applyEffect(effect) {
     if (!this.alive || !effect) return;
     if (effect.stun) this.scene.combat.popupText(this.x, this.y - this.displayHeight - 4, 'ต้านทาน!', '#bdc3c7', 7);
-    if (effect.poison) {
-      const { ticks, every, ratio } = effect.poison;
-      const per = Math.max(1, Math.round(dmg * ratio));
-      this.scene.time.addEvent({ delay: every, repeat: ticks - 1, callback: () => {
-        if (!this.alive) return;
-        this.scene.net.send('raid:hit', { dmg: per });
-        this.scene.combat.popupText(this.x, this.y - this.displayHeight * 0.6, `${per}`, '#58d68d', 7);
-      } });
-    }
   }
 
   destroy(fromScene) { this.aura?.destroy(); this.label?.destroy(); super.destroy(fromScene); }

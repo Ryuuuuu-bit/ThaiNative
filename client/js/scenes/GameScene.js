@@ -4,6 +4,7 @@
 // ============================================================
 import { WORLD, VIEW } from '/shared/constants.js';
 import { MAPS, mapAt, REGIONS } from '/shared/data/maps.js';
+import { charPayload } from '/shared/character.js';
 import { World } from '../systems/World.js';
 import { MONSTER_IDS, MONSTERS } from '/shared/data/monsters.js';
 import { Player } from '../entities/Player.js';
@@ -417,13 +418,9 @@ export class GameScene extends Phaser.Scene {
         if (t) this.clock?.sync(t);
       })
       .on('mob:state', ({ l }) => { const t = this.time.now; for (const a of l) this.mobByGi[a[0]]?.applyServer(a, t); })
-      .on('mob:die', ({ gi, killer, assist }) => {
-        const m = this.mobByGi[gi];
-        if (!m || m.state === 'dead') { if (m && killer === this.net.selfId) this.combat.onMonsterKilled(m); return; }
-        if (killer === this.net.selfId) this.combat.onMonsterKilled(m);                 // ตีจบ: EXP + เงิน + ของดรอป
-        else if (assist?.includes(this.net.selfId)) this.combat.onAssist(m);            // ช่วยตี: ได้ EXP
-        m.dieVisual(true);
-      })
+      .on('mob:dmg', (d) => this.combat.onServerDamage(this.mobByGi[d.gi], d))          // ผลดาเมจจาก server
+      .on('mob:reward', (r) => this.combat.onServerReward(r))                          // รางวัลจาก server (EXP/เงิน/ของ)
+      .on('mob:die', ({ gi }) => { const m = this.mobByGi[gi]; if (m && m.state !== 'dead') m.dieVisual(true); })
       .on('appearance', ({ id, appearance }) => this.remotes.get(id)?.setAppearance(appearance))
       .on('warpReject', ({ x, y }) => {                                             // server ไม่รับวาร์ป → กลับไปจุดที่ server รู้
         if (!Number.isFinite(x)) return;
@@ -435,8 +432,13 @@ export class GameScene extends Phaser.Scene {
       .on('chat', (m) => this.ui.chat(m))
       .on('skill', (d) => this.combat.remoteVfx(d, this.remotes.get(d.id)));   // สกิลของผู้เล่นอื่น
 
-    net.connect(char.name, () => ({ appearance: this.player.char.appearance, x: Math.round(this.player.x), y: Math.round(this.player.y) }));
+    net.connect(char.name, () => ({ appearance: this.player.char.appearance, x: Math.round(this.player.x), y: Math.round(this.player.y), char: this.charPayload() }));
+    this.time.addEvent({ delay: 8000, loop: true, callback: () => this.sendChar() });
   }
+
+  /** ข้อมูลตัวละครที่ server ใช้คำนวณดาเมจ/รางวัล (สถานะ อุปกรณ์ สกิล พร บัฟ) */
+  charPayload() { return charPayload(this.player.char, this.player.buffs || []); }
+  sendChar() { if (this.net?.online) this.net.send('player:char', this.charPayload()); }
 
   onAppearanceChanged() {
     this.player.refreshAppearance();
@@ -457,7 +459,7 @@ export class GameScene extends Phaser.Scene {
 
   saveSoon() {
     clearTimeout(this._saveT);
-    this._saveT = setTimeout(() => saveCharacter(this.player.char), 800);
+    this._saveT = setTimeout(() => { saveCharacter(this.player.char); this.sendChar(); }, 800);
   }
 
   update(time) {

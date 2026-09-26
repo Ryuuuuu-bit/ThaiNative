@@ -6,7 +6,8 @@ import { account } from '../net/Account.js';
 import { JOBS, VILLAGER, PATH_LV, SUB_CAP } from '/shared/data/classes.js';
 import { ITEMS, STARTING_GOLD, STARTING_ITEMS, STARTER_WEAPON } from '/shared/data/items.js';
 import { sanitizeAppearance } from '/shared/data/appearance.js';
-import { computeDerived, expToNext, POINTS_PER_LEVEL, STAT_KEYS, MAX_LEVEL } from '/shared/stats.js';
+import { expToNext, POINTS_PER_LEVEL, STAT_KEYS, MAX_LEVEL } from '/shared/stats.js';
+import { getDerived } from '/shared/character.js';
 import { SKILL_SLOTS, SP_PER_LEVEL, START_SP, SKILL_BY_ID, canLearn } from '/shared/data/skills.js';
 
 const SAVE_KEY = 'thainative_save_v1';
@@ -73,24 +74,7 @@ export const styleOf = (c) => c.appearance.job;
 /** ชื่อที่แสดง: สายหลัก หรือ ชาวบ้าน */
 export const pathName = (c) => (c.path ? JOBS[c.path].nameTh : VILLAGER.nameTh);
 
-/** รวมโบนัสจากอุปกรณ์ที่สวมใส่ */
-export function equipmentBonus(c) {
-  const bonus = {};
-  const add = (o) => { for (const [k, v] of Object.entries(o || {})) bonus[k] = (bonus[k] || 0) + v; };
-  for (const [slot, id] of Object.entries(c.equipment)) {
-    if (!id) continue;
-    add(ITEMS[id]?.bonus);
-    const lv = c.enhance?.[slot] || 0;                  // ตีบวกกับลุงดำ (บวกตามช่อง)
-    if (lv && ENHANCE.bonus[slot]) add(ENHANCE.bonus[slot](lv));
-  }
-  return bonus;
-}
-
-export function getDerived(c) {
-  const bonus = equipmentBonus(c);
-  for (const [k, v] of Object.entries(JOBS[c.path]?.pathBonus || {})) bonus[k] = (bonus[k] || 0) + v;   // โบนัสสายหลัก
-  return computeDerived(c.stats, VILLAGER, c.level, bonus);
-}
+export { equipmentBonus, getDerived } from '/shared/character.js';
 
 /** ได้ EXP – คืนจำนวนเลเวลที่ขึ้น */
 export function gainExp(c, amount) {

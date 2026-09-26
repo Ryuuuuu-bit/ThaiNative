@@ -7,6 +7,8 @@
 import { PARTY, WORLD } from '../shared/constants.js';
 import { ITEMS } from '../shared/data/items.js';
 import { RAID_BOSS as RB } from '../shared/data/raid.js';
+import { rollDamage } from '../shared/stats.js';
+import { combatDerived, attackSpec } from '../shared/character.js';
 
 const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
 const int = (v, lo, hi) => clamp(Math.floor(Number(v) || 0), lo, hi);
@@ -103,6 +105,11 @@ export function setupSocial(io, players) {
   function tickBoss(now) {
     const dt = Math.min(0.2, (now - boss.lastTick) / 1000);
     boss.lastTick = now;
+    if (boss.alive && boss.poison && now >= boss.poison.next) {           // พิษติ๊ก
+      const q = boss.poison, p = players.get(q.by);
+      if (p && q.left > 0) { applyBossDamage(p, q.per, false, true); q.left--; q.next = now + q.every; }
+      if (!p || q.left <= 0) boss.poison = null;
+    }
     if (!boss.alive) {
       if (now >= boss.respawnAt && players.size) spawnBoss();
       return;
@@ -147,8 +154,22 @@ export function setupSocial(io, players) {
     if (dist > 55) boss.x = clamp(boss.x + boss.dir * RB.speed * (enraged ? 1.5 : 1) * dt, RB.arena[0] + 30, RB.arena[1] - 30);
   }
 
+  /** แบ่ง EXP ให้เพื่อนปาร์ตี้ที่อยู่ใกล้ (เรียกจาก mobs ตอนผีตาย) */
+  function shareExp(p, exp) {
+    const party = p && parties.get(p.partyId);
+    if (!party) return;
+    const share = Math.round(exp * PARTY.shareRatio);
+    if (!share) return;
+    for (const id of party.members) {
+      const m = players.get(id);
+      if (id === p.id || !m || Math.abs(m.x - p.x) > PARTY.shareRange) continue;
+      emitTo(id, 'party:exp', { amount: share, from: p.name });
+    }
+  }
+
+  /** ผู้เล่นตีบอส: server ทอยดาเมจจากค่าพลังจริงของผู้เล่น (client ส่งแค่ว่าใช้ท่าไหน) */
   function hitBoss(p, d) {
-    if (!boss.alive || !inArena(p)) return;
+    if (!boss.alive || !inArena(p) || !p.char) return;
     if (Math.abs(p.x - boss.x) > 650) return;
     const now = Date.now();
     // กันสแปม: token bucket 12 ครั้ง/วินาที
@@ -156,11 +177,20 @@ export function setupSocial(io, players) {
     p.raidT = now;
     if (p.raidTokens < 1) return;
     p.raidTokens -= 1;
-    const dmg = int(d.dmg, 0, 400 + p.level * RB.maxHitPerLevel);
-    if (!dmg) return;
+    const spec = attackSpec(p.char, p.appearance?.job, d?.sk || null, !!d?.combo);
+    if (!spec) return;
+    const r = rollDamage(combatDerived(p.char, p.char.buffs, now), { def: RB.def, eva: RB.eva }, spec.kind, spec.mult);
+    if (!r.hit) return io.to(p.id).emit('raid:dmg', { id: p.id, hit: false, dmg: 0, crit: false, hp: Math.round(boss.hp) });
+    applyBossDamage(p, r.dmg, r.crit, false);
+    if (spec.effect?.poison && boss.alive) {                                 // พิษ: server นับติ๊กเอง
+      const { ticks, every, ratio } = spec.effect.poison;
+      boss.poison = { by: p.id, per: Math.max(1, Math.round(r.dmg * ratio)), left: ticks, every, next: now + every };
+    }
+  }
+  function applyBossDamage(p, dmg, crit, poison) {
     boss.hp = Math.max(0, boss.hp - dmg);
     boss.contrib.set(p.id, (boss.contrib.get(p.id) || 0) + dmg);
-    io.volatile.emit('raid:dmg', { id: p.id, dmg, crit: !!d.crit, hp: Math.round(boss.hp) });
+    io.volatile.emit('raid:dmg', { id: p.id, dmg, crit, poison, hit: true, hp: Math.round(boss.hp) });
     if (boss.hp <= 0) defeatBoss(p);
   }
 
@@ -231,20 +261,7 @@ export function setupSocial(io, players) {
       if (party && party.leader === p.id && party.members.has(id) && id !== p.id) leaveParty(id, 'kick');
     });
     // แบ่ง EXP: ผู้ฆ่าแจ้งจำนวน EXP ที่ได้ → server แจกให้สมาชิกที่อยู่ใกล้
-    socket.on('party:exp', ({ amount } = {}) => {
-      const p = me(), party = p && parties.get(p.partyId);
-      if (!party) return;
-      const now = Date.now();
-      if (now - (p.lastExpShare || 0) < 80) return;
-      p.lastExpShare = now;
-      const share = Math.round(int(amount, 0, 5000) * PARTY.shareRatio);
-      if (!share) return;
-      for (const id of party.members) {
-        const m = players.get(id);
-        if (id === p.id || !m || Math.abs(m.x - p.x) > PARTY.shareRange) continue;
-        emitTo(id, 'party:exp', { amount: share, from: p.name });
-      }
-    });
+    // (party:exp จาก client ถูกยกเลิก — server แบ่ง EXP ให้ปาร์ตี้เองตอนผีตาย ผ่าน shareExp)
     socket.on('party:chat', (text) => {
       const p = me(), party = p && parties.get(p.partyId);
       const msg = String(text ?? '').replace(/[<>]/g, '').trim().slice(0, 120);
@@ -346,5 +363,5 @@ export function setupSocial(io, players) {
     }
   }
 
-  return { onConnection, onDisconnect, tick, bossPublic, _boss: boss, _parties: parties, _trades: trades };
+  return { onConnection, onDisconnect, tick, bossPublic, shareExp, _boss: boss, _parties: parties, _trades: trades };
 }

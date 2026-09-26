@@ -294,17 +294,18 @@ export class Monster extends Phaser.Physics.Arcade.Sprite {
   }
 
   /** สถานะผิดปกติจากสกิล */
+  showStun(ms) {
+    this.stunnedUntil = Math.max(this.stunnedUntil || 0, this.scene.time.now + ms);
+    if (this.state === 'attack') this.state = 'chase';
+    this.setTint(0x85c1e9);
+    this.scene.combat.popupText(this.x, this.y - this.def.frame.h - 6, 'มึนงง!', '#85c1e9', 7);
+  }
+
   applyEffect(effect, dmg) {
     if (!this.alive || !effect) return;
     const s = this.scene;
-    if (effect.stun) {
-      if (this.synced) s.net.send('mob:hit', { gi: this.gi, dmg: 0, stun: effect.stun.ms });
-      this.stunnedUntil = Math.max(this.stunnedUntil || 0, s.time.now + effect.stun.ms);
-      if (this.state === 'attack') this.state = 'chase';
-      this.setTint(0x85c1e9);
-      s.combat.popupText(this.x, this.y - this.def.frame.h - 6, 'มึนงง!', '#85c1e9', 7);
-    }
-    if (effect.poison) {
+    if (effect.stun) this.showStun(effect.stun.ms);
+    if (effect.poison && !this.synced) {
       const { ticks, every, ratio } = effect.poison;
       const per = Math.max(1, Math.round(dmg * ratio));
       this.poisonTimer?.remove();
@@ -321,15 +322,21 @@ export class Monster extends Phaser.Physics.Arcade.Sprite {
   }
 
   /** โดนผู้เล่นตี */
-  takeHit(result, dir, knock = 70) {
+  /** ออนไลน์: ส่งคำขอโจมตีให้ server ทอยดาเมจ (ผลกลับมาทาง mob:dmg) → true ถ้าส่งแล้ว */
+  hitOnline(meta, dir, knock = 70) {
+    if (!this.synced || !this.alive) return false;
+    this.scene.net.send('mob:hit', { gi: this.gi, sk: meta.sk || null, combo: !!meta.combo, dir, knock });
+    return true;
+  }
+
+  takeHit(result, dir, knock = 70, fromServer = false) {
     if (!this.alive) return;
     this.scene.combat.popup(this.x, this.y - this.def.frame.h, result);
     if (!result.hit) return;
     const net = this.synced;
-    if (net) {                                     // ออนไลน์: ส่งดาเมจให้ server (server ตัดสินตาย) · แสดง HP ล่วงหน้า
-      this.scene.net.send('mob:hit', { gi: this.gi, dmg: result.dmg, dir, knock });
-      this.hp = Math.max(1, this.hp - result.dmg);
-    } else this.hp -= result.dmg;
+    if (fromServer) { if (result.stun) this.showStun(result.stun); if (result.poison) this.setTint(0x82e0aa); }
+    if (net) this.hp = Math.max(1, this.hp - result.dmg);   // server ตัดสินตาย · แสดง HP ล่วงหน้า
+    else this.hp -= result.dmg;
     this.setTintFill(0xffffff);
     this.scene.time.delayedCall(70, () => this.alive && this.clearTint());
     if (!net && this.hp <= 0) return this.die();

@@ -180,13 +180,10 @@ export class Social {
       })
       .on('raid:attack', (a) => this.onBossAttack(a))
       .on('raid:impact', (a) => this.onBossImpact(a))
-      .on('raid:dmg', ({ id, dmg, crit, hp }) => {
+      .on('raid:dmg', (d) => {                              // ดาเมจที่ server ทอย (ของเราและคนอื่น)
         const b = this.scene.boss;
         if (!b?.alive) return;
-        b.hp = Math.min(b.hp, hp);
-        if (id !== this.selfId && Math.abs(b.x - this.player.x) < 400 && this.scene.settings?.damageNumbers !== false) {
-          this.fx.popupText(b.x + rand(-14, 14), b.y - b.displayHeight * 0.6, crit ? `${dmg}!` : `${dmg}`, crit ? '#f5b041' : '#d5d8dc', crit ? 9 : 7);
-        }
+        this.fx.onServerDamage(b, { ...d, by: d.id, hit: d.hit !== false });
       })
       .on('raid:reward', (r) => this.onBossReward(r))
       .on('raid:defeated', ({ killer }) => {

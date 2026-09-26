@@ -10,6 +10,7 @@ import { fileURLToPath } from 'node:url';
 import { WORLD } from '../shared/constants.js';
 import { MAPS, mapAt, gateNear } from '../shared/data/maps.js';
 import { sanitizeAppearance } from '../shared/data/appearance.js';
+import { sanitizeChar } from '../shared/character.js';
 import { SKILL_BY_ID, MAX_SKILL_LV } from '../shared/data/skills.js';
 import { setupSocial } from './social.js';
 import { setupMobs } from './mobs.js';
@@ -37,7 +38,7 @@ const players = new Map();
 /** ปาร์ตี้ · เทรด · เรดบอส */
 const social = setupSocial(io, players);
 /** ผีในแมพล่าผี (server คุม ทุกคนเห็นตรงกัน) */
-const mobs = setupMobs(io, players);
+const mobs = setupMobs(io, players, { dayMs: DAY_MS, shareExp: social.shareExp });
 
 function publicPlayer(p) {
   return {
@@ -71,6 +72,7 @@ io.on('connection', (socket) => {
       x: WORLD.spawnX, y: WORLD.spawnY,
       ...startPos(data),
       anim: 'idle', flipX: false, hp: 1, maxHp: 1, level: 1,
+      char: sanitizeChar(data.char),                      // ค่าพลัง/อุปกรณ์/สกิล ที่ server ใช้คำนวณดาเมจและรางวัล
       lastUpdate: Date.now(), lastChat: 0, lastSkill: 0, partyId: null, tradeId: null,
     };
     players.set(socket.id, player);
@@ -108,6 +110,14 @@ io.on('connection', (socket) => {
     p.hp = clamp(Number(s.hp) || 0, 0, 99999);
     p.maxHp = clamp(Number(s.maxHp) || 1, 1, 99999);
     p.level = clamp(Number(s.level) || 1, 1, 999);
+  });
+
+  // 1.1) ข้อมูลตัวละครสำหรับคำนวณ (ส่งตอนเซฟ/เปลี่ยนอุปกรณ์/บัฟ)
+  socket.on('player:char', (raw) => {
+    const p = players.get(socket.id);
+    if (!p) return;
+    const c = sanitizeChar(raw);
+    if (c) { p.char = c; p.level = c.level; }
   });
 
   // 2.1) วาร์ประหว่างแผนที่: ต้องยืนใกล้ประตู / หรือฟื้นหลังตาย

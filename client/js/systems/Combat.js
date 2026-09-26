@@ -4,6 +4,7 @@
 import { rollDamage } from '/shared/stats.js';
 import { SKILL_BY_ID, skillStats } from '/shared/data/skills.js';
 import { ITEMS } from '/shared/data/items.js';
+import { MONSTERS } from '/shared/data/monsters.js';
 import { WORLD } from '/shared/constants.js';
 import { getDerived, gainExp } from './Character.js';
 import { PATH_LV } from '/shared/data/classes.js';
@@ -39,7 +40,9 @@ export class Combat {
       .sort((a, b) => Math.abs(a.x - fromX) - Math.abs(b.x - fromX));
   }
 
-  hit(mon, stats, kind, mult, dir, knock, effect) {
+  /** ตีเป้าหมาย 1 ครั้ง — ออนไลน์: ส่งให้ server ทอยดาเมจ (ผลกลับมาทาง mob:dmg / raid:dmg) · ออฟไลน์: ทอยเอง */
+  hit(mon, stats, kind, mult, dir, knock, effect, meta = null) {
+    if (mon.hitOnline?.(meta || {}, dir, knock)) { this.scene.ui.setTarget(mon); return null; }
     const r = rollDamage(stats, mon.defStats, kind, mult);
     mon.takeHit(r, dir, knock);
     if (r.hit && effect) mon.applyEffect(effect, r.dmg);
@@ -47,6 +50,21 @@ export class Combat {
     if (r.hit) this.sfx.play(r.crit ? 'crit' : 'hit');
     else this.sfx.play('miss');
     return r;
+  }
+
+  /** ผลดาเมจจาก server (ของเรา = เล่นเสียง+ตัวเลข, ของคนอื่น = ตัวเลขจาง) */
+  onServerDamage(target, d) {
+    if (!target?.alive) return;
+    const mine = d.by === this.scene.net.selfId;
+    if (mine && d.poison) {
+      this.popupText(target.x + rand(-6, 6), target.y - target.displayHeight * 0.6, `${d.dmg}`, '#58d68d', 7);
+    } else if (mine) {
+      target.takeHit({ hit: d.hit, crit: d.crit, dmg: d.dmg, stun: d.stun, poison: d.poison }, d.dir || 1, d.knock ?? 70, true);
+      if (d.hit) this.sfx.play(d.crit ? 'crit' : 'hit'); else this.sfx.play('miss');
+    } else if (d.hit && this.scene.settings?.damageNumbers !== false && Math.abs(target.x - this.player.x) < 400) {
+      this.popupText(target.x + rand(-14, 14), target.y - target.displayHeight * 0.6, d.crit ? `${d.dmg}!` : `${d.dmg}`, d.poison ? '#82e0aa' : d.crit ? '#f5b041' : '#d5d8dc', d.crit ? 9 : 7);
+    }
+    if (Number.isFinite(d.hp)) target.hp = Math.min(target.hp, d.hp);
   }
 
   // ============================================================
@@ -58,6 +76,7 @@ export class Combat {
     const f = player.facing;
 
     if (!skill) return this.basicAttack(player, stats, f);
+    const meta = { sk: skill.id };
 
     switch (skill.type) {
       case 'melee': {
@@ -66,7 +85,7 @@ export class Combat {
           this.scene.time.delayedCall(i * (skill.interval || 0), () => {
             const targets = this.monstersIn(this.frontZone(player, skill.range), player.x);
             const list = skill.all ? targets : targets.slice(0, 1);
-            list.forEach((m) => this.hit(m, stats, skill.kind, skill.mult, f, skill.knock, skill.effect));
+            list.forEach((m) => this.hit(m, stats, skill.kind, skill.mult, f, skill.knock, skill.effect, meta));
             if (list.length) this.scene.cameras.main.shake(70, 0.004);
             if (i > 0) this.sfx.play(skill.sfx);
           });
@@ -78,7 +97,7 @@ export class Combat {
         const n = skill.count || 1;
         for (let i = 0; i < n; i++) {
           const dy = (i - (n - 1) / 2) * (skill.spread || 0);
-          this.spawnShot(player, `proj_${skill.proj}`, skill.speed, skill.range, skill.kind, skill.mult, stats, dy, !!skill.pierce, skill.effect);
+          this.spawnShot(player, `proj_${skill.proj}`, skill.speed, skill.range, skill.kind, skill.mult, stats, dy, !!skill.pierce, skill.effect, meta);
         }
         break;
       }
@@ -88,7 +107,7 @@ export class Combat {
           this.scene.time.delayedCall(i * skill.interval, () => {
             const zone = new Phaser.Geom.Rectangle(cx - skill.radius, player.y - 60, skill.radius * 2, 64);
             this.aoeFx(skill, cx, player.y);
-            this.monstersIn(zone, cx).forEach((m) => this.hit(m, stats, skill.kind, skill.mult, Math.sign(m.x - cx) || f, 70, skill.effect));
+            this.monstersIn(zone, cx).forEach((m) => this.hit(m, stats, skill.kind, skill.mult, Math.sign(m.x - cx) || f, 70, skill.effect, meta));
             if (i > 0) this.sfx.play(skill.sfx);
           });
         }
@@ -98,7 +117,7 @@ export class Combat {
         const target = this.strikeTarget(player, skill);
         if (!target) { this.popupText(player.x, player.y - 46, 'ไม่มีเป้าหมาย', '#bdc3c7'); break; }
         this.lightningFx(target.x, target.y);
-        this.hit(target, stats, skill.kind, skill.mult, f, 70, skill.effect);
+        this.hit(target, stats, skill.kind, skill.mult, f, 70, skill.effect, meta);
         this.scene.cameras.main.shake(120, 0.006);
         break;
       }
@@ -164,11 +183,11 @@ export class Combat {
       const targets = this.monstersIn(this.frontZone(player, atk.range), player.x);
       // ขุนศึกฟันโดนทุกตัวในระยะ / นักมวยโดนตัวที่ใกล้ที่สุด
       const hitList = player.job.weapon === 'sword' ? targets : targets.slice(0, 1);
-      hitList.forEach((m) => this.hit(m, stats, atk.kind, mult, f));
+      hitList.forEach((m) => this.hit(m, stats, atk.kind, mult, f, 70, null, { combo: special }));
       if (special && hitList.length) this.popupText(player.x + f * 14, player.y - 44, 'ศอกกลับ!', '#f39c12');
       if (hitList.length) this.scene.cameras.main.shake(60, 0.003);
     } else {
-      this.spawnShot(player, `proj_${atk.projectile}`, atk.speed, atk.range, atk.kind, mult, stats, 0, false);
+      this.spawnShot(player, `proj_${atk.projectile}`, atk.speed, atk.range, atk.kind, mult, stats, 0, false, null, { combo: special });
     }
   }
 
@@ -179,13 +198,13 @@ export class Combat {
     return new Phaser.Geom.Rectangle(x1, b.top - 6, range + 6, b.height + 6);
   }
 
-  spawnShot(player, tex, speed, range, kind, mult, stats, dy, pierce, effect) {
+  spawnShot(player, tex, speed, range, kind, mult, stats, dy, pierce, effect, meta = null) {
     const f = player.facing;
     const shot = this.playerShots.create(player.x + f * 12, player.body.center.y - 2 + dy, tex);
     shot.setFlipX(f < 0).setDepth(12);
     shot.body.setAllowGravity(false);
     shot.setVelocity(f * speed, dy * 4);
-    shot.setData({ startX: shot.x, range, kind, mult, stats, dir: f, pierce, effect, hitSet: new Set() });
+    shot.setData({ startX: shot.x, range, kind, mult, stats, dir: f, pierce, effect, meta, hitSet: new Set() });
     if (tex === 'proj_fireball') this.scene.tweens.add({ targets: shot, angle: f * 360, duration: 400, repeat: -1 });
     return shot;
   }
@@ -195,7 +214,7 @@ export class Combat {
     const d = shot.data.values;
     if (d.hitSet.has(mon)) return;
     d.hitSet.add(mon);
-    this.hit(mon, d.stats, d.kind, d.mult, d.dir, 70, d.effect);
+    this.hit(mon, d.stats, d.kind, d.mult, d.dir, 70, d.effect, d.meta);
     this.burst(shot.x, shot.y, d.kind === 'magic' ? 0xf39c12 : 0xecf0f1);
     if (!d.pierce) shot.destroy();
   }
@@ -208,7 +227,8 @@ export class Combat {
       c.hp = Math.min(d.maxHp, c.hp + amt);
       this.popupText(player.x, player.y - 46, `+${amt} HP`, '#58d68d', 10);
     }
-    player.buffs.push({ buff: sk.buff, until: this.scene.time.now + sk.duration, name: sk.nameTh, icon: sk.icon });
+    player.buffs.push({ buff: sk.buff, until: this.scene.time.now + sk.duration, name: sk.nameTh, icon: sk.icon, sk: sk.id, untilMs: Date.now() + sk.duration });
+    this.scene.sendChar?.();
     this.popupText(player.x, player.y - 56, sk.nameTh, '#f7dc6f', 9);
     this.burst(player.x, player.y - 18, 0xf7dc6f, 18);
 
@@ -248,7 +268,7 @@ export class Combat {
         player.body.setAllowGravity(true);
         const zone = new Phaser.Geom.Rectangle(Math.min(startX, endX) - 8, player.y - 36, Math.abs(endX - startX) + 16, 38);
         const targets = this.monstersIn(zone, startX);
-        targets.forEach((m) => this.hit(m, stats, sk.kind, sk.mult, f, 120, sk.effect));
+        targets.forEach((m) => this.hit(m, stats, sk.kind, sk.mult, f, 120, sk.effect, { sk: sk.id }));
         if (targets.length) this.scene.cameras.main.shake(90, 0.005);
       },
     });
@@ -371,6 +391,28 @@ export class Combat {
         this.scene.ui.loot(`🎁 ได้รับ ${ITEMS[drop.item].icon} ${ITEMS[drop.item].nameTh}`);
       }
     }
+    this.scene.saveSoon();
+  }
+
+  /** รางวัลจาก server (ออนไลน์): EXP/เงิน/ของดรอป คำนวณฝั่ง server แล้ว */
+  onServerReward(r) {
+    const c = this.player.char, def = MONSTERS[r.mon];
+    if (!def) return;
+    const x = r.x ?? this.player.x, y = (r.y ?? this.player.y) - def.frame.h - 8;
+    if (r.kind === 'assist') {
+      this.popupText(x, y, `+${r.exp} EXP (ช่วยตี)`, '#aed6f1');
+      this.scene.ui.loot(`🤝 ช่วยตี ${def.nameTh}: +${r.exp} EXP`);
+    } else {
+      c.gold += r.gold || 0;
+      this.popupText(x, y, `+${r.exp} EXP  +฿${r.gold}${r.night ? ' 🌙' : ''}`, r.night ? '#d7bde2' : '#f7dc6f');
+      this.sfx.play('ghostDie');
+      this.scene.time.delayedCall(250, () => this.sfx.play('coin'));
+      this.scene.ui.loot(`☠️ ${def.nameTh}: +${r.exp} EXP · +฿${r.gold}`);
+      for (const it of r.items || []) { addItem(c, it.id, it.qty || 1); this.scene.ui.loot(`🎁 ได้รับ ${ITEMS[it.id].icon} ${ITEMS[it.id].nameTh}`); }
+    }
+    this.grantExp(r.exp || 0);
+    this.scene.village?.questEvent('kill', r.mon);
+    this.scene.forest?.onKill(r.mon);
     this.scene.saveSoon();
   }
 
