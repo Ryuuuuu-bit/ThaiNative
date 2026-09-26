@@ -6,7 +6,7 @@
 import { ITEMS } from '/shared/data/items.js';
 import { MONSTERS } from '/shared/data/monsters.js';
 import { WORLD } from '/shared/constants.js';
-import { rollFish, RECIPES, ENHANCE, QUESTS, QUEST_BY_ID } from '/shared/data/village.js';
+import { rollFish, RECIPES, BREWS, ENHANCE, QUESTS, QUEST_BY_ID } from '/shared/data/village.js';
 import { addItem, removeItem, count } from './Inventory.js';
 import { getDerived } from './Character.js';
 import { itemIcon } from './util.js';
@@ -166,23 +166,28 @@ export class Village {
   // ============================================================
   //  ครัวป้าสา
   // ============================================================
-  renderCook(el) {
+  renderCook(el) { this.renderCraft(el, RECIPES, 'ป้าสา', 'ตกปลาได้ที่ท่าน้ำซ้ายสุดของหมู่บ้าน · หน่อไม้เก็บได้ในป่าผีดุ · กลางคืนมีโอกาสได้ปลาพรายวิญญาณ'); }
+  renderBrew(el) { this.renderCraft(el, BREWS, 'ยายติ๋ม', 'สมุนไพรเก็บได้ในป่าผีดุ (Map 2) · เห็ดผีเรืองแสงขึ้นลึกในป่า'); }
+
+  /** รายการสูตร (ครัวป้าสา / ปรุงยายายติ๋ม) */
+  renderCraft(el, list, who, hint) {
     const c = this.char;
-    el.innerHTML = RECIPES.map((r, i) => {
+    el.innerHTML = list.map((r, i) => {
       const it = ITEMS[r.out];
       const needs = Object.entries(r.need).map(([id, n]) => {
         const have = count(c, id);
         return `<span class="${have >= n ? 'ok' : 'miss'}">${itemIcon(id, ITEMS[id].icon)}${esc(ITEMS[id].nameTh)} ${have}/${n}</span>`;
       }).join(' ');
       const can = Object.entries(r.need).every(([id, n]) => count(c, id) >= n) && c.gold >= r.fee;
+      const eff = it.buff ? `${esc(it.buff.textTh)} · ${it.buff.minutes} นาที` : '';
       return `<div class="item"><span class="ic">${itemIcon(r.out, it.icon)}</span>
-        <span>${esc(it.nameTh)} <span class="meta">${esc(it.buff.textTh)} · ${it.buff.minutes} นาที</span><div class="need">${needs} · ค่าแรง ฿${r.fee}</div></span>
-        <span></span><button data-cook="${i}" ${can ? '' : 'disabled'}>ทำ</button></div>`;
-    }).join('') + '<p class="hint">ตกปลาได้ที่ท่าน้ำซ้ายสุดของหมู่บ้าน · กลางคืนมีโอกาสได้ปลาพรายวิญญาณ</p>';
-    el.querySelectorAll('[data-cook]').forEach((b) => (b.onclick = () => this.ui.result(this.cook(RECIPES[+b.dataset.cook]))));
+        <span>${esc(it.nameTh)} <span class="meta">${eff}</span><div class="need">${needs} · ค่าแรง ฿${r.fee}</div></span>
+        <span></span><button data-craft="${i}" ${can ? '' : 'disabled'}>ทำ</button></div>`;
+    }).join('') + `<p class="hint">${hint}</p>`;
+    el.querySelectorAll('[data-craft]').forEach((b) => (b.onclick = () => this.ui.result(this.cook(list[+b.dataset.craft], who))));
   }
 
-  cook(r) {
+  cook(r, who = 'ป้าสา') {
     const c = this.char;
     if (!Object.entries(r.need).every(([id, n]) => count(c, id) >= n)) return { ok: false, msg: 'วัตถุดิบไม่พอ' };
     if (c.gold < r.fee) return { ok: false, msg: 'เงินไม่พอจ่ายค่าแรง' };
@@ -190,7 +195,7 @@ export class Village {
     c.gold -= r.fee;
     addItem(c, r.out);
     this.scene.sfx.play('potion');
-    return { ok: true, msg: `ป้าสาทำ ${ITEMS[r.out].icon} ${ITEMS[r.out].nameTh} ให้แล้ว!` };
+    return { ok: true, msg: `${who}ทำ ${ITEMS[r.out].icon} ${ITEMS[r.out].nameTh} ให้แล้ว!` };
   }
 
   // ============================================================
@@ -247,6 +252,7 @@ export class Village {
 
   goalText(q) {
     const g = q.goal;
+    if (g.herb) return `เก็บ${g.herb === 'any' ? 'สมุนไพรอะไรก็ได้' : ITEMS[g.herb]?.nameTh} ${g.n} ครั้ง`;
     if (g.kill) return `ปราบ ${g.kill === 'any' ? 'ผีตัวไหนก็ได้' : g.kill === 'grave' ? 'ผีในป่าช้า' : MONSTERS[g.kill]?.nameTh} ${g.n} ตัว`;
     return `ตก${g.fish === 'any' ? 'ปลาอะไรก็ได้' : ITEMS[g.fish]?.nameTh} ${g.n} ตัว`;
   }
@@ -314,6 +320,7 @@ export class Village {
       const q = QUEST_BY_ID[qid], g = q?.goal;
       if (!g || Q.active[qid] >= g.n) continue;
       const match = type === 'kill' ? g.kill && (g.kill === 'any' || g.kill === id || (g.kill === 'grave' && MONSTERS[id]?.zone[0] >= WORLD.graveX))
+        : type === 'herb' ? g.herb && (g.herb === 'any' || g.herb === id)
         : g.fish && (g.fish === 'any' ? id !== 'junk_boot' : g.fish === id);
       if (!match) continue;
       Q.active[qid]++;

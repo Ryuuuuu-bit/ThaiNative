@@ -7,7 +7,7 @@ import { createServer } from 'node:http';
 import { Server } from 'socket.io';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { WORLD, MAPS, mapAt } from '../shared/constants.js';
+import { WORLD, MAPS, mapAt, gateNear } from '../shared/constants.js';
 import { sanitizeAppearance } from '../shared/data/appearance.js';
 import { SKILL_BY_ID, MAX_SKILL_LV } from '../shared/data/skills.js';
 import { setupSocial } from './social.js';
@@ -101,8 +101,11 @@ io.on('connection', (socket) => {
     const p = players.get(socket.id);
     if (!p) return;
     const map = mapAt(p.x);
-    if (d.kind === 'gate' && map.gate && Math.abs(p.x - map.gate.x) < 90) p.x = map.gate.arriveX;
-    else if (d.kind === 'respawn') p.x = d.arena && map.id === 'forest' ? WORLD.arenaX - 140 : WORLD.spawnX;
+    const gate = d.kind === 'gate' ? gateNear(p.x) : null;
+    if (gate) {
+      if (gate.minLv && p.level < gate.minLv) return;
+      p.x = gate.arriveX;
+    } else if (d.kind === 'respawn') p.x = map.id === 'grave' && p.x > WORLD.arenaX - 200 ? WORLD.arenaX - 140 : map.respawnX;
     else return;
     p.y = WORLD.spawnY;
     p.wp = (p.wp || 0) + 1;

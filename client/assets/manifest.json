@@ -195,7 +195,11 @@
     "forge": "assets/env/forge.png",
     "food_stall": "assets/env/food_stall.png",
     "warp_gate": "assets/env/warp_gate.png",
-    "boat": "assets/env/boat.png"
+    "boat": "assets/env/boat.png",
+    "campfire": "assets/env/campfire.png",
+    "chest_closed": "assets/env/chest_closed.png",
+    "chest_open": "assets/env/chest_open.png",
+    "bounty_board": "assets/env/bounty_board.png"
   },
   "bosses": {
     "phaya_yak": {
@@ -242,7 +246,8 @@
     "npc_yai_tim": "assets/bases/npc_yai_tim.png",
     "npc_lung_chai": "assets/bases/npc_lung_chai.png",
     "npc_lung_dam": "assets/bases/npc_lung_dam.png",
-    "npc_pa_sa": "assets/bases/npc_pa_sa.png"
+    "npc_pa_sa": "assets/bases/npc_pa_sa.png",
+    "npc_phran_bun": "assets/bases/npc_phran_bun.png"
   },
   "players": {
     "archer_female": "assets/players/archer_female.png",
@@ -279,6 +284,13 @@
     "it_grave_soil": "assets/icons/it_grave_soil.png",
     "it_ha_essence": "assets/icons/it_ha_essence.png",
     "it_hand_wrap": "assets/icons/it_hand_wrap.png",
+    "it_herb_aloe": "assets/icons/it_herb_aloe.png",
+    "it_herb_anchan": "assets/icons/it_herb_anchan.png",
+    "it_herb_bamboo": "assets/icons/it_herb_bamboo.png",
+    "it_herb_honey": "assets/icons/it_herb_honey.png",
+    "it_herb_lemongrass": "assets/icons/it_herb_lemongrass.png",
+    "it_herb_mushroom": "assets/icons/it_herb_mushroom.png",
+    "it_herb_turmeric": "assets/icons/it_herb_turmeric.png",
     "it_horn_bow": "assets/icons/it_horn_bow.png",
     "it_hp_m": "assets/icons/it_hp_m.png",
     "it_hp_s": "assets/icons/it_hp_s.png",
@@ -303,6 +315,9 @@
     "it_pla_nin": "assets/icons/it_pla_nin.png",
     "it_pla_phrai": "assets/icons/it_pla_phrai.png",
     "it_pla_taphian": "assets/icons/it_pla_taphian.png",
+    "it_pot_aloe": "assets/icons/it_pot_aloe.png",
+    "it_pot_anchan": "assets/icons/it_pot_anchan.png",
+    "it_pot_turmeric": "assets/icons/it_pot_turmeric.png",
     "it_prajiad": "assets/icons/it_prajiad.png",
     "it_pret_bone": "assets/icons/it_pret_bone.png",
     "it_rib_bone": "assets/icons/it_rib_bone.png",
@@ -341,7 +356,9 @@
     "sk_sword_wind": "assets/icons/sk_sword_wind.png",
     "ui_anvil": "assets/icons/ui_anvil.png",
     "ui_fish": "assets/icons/ui_fish.png",
+    "ui_herb": "assets/icons/ui_herb.png",
     "ui_quest": "assets/icons/ui_quest.png",
-    "ui_soup": "assets/icons/ui_soup.png"
+    "ui_soup": "assets/icons/ui_soup.png",
+    "ui_wanted": "assets/icons/ui_wanted.png"
   }
 }

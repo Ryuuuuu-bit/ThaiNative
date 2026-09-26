@@ -82,6 +82,23 @@ export const ITEMS = {
   food_kung_ob: { nameTh: 'กุ้งอบวุ้นเส้น',      type: 'food', icon: '🦞', price: 220, effect: { hp: 500, mp: 200 }, buff: { minutes: 15, mods: { critAdd: 0.05, atkMul: 0.05 }, textTh: 'คริ +5% · โจมตี +5%' } },
   food_phrai:   { nameTh: 'แกงส้มปลาพราย',     type: 'food', icon: '🥘', sell: 150, effect: { hp: 800, mp: 300 }, buff: { minutes: 20, mods: { atkMul: 0.15, dropMul: 1.3 }, textTh: 'โจมตี +15% · ของดรอป +30%' } },
 
+  // ---------- สมุนไพรป่าผีดุ (เก็บด้วย F) → ยายติ๋มปรุงยา / ป้าสาทำอาหาร ----------
+  herb_aloe:      { nameTh: 'ว่านหางจระเข้',     type: 'herb', icon: '🌵', sell: 5 },
+  herb_lemongrass:{ nameTh: 'ตะไคร้ป่า',          type: 'herb', icon: '🌾', sell: 5 },
+  herb_turmeric:  { nameTh: 'ขมิ้นชัน',           type: 'herb', icon: '🫚', sell: 8 },
+  herb_anchan:    { nameTh: 'ดอกอัญชัน',          type: 'herb', icon: '💠', sell: 8 },
+  herb_bamboo:    { nameTh: 'หน่อไม้ป่า',          type: 'herb', icon: '🎋', sell: 6 },
+  herb_honey:     { nameTh: 'รวงผึ้งป่า',          type: 'herb', icon: '🍯', sell: 18 },
+  herb_mushroom:  { nameTh: 'เห็ดผีเรืองแสง',      type: 'herb', icon: '🍄', sell: 25 },
+  // ยาปรุง (ยายติ๋ม)
+  pot_aloe:     { nameTh: 'ยาว่านหางจระเข้ (HP +300)', type: 'consumable', icon: '🧪', sell: 20, effect: { hp: 300 } },
+  pot_turmeric: { nameTh: 'ยาขมิ้นชัน (HP +600)',     type: 'consumable', icon: '🧪', sell: 40, effect: { hp: 600 } },
+  pot_anchan:   { nameTh: 'น้ำอัญชัน (MP +250)',      type: 'consumable', icon: '🧪', sell: 40, effect: { mp: 250 } },
+  elixir_ghost: { nameTh: 'ยาอายุวัฒนะเห็ดผี',       type: 'food', icon: '⚗️', sell: 90, effect: { hp: 200, mp: 100 },
+    buff: { id: 'elixir', minutes: 15, mods: { atkMul: 0.12, critAdd: 0.04 }, textTh: 'โจมตี +12% · คริ +4%' } },
+  food_nomai:   { nameTh: 'แกงหน่อไม้ใส่ปลา',        type: 'food', icon: '🍛', sell: 40, effect: { hp: 350, mp: 60 },
+    buff: { minutes: 12, mods: { def: 6 }, textTh: 'ป้องกัน +6' } },
+
   // ---------- วัตถุดิบตีบวก (ลุงดำ) ----------
   black_iron:  { nameTh: 'แร่เหล็กไหล',       type: 'material', icon: '🪨', price: 60 },
 
@@ -105,6 +122,7 @@ export const SHOPS = {
     greeting: 'มาจ้ะหลาน ยาดีของยาย ผีหลอกก็ไม่กลัว!',
     stock: ['hp_s', 'hp_m', 'mp_s', 'mp_m', 'garland', 'nam_daeng', 'khai_tom', 'hua_mu',
       'skin_swordman', 'skin_mage', 'skin_archer', 'skin_boxer'],
+    tabs: ['buy', 'sell', 'brew'],
   },
   lung_dam: {
     nameTh: 'ลุงดำ โรงตีเหล็ก',

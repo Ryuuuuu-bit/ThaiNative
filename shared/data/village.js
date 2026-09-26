@@ -29,7 +29,61 @@ export const RECIPES = [
   { out: 'food_tom_yum',  need: { pla_chon: 1, pla_duk: 1 }, fee: 20 },
   { out: 'food_kung_ob',  need: { kung: 2 }, fee: 30 },
   { out: 'food_phrai',    need: { pla_phrai: 1, pla_chon: 1 }, fee: 60 },
+  { out: 'food_nomai',    need: { herb_bamboo: 2, pla_duk: 1 }, fee: 20 },
 ];
+
+/** ยายติ๋มปรุงยาจากสมุนไพรป่าผีดุ */
+export const BREWS = [
+  { out: 'pot_aloe',     need: { herb_aloe: 2 }, fee: 10 },
+  { out: 'mp_m',         need: { herb_lemongrass: 2 }, fee: 10 },
+  { out: 'pot_turmeric', need: { herb_turmeric: 2, herb_aloe: 1 }, fee: 25 },
+  { out: 'pot_anchan',   need: { herb_anchan: 2, herb_lemongrass: 1 }, fee: 25 },
+  { out: 'elixir_ghost', need: { herb_mushroom: 1, herb_honey: 1, herb_turmeric: 1 }, fee: 60 },
+];
+
+// ============================================================
+//  Map 2: ป่าผีดุ
+// ============================================================
+/** จุดเก็บสมุนไพร (x, ชนิด, y = บนแพลตฟอร์ม) – เก็บแล้วงอกใหม่ใน respawn ms (แยกต่อผู้เล่น) */
+export const HERB_NODES = [
+  { x: 1420, item: 'herb_aloe' },       { x: 1560, item: 'herb_lemongrass' }, { x: 1690, item: 'herb_bamboo' },
+  { x: 1800, item: 'herb_aloe' },       { x: 1950, item: 'herb_turmeric' },   { x: 2125, item: 'herb_honey', y: 172 },
+  { x: 2260, item: 'herb_lemongrass' }, { x: 2400, item: 'herb_anchan' },     { x: 2560, item: 'herb_bamboo' },
+  { x: 2700, item: 'herb_turmeric' },   { x: 2860, item: 'herb_anchan' },     { x: 3110, item: 'herb_mushroom', night: true },
+  { x: 3030, item: 'herb_honey', y: 166 }, { x: 3300, item: 'herb_mushroom' }, { x: 3440, item: 'herb_aloe' },
+];
+export const HERB_RESPAWN_MS = 90000;
+export const GATHER_MS = 1400;
+
+/** หีบสมบัติโบราณ: โผล่บนแพลตฟอร์มในป่าเป็นระยะ */
+export const CHEST = { everyMs: 150000, lifeMs: 100000 };
+export function rollChest(level, rnd = Math.random) {
+  const items = [];
+  const gold = Math.round((40 + rnd() * 120) * (1 + level / 6));
+  if (rnd() < 0.35) items.push({ id: 'black_iron', qty: 1 });
+  if (rnd() < 0.45) items.push({ id: ['herb_honey', 'herb_mushroom', 'herb_turmeric', 'herb_anchan'][Math.floor(rnd() * 4)], qty: 2 });
+  if (rnd() < 0.08) items.push({ id: ['amulet_coin', 'amulet_ganesh', 'amulet_somdej', 'amulet_pidta'][Math.floor(rnd() * 4)], qty: 1 });
+  return { gold, items };
+}
+
+/** ค่าหัวรายวันของพรานบุญ: สุ่ม 3 ใบตามเลเวล (เมล็ดสุ่ม = วันที่ + ชื่อ → ทุกคนได้ต่างกัน แต่คงที่ทั้งวัน) */
+export function dailyBounties(level, dayKey, name, monsters) {
+  let seed = 0;
+  for (const ch of dayKey + name) seed = (seed * 31 + ch.charCodeAt(0)) >>> 0;
+  const rnd = () => ((seed = (seed * 1103515245 + 12345) >>> 0) / 4294967296);
+  const pool = Object.entries(monsters).filter(([, m]) => !m.nightOnly && m.level <= level + 2 && m.level >= Math.max(1, level - 5));
+  const list = [];
+  const used = new Set();
+  for (let i = 0; i < Math.min(3, pool.length); i++) {
+    let k = Math.floor(rnd() * pool.length), tries = 0;
+    while (used.has(k) && tries++ < 10) k = (k + 1) % pool.length;
+    used.add(k);
+    const [id, m] = pool[k];
+    const n = 6 + Math.floor(rnd() * 7);
+    list.push({ mon: id, n, prog: 0, exp: Math.round(m.exp * n * 1.2), gold: Math.round(((m.gold[0] + m.gold[1]) / 2) * n * 1.5), claimed: false });
+  }
+  return list;
+}
 
 /** ตีบวกอุปกรณ์ (ลุงดำ) – บวกตามช่องสวมใส่ สูงสุด +10  ล้มเหลว = เสียของ ไม่ลดขั้น */
 export const ENHANCE = {
@@ -54,6 +108,10 @@ export const QUESTS = [
     goal: { fish: 'any', n: 3 }, reward: { exp: 40, gold: 60, items: [{ id: 'food_pla_pao', qty: 1 }] } },
   { id: 'q_tuay', lv: 1, nameTh: 'ผีถ้วยแก้วป่วนทุ่ง', text: 'ผีถ้วยแก้วออกมาป่วนทุ่งหน้าป่า ออกประตูวาร์ปไปจัดการ 8 ตัว',
     goal: { kill: 'phi_tuay_kaew', n: 8 }, reward: { exp: 120, gold: 120, items: [{ id: 'hp_s', qty: 5 }] } },
+  { id: 'q_herb', lv: 2, nameTh: 'สมุนไพรให้ยาย', text: 'ยายติ๋มยาใกล้หมด ไปเก็บสมุนไพรในป่าผีดุ (มีประกายวิบวับ กด F) มาให้ 5 ครั้ง',
+    goal: { herb: 'any', n: 5 }, reward: { exp: 150, gold: 150, items: [{ id: 'pot_aloe', qty: 3 }] } },
+  { id: 'q_camp', lv: 4, nameTh: 'เห็ดผีกลางป่าลึก', text: 'พรานบุญเล่าว่ามีเห็ดเรืองแสงขึ้นลึกในป่า เก็บมา 2 ครั้ง แล้วลองให้ยายปรุงยาอายุวัฒนะ',
+    goal: { herb: 'herb_mushroom', n: 2 }, reward: { exp: 420, gold: 300, items: [{ id: 'herb_honey', qty: 2 }] } },
   { id: 'q_kuman', lv: 3, nameTh: 'กุมารทองหลงทาง', text: 'กุมารทองซนเกินไปแล้ว สั่งสอนมัน 10 ตัว',
     goal: { kill: 'kuman_thong', n: 10 }, reward: { exp: 260, gold: 200, items: [{ id: 'black_iron', qty: 1 }] } },
   { id: 'q_krasue', lv: 5, nameTh: 'กระสือกินไก่ชาวบ้าน', text: 'กลางคืนกระสือบินมากินไก่ในเล้า ไปปราบ 6 ตัว (ออกเฉพาะกลางคืน)',

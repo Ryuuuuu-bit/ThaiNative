@@ -158,10 +158,14 @@ export class UI {
       this.mmAt = time;
       const mp = this.scene.map, W = mp.maxX - mp.minX, inMap = (x) => x >= mp.minX && x <= mp.maxX;
       const pct = (x) => `${((x - mp.minX) / W) * 100}%`;
-      let html = `<i class="mm-dot me" style="left:${pct(p.x)}"></i><i class="mm-dot gate" style="left:${pct(mp.gate.x)}"></i>`;
+      let html = `<i class="mm-dot me" style="left:${pct(p.x)}"></i>`;
+      mp.gates.forEach((g) => (html += `<i class="mm-dot gate" style="left:${pct(g.x)}"></i>`));
       if (mp.safe) this.scene.npcs.forEach((n) => (html += `<i class="mm-dot npc" style="left:${pct(n.x)}"></i>`));
       this.scene.remotes.forEach((r) => inMap(r.x) && (html += `<i class="mm-dot ally" style="left:${pct(r.x)}"></i>`));
       this.scene.monsters.getChildren().forEach((m) => m.alive && inMap(m.x) && (html += `<i class="mm-dot ${m.isBoss ? 'boss' : 'mob'}" style="left:${pct(m.x)}"></i>`));
+      const ch = this.scene.forest?.chest;
+      if (ch && inMap(ch.x)) html += `<i class="mm-dot chest" style="left:${pct(ch.x)}"></i>`;
+      if (mp.camp) html += `<i class="mm-dot npc" style="left:${pct(mp.camp.npcX)}"></i>`;
       $('#mm-dots').innerHTML = html;
     }
   }
@@ -175,7 +179,7 @@ export class UI {
       town.classList.add('river'); arena.style.width = '0';
     } else {
       town.classList.remove('river'); town.style.width = '0';
-      arena.style.width = `${((mp.maxX - WORLD.arenaX) / W) * 100}%`;
+      arena.style.width = mp.id === 'grave' ? `${((mp.maxX - WORLD.arenaX) / W) * 100}%` : '0';
     }
   }
 
@@ -333,10 +337,11 @@ export class UI {
     const X0 = WORLD.minX, W = WORLD.width - X0, pct = (x) => `${((x - X0) / W) * 100}%`;
     const zones = [
       { nameTh: '🎣 ท่าน้ำ', from: X0, to: -200, town: true, sub: 'ตกปลา · ครัวป้าสา' },
-      { nameTh: 'หมู่บ้านบางผี', from: -200, to: 1060, town: true, sub: 'Safe Zone · ยายติ๋ม · ผู้ใหญ่ชัย · ลุงดำ · วาร์ป→ป่า' }];
+      { nameTh: 'Map 1 หมู่บ้านบางผี', from: -200, to: 1060, town: true, sub: 'Safe Zone · ยายติ๋ม · ผู้ใหญ่ชัย · ลุงดำ · วาร์ป→ป่า' },
+      { nameTh: '⛺', from: 1090, to: 1360, town: true, sub: 'ค่าย' }];
     // แบ่งเขตตามมอนสเตอร์ (เรียงตามเลเวล)
     const mons = Object.values(MONSTERS).sort((a, b) => a.level - b.level);
-    const bands = [[1080, 1680], [1680, 2380], [2380, 2980], [2980, WORLD.graveX], [WORLD.graveX, WORLD.arenaX]];
+    const bands = [[1360, 1720], [1720, 2380], [2380, 2980], [2980, WORLD.graveX], [WORLD.graveX, WORLD.arenaX]];
     const names = ['ทุ่งผีน้อย', 'ป่ากล้วยตานี', 'บึงผีพราย', 'ดงเปรตสมิง', 'ป่าช้าผีตายโหง'];
     bands.forEach(([a, b], i) => {
       const here = mons.filter((m) => m.zone[0] < b && m.zone[1] > a);
@@ -474,7 +479,7 @@ export class UI {
     const shop = SHOPS[shopId];
     $('#shop-title').textContent = shop.nameTh;
     $('#shop-greet').textContent = `“${shop.greeting}”`;
-    const TAB_TH = { buy: 'ซื้อ', sell: 'ขาย', enhance: `${uiIcon('anvil', '🔨')} ตีบวก`, cook: `${uiIcon('soup', '🍳')} ทำอาหาร` };
+    const TAB_TH = { buy: 'ซื้อ', sell: 'ขาย', enhance: `${uiIcon('anvil', '🔨')} ตีบวก`, cook: `${uiIcon('soup', '🍳')} ทำอาหาร`, brew: `${uiIcon('herb', '🌿')} ปรุงยา` };
     const tabs = shop.tabs || ['buy', 'sell'];
     this.shopTab = tabs[0];
     $('#shop-tabs').innerHTML = tabs.map((t, i) => `<button data-tab="${t}" class="${i ? '' : 'active'}">${TAB_TH[t]}</button>`).join('');
@@ -488,6 +493,7 @@ export class UI {
     let html;
     if (this.shopTab === 'enhance') return this.scene.village.renderEnhance($('#shop-list'));
     if (this.shopTab === 'cook') return this.scene.village.renderCook($('#shop-list'));
+    if (this.shopTab === 'brew') return this.scene.village.renderBrew($('#shop-list'));
     if (this.shopTab === 'buy') {
       html = shop.stock.map((id) => {
         const it = ITEMS[id];

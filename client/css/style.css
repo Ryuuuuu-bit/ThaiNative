@@ -427,3 +427,4 @@ kbd { display: inline-block; min-width: 1.6em; text-align: center; padding: 0 .3
 .fish-ui > .px-ico { position: absolute; left: -1.2em; top: -1.2em; width: 2.6em; height: 2.6em; }
 #shop-tabs .px-ico { width: 1.3em; height: 1.3em; }
 .slot.pot .px-ico { width: 1.9em; height: 1.9em; }
+.mm-dot.chest { background: #f4d03f; box-shadow: 0 0 6px #f1c40f; width: .55em; height: .55em; }

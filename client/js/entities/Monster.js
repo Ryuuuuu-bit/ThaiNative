@@ -114,7 +114,7 @@ export class Monster extends Phaser.Physics.Arcade.Sprite {
     const dy = player.y - this.y;
     // ระยะห่างระหว่าง "ขอบ" hitbox (ไม่ใช่จุดกึ่งกลาง) → ตัวใหญ่/เล็กตีถึงเท่ากัน
     const gap = this.gapTo(player);
-    const aggro = player.alive && player.x > WORLD.townEndX &&
+    const aggro = player.alive && player.x > WORLD.campEndX &&
       Math.abs(dx) < AGGRO_X && Math.abs(dy) < AGGRO_Y;
     this.state = aggro ? 'chase' : 'patrol';
 

@@ -26,7 +26,8 @@ export const rand = (a, b) => a + Math.floor(Math.random() * (b - a + 1));
 // ---------------- ไอคอนภาพ (PixelLab) แทนอีโมจิ ----------------
 // BootScene ใส่รายการไอคอนจาก manifest ไว้ที่ ICONS  (it_<itemId>, sk_<skillId>)
 export const ICONS = {};
-const ITEM_ALIAS = { skin_swordman: 'skin_scroll', skin_mage: 'skin_scroll', skin_archer: 'skin_scroll', skin_boxer: 'skin_scroll' };
+const ITEM_ALIAS = { skin_swordman: 'skin_scroll', skin_mage: 'skin_scroll', skin_archer: 'skin_scroll', skin_boxer: 'skin_scroll',
+  elixir_ghost: 'herb_mushroom', food_nomai: 'herb_bamboo' };
 
 /** HTML ไอคอนไอเทม: มีภาพ → <img>, ไม่มี → อีโมจิเดิม */
 export function itemIcon(id, emoji = '') {

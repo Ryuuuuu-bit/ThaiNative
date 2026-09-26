@@ -358,6 +358,7 @@ export class Combat {
     this.grantExp(exp);
     this.scene.social?.shareExp(exp);          // แบ่ง EXP ให้เพื่อนในปาร์ตี้ที่อยู่ใกล้
     this.scene.village?.questEvent('kill', mon.id);
+    this.scene.forest?.onKill(mon.id);
 
     for (const drop of def.drops) {
       if (Math.random() < drop.chance * bl.dropMul) {

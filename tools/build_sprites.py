@@ -27,11 +27,12 @@ MONSTERS = {
 NPC = {'npc_maekha': 'npc_maekha'}
 # ภาพนิ่งที่ใช้แค่หุ่นตัดต่อ (ไม่ต้องสร้าง spritesheet เก่า): ผีป่าช้า + ชาวบ้าน
 BASES_ONLY = ['krahang', 'khamot', 'phi_dip', 'nang_takhian', 'tai_hong', 'phi_phong', 'kong_koi',
-              'phi_lang_kluang', 'phi_chamot', 'pret_asura', 'npc_yai_tim', 'npc_lung_chai', 'npc_lung_dam', 'npc_pa_sa']
+              'phi_lang_kluang', 'phi_chamot', 'pret_asura', 'npc_yai_tim', 'npc_lung_chai', 'npc_lung_dam', 'npc_pa_sa', 'npc_phran_bun']
 # ฉาก/สิ่งปลูกสร้างในเมือง (ภาพนิ่ง): key ในเกม → ไฟล์ใน assets_src/pixellab/env/
 ENV = {'house': 'house', 'temple': 'temple', 'stall': 'stall', 'spirit_house': 'spirit_house',
        'sala': 'sala', 'palm': 'palm', 'bg_town': 'bg_town',
-       'forge': 'forge', 'food_stall': 'food_stall', 'warp_gate': 'warp_gate', 'boat': 'boat'}
+       'forge': 'forge', 'food_stall': 'food_stall', 'warp_gate': 'warp_gate', 'boat': 'boat',
+       'camp_tent': 'camp_tent', 'campfire': 'campfire', 'chest_closed': 'chest_closed', 'chest_open': 'chest_open', 'bounty_board': 'bounty_board'}
 # ภาพที่ PixelLab วาดเป็นมุมเฉียง (isometric) → ดัดให้ฐานตรงแนวนอน เข้ากับเกม side-view
 ENV_DESKEW = set()   # ใส่ชื่อภาพที่ต้องดัดฐาน เช่น {'temple'}
 

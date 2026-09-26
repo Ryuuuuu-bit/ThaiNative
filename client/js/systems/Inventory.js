@@ -58,11 +58,13 @@ export function useItem(c, id) {
     if (it.effect.mp) c.mp = Math.min(d.maxMp, c.mp + it.effect.mp);
     removeItem(c, id);
     const now = Date.now();
-    c.blessings = (c.blessings || []).filter((b) => b.until > now && b.id !== 'food');
-    c.blessings.push({ id: 'food', nameTh: it.nameTh, icon: it.icon, until: now + it.buff.minutes * 60000, mods: it.buff.mods });
+    const bid = it.buff.id || 'food';                 // ยาอายุวัฒนะ = บัฟแยกจากอาหาร
+    c.blessings = (c.blessings || []).filter((b) => b.until > now && b.id !== bid);
+    c.blessings.push({ id: bid, nameTh: it.nameTh, icon: it.icon, until: now + it.buff.minutes * 60000, mods: it.buff.mods });
     return { ok: true, msg: `กิน${it.nameTh} อร่อย! ${it.buff.textTh} (${it.buff.minutes} นาที)`, ate: true };
   }
 
+  if (it.type === 'herb') return { ok: false, msg: `${it.nameTh}: ให้ยายติ๋มปรุงยา หรือป้าสาทำอาหาร` };
   if (it.type === 'fish') return { ok: false, msg: `${it.nameTh}: นำไปให้ป้าสาทำอาหาร หรือขายได้` };
 
   if (it.type === 'offering') return { ok: false, msg: `${it.nameTh}: นำไปถวายที่ศาลพระภูมิ (ยืนหน้าศาลแล้วกด F)` };
