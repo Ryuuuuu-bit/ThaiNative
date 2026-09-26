@@ -152,10 +152,11 @@ function weaponFx(ctx, weapon, cx, cy, W, H, t) {
     ctx.beginPath(); ctx.arc(cx, cy, r, a0 + 0.2, a1); ctx.stroke();
     ctx.strokeStyle = 'rgba(174,214,241,0.7)'; ctx.lineWidth = 1;
     ctx.beginPath(); ctx.arc(cx - 2, cy + 2, r * 0.75, a0 + 0.5, a1 - 0.1); ctx.stroke();
-  } else if (weapon === 'staff') {               // ไม้เท้า: วงยันต์เรืองแสง
+  } else if (weapon === 'staff') {               // ไม้เท้ากะโหลกหมอผี: ไฟวิญญาณสีเขียว + วงอาคม
     const ox = cx + W * 0.45, oy = cy - H * 0.3, rr = 3 + t * 5;
-    ctx.fillStyle = `rgba(187,143,206,${0.6 - t * 0.3})`; ctx.beginPath(); ctx.arc(ox, oy, rr, 0, 7); ctx.fill();
-    ctx.strokeStyle = 'rgba(247,220,111,0.9)'; ctx.lineWidth = 1;
+    ctx.fillStyle = `rgba(88,214,141,${0.55 - t * 0.3})`; ctx.beginPath(); ctx.arc(ox, oy, rr, 0, 7); ctx.fill();
+    ctx.fillStyle = 'rgba(165,105,189,0.5)'; ctx.fillRect(ox - 1, oy - rr - 4, 2, 3); ctx.fillRect(ox + rr, oy - 2, 3, 2);
+    ctx.strokeStyle = 'rgba(171,235,198,0.9)'; ctx.lineWidth = 1;
     ctx.beginPath(); ctx.arc(ox, oy, rr + 2, 0, 7); ctx.stroke();
     for (let k = 0; k < 4; k++) { const a = k * 1.57 + t * 2; ctx.fillStyle = '#fdfefe'; ctx.fillRect(ox + Math.cos(a) * (rr + 2) - 0.5, oy + Math.sin(a) * (rr + 2) - 0.5, 1.5, 1.5); }
   } else if (weapon === 'bow') {                 // ธนู: สายสะบัด + ลมพุ่ง
