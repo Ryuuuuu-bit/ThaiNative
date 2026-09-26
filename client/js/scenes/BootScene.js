@@ -6,6 +6,7 @@ import { generateAll, bakeRigMonster } from '../gfx/SpriteFactory.js';
 import { MONSTER_RIG, tintedCopy, fitHeight } from '../gfx/Rig.js';
 import { MONSTERS } from '/shared/data/monsters.js';
 import { ICONS } from '../systems/util.js';
+import { showAuth } from '../systems/AuthScreen.js';
 
 export class BootScene extends Phaser.Scene {
   constructor() { super('boot'); }
@@ -76,7 +77,7 @@ export class BootScene extends Phaser.Scene {
 
   goNext() {
     // รอฟอนต์ไทยโหลดก่อน เพื่อให้ข้อความในเกมใช้ฟอนต์ Mitr
-    const go = () => this.scene.start('create');
+    const go = () => showAuth().then((d) => this.scene.start('create', d || {}));
     if (document.fonts?.load) Promise.race([document.fonts.load('10px Mitr'), new Promise((r) => setTimeout(r, 1500))]).then(go);
     else go();
   }

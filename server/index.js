@@ -13,6 +13,7 @@ import { sanitizeAppearance } from '../shared/data/appearance.js';
 import { SKILL_BY_ID, MAX_SKILL_LV } from '../shared/data/skills.js';
 import { setupSocial } from './social.js';
 import { setupEvents } from './events.js';
+import { setupAuth } from './auth.js';
 import { DAY_MS_DEFAULT } from '../shared/data/world.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -22,6 +23,8 @@ const TICK_RATE = 15; // ส่ง snapshot ให้ทุก client 15 คร�
 const DAY_MS = Number(process.env.DAY_MS) || DAY_MS_DEFAULT;   // ความยาว 1 วันในเกม (ms)
 
 const app = express();
+app.disable('x-powered-by');
+setupAuth(app);                     // /api: ล็อกอิน · Guest · เชื่อม ID · เซฟตัวละคร
 app.use(express.static(path.join(ROOT, 'client')));
 app.use('/shared', express.static(path.join(ROOT, 'shared')));
 app.use('/vendor', express.static(path.join(ROOT, 'node_modules/phaser/dist')));

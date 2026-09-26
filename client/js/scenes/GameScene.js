@@ -20,6 +20,7 @@ import { Combat } from '../systems/Combat.js';
 import { UI } from '../systems/UI.js';
 import { Network } from '../net/Network.js';
 import { getDerived, saveCharacter } from '../systems/Character.js';
+import { account } from '../net/Account.js';
 import { useItem, count } from '../systems/Inventory.js';
 import { makeText } from '../systems/util.js';
 import { ITEMS } from '/shared/data/items.js';
@@ -99,7 +100,10 @@ export class GameScene extends Phaser.Scene {
     });
     this.time.addEvent({ delay: 1000, loop: true, callback: () => this.regenTick() });
     this.time.addEvent({ delay: 10000, loop: true, callback: () => saveCharacter(this.player.char) });
-    window.addEventListener('beforeunload', () => saveCharacter(this.player.char));
+    // ปิดแท็บ/ซ่อนหน้า → เซฟขึ้น server ทันที (keepalive)
+    this.saveNow = () => { saveCharacter(this.player.char); account.flush(); };
+    window.addEventListener('beforeunload', this.saveNow);
+    document.addEventListener('visibilitychange', () => document.visibilityState === 'hidden' && this.saveNow());
 
     this.ui.updateHud();
     this.ui.toast(`ยินดีต้อนรับ ${char.name} สู่หมู่บ้านบางผี!`);
@@ -310,7 +314,13 @@ export class GameScene extends Phaser.Scene {
     this.world?.setRegion(map);
     this.ui?.refreshMinimap?.();
     // ซ่อนผีของแมพอื่น (ไม่ต้องอัปเดต/วาด)
-    this.monsters?.getChildren().forEach((m) => { if (!m.isBoss && m.def?.mapId) m.setActive(m.def.mapId === map.id); });
+    this.monsters?.getChildren().forEach((m) => {
+      if (m.isBoss || !m.def?.mapId) return;
+      const on = m.def.mapId === map.id;
+      m.setActive(on);
+      m.setVisible(on && m.state !== 'dead');
+      m.showUi?.(on && m.state !== 'dead');       // ป้ายชื่อ/หลอดเลือดของผีแมพอื่นไม่ค้างบนจอ
+    });
     if (prev && prev !== map && this.ui) {
       const R = REGIONS[map.region];
       if (R && prev.region !== map.region) this.ui.toast(`เข้าสู่ภาค ${R.no}: ${R.nameTh}`);

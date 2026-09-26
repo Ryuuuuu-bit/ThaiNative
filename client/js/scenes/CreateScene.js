@@ -5,7 +5,8 @@
 import { GENDERS, OUTFITS, HAIRSTYLES, FACES, DEFAULT_APPEARANCE } from '/shared/data/appearance.js';
 import { JOBS, JOB_IDS } from '/shared/data/classes.js';
 import { bakeCharacter } from '../gfx/SpriteFactory.js';
-import { newCharacter, loadCharacter, saveCharacter } from '../systems/Character.js';
+import { newCharacter, loadCharacter, saveCharacter, reviveCharacter } from '../systems/Character.js';
+import { account } from '../net/Account.js';
 import { sound } from '../systems/Sound.js';
 import { loadSettings } from '../systems/Settings.js';
 
@@ -16,7 +17,8 @@ const JOB_ICON = { swordman: '⚔️', mage: '🔮', archer: '🏹', boxer: '�
 export class CreateScene extends Phaser.Scene {
   constructor() { super('create'); }
 
-  create() {
+  create(data = {}) {
+    this.serverChar = reviveCharacter(data.character);
     this.a = { ...DEFAULT_APPEARANCE };
     this.previewAnim = 'idle';
 
@@ -63,18 +65,24 @@ export class CreateScene extends Phaser.Scene {
     };
 
     $('#cc-start').onclick = () => {
+      if (this.serverChar && !confirm(`บัญชีนี้มีตัวละคร “${this.serverChar.name}” (Lv.${this.serverChar.level}) อยู่แล้ว\nสร้างใหม่จะเขียนทับตัวเดิม ต้องการสร้างใหม่ไหม?`)) return;
       const char = newCharacter($('#cc-name').value, this.a);
       saveCharacter(char);
       this.startGame(char);
     };
 
-    const saved = loadCharacter();
+    // เล่นต่อ: ตัวละครบนบัญชี (server) ก่อน / ถ้าไม่มีแต่มีเซฟเก่าในเครื่อง → นำเข้าบัญชีนี้
+    const btn = $('#cc-continue');
+    const saved = this.serverChar || loadCharacter();
     if (saved) {
-      const btn = $('#cc-continue');
       btn.classList.remove('hidden');
-      btn.textContent = `เล่นต่อ: ${saved.name} (Lv.${saved.level} ${JOBS[saved.appearance.job].nameTh})`;
-      btn.onclick = () => this.startGame(saved);
-    }
+      const from = this.serverChar ? '' : account.loggedIn ? ' · นำเข้าจากเซฟในเครื่อง' : '';
+      btn.textContent = `เล่นต่อ: ${saved.name} (Lv.${saved.level} ${JOBS[saved.appearance.job].nameTh})${from}`;
+      btn.onclick = () => { saveCharacter(saved); this.startGame(saved); };
+      if (this.serverChar) { btn.classList.add('primary'); }
+    } else btn.classList.add('hidden');
+    const acc = account.account;
+    $('#cc-account').textContent = acc ? `บัญชี: ${acc.display}${acc.guest ? ' (Guest)' : ''}` : 'โหมดออฟไลน์ · เซฟในเครื่อง';
   }
 
   refresh() {

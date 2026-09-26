@@ -448,3 +448,22 @@ kbd { display: inline-block; min-width: 1.6em; text-align: center; padding: 0 .3
 .tv small { color: var(--muted); font-size: .78em; } .tv:hover:not(:disabled) { background: #4a3160; }
 .tv.cur { outline: 2px solid var(--gold); } .tv:disabled { opacity: .45; cursor: default; }
 .mm-dot.fire { background: #f39c12; box-shadow: 0 0 5px #e67e22; }
+
+/* ---------- หน้าเข้าสู่ระบบ / บัญชี ---------- */
+#auth-screen { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; pointer-events: auto;
+  background: radial-gradient(ellipse at center, rgba(40,20,60,.55), rgba(8,4,16,.85)); }
+.auth-box { width: 42%; min-width: 20em; display: flex; flex-direction: column; gap: .55em; padding: 1.2em 1.4em; }
+.auth-box .logo { text-align: center; margin-bottom: .2em; }
+.auth-tabs { display: flex; gap: .4em; }
+.auth-tabs button { flex: 1; }
+#auth-form { display: flex; flex-direction: column; gap: .45em; }
+.auth-err { color: #f1948a; min-height: 1.1em; margin: 0; font-size: .85em; }
+.auth-or { display: flex; align-items: center; gap: .6em; color: var(--muted); font-size: .8em; }
+.auth-or::before, .auth-or::after { content: ''; flex: 1; border-top: 1px solid rgba(212,175,55,.35); }
+.acc-badge { padding: 0 .4em; border-radius: 4px; background: #3d2757; color: var(--gold-soft); }
+.acc-badge.guest { background: #7e5109; color: #fdebd0; }
+.link-form { display: flex; flex-wrap: wrap; gap: .35em; }
+.link-form input { flex: 1 1 8em; font-family: inherit; padding: .3em .5em; border-radius: 6px; border: 1px solid var(--gold); background: #1d1228; color: var(--text); }
+.acc-group .set-row { gap: .5em; }
+#settings-panel { max-height: 92%; overflow-y: auto; }
+.cc-account { margin: .2em 0 0; text-align: center; }

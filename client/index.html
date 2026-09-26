@@ -15,6 +15,24 @@
     <!-- ================= UI OVERLAY (DOM) ================= -->
     <div id="ui">
 
+      <!-- หน้าเข้าสู่ระบบ -->
+      <section id="auth-screen" class="hidden">
+        <div class="auth-box panel">
+          <h1 class="logo">ThaiNative <span class="logo-online">Online</span><small>ไทยเนทีฟ ออนไลน์ · ตำนานผีไทย</small></h1>
+          <div class="tabs auth-tabs"><button data-mode="login" class="active">เข้าสู่ระบบ</button><button data-mode="register">สมัครสมาชิก</button></div>
+          <form id="auth-form" autocomplete="on">
+            <label class="field">ชื่อผู้ใช้ <input id="auth-user" name="username" maxlength="20" autocomplete="username" placeholder="3–20 ตัว (ไทย/อังกฤษ/ตัวเลข/_)" /></label>
+            <label class="field">รหัสผ่าน <input id="auth-pass" name="password" type="password" maxlength="64" autocomplete="current-password" placeholder="อย่างน้อย 6 ตัว" /></label>
+            <label class="field reg-only hidden">ยืนยันรหัสผ่าน <input id="auth-pass2" type="password" maxlength="64" autocomplete="new-password" /></label>
+            <p id="auth-err" class="auth-err"></p>
+            <button id="auth-submit" type="submit" class="btn primary">เข้าสู่ระบบ ▶</button>
+          </form>
+          <div class="auth-or"><span>หรือ</span></div>
+          <button id="auth-guest" class="btn ghost">👤 เล่นแบบ Guest (ไม่ต้องสมัคร)</button>
+          <p class="hint">Guest เล่นได้ทันที ความคืบหน้าเก็บบน server · สร้างชื่อผู้ใช้ภายหลังได้ที่ ⚙️ ตั้งค่า → “เชื่อม ID” เพื่อเล่นต่อจากเครื่องอื่น</p>
+        </div>
+      </section>
+
       <!-- หน้าสร้างตัวละคร -->
       <section id="create-screen" class="hidden">
         <div class="create-left">
@@ -43,6 +61,7 @@
             <button id="cc-start" class="btn primary">เริ่มผจญภัย ▶</button>
           </div>
           <button id="cc-continue" class="btn link hidden">เล่นต่อจากเซฟเดิม</button>
+          <p id="cc-account" class="hint cc-account"></p>
         </div>
       </section>
 
@@ -236,6 +255,17 @@
           <div class="set-row"><label><input type="checkbox" id="set-dmg" /> แสดงตัวเลขดาเมจ</label></div>
           <div class="set-row"><label><input type="checkbox" id="set-mm" /> แสดงมินิแมป</label></div>
           <div class="set-row"><button id="set-fullscreen" class="btn ghost">⛶ เต็มจอ (Fullscreen)</button></div>
+        </div>
+        <div class="set-group acc-group">
+          <div class="set-row"><span>บัญชี: <b id="acc-name">—</b> <small id="acc-badge" class="acc-badge"></small></span></div>
+          <p id="acc-note" class="hint"></p>
+          <form id="link-form" class="link-form hidden" autocomplete="on">
+            <input id="link-user" maxlength="20" autocomplete="username" placeholder="ชื่อผู้ใช้ใหม่" />
+            <input id="link-pass" type="password" maxlength="64" autocomplete="new-password" placeholder="รหัสผ่าน (6 ตัวขึ้นไป)" />
+            <button type="submit" class="btn primary">🔗 เชื่อม ID</button>
+            <p id="link-err" class="auth-err"></p>
+          </form>
+          <div class="set-row"><button id="acc-link" class="btn ghost hidden">🔗 เชื่อม ID (บันทึกถาวร)</button><button id="acc-logout" class="btn ghost">🚪 ออกจากระบบ</button></div>
         </div>
         <div class="set-row foot"><button id="set-close" class="btn primary">กลับเข้าเกม</button></div>
       </section>

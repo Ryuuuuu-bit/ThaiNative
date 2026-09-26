@@ -2,6 +2,7 @@
 //  Character model – ข้อมูลตัวละครผู้เล่น (ใช้เซฟ/โหลด และคำนวณสถานะ)
 // ============================================================
 import { ENHANCE } from '/shared/data/village.js';
+import { account } from '../net/Account.js';
 import { JOBS } from '/shared/data/classes.js';
 import { ITEMS, STARTING_GOLD, STARTING_ITEMS } from '/shared/data/items.js';
 import { sanitizeAppearance } from '/shared/data/appearance.js';
@@ -133,9 +134,16 @@ function migrate(c) {
   return c;
 }
 
-// ---------------- Save / Load (localStorage) ----------------
+// ---------------- Save / Load ----------------
+// ล็อกอินแล้ว → เซฟขึ้น server (Account) + สำรองในเครื่อง / ออฟไลน์ → เก็บในเครื่องอย่างเดียว
 export function saveCharacter(c) {
-  try { localStorage.setItem(SAVE_KEY, JSON.stringify(c)); } catch { /* ignore */ }
+  try { localStorage.setItem(account.loggedIn ? `${SAVE_KEY}_acc${account.account.id}` : SAVE_KEY, JSON.stringify(c)); } catch { /* ignore */ }
+  account.saveCharacter(c);
+}
+/** ตัวละครจาก server → ตรวจ/อัปเกรดข้อมูลให้ตรงเวอร์ชันปัจจุบัน */
+export function reviveCharacter(c) {
+  if (!c) return null;
+  try { c.appearance = sanitizeAppearance(c.appearance); return migrate(c); } catch { return null; }
 }
 export function loadCharacter() {
   try {

@@ -16,6 +16,7 @@ import { saveSettings, toggleFullscreen } from './Settings.js';
 import { PORTRAITS } from '../gfx/SpriteFactory.js';
 import { modsText } from '/shared/data/blessings.js';
 import { itemIcon, skillIcon, uiIcon } from './util.js';
+import { bindAccountSettings } from './AuthScreen.js';
 
 const $ = (s) => document.querySelector(s);
 const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -45,6 +46,7 @@ export class UI {
 
     this.bindSettings();
     this.applyUiIcons();
+    this.renderAccount = bindAccountSettings(this);
 
     // แชท
     const input = $('#chat-input');
