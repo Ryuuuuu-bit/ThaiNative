@@ -12,6 +12,7 @@ const config = {
   width: VIEW.width,
   height: VIEW.height,
   backgroundColor: '#0d0714',
+  transparent: true,          // โปร่งใส → เห็นวอลเปเปอร์หน้าเข้าเกมด้านหลัง (GameScene วาดฉากเต็มจออยู่แล้ว)
   pixelArt: true,             // ภาพพิกเซลคมชัด ไม่เบลอ
   roundPixels: true,
   physics: {

@@ -4,10 +4,15 @@
 // ============================================================
 import { account } from '../net/Account.js';
 import { sound } from './Sound.js';
+import { titleScreen } from './TitleScreen.js';
+import { loadSettings } from './Settings.js';
 
 const $ = (s) => document.querySelector(s);
 
 export async function showAuth() {
+  sound.applySettings(loadSettings());
+  titleScreen.start();                 // สุ่มวอลเปเปอร์ + เพลง (เล่นต่อถึงหน้าสร้างตัวละคร)
+  bindTitleControls();
   // มี token เดิม → เข้าอัตโนมัติ
   const resumed = await account.resume();
   if (resumed) return resumed;
@@ -86,4 +91,27 @@ export function bindAccountSettings(ui) {
   };
   render();
   return render;
+}
+
+/** ปุ่มชื่อฉาก (คลิก = เปลี่ยนฉาก) + ปุ่มเสียง */
+function bindTitleControls() {
+  const cap = $('#title-caption'), snd = $('#title-sound');
+  if (!cap || snd.dataset.bound) return;
+  snd.dataset.bound = '1';
+  cap.onclick = () => titleScreen.next();
+  const render = () => {
+    snd.textContent = sound.muted ? '🔇' : '🔊';
+    snd.classList.toggle('hint', !sound.muted && !(sound.ctx && sound.ctx.state === 'running'));
+  };
+  snd.onclick = (e) => {
+    e.stopPropagation();
+    if (!snd.classList.contains('hint')) sound.toggleMute();   // ยังไม่เคยเปิดเสียง → คลิกแรกแค่เปิดเสียง
+    sound.init();
+    setTimeout(render, 50);
+  };
+  snd.classList.remove('hidden');
+  window.addEventListener('pointerdown', () => setTimeout(render, 80));
+  window.addEventListener('keydown', () => setTimeout(render, 80), { once: true });
+  render();
+  titleScreen.onStop = () => snd.classList.add('hidden');
 }

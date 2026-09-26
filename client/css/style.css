@@ -26,7 +26,7 @@ button { font-family: inherit; cursor: pointer; }
 
 /* ---------- Layout: canvas 16:9 + UI overlay ---------- */
 #game-wrap {
-  position: absolute; inset: 0; margin: auto;
+  position: absolute; inset: 0; margin: auto; z-index: 1;
   width: min(100vw, calc(100vh * 16 / 9));
   height: min(100vh, calc(100vw * 9 / 16));
   container-type: size;
@@ -443,10 +443,12 @@ kbd { display: inline-block; min-width: 1.6em; text-align: center; padding: 0 .3
 .mm-dot.fire { background: #f39c12; box-shadow: 0 0 5px #e67e22; }
 
 /* ---------- หน้าเข้าสู่ระบบ / บัญชี ---------- */
-#auth-screen { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; pointer-events: auto;
-  background: radial-gradient(ellipse at center, rgba(40,20,60,.55), rgba(8,4,16,.85)); }
-.auth-box { width: 42%; min-width: 20em; display: flex; flex-direction: column; gap: .55em; padding: 1.2em 1.4em; }
-.auth-box .logo { text-align: center; margin-bottom: .2em; }
+#auth-screen { position: absolute; inset: 0; display: flex; align-items: center; justify-content: flex-end; padding-right: 4%; pointer-events: auto;
+  background: linear-gradient(90deg, rgba(8,4,16,0) 40%, rgba(8,4,16,.55)); }
+.auth-box { width: 40%; min-width: 20em; max-height: 96%; overflow-y: auto; display: flex; flex-direction: column; gap: .55em; padding: 1.2em 1.4em;
+  background: rgba(26,14,38,.86); backdrop-filter: blur(3px); box-shadow: 0 0 40px rgba(0,0,0,.6), 0 0 18px rgba(212,175,55,.18); }
+@media (max-aspect-ratio: 4/3) { #auth-screen { justify-content: center; padding-right: 0; background: rgba(8,4,16,.35); } .auth-box { width: 80%; } }
+.auth-box .logo { text-align: center; margin-bottom: .2em; white-space: nowrap; font-size: 2.1em; }
 .auth-tabs { display: flex; gap: .4em; }
 .auth-tabs button { flex: 1; }
 #auth-form { display: flex; flex-direction: column; gap: .45em; }
@@ -479,3 +481,15 @@ kbd { display: inline-block; min-width: 1.6em; text-align: center; padding: 0 .3
 .path-card .meta { font-size: .85em; color: #c9b98f; }
 .path-card button { margin-top: auto; }
 @media (max-width: 760px) { .path-choose { grid-template-columns: repeat(2, 1fr); } }
+
+/* ---------- วอลเปเปอร์หน้าเข้าเกม ---------- */
+#title-bg { position: fixed; inset: 0; width: 100vw; height: 100vh; z-index: 0; image-rendering: pixelated; opacity: 1; transition: opacity .6s; }
+#title-bg.fade-out { opacity: 0; }
+#title-caption { position: fixed; left: 1.2vw; bottom: 1.4vh; z-index: 5; font: 500 clamp(11px, 1.4vh, 16px) 'Mitr', sans-serif; color: #f5e6b8;
+  background: rgba(10,5,20,.55); border: 1px solid rgba(212,175,55,.4); border-radius: 999px; padding: .35em .9em; text-shadow: 0 1px 2px #000; }
+#title-caption:hover { background: rgba(40,20,60,.8); }
+#title-sound { position: fixed; right: 1.2vw; top: 1.4vh; z-index: 5; font-size: clamp(14px, 2.2vh, 22px); width: 2.2em; height: 2.2em; border-radius: 50%;
+  color: #fff; background: rgba(10,5,20,.55); border: 1px solid rgba(212,175,55,.5); }
+#title-sound.hint::after { content: 'คลิกเพื่อเปิดเสียง'; position: absolute; right: 115%; top: 50%; transform: translateY(-50%); white-space: nowrap;
+  font-size: .6em; color: #f5e6b8; background: rgba(10,5,20,.7); padding: .2em .6em; border-radius: 6px; animation: pulse 1.6s infinite; }
+@keyframes pulse { 50% { opacity: .45; } }

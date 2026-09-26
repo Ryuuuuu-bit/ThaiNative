@@ -11,6 +11,7 @@ import { newCharacter, loadCharacter, saveCharacter, reviveCharacter, pathName }
 import * as Inv from '../systems/Inventory.js';
 import { account } from '../net/Account.js';
 import { sound } from '../systems/Sound.js';
+import { titleScreen } from '../systems/TitleScreen.js';
 import { loadSettings } from '../systems/Settings.js';
 
 const $ = (s) => document.querySelector(s);
@@ -31,10 +32,8 @@ export class CreateScene extends Phaser.Scene {
     this.a = { ...DEFAULT_APPEARANCE };
     this.previewAnim = 'idle';
 
-    // ฉากหลัง
-    this.add.image(480, 270, 'bg_sky').setScale(2);
-    this.add.tileSprite(480, 330, 480, 140, 'bg_far').setScale(2);
-    this.add.tileSprite(480, 420, 480, 120, 'bg_mid').setScale(2);
+    // ฉากหลัง = วอลเปเปอร์หน้าเข้าเกม (ขยับได้ อยู่หลัง canvas ที่โปร่งใส)
+    titleScreen.start();
     this.add.ellipse(250, 438, 170, 26, 0x000000, 0.45);
 
     this.preview = this.add.sprite(250, 440, bakeCharacter(this, sanitizeAppearance(this.a)), 'idle_0').setOrigin(0.5, 1).setScale(5);
@@ -42,7 +41,6 @@ export class CreateScene extends Phaser.Scene {
     this.bindDom();
     this.refresh();
     sound.applySettings(loadSettings());
-    sound.music('town');
     // เสียงคลิกทุกปุ่มในหน้าสร้างตัวละคร
     $('#create-screen').addEventListener('click', (e) => { if (e.target.closest('button')) sound.play('click'); });
   }
@@ -123,6 +121,7 @@ export class CreateScene extends Phaser.Scene {
 
   startGame(char) {
     $('#create-screen').classList.add('hidden');
+    titleScreen.stop();
     this.scene.start('game', { char });
   }
 }
