@@ -9,6 +9,7 @@ import { bakeCharacter } from '../gfx/SpriteFactory.js';
 import { getDerived } from '../systems/Character.js';
 import { makeText } from '../systems/util.js';
 import { STRIKE_FRAME } from '../gfx/PlayerArt.js';
+import { combineBlessings } from '/shared/data/blessings.js';
 import { SKILL_BY_ID, skillStats } from '/shared/data/skills.js';
 
 const EV = Phaser.Animations.Events;
@@ -64,9 +65,20 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
   get derived() { return getDerived(this.char); }
 
   /** ค่าสถานะรวมบัฟ (ใช้ตอนคำนวณดาเมจ) */
+  /** พรยาวจากเซียมซี/ศาลพระภูมิ (เก็บในเซฟ นับเวลาจริง) */
+  blessingMods() {
+    const now = Date.now();
+    this.char.blessings = (this.char.blessings || []).filter((b) => b.until > now);
+    return combineBlessings(this.char.blessings, now);
+  }
+
   combatStats(time = this.scene.time.now) {
     this.buffs = this.buffs.filter((b) => b.until > time);
     const d = { ...this.derived };
+    const bl = this.blessingMods();
+    if (bl.atkMul) { d.patk = Math.round(d.patk * (1 + bl.atkMul)); d.matk = Math.round(d.matk * (1 + bl.atkMul)); }
+    d.def = Math.max(0, d.def + bl.def);
+    d.critRate = Math.min(0.9, d.critRate + bl.critAdd);
     for (const { buff } of this.buffs) {
       if (buff.atkMul) { d.patk = Math.round(d.patk * (1 + buff.atkMul)); d.matk = Math.round(d.matk * (1 + buff.atkMul)); }
       if (buff.critAdd) d.critRate = Math.min(0.9, d.critRate + buff.critAdd);

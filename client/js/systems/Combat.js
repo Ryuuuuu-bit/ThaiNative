@@ -346,16 +346,20 @@ export class Combat {
   onMonsterKilled(mon) {
     const c = this.player.char;
     const def = mon.def;
-    const gold = rand(def.gold[0], def.gold[1]);
+    // ตัวคูณ: กลางคืน/เดือนดับ × พรจากเซียมซี/ศาลพระภูมิ
+    const m = mon.mods, bl = this.player.blessingMods();
+    const gold = Math.round(rand(def.gold[0], def.gold[1]) * m.gold * bl.goldMul);
+    const exp = Math.round(def.exp * m.exp * bl.expMul);
     c.gold += gold;
-    this.popupText(mon.x, mon.y - def.frame.h - 8, `+${def.exp} EXP  +฿${gold}`, '#f7dc6f');
+    const tag = m.exp > 1 ? ' 🌙' : '';
+    this.popupText(mon.x, mon.y - def.frame.h - 8, `+${exp} EXP  +฿${gold}${tag}`, m.exp > 1 ? '#d7bde2' : '#f7dc6f');
     this.sfx.play('ghostDie');
     this.scene.time.delayedCall(250, () => this.sfx.play('coin'));
-    this.grantExp(def.exp);
-    this.scene.social?.shareExp(def.exp);          // แบ่ง EXP ให้เพื่อนในปาร์ตี้ที่อยู่ใกล้
+    this.grantExp(exp);
+    this.scene.social?.shareExp(exp);          // แบ่ง EXP ให้เพื่อนในปาร์ตี้ที่อยู่ใกล้
 
     for (const drop of def.drops) {
-      if (Math.random() < drop.chance) {
+      if (Math.random() < drop.chance * bl.dropMul) {
         addItem(c, drop.item);
         this.scene.ui.toast(`ได้รับ ${ITEMS[drop.item].icon} ${ITEMS[drop.item].nameTh}`);
       }

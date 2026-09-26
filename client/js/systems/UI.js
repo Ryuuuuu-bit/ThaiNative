@@ -13,6 +13,7 @@ import { WORLD } from '/shared/constants.js';
 import { learnSkill, assignHotbar } from './Character.js';
 import { saveSettings, toggleFullscreen } from './Settings.js';
 import { PORTRAITS } from '../gfx/SpriteFactory.js';
+import { modsText } from '/shared/data/blessings.js';
 
 const $ = (s) => document.querySelector(s);
 const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -135,11 +136,16 @@ export class UI {
       $('#t-hp').textContent = `${Math.max(0, Math.ceil(t.hp))} / ${t.def.hp}`;
     }
     // บัฟ
-    const sig = p.buffs.map((b) => `${b.icon}${Math.ceil((b.until - time) / 1000)}`).join('|');
+    // บัฟจากสกิล (วินาที) + พรยาวจากเซียมซี/ศาลพระภูมิ (นาที)
+    const now = Date.now();
+    const bless = (p.char.blessings || []).filter((b) => b.until > now);
+    const mins = (b) => { const m = Math.ceil((b.until - now) / 60000); return m > 90 ? `${Math.ceil(m / 60)}ชม` : `${m}น`; };
+    const sig = p.buffs.map((b) => `${b.icon}${Math.ceil((b.until - time) / 1000)}`).join('|') + '#' + bless.map((b) => b.icon + mins(b)).join('|');
     if (sig !== this.buffSig) {
       this.buffSig = sig;
       $('#hud-buffs').innerHTML = p.buffs.filter((b) => b.until > time)
-        .map((b) => `<span class="buff" title="${esc(b.name)}">${b.icon}<small>${Math.ceil((b.until - time) / 1000)}</small></span>`).join('');
+        .map((b) => `<span class="buff" title="${esc(b.name)}">${b.icon}<small>${Math.ceil((b.until - time) / 1000)}</small></span>`).join('')
+        + bless.map((b) => `<span class="buff bless" title="${esc(b.nameTh)}: ${esc(modsText(b.mods))}">${b.icon}<small>${mins(b)}</small></span>`).join('');
     }
     // แผนที่โลก (ถ้าเปิดอยู่) อัปเดตทุก 300ms
     if (!$('#map-panel').classList.contains('hidden') && time - (this.wmAt || 0) > 300) { this.wmAt = time; this.updateMap(); }
@@ -422,7 +428,7 @@ export class UI {
     if (!c.inventory.length) { $('#inv-list').innerHTML = '<div class="empty">กระเป๋าว่างเปล่า</div>'; return; }
     $('#inv-list').innerHTML = c.inventory.map((s) => {
       const it = ITEMS[s.id];
-      const action = { consumable: 'ใช้', weapon: 'สวม', armor: 'สวม', accessory: 'สวม', skin: c.appearance.job === it.job ? 'ใช้อยู่' : 'เปลี่ยนอาชีพ' }[it.type];
+      const action = { consumable: 'ใช้', offering: 'ถวาย', weapon: 'สวม', armor: 'สวม', accessory: 'สวม', skin: c.appearance.job === it.job ? 'ใช้อยู่' : 'เปลี่ยนอาชีพ' }[it.type];
       const job = it.jobs ? ` · ${it.jobs.map((j) => JOBS[j].nameTh).join('/')}` : '';
       return `<div class="item"><span class="ic">${it.icon}</span>
         <span>${esc(it.nameTh)} <span class="meta">x${s.qty}${job}</span></span>

@@ -352,3 +352,41 @@ kbd { display: inline-block; min-width: 1.6em; text-align: center; padding: 0 .3
 .tr-actions { display: flex; gap: .6em; justify-content: center; margin-top: .7em; }
 .tr-actions .btn:disabled { opacity: .45; cursor: default; }
 .close-trade { background: none; border: none; color: var(--gold-soft); font-size: 1em; cursor: pointer; }
+
+/* ============================================================
+   เวลาในเกม · เซียมซี · ศาลพระภูมิ · อีเวนต์ผีห่า
+   ============================================================ */
+.clock { text-align: right; font-size: .78em; color: var(--gold-soft); text-shadow: 0 1px 2px #000; margin: -.1em .3em .15em 0; }
+
+.ss-wrap { display: flex; gap: 1.2em; align-items: center; justify-content: center; margin: .4em 0 .8em; }
+.ss-tube { position: relative; width: 4.2em; height: 6.4em; border-radius: .6em .6em .9em .9em; background: linear-gradient(90deg, #7b241c, #c0392b 40%, #922b21);
+  border: 2px solid var(--gold); display: flex; align-items: flex-end; justify-content: center; padding-bottom: .5em; transform-origin: 50% 100%; }
+.ss-tube span { font-size: .72em; color: var(--gold-soft); writing-mode: vertical-rl; margin-bottom: .6em; }
+.ss-tube i { position: absolute; top: -1.4em; width: .32em; height: 2.2em; background: #f5cba7; border: 1px solid #a04000; border-radius: 2px; }
+.ss-tube i:nth-child(1) { left: .8em; transform: rotate(-12deg); } .ss-tube i:nth-child(2) { left: 1.4em; transform: rotate(-4deg); }
+.ss-tube i:nth-child(3) { left: 2em; } .ss-tube i:nth-child(4) { left: 2.6em; transform: rotate(5deg); } .ss-tube i:nth-child(5) { left: 3.2em; transform: rotate(12deg); }
+.ss-tube.shaking { animation: ssShake .16s ease-in-out infinite alternate; }
+@keyframes ssShake { from { transform: rotate(-16deg) translateY(-2px); } to { transform: rotate(16deg) translateY(2px); } }
+.ss-side { display: flex; flex-direction: column; gap: .4em; max-width: 14em; }
+.ss-card { margin: 0 auto; max-width: 24em; text-align: center; background: #fdf2e9; color: #4a2511; border: 3px double #b9770e; border-radius: 6px; padding: .6em .9em; box-shadow: 0 4px 14px rgba(0,0,0,.5); animation: ssIn .5s ease-out; }
+@keyframes ssIn { from { transform: translateY(-14px) rotate(-3deg); opacity: 0; } to { transform: none; opacity: 1; } }
+.ss-no { font-size: .8em; color: #7e5109; } .ss-luck { font-size: 1.5em; font-weight: 600; color: #b03a2e; }
+.ss-card.best .ss-luck, .ss-card.great .ss-luck { color: #b7950b; text-shadow: 0 0 6px rgba(241,196,15,.6); }
+.ss-card.bad .ss-luck { color: #5d6d7e; }
+.ss-text { margin: .4em 0; font-size: .9em; line-height: 1.5; }
+.ss-mods { font-size: .78em; color: #1e8449; font-weight: 600; } .ss-card.bad .ss-mods { color: #922b21; }
+.ss-advice { margin-top: .35em; font-size: .75em; color: #6e2c00; }
+
+.shrine-row { display: flex; align-items: center; gap: .6em; padding: .35em .2em; border-bottom: 1px solid rgba(255,255,255,.07); }
+.shrine-row .ic { font-size: 1.5em; } .shrine-row > div { flex: 1; } .shrine-row small { color: var(--muted); }
+.shrine-h { margin: .6em 0 .2em; color: var(--gold-soft); font-weight: 500; font-size: .9em; }
+.shrine-active div { font-size: .82em; padding: .15em 0; } .shrine-active small { color: #82e0aa; }
+
+.event-bar { position: absolute; top: 2%; left: 50%; transform: translateX(-50%); width: 22em; max-width: 40%; text-align: center; z-index: 2;
+  background: linear-gradient(rgba(60,14,6,.94), rgba(30,6,4,.94)); border: 2px solid #e67e22; border-radius: 8px; padding: .25em .6em .35em; box-shadow: 0 0 16px rgba(230,126,34,.6); }
+.event-bar .ev-name { display: flex; justify-content: center; gap: .6em; font-size: .85em; color: #fad7a0; }
+.event-bar .ev-name span { color: #f5b041; }
+.event-bar small { font-size: .65em; color: #f5cba7; }
+.bar.shrine i { background: linear-gradient(90deg, #b9770e, #f4d03f); }
+.boss-bar:not(.hidden) ~ .event-bar, .event-bar.lower { top: 11%; }
+.buff.bless { background: #1d4d33; border-color: #82e0aa; }

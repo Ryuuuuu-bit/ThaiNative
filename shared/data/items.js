@@ -44,6 +44,13 @@ export const ITEMS = {
   saming_fang:  { nameTh: 'เขี้ยวเสือสมิง',     type: 'material', icon: '🦷', sell: 24 },
   dark_mist:    { nameTh: 'หมอกดำผีห่า',      type: 'material', icon: '🌫️', sell: 30 },
   yak_fang:     { nameTh: 'เขี้ยวพญายักษ์',     type: 'material', icon: '🐗', sell: 120 },
+  ha_essence:   { nameTh: 'แก่นวิญญาณผีห่า',    type: 'material', icon: '🔥', sell: 60 },
+
+  // ---------- ของถวายศาลพระภูมิ (กด F ที่ศาล) ----------
+  garland:   { nameTh: 'พวงมาลัยดาวเรือง', type: 'offering', icon: '🌼', price: 30 },
+  nam_daeng: { nameTh: 'น้ำแดง',           type: 'offering', icon: '🥤', price: 25 },
+  khai_tom:  { nameTh: 'ไข่ต้ม',           type: 'offering', icon: '🥚', price: 35 },
+  hua_mu:    { nameTh: 'หัวหมูบวงสรวง',    type: 'offering', icon: '🐷', price: 400 },
 };
 
 export function sellPrice(id) {
@@ -57,7 +64,7 @@ export const SHOPS = {
   mae_kha: {
     nameTh: 'ป้าติ๋ม ร้านโชห่วย',
     greeting: 'มาจ้ะหลาน ของดีราคาถูก ผีหลอกก็ไม่กลัว!',
-    stock: ['hp_s', 'hp_m', 'mp_s', 'mp_m', 'yant_shirt', 'takrut', 'prajiad',
+    stock: ['hp_s', 'hp_m', 'mp_s', 'mp_m', 'garland', 'nam_daeng', 'khai_tom', 'hua_mu', 'yant_shirt', 'takrut', 'prajiad',
       'wood_sword', 'iron_dab', 'oak_staff', 'yant_staff', 'bamboo_bow', 'horn_bow', 'hand_wrap', 'mongkol',
       'skin_swordman', 'skin_mage', 'skin_archer', 'skin_boxer'],
   },

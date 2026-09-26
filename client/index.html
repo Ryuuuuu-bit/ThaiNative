@@ -68,6 +68,13 @@
           <div class="bar boss"><i id="bb-fill"></i><span id="bb-hp"></span></div>
         </div>
 
+        <!-- อีเวนต์โลก: ผีห่าบุกหมู่บ้าน -->
+        <div id="event-bar" class="event-bar hidden">
+          <div class="ev-name"><b>🔥 ผีห่าบุกหมู่บ้าน!</b><span id="ev-wave"></span></div>
+          <div class="bar shrine"><i id="ev-fill"></i><span id="ev-hp"></span></div>
+          <small id="ev-hint">ปกป้องศาลพระภูมิ! ช่วยกันกำจัดผีห่าทุกระลอก</small>
+        </div>
+
         <!-- เป้าหมาย (กลางบน) -->
         <div id="target" class="target hidden">
           <div class="t-name"><span id="t-lv"></span> <b id="t-name"></b></div>
@@ -77,6 +84,7 @@
         <!-- ขวาบน: เขต / ออนไลน์ / มินิแมป / เมนู -->
         <div class="hud-right">
           <div class="zone"><b id="zone-name"></b><span id="net-status" class="net off">● ออฟไลน์</span></div>
+          <div class="clock" id="clock">☀️ 12:00</div>
           <div class="minimap"><div class="mm-town"></div><div class="mm-arena"></div><div id="mm-dots"></div></div>
           <div class="hud-buttons">
             <button data-open="stats-panel" title="สถานะ (C)">📊<small>C</small></button>
@@ -103,6 +111,27 @@
         <div id="prompt" class="prompt hidden"></div>
         <div id="banner" class="banner hidden"></div>
         <div id="death" class="death hidden"><h2>คุณหมดสติ…</h2><p>ฟื้นที่ศาลพระภูมิใน <b id="death-t">3</b> วินาที</p></div>
+      </section>
+
+      <!-- เซียมซี (วัดบางผี) -->
+      <section id="siamsi-panel" class="panel window hidden">
+        <header>เสี่ยงเซียมซี · วัดบางผี <button class="close">✕</button></header>
+        <div class="ss-wrap">
+          <div id="ss-tube" class="ss-tube"><i></i><i></i><i></i><i></i><i></i><span>เซียมซี</span></div>
+          <div class="ss-side">
+            <button id="ss-shake" class="btn primary">🙏 เขย่าเซียมซี</button>
+            <p id="ss-note" class="hint"></p>
+          </div>
+        </div>
+        <div id="ss-card" class="ss-card hidden"></div>
+      </section>
+
+      <!-- ศาลพระภูมิ -->
+      <section id="shrine-panel" class="panel window hidden">
+        <header>ศาลพระภูมิ · ถวายของขอพร <button class="close">✕</button></header>
+        <div id="shrine-list"></div>
+        <h4 class="shrine-h">พรที่ได้รับอยู่</h4>
+        <div id="shrine-active" class="shrine-active"></div>
       </section>
 
       <!-- คำเชิญ (ปาร์ตี้ / เทรด) -->
@@ -189,7 +218,7 @@
         <div class="keys">
           <div><kbd>←</kbd><kbd>→</kbd> เดิน</div><div><kbd>↑</kbd> กระโดด · <kbd>↓</kbd> ลงจากแพลตฟอร์ม</div>
           <div><kbd>Space</kbd> โจมตีปกติ (กดค้างได้)</div><div><kbd>Q</kbd><kbd>W</kbd><kbd>E</kbd><kbd>R</kbd><kbd>T</kbd> สกิลใน Hotbar</div>
-          <div><kbd>F</kbd> คุยกับ NPC / ร้านค้า</div><div><kbd>K</kbd> คัมภีร์สกิล</div>
+          <div><kbd>F</kbd> ร้านป้าติ๋ม · เซียมซีที่วัด · ถวายของที่ศาลพระภูมิ</div><div><kbd>K</kbd> คัมภีร์สกิล</div>
           <div><kbd>M</kbd> แผนที่โลก</div><div><kbd>Esc</kbd> ตั้งค่า / ปิดหน้าต่าง</div>
           <div><kbd>P</kbd> ปาร์ตี้ / เทรด · คลิกที่ผู้เล่นอื่น</div><div>ลานพญายักษ์ (ตะวันออกสุด) = <b>เรดบอส</b></div>
           <div><kbd>1</kbd><kbd>2</kbd> ยา HP / MP</div><div><kbd>C</kbd> สถานะ · <kbd>I</kbd> กระเป๋า · <kbd>Enter</kbd> แชท</div>

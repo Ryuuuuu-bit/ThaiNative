@@ -32,6 +32,29 @@ const TRACKS = {
     drums: { ching: '.x...x...x...x..', chap: '.......x.......x', thon: 'x.....x...x.....' },
     amb: 'town',
   },
+  // หมู่บ้านยามค่ำ – ระนาดทุ้มช้าๆ ฆ้องห่างๆ จิ้งหรีด
+  townNight: {
+    bpm: 72,
+    layers: [
+      { inst: 'ranat', vol: 0.12, notes: [67, _, 69, _, 72, _, _, _, 69, _, 67, _, 64, _, _, _, 62, _, 64, _, 67, _, 69, _, 67, _, _, _, _, _, _, _] },
+      { inst: 'khong', vol: 0.06, notes: [48, _, _, _, _, _, _, _, 55, _, _, _, _, _, _, _, 52, _, _, _, _, _, _, _, 50, _, _, _, _, _, _, _] },
+      { inst: 'pad', vol: 0.035, notes: [48, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, 45, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _] },
+    ],
+    drums: { ching: '........x.......' },
+    amb: 'wild',
+  },
+  // ทุ่ง/ป่ากลางวัน – ผจญภัย สดใสขึ้น ปี่นำ ระนาดตอบ กลองโทนเดินจังหวะ
+  field: {
+    bpm: 116,
+    layers: [
+      { inst: 'pi', vol: 0.1, notes: [69, _, 72, _, 74, _, 76, 74, 72, _, 69, _, 67, _, _, _, 69, _, 72, _, 76, _, 79, 76, 74, _, 72, _, 74, _, _, _,
+                                     76, _, 79, _, 81, _, 79, 76, 74, _, 76, _, 72, _, _, _, 69, _, 67, _, 69, _, 72, 74, 72, _, 69, _, _, _, _, _] },
+      { inst: 'ranat', vol: 0.09, notes: [_, _, _, _, _, _, _, _, 81, 79, 76, _, _, _, _, _, _, _, _, _, _, _, _, _, 84, 81, 79, _, _, _, _, _] },
+      { inst: 'bass', vol: 0.18, notes: [45, _, 52, _, 45, _, 52, _, 43, _, 50, _, 43, _, 50, _, 41, _, 48, _, 41, _, 48, _, 40, _, 47, _, 43, _, 47, _] },
+    ],
+    drums: { thon: 'x...x.x.x...x.x.', ching: '..x...x...x...x.' },
+    amb: 'town',
+  },
   // เขตป่าผีดุ – ไมเนอร์เพนทาโทนิก A เสียงปี่โหยหวน + โดรน + กลองช้า
   wild: {
     bpm: 76,
@@ -200,6 +223,13 @@ export class Sound {
       case 'bossRoar':   N(1.1, { type: 'lowpass', freq: 600, to: 120, q: 4, vol: 0.55 }); T(80, 1.0, { type: 'sawtooth', to: 45, vol: 0.18, vibrato: 8, lp: 500 }); break;
       case 'bossSlam':   T(70, 0.45, { type: 'sine', to: 30, vol: 0.6 }); N(0.5, { type: 'lowpass', freq: 900, to: 80, vol: 0.55 }); break;
       case 'victory':    this.arp([72, 76, 79, 84, 79, 84, 88], 0.11, { type: 'triangle', vol: 0.16 }); this.khong(midi(60), 0, 0.2); this.khong(midi(67), 0.44, 0.2); break;
+      case 'nightfall':  this.khong(midi(41), 0, 0.25); this.tone(midi(81), 1.8, { type: 'sine', to: midi(69), vol: 0.05, attack: 0.4, vibrato: 12, delay: 0.3 }); break;
+      case 'rooster':    T(700, 0.12, { type: 'sawtooth', to: 1100, vol: 0.06, lp: 2500 }); T(1100, 0.35, { type: 'sawtooth', to: 800, vol: 0.06, lp: 2500, delay: 0.12, vibrato: 20 }); break;
+      case 'templeBell': this.khong(midi(64), 0, 0.22); this.khong(midi(76), 0.02, 0.08); break;
+      case 'siamsi':     for (let i = 0; i < 12; i++) N(0.04, { type: 'bandpass', freq: 2600 + (i % 3) * 400, q: 6, vol: 0.18, delay: i * 0.12 }); N(0.08, { type: 'bandpass', freq: 1800, q: 5, vol: 0.3, delay: 1.5 }); break;
+      case 'blessing':   this.arp([72, 79, 84, 88, 91], 0.09, { type: 'sine', vol: 0.12 }); this.khong(midi(72), 0, 0.1); break;
+      case 'howl':       T(420, 1.4, { type: 'sine', to: 620, vol: 0.08, attack: 0.3, vibrato: 10 }); T(620, 1.1, { type: 'sine', to: 380, vol: 0.07, attack: 0.1, delay: 1.3, vibrato: 10 }); break;
+      case 'eventHorn':  for (let i = 0; i < 3; i++) { T(196, 0.5, { type: 'sawtooth', vol: 0.09, lp: 900, delay: i * 0.6 }); this.drum('klong', i * 0.6, this.sfxBus); } break;
       case 'party':      this.arp([76, 81], 0.07, { type: 'triangle', vol: 0.1 }); break;
       case 'error':      T(200, 0.1, { vol: 0.1 }); T(150, 0.12, { vol: 0.1, delay: 0.1 }); break;
     }

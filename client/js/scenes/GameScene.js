@@ -9,6 +9,9 @@ import { Monster } from '../entities/Monster.js';
 import { RemotePlayer } from '../entities/RemotePlayer.js';
 import { RaidBoss } from '../entities/RaidBoss.js';
 import { Social } from '../systems/Social.js';
+import { Clock } from '../systems/Clock.js';
+import { Shrine } from '../systems/Shrine.js';
+import { Invasion } from '../systems/Invasion.js';
 import { Combat } from '../systems/Combat.js';
 import { UI } from '../systems/UI.js';
 import { Network } from '../net/Network.js';
@@ -61,6 +64,9 @@ export class GameScene extends Phaser.Scene {
     this.setupInput();
     this.setupNetwork(char);
     this.social = new Social(this);
+    this.clock = new Clock(this);         // กลางวัน–กลางคืน
+    this.shrine = new Shrine(this);       // เซียมซี + ศาลพระภูมิ
+    this.invasion = new Invasion(this);   // อีเวนต์ผีห่าบุก
 
     // ---------- กล้อง ----------
     const cam = this.cameras.main;
@@ -134,7 +140,8 @@ export class GameScene extends Phaser.Scene {
     // วัด (ด้านหลังจุดเกิด)
     const wat = img('temple', 110, 0);
     if (wat) label(110, gy - wat.height - 4, 'วัดบางผี');
-    img('spirit_house', 240, 2);
+    this.shrineSprite = img('spirit_house', 240, 2);
+    this.shrineX = 240; this.shrineY = gy - (this.shrineSprite?.height || 48) + 6;
     label(240, gy - (this.textures.get('spirit_house').getSourceImage().height || 48) - 4, 'ศาลพระภูมิ');
     img('palm', 300, 0); img('palm', 640, 0, { flip: true }); img('palm', 965, 0);
     const h1 = img('house', 420, 1);
@@ -150,7 +157,7 @@ export class GameScene extends Phaser.Scene {
     // NPC ร้านค้า
     this.npc = this.add.sprite(NPC_X, gy, 'npc_maekha', 'idle_0').setOrigin(0.5, 1).setDepth(6);
     this.npc.play('npc_maekha:idle');
-    makeText(this, NPC_X, gy - 56, 'ป้าติ๋ม [ร้านค้า]', { fontSize: '7px', color: '#82e0aa' }).setOrigin(0.5).setDepth(6);
+    this.npcLabel = makeText(this, NPC_X, gy - 56, 'ป้าติ๋ม [ร้านค้า]', { fontSize: '7px', color: '#82e0aa' }).setOrigin(0.5).setDepth(6);
 
     // ---------------- ลานพญายักษ์ (เรดบอส) ----------------
     const ax = W.arenaX;
@@ -177,7 +184,7 @@ export class GameScene extends Phaser.Scene {
     this.keys = kb.addKeys('LEFT,RIGHT,UP,DOWN,SPACE,Q,W,E,R,T,F,C,I,H,K,M,P,ONE,TWO,ENTER,ESC');
 
     // F = คุยกับ NPC / เปิดร้านค้า
-    kb.on('keydown-F', () => { if (this.nearNpc()) { this.sfx.play('click'); this.ui.openShop('mae_kha'); } });
+    kb.on('keydown-F', () => this.interact());
     // ↓ = ลงจากแพลตฟอร์มไม้ (ทะลุลงไป 0.3 วิ)
     kb.on('keydown-DOWN', () => { if (this.player.body.blocked.down || this.player.body.touching.down) this.player.dropUntil = this.time.now + 300; });
     kb.on('keydown-M', () => this.ui.toggle('map-panel'));     // แผนที่โลก
@@ -218,6 +225,29 @@ export class GameScene extends Phaser.Scene {
 
   nearNpc() { return Math.abs(this.player.x - NPC_X) < 40 && this.player.alive; }
 
+  /** จุดที่กด F ได้: ร้านป้าติ๋ม / วัด (เซียมซี) / ศาลพระภูมิ */
+  interactable() {
+    if (!this.player.alive) return null;
+    const x = this.player.x;
+    const spots = [
+      { x: NPC_X, r: 40, id: 'shop', prompt: 'กด F เพื่อคุยกับป้าติ๋ม' },
+      { x: 240, r: 34, id: 'shrine', prompt: 'กด F เพื่อถวายของที่ศาลพระภูมิ' },
+      { x: 110, r: 80, id: 'siamsi', prompt: 'กด F เพื่อเสี่ยงเซียมซี (วัดบางผี)' },
+    ];
+    return spots.filter((s) => Math.abs(x - s.x) < s.r).sort((a, b) => Math.abs(x - a.x) - Math.abs(x - b.x))[0] || null;
+  }
+
+  interact() {
+    const spot = this.interactable();
+    if (!spot) return;
+    this.sfx.play('click');
+    if (spot.id === 'shop') {
+      if (this.invasion.shopClosed) return this.ui.toast(this.invasion.active ? 'ป้าติ๋มหนีไปหลบผีห่าอยู่!' : `ป้าติ๋มยังไม่กล้ากลับมา (อีก ${this.invasion.shopClosedMin} นาที)`, 'warn');
+      this.ui.openShop('mae_kha');
+    } else if (spot.id === 'shrine') this.shrine.openShrine();
+    else if (spot.id === 'siamsi') this.shrine.openSiamsi();
+  }
+
   // ------------------------------------------------------------
   //  Online (Socket.io)
   // ------------------------------------------------------------
@@ -227,10 +257,15 @@ export class GameScene extends Phaser.Scene {
     const addRemote = (p) => { if (!this.remotes.has(p.id)) this.remotes.set(p.id, new RemotePlayer(this, p)); };
 
     net.on('status', (on) => this.ui.setOnline(on, this.remotes.size))
-      .on('init', ({ players }) => { players.forEach(addRemote); this.ui.setOnline(true, this.remotes.size); })
+      .on('init', ({ players, serverTime, dayMs }) => { players.forEach(addRemote); this.ui.setOnline(true, this.remotes.size); if (serverTime) this.clock?.sync(serverTime, dayMs); })
       .on('joined', (p) => { addRemote(p); this.ui.chat({ name: '📢 ระบบ', text: `${p.name} เข้าสู่โลก` }); this.ui.setOnline(true, this.remotes.size); })
       .on('left', (id) => { this.remotes.get(id)?.destroy(); this.remotes.delete(id); this.ui.setOnline(true, this.remotes.size); })
-      .on('snapshot', ({ players, boss }) => { players.forEach((p) => this.remotes.get(p.id)?.pushState(p)); this.boss.setServer(boss); })
+      .on('snapshot', ({ t, players, boss, event }) => {
+        players.forEach((p) => this.remotes.get(p.id)?.pushState(p));
+        this.boss.setServer(boss);
+        if (t) this.clock?.sync(t);
+        if (event) this.invasion?.apply(event);
+      })
       .on('appearance', ({ id, appearance }) => this.remotes.get(id)?.setAppearance(appearance))
       .on('chat', (m) => this.ui.chat(m))
       .on('skill', (d) => this.combat.remoteVfx(d, this.remotes.get(d.id)));   // สกิลของผู้เล่นอื่น
@@ -277,14 +312,22 @@ export class GameScene extends Phaser.Scene {
     this.social.update(time, this.game.loop.delta / 1000);
     this.footsteps(time);
 
-    this.ui.prompt(this.nearNpc() ? 'กด F เพื่อคุยกับป้าติ๋ม' : '');
+    this.clock.tick();
+    this.invasion.update();
+    const spot = this.interactable();
+    this.ui.prompt(spot ? spot.prompt : '');
     this.ui.updateHud();
     this.ui.updateSkillBar(time);
     this.ui.updateFrame(time);
     const px = this.player.x;
     const zone = px < WORLD.townEndX ? 'หมู่บ้านบางผี' : px >= WORLD.arenaX ? 'ลานพญายักษ์' : 'ป่าผีดุ';
     if (zone !== this.zone) { this.ui.setZone(zone, !!this.zone); this.zone = zone; }
-    this.sfx.music(px < WORLD.townEndX ? 'town' : px >= WORLD.arenaX - 120 && this.boss.alive ? 'boss' : 'wild');
+    const night = this.clock.light < 0.35;
+    this.sfx.music(
+      px >= WORLD.arenaX - 120 && this.boss.alive ? 'boss'
+        : px < WORLD.townEndX + 200 && this.invasion.active ? 'boss'
+        : px < WORLD.townEndX ? (night ? 'townNight' : 'town')
+        : night ? 'wild' : 'field');
   }
 
   /** เสียงฝีเท้า + เสียงลงพื้น */

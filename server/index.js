@@ -11,11 +11,14 @@ import { WORLD } from '../shared/constants.js';
 import { sanitizeAppearance } from '../shared/data/appearance.js';
 import { SKILL_BY_ID, MAX_SKILL_LV } from '../shared/data/skills.js';
 import { setupSocial } from './social.js';
+import { setupEvents } from './events.js';
+import { DAY_MS_DEFAULT } from '../shared/data/world.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.join(__dirname, '..');
 const PORT = process.env.PORT || 3000;
 const TICK_RATE = 15; // ส่ง snapshot ให้ทุก client 15 ครั้ง/วินาที
+const DAY_MS = Number(process.env.DAY_MS) || DAY_MS_DEFAULT;   // ความยาว 1 วันในเกม (ms)
 
 const app = express();
 app.use(express.static(path.join(ROOT, 'client')));
@@ -29,6 +32,8 @@ const io = new Server(httpServer, { cors: { origin: '*' } });
 const players = new Map();
 /** ปาร์ตี้ · เทรด · เรดบอส */
 const social = setupSocial(io, players);
+/** อีเวนต์โลก: ผีห่าบุกหมู่บ้าน */
+const events = setupEvents(io, players);
 
 function publicPlayer(p) {
   return {
@@ -43,6 +48,7 @@ const cleanText = (s, max) => String(s ?? '').replace(/[<>]/g, '').trim().slice(
 io.on('connection', (socket) => {
   console.log(`[+] connect ${socket.id}`);
   social.onConnection(socket);
+  events.onConnection(socket);
 
   // 1) ผู้เล่นเข้าโลก
   socket.on('player:join', (data = {}) => {
@@ -59,6 +65,7 @@ io.on('connection', (socket) => {
     // ส่งสถานะโลกทั้งหมดให้คนที่เพิ่งเข้า
     socket.emit('world:init', {
       selfId: socket.id,
+      serverTime: Date.now(), dayMs: DAY_MS,
       players: [...players.values()].filter(p => p.id !== socket.id).map(publicPlayer),
     });
     // แจ้งคนอื่นว่ามีผู้เล่นใหม่
@@ -126,6 +133,7 @@ io.on('connection', (socket) => {
   socket.on('disconnect', () => {
     console.log(`[-] disconnect ${socket.id}`);
     social.onDisconnect(socket.id);
+    events.onDisconnect(socket.id);
     if (players.delete(socket.id)) io.emit('player:left', socket.id);
   });
 });
@@ -133,12 +141,13 @@ io.on('connection', (socket) => {
 // Game loop ฝั่ง server: broadcast snapshot ตำแหน่งทุกคน
 setInterval(() => {
   social.tick();
+  events.tick();
   if (players.size === 0) return;
   const snapshot = [...players.values()].map(p => ({
     id: p.id, x: Math.round(p.x), y: Math.round(p.y), anim: p.anim, flipX: p.flipX,
     hp: p.hp, maxHp: p.maxHp, level: p.level, party: p.partyId,
   }));
-  io.volatile.emit('world:snapshot', { t: Date.now(), players: snapshot, boss: social.bossPublic() });
+  io.volatile.emit('world:snapshot', { t: Date.now(), players: snapshot, boss: social.bossPublic(), event: events.publicState() });
 }, 1000 / TICK_RATE);
 
 httpServer.listen(PORT, () => {

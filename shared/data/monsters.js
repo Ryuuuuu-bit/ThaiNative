@@ -23,7 +23,7 @@ export const MONSTERS = {
     drops: [{ item: 'gold_leaf', chance: 0.4 }, { item: 'hp_s', chance: 0.2 }],
   },
   krasue: {
-    nameTh: 'กระสือ', nameEn: 'Krasue', level: 3,
+    nameTh: 'กระสือ', nameEn: 'Krasue', level: 3, nightOnly: true,   // ออกเฉพาะกลางคืน
     desc: 'หัวผู้หญิงลอยได้พร้อมไส้ห้อย เรืองแสงสีเขียวยามค่ำคืน',
     hp: 70, atk: 11, def: 1, eva: 10, acc: 90, speed: 55, behavior: 'flyer',
     attackRange: 20, attackCooldown: 1200, exp: 18, gold: [6, 12],
@@ -60,7 +60,7 @@ export const MONSTERS = {
     drops: [{ item: 'film_reel', chance: 0.4 }, { item: 'mp_m', chance: 0.1 }],
   },
   phi_phrai: {
-    nameTh: 'ผีพราย', nameEn: 'Phi Phrai', level: 7,
+    nameTh: 'ผีพราย', nameEn: 'Phi Phrai', level: 7, nightOnly: true,
     desc: 'ผีน้ำสาวผมยาว ลอยขึ้นจากบึง ตัวเปียกชื้นสีฟ้าซีด',
     hp: 150, atk: 21, def: 4, eva: 12, acc: 95, speed: 55, behavior: 'flyer',
     attackRange: 22, attackCooldown: 1100, exp: 50, gold: [16, 30],

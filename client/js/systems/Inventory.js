@@ -2,6 +2,7 @@
 //  Inventory & Shop – กระเป๋า, สวมใส่, ใช้ไอเทม, ซื้อ-ขายกับ NPC
 //  ทุกฟังก์ชันคืนค่า { ok, msg } เพื่อให้ UI แสดงผล
 // ============================================================
+import { OFFERINGS } from '/shared/data/blessings.js';
 import { ITEMS, sellPrice } from '/shared/data/items.js';
 import { JOBS } from '/shared/data/classes.js';
 import { getDerived, resetSkills } from './Character.js';
@@ -51,8 +52,23 @@ export function useItem(c, id) {
     return { ok: true, msg: `เปลี่ยนอาชีพเป็น ${JOBS[it.job].nameTh}! (คืน SP ทั้งหมด กด K เพื่อเรียนสกิล)`, jobChanged: true };
   }
 
+  if (it.type === 'offering') return { ok: false, msg: `${it.nameTh}: นำไปถวายที่ศาลพระภูมิ (ยืนหน้าศาลแล้วกด F)` };
+
   if (SLOT_OF[it.type]) return equip(c, id);
   return { ok: false, msg: 'ใช้ไอเทมนี้ไม่ได้' };
+}
+
+/** ถวายของที่ศาลพระภูมิ → ได้พร (ถวายซ้ำชนิดเดิม = ต่อเวลา สูงสุด 60 นาที) */
+export function makeOffering(c, key) {
+  const o = OFFERINGS[key];
+  if (!o || !count(c, o.item)) return { ok: false, msg: `ไม่มี${o?.nameTh ?? 'ของถวาย'} (ซื้อได้ที่ร้านป้าติ๋ม)` };
+  removeItem(c, o.item);
+  const now = Date.now();
+  c.blessings = (c.blessings || []).filter((b) => b.until > now);
+  const ex = c.blessings.find((b) => b.id === `offer_${key}`);
+  if (ex) ex.until = Math.min(now + 60 * 60000, ex.until + o.minutes * 60000);
+  else c.blessings.push({ id: `offer_${key}`, nameTh: `พรศาลพระภูมิ (${o.nameTh})`, icon: o.icon, until: now + o.minutes * 60000, mods: o.mods });
+  return { ok: true, msg: `ถวาย${o.nameTh} ได้รับพร: ${o.blessTh} (${o.minutes} นาที)` };
 }
 
 export function equip(c, id) {

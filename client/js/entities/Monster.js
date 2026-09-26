@@ -45,7 +45,26 @@ export class Monster extends Phaser.Physics.Arcade.Sprite {
     this.reset(x);
   }
 
-  get alive() { return this.state !== 'dead'; }
+  get alive() { return this.state !== 'dead' && this.state !== 'dormant'; }
+
+  /** ตัวคูณตามเวลา (กลางคืน/เดือนดับ) */
+  get mods() { return this.scene.clock?.mods || { atk: 1, hp: 1, exp: 1, gold: 1 }; }
+
+  /** ผีที่ออกเฉพาะกลางคืน: กลางวันหายตัว กลางคืนปรากฏ */
+  checkNightOnly() {
+    if (!this.def.nightOnly || !this.scene.clock || this.state === 'dead') return;
+    const night = this.scene.clock.night;
+    if (!night && this.state !== 'dormant') {
+      this.state = 'dormant';
+      this.body.enable = false;
+      this.showUi(false);
+      this.scene.tweens.add({ targets: this, alpha: 0, duration: 1200, onComplete: () => this.state === 'dormant' && this.setVisible(false) });
+    } else if (night && this.state === 'dormant') {
+      this.reset(rand(this.def.zone[0], this.def.zone[1]));
+      this.setAlpha(0);
+      this.scene.tweens.add({ targets: this, alpha: 1, duration: 1200 });
+    }
+  }
 
   reset(x) {
     const d = this.def;
@@ -66,6 +85,7 @@ export class Monster extends Phaser.Physics.Arcade.Sprite {
   showUi(v) { this.hpBg.setVisible(v); this.hpBar.setVisible(v); this.label.setVisible(v); }
 
   update(time, player) {
+    this.checkNightOnly();
     if (!this.alive) return;
     const d = this.def;
     const { h } = d.frame;
@@ -203,6 +223,6 @@ export class Monster extends Phaser.Physics.Arcade.Sprite {
   }
 
   /** ค่าสำหรับคำนวณความเสียหาย */
-  get atkStats() { return { patk: this.def.atk, matk: this.def.atk, accuracy: this.def.acc, critRate: 0.05, critDmg: 1.5 }; }
+  get atkStats() { const a = Math.round(this.def.atk * this.mods.atk); return { patk: a, matk: a, accuracy: this.def.acc, critRate: 0.05, critDmg: 1.5 }; }
   get defStats() { return { def: this.def.def, eva: this.def.eva }; }
 }

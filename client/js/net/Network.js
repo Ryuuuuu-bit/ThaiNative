@@ -50,7 +50,9 @@ export class Network {
     s.on('skill:cast', (d) => this.emitLocal('skill', d));
     // ระบบ MMO: ปาร์ตี้ · เทรด · เรดบอส → ส่งต่อด้วยชื่อ event เดิม
     for (const ev of ['party:invite', 'party:state', 'party:exp', 'trade:request', 'trade:state', 'trade:closed', 'trade:complete',
-      'raid:state', 'raid:spawn', 'raid:attack', 'raid:impact', 'raid:dmg', 'raid:reward', 'raid:defeated']) {
+      'raid:state', 'raid:spawn', 'raid:attack', 'raid:impact', 'raid:dmg', 'raid:reward', 'raid:defeated',
+      'event:state', 'event:warn', 'event:start', 'event:wave', 'event:cleared', 'event:end', 'event:mobAtk', 'event:shrineHit',
+      'event:dmg', 'event:mobDie', 'event:kill', 'event:reward']) {
       s.on(ev, (d) => this.emitLocal(ev, d));
     }
   }
