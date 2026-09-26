@@ -7,6 +7,9 @@ import { createStore, hashPassword, verifyPassword } from './store.js';
 
 const USER_RE = /^[A-Za-z0-9_฀-๿]{3,20}$/;       // อังกฤษ/ตัวเลข/_/ไทย 3–20 ตัว
 const MAX_CHAR_BYTES = 128 * 1024;
+// บัญชีแอดมิน (GM): ตั้งค่า env ADMIN_IDS="ชื่อ1,ชื่อ2" → ใช้คำสั่ง /gm ในเกมได้
+const ADMIN_IDS = new Set(String(process.env.ADMIN_IDS || '').split(',').map((s) => s.trim().toLowerCase()).filter(Boolean));
+export const isAdmin = (username) => !!username && ADMIN_IDS.has(String(username).toLowerCase());
 
 export function setupAuth(app) {
   const storeReady = createStore();
@@ -35,7 +38,7 @@ export function setupAuth(app) {
     req.account = acc; req.token = token;
     await fn(req, res);
   });
-  const pub = (a) => ({ id: a.id, guest: !!a.is_guest, username: a.username || null, display: a.username || `Guest#${a.id}` });
+  const pub = (a) => ({ id: a.id, guest: !!a.is_guest, username: a.username || null, display: a.username || `Guest#${a.id}`, admin: isAdmin(a.username) });
   const checkCreds = (body) => {
     const username = String(body?.username || '').trim(), password = String(body?.password || '');
     if (!USER_RE.test(username)) return { error: 'ชื่อผู้ใช้ต้องยาว 3–20 ตัว ใช้ได้เฉพาะอังกฤษ ไทย ตัวเลข และ _' };

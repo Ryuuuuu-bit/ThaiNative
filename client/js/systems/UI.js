@@ -18,6 +18,8 @@ import { modsText } from '/shared/data/blessings.js';
 import { ENHANCE } from '/shared/data/village.js';
 import { itemIcon, skillIcon, uiIcon } from './util.js';
 import { bindAccountSettings } from './AuthScreen.js';
+import { account } from '../net/Account.js';
+import { gainExp, syncAppearance } from './Character.js';
 
 const $ = (s) => document.querySelector(s);
 const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -58,7 +60,8 @@ export class UI {
       if (e.key === 'Enter') {
         const text = input.value.trim();
         if (text) {
-          if (/^\/p\s+/i.test(text)) {                        // /p ข้อความ = แชทปาร์ตี้
+          if (/^\/gm\b/i.test(text)) this.gmCommand(text);     // /gm … = คำสั่งแอดมิน
+          else if (/^\/p\s+/i.test(text)) {                        // /p ข้อความ = แชทปาร์ตี้
             if (scene.social?.party) scene.social.partyChat(text.replace(/^\/p\s+/i, ''));
             else this.toast('ยังไม่มีปาร์ตี้', 'warn');
           } else if (scene.net.online) scene.net.sendChat(text);
@@ -73,6 +76,38 @@ export class UI {
   }
 
   get char() { return this.scene.player.char; }
+
+  /** คำสั่ง GM (เฉพาะบัญชีใน ADMIN_IDS ของ server): /gm gold 1000000 · /gm lv 30 · /gm item yant_guard 10 · /gm sp 20 · /gm stat 50 · /gm enh weapon 20 · /gm heal */
+  gmCommand(text) {
+    if (!account.account?.admin) return this.toast('คำสั่งนี้ใช้ได้เฉพาะแอดมิน', 'warn');
+    const c = this.char, [, cmd = 'help', a1, a2] = text.trim().split(/\s+/);
+    const n = (v, d) => Math.max(0, Math.floor(Number(v) || d));
+    const say = (m) => { this.toast(`🛠️ ${m}`); this.chat({ name: 'GM', text: m }); };
+    switch (cmd.toLowerCase()) {
+      case 'gold': c.gold = Math.min(999999999, c.gold + n(a1, 1000000)); say(`เสกเงิน → ฿${c.gold.toLocaleString()}`); break;
+      case 'lv': case 'level': {
+        const to = Math.min(MAX_LEVEL, Math.max(c.level, n(a1, MAX_LEVEL)));
+        while (c.level < to) gainExp(c, expToNext(c.level) - c.exp);
+        say(`เลเวล → Lv.${c.level} (แต้มสถานะ ${c.statPoints} · SP ${c.sp})`); break;
+      }
+      case 'exp': this.scene.combat.grantExp(n(a1, 1000)); say(`+EXP ${n(a1, 1000)}`); break;
+      case 'item': {
+        const id = a1 && ITEMS[a1] ? a1 : Object.keys(ITEMS).find((k) => ITEMS[k].nameTh === a1);
+        if (!id) return this.toast(`ไม่พบไอเทม "${a1}" (ใช้ id เช่น yant_guard, cos_head_naga)`, 'warn');
+        Inv.addItem(c, id, n(a2, 1)); say(`ได้รับ ${ITEMS[id].nameTh} x${n(a2, 1)}`); break;
+      }
+      case 'sp': c.sp = (c.sp || 0) + n(a1, 10); say(`SP → ${c.sp}`); break;
+      case 'stat': c.statPoints = (c.statPoints || 0) + n(a1, 10); say(`แต้มสถานะ → ${c.statPoints}`); break;
+      case 'enh': {
+        const slot = ['weapon', 'armor', 'accessory'].includes(a1) ? a1 : 'weapon';
+        (c.enhance ||= {})[slot] = Math.min(ENHANCE.max, n(a2, ENHANCE.max));
+        if (syncAppearance(c)) this.scene.onAppearanceChanged(); say(`ตีบวก ${slot} → +${c.enhance[slot]}`); break;
+      }
+      case 'heal': { const d = getDerived(c); c.hp = d.maxHp; c.mp = d.maxMp; say('ฟื้น HP/MP เต็ม'); break; }
+      default: this.chat({ name: 'GM', text: 'คำสั่ง: /gm gold [จำนวน] · /gm lv [เลเวล] · /gm exp [จำนวน] · /gm item <id> [จำนวน] · /gm sp [n] · /gm stat [n] · /gm enh <weapon|armor|accessory> [ขั้น] · /gm heal' });
+    }
+    this.hudCache = ''; this.updateHud(); this.refreshOpen?.();
+  }
   get typing() { return document.activeElement === $('#chat-input'); }
 
   focusChat() { $('#chat-input').focus(); }
