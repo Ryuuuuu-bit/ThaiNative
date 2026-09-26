@@ -331,14 +331,16 @@ export class GameScene extends Phaser.Scene {
     const deck = this.add.tileSprite(x0, gy - 1, x1 - x0 + 14, 5, 'tile_plank').setOrigin(0).setDepth(5.6);
     for (let x = x0 + 10; x < x1; x += 40) this.add.rectangle(x, gy + 4, 3, 22, 0x4a2f1a).setOrigin(0.5, 0).setDepth(5.35);
     this.add.rectangle(x0 + 2, gy - 12, 2, 12, 0x5d4037).setOrigin(0.5, 0).setDepth(5.6);   // หลักผูกเรือ
-    const boat = img('boat', x0 + 80, 5.25, { shadow: false, dy: 9 });
+    const boat = this.textures.exists('boat') ? this.add.image(x0 + 120, gy + 3, 'boat').setOrigin(0.5, 1).setDepth(0.45).setScale(0.75) : null;   // เรือจอดบนผืนน้ำด้านหลัง
     if (boat) this.tweens.add({ targets: boat, y: boat.y + 1.5, angle: 1.2, duration: 1400, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
-    // ผืนน้ำกว้างด้านหลังสะพาน + ฝั่งไกล (ให้รู้สึกว่าเป็นแม่น้ำ)
-    const farW = x1 - x0 + 60;
-    this.add.rectangle(x0, gy - 30, farW, 34, 0x2874a6, 1).setOrigin(0).setDepth(0.4);
-    this.add.rectangle(x0, gy - 32, farW, 3, 0x1d8348, 1).setOrigin(0).setDepth(0.41);         // ตลิ่งฝั่งตรงข้าม
-    const fade = this.add.graphics().setDepth(0.42);
-    for (let i = 0; i < 30; i++) fade.fillStyle(0x2874a6, 1 - i / 30).fillRect(x1 + 30 + i * 3, gy - 30 + i * 0.6, 3, 34 - i * 0.6);
+    // ผืนน้ำด้านหลังสะพาน: แถบแคบติดพื้น + ตลิ่งหญ้าฝั่งตรงข้าม + ตลิ่งลาดทางขวา (ไม่ยื่นเป็นก้อนลอย)
+    const far = this.add.graphics().setDepth(0.4);
+    const top = gy - 12;
+    far.fillStyle(0x2874a6, 1).fillRect(x0, top, x1 - x0, gy - top + 4);
+    far.fillStyle(0x3b8d5a, 1).fillRect(x0, top - 2, x1 - x0, 2);                               // ตลิ่งฝั่งตรงข้าม
+    for (let x = x0 + 4; x < x1 - 4; x += 9) far.fillStyle(0x2e7d4f, 1).fillRect(x, top - 5 - (x % 3), 1, 4 + (x % 3));   // กกริมน้ำ
+    far.fillStyle(0x6e4b2a, 1).fillTriangle(x1 - 2, gy + 4, x1 + 26, gy + 4, x1 - 2, top - 2);  // ตลิ่งลาด (ดิน)
+    far.fillStyle(0x3b8d5a, 1).fillTriangle(x1 - 2, top - 2, x1 + 4, top - 2, x1 + 26, gy + 1);
     this.farShine = this.add.graphics().setDepth(0.43);
     // ครัวป้าสา
     if (!img('food_stall', -262, 1)) img('stall', -262, 1, { tint: 0xf5cba7 });
@@ -453,8 +455,8 @@ export class GameScene extends Phaser.Scene {
     g.fillStyle(0xaed6f1, 0.55);
     const fg = this.farShine.clear().fillStyle(0xaed6f1, 0.45);
     for (let i = 0; i < 14; i++) {                                   // ประกายน้ำฝั่งไกล
-      const x = x0 + ((i * 71 + time * 0.008 * (1 + (i % 2))) % (x1 - x0 + 40));
-      fg.fillRect(x, gy - 26 + ((i * 11) % 26), 3 + (i % 3) * 2, 1);
+      const x = x0 + ((i * 71 + time * 0.008 * (1 + (i % 2))) % (x1 - x0 - 10));
+      fg.fillRect(x, gy - 10 + ((i * 11) % 9), 3 + (i % 3) * 2, 1);
     }
     for (let i = 0; i < 18; i++) {
       const x = x0 + ((i * 53 + time * 0.012 * (1 + (i % 3))) % (x1 - x0));
