@@ -32,7 +32,8 @@ BASES_ONLY = ['krahang', 'khamot', 'phi_dip', 'nang_takhian', 'tai_hong', 'phi_p
 ENV = {'house': 'house', 'temple': 'temple', 'stall': 'stall', 'spirit_house': 'spirit_house',
        'sala': 'sala', 'palm': 'palm', 'bg_town': 'bg_town',
        'forge': 'forge', 'food_stall': 'food_stall', 'warp_gate': 'warp_gate', 'boat': 'boat',
-       'camp_tent': 'camp_tent', 'campfire': 'campfire', 'chest_closed': 'chest_closed', 'chest_open': 'chest_open', 'bounty_board': 'bounty_board'}
+       'camp_tent': 'camp_tent', 'campfire': 'campfire', 'chest_closed': 'chest_closed', 'chest_open': 'chest_open', 'bounty_board': 'bounty_board',
+       'bg_r1': 'bg_r1', 'bg_r2': 'bg_r2', 'bg_r3': 'bg_r3', 'bg_r4': 'bg_r4', 'bg_r5': 'bg_r5'}
 # ภาพที่ PixelLab วาดเป็นมุมเฉียง (isometric) → ดัดให้ฐานตรงแนวนอน เข้ากับเกม side-view
 ENV_DESKEW = set()   # ใส่ชื่อภาพที่ต้องดัดฐาน เช่น {'temple'}
 

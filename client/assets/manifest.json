@@ -199,7 +199,12 @@
     "campfire": "assets/env/campfire.png",
     "chest_closed": "assets/env/chest_closed.png",
     "chest_open": "assets/env/chest_open.png",
-    "bounty_board": "assets/env/bounty_board.png"
+    "bounty_board": "assets/env/bounty_board.png",
+    "bg_r1": "assets/env/bg_r1.png",
+    "bg_r2": "assets/env/bg_r2.png",
+    "bg_r3": "assets/env/bg_r3.png",
+    "bg_r4": "assets/env/bg_r4.png",
+    "bg_r5": "assets/env/bg_r5.png"
   },
   "bosses": {
     "phaya_yak": {

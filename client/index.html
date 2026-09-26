@@ -140,12 +140,18 @@
         <p id="quest-note" class="hint"></p>
       </section>
 
+      <!-- วาร์ป (ประตูทุกแมพ) -->
+      <section id="travel-panel" class="panel window wide hidden">
+        <header>🌀 ประตูวาร์ป · เลือกปลายทาง <button class="close">✕</button></header>
+        <div id="travel-list" class="travel-list"></div>
+      </section>
+
       <!-- ค่าหัวรายวัน (พรานบุญ · ค่ายพักพราน) -->
       <section id="bounty-panel" class="panel window wide hidden">
         <header>📜 ค่าหัวรายวัน · พรานบุญ <button class="close">✕</button></header>
         <p class="greet">“ผีในป่านี่ชุมจนพรานอย่างข้ายังขนลุก ช่วยกำจัดให้หน่อย ข้ามีค่าหัวให้ทุกวัน”</p>
         <div id="bounty-list" class="quest-list"></div>
-        <p class="hint">ค่าหัวเปลี่ยนใหม่ทุกเที่ยงคืน · ยืนข้างกองไฟค่ายเพื่อฟื้นพลังเร็ว · ตายในป่าจะฟื้นที่ค่ายนี้</p>
+        <p class="hint">ค่าหัวเปลี่ยนใหม่ทุกเที่ยงคืน · ทุกแมพมีกองไฟ ยืนข้างๆ เพื่อฟื้นพลังเร็ว และตายแล้วจะฟื้นที่กองไฟของแมพนั้น</p>
       </section>
 
       <!-- ศาลพระภูมิ -->
@@ -216,7 +222,7 @@
       <section id="map-panel" class="panel window wide hidden">
         <header>แผนที่ · ดินแดนบางผี <button class="close">✕</button></header>
         <div id="world-map" class="world-map"></div>
-        <div class="map-legend"><span><i class="lg me"></i>คุณ</span><span><i class="lg ally"></i>ผู้เล่นอื่น</span><span><i class="lg npc"></i>NPC</span><span><i class="lg mob"></i>มอนสเตอร์</span></div>
+        <p class="hint">แต่ละแมพมีผีชนิดเดียว เลเวลไต่ขึ้นทีละแมพ · เดินไปประตูขวาสุดของแมพเพื่อไปแมพถัดไป · ประตูซ้าย/หมู่บ้าน = เลือกวาร์ปไปแมพที่เลเวลถึง · 🌙 = ผีกลางคืน ดุและให้รางวัลเพิ่มตอนกลางคืน</p>
       </section>
 
       <!-- ตั้งค่า (ESC) -->
@@ -243,7 +249,7 @@
           <div><kbd>F</kbd> คุยกับชาวบ้าน · ตกปลา · วาร์ป · เซียมซี · ศาลพระภูมิ</div><div><kbd>K</kbd> คัมภีร์สกิล</div>
           <div><kbd>M</kbd> แผนที่โลก</div><div><kbd>Esc</kbd> ตั้งค่า / ปิดหน้าต่าง</div>
           <div><kbd>P</kbd> ปาร์ตี้ / เทรด · คลิกที่ผู้เล่นอื่น</div><div>ลานพญายักษ์ (ตะวันออกสุด) = <b>เรดบอส</b></div>
-          <div><kbd>J</kbd> สมุดเควส (รับเควสที่ผู้ใหญ่ชัย)</div><div>🌿 ป่าผีดุ: เก็บสมุนไพร (F) · หีบสมบัติ · ค่าหัวพรานบุญ</div><div>🎣 ท่าน้ำซ้ายสุดของหมู่บ้าน: กด F ตกปลา → ป้าสาทำอาหาร</div>
+          <div><kbd>J</kbd> สมุดเควส (รับเควสที่ผู้ใหญ่ชัย)</div><div>🗺️ 20 แมพล่าผี 5 ภาค: แมพละผี 1 ชนิด · ประตูขวา = แมพถัดไป · ประตูซ้าย = เลือกวาร์ป · กองไฟ = จุดพัก/ฟื้น</div><div>🌿 เก็บสมุนไพร (F) · หีบสมบัติ · ค่าหัวพรานบุญ (Map 1)</div><div>🎣 ท่าน้ำซ้ายสุดของหมู่บ้าน: กด F ตกปลา → ป้าสาทำอาหาร</div>
           <div><kbd>1</kbd><kbd>2</kbd> ยา HP / MP</div><div><kbd>C</kbd> สถานะ · <kbd>I</kbd> กระเป๋า · <kbd>Enter</kbd> แชท</div>
         </div>
       </section>

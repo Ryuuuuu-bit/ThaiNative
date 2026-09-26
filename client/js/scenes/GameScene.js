@@ -2,7 +2,9 @@
 //  GameScene – โลกเกม Side-scroller
 //  หมู่บ้าน (NPC ร้านค้า) → ป่าผีดุ (มอนสเตอร์ 10 ชนิด) + ผู้เล่นออนไลน์
 // ============================================================
-import { WORLD, VIEW, MAPS, mapAt, gateNear } from '/shared/constants.js';
+import { WORLD, VIEW } from '/shared/constants.js';
+import { MAPS, mapAt, REGIONS } from '/shared/data/maps.js';
+import { World } from '../systems/World.js';
 import { MONSTER_IDS, MONSTERS } from '/shared/data/monsters.js';
 import { Player } from '../entities/Player.js';
 import { Monster } from '../entities/Monster.js';
@@ -34,12 +36,6 @@ const NPCS = [
   { id: 'cook',  key: 'npc_pa_sa',     x: -300,  nameTh: 'ป้าสา', role: 'ครัว·รับซื้อปลา', color: '#85c1e9', tint: 0xf5cba7, flip: true },
 ];
 const SPAWN_X = WORLD.spawnX;
-const PLATFORMS = [
-  [1400, 190, 64], [1520, 162, 80], [1720, 186, 64], [1900, 158, 48], [2080, 172, 96],
-  [2420, 150, 64], [2630, 190, 80], [2980, 166, 96], [3260, 186, 64],
-  // ป่าช้าผีตายโหง
-  [3760, 176, 80], [3980, 150, 64], [4200, 184, 96], [4460, 160, 64], [4700, 182, 80],
-];
 
 export class GameScene extends Phaser.Scene {
   constructor() { super('game'); }
@@ -92,13 +88,12 @@ export class GameScene extends Phaser.Scene {
     this.events.on('player-died', () => {
       this.ui.showDeath(2500);
       // ตายในลานเรด → ฟื้นที่หน้าประตูลาน (ไม่ต้องเดินไกล)
-      const arena = this.player.x > W.arenaX - 200;
-      const rx = arena ? W.arenaX - 140 : mapAt(this.player.x).respawnX;   // ฟื้นที่จุดพักของแมพนั้น
+      const rx = mapAt(this.player.x).respawnX;   // ฟื้นที่จุดพัก (กองไฟ) ของแมพนั้น
       this.village.stop();
       this.forest.cancelGather();
       this.time.delayedCall(2500, () => {
         this.player.respawn(rx, W.groundY - 2);
-        this.net.send('player:warp', { kind: 'respawn', arena });
+        this.net.send('player:warp', { kind: 'respawn' });
         this.setMap(mapAt(rx));
       });
     });
@@ -138,14 +133,9 @@ export class GameScene extends Phaser.Scene {
 
     // แพลตฟอร์มไม้ (กระโดดทะลุขึ้นจากด้านล่างได้ – One-way)
     this.platforms = this.physics.add.staticGroup();
-    for (const [x, y, w] of PLATFORMS) {
-      const p = this.add.tileSprite(x, y, w, 8, 'tile_plank').setOrigin(0).setDepth(4);
-      this.physics.add.existing(p, true);
-      p.body.checkCollision.down = p.body.checkCollision.left = p.body.checkCollision.right = false;
-      this.platforms.add(p);
-      this.add.rectangle(x + 4, y + 8, 2, W.groundY - y - 8, 0x3e2410).setOrigin(0).setDepth(3);     // เสาค้ำ
-      this.add.rectangle(x + w - 6, y + 8, 2, W.groundY - y - 8, 0x3e2410).setOrigin(0).setDepth(3);
-    }
+    // 20 แมพล่าผี: พื้นตามภาค · แพลตฟอร์ม · ของตกแต่ง · ประตูวาร์ป · ฉากหลังภาค
+    this.world = new World(this);
+    this.world.build();
 
     // ---------------- หมู่บ้านบางผี (0 – townEndX) ----------------
     const gy = W.groundY;
@@ -183,7 +173,6 @@ export class GameScene extends Phaser.Scene {
     this.tweens.add({ targets: this.anvilGlow, alpha: { from: 0.15, to: 0.35 }, duration: 500, yoyo: true, repeat: -1 });
     [-420, -160, 200, 340, 500, 680, 800, 940].forEach((x) => this.add.image(x, gy, 'lantern').setOrigin(0.5, 1).setDepth(2));
     this.buildRiver(img, label);
-    this.buildGates(label);
 
     // ชาวบ้าน NPC
     this.npcs = NPCS.map((n) => {
@@ -215,24 +204,6 @@ export class GameScene extends Phaser.Scene {
     this.add.rectangle(ax, gy, W.width - ax, 3, 0x6e2c2c, 0.6).setOrigin(0, 0).setDepth(6);   // พื้นลานสีเลือดหมู
     this.arenaFog = this.add.rectangle(ax, 0, W.width - ax, W.height, 0x4a235a, 0.12).setOrigin(0).setDepth(-1);
 
-    // ---------------- ป่าช้าผีตายโหง ----------------
-    const gx = W.graveX;
-    this.add.image(gx + 130, gy, 'sign').setOrigin(0.5, 1).setDepth(2);
-    label(gx + 130, gy - 38, '⚰️ ป่าช้าผีตายโหง Lv.11+', '#c39bd3', '7px');
-    this.add.rectangle(gx, 0, ax - gx, W.height, 0x1b2631, 0.14).setOrigin(0).setDepth(-1);   // หมอกป่าช้า
-    const g = this.add.graphics().setDepth(1);
-    for (let x = gx + 40; x < ax - 40; x += 70 + ((x * 37) % 50)) {
-      const k = (x * 13) % 3;
-      if (k === 0) {                                     // ป้ายหลุมศพ
-        g.fillStyle(0x7f8c8d, 1).fillRect(x - 5, gy - 14, 10, 14).fillCircle(x, gy - 14, 5);
-        g.fillStyle(0x566573, 1).fillRect(x - 3, gy - 12, 6, 1).fillRect(x - 3, gy - 9, 6, 1);
-      } else if (k === 1) {                              // ต้นไม้ตาย
-        g.fillStyle(0x3b2f2f, 1).fillRect(x - 2, gy - 34, 4, 34).fillRect(x - 10, gy - 28, 10, 2).fillRect(x + 2, gy - 22, 9, 2).fillRect(x - 8, gy - 34, 2, 7);
-      } else {                                           // เจดีย์เก็บกระดูก
-        g.fillStyle(0xbfc9ca, 1).fillRect(x - 7, gy - 10, 14, 10).fillTriangle(x - 7, gy - 10, x + 7, gy - 10, x, gy - 30);
-        g.fillStyle(0xd4ac0d, 1).fillRect(x - 1, gy - 34, 2, 5);
-      }
-    }
   }
 
   // ------------------------------------------------------------
@@ -297,8 +268,8 @@ export class GameScene extends Phaser.Scene {
       ...this.npcs.map((n) => ({ x: n.x, r: 34, id: n.id, prompt: `กด F เพื่อคุยกับ${n.nameTh}` })),
       { x: 240, r: 34, id: 'shrine', prompt: 'กด F เพื่อถวายของที่ศาลพระภูมิ' },
       { x: 110, r: 80, id: 'siamsi', prompt: 'กด F เพื่อเสี่ยงเซียมซี (วัดบางผี)' },
-      ...Object.values(MAPS).flatMap((m) => m.gates.map((g) => ({ x: g.x, r: 36, id: 'warp', prompt: `กด F เพื่อวาร์ป ${g.labelTh}` }))),
-      { x: MAPS.forest.camp.npcX, r: 34, id: 'bounty', prompt: 'กด F เพื่อคุยกับพรานบุญ (ค่าหัวรายวัน)' },
+      ...this.map.gates.map((g, i) => ({ x: g.x, r: 30, id: 'warp', prompt: this.map.id !== 'village' && i === 1 ? 'กด F เพื่อไปแมพถัดไป →' : 'กด F เพื่อเลือกจุดวาร์ป' })),
+      { x: this.forest.npcX, r: 34, id: 'bounty', prompt: 'กด F เพื่อคุยกับพรานบุญ (ค่าหัวรายวัน)' },
     ];
     if (this.forest.gather) return null;
     const herb = this.forest.nodeAt(x, this.player.y);
@@ -321,7 +292,7 @@ export class GameScene extends Phaser.Scene {
     else if (spot.id === 'cook') this.ui.openShop('pa_sa');
     else if (spot.id === 'quest') this.village.openQuests();
     else if (spot.id === 'fish') this.village.startFishing();
-    else if (spot.id === 'warp') this.warp();
+    else if (spot.id === 'warp') this.world.useGate();
     else if (spot.id === 'bounty') this.forest.openBounty();
     else if (spot.id === 'herb') this.forest.startGather(spot.herb);
     else if (spot.id === 'chest') this.forest.openChest();
@@ -333,32 +304,17 @@ export class GameScene extends Phaser.Scene {
   //  แผนที่ & ประตูวาร์ป
   // ------------------------------------------------------------
   setMap(map) {
+    const prev = this.map;
     this.map = map;
     this.cameras.main.setBounds(map.minX, 0, map.maxX - map.minX, WORLD.height);
+    this.world?.setRegion(map);
     this.ui?.refreshMinimap?.();
-  }
-
-  warp() {
-    const gate = gateNear(this.player.x, 40);
-    if (!gate || this.warping) return;
-    if (gate.minLv && this.player.char.level < gate.minLv) {
-      this.sfx.play('error');
-      return this.ui.toast(`🔒 ต้อง Lv.${gate.minLv} ขึ้นไปถึงจะเข้าป่าช้าผีตายโหงได้`, 'warn');
+    // ซ่อนผีของแมพอื่น (ไม่ต้องอัปเดต/วาด)
+    this.monsters?.getChildren().forEach((m) => { if (!m.isBoss && m.def?.mapId) m.setActive(m.def.mapId === map.id); });
+    if (prev && prev !== map && this.ui) {
+      const R = REGIONS[map.region];
+      if (R && prev.region !== map.region) this.ui.toast(`เข้าสู่ภาค ${R.no}: ${R.nameTh}`);
     }
-    this.warping = true;
-    this.sfx.play('blessing');
-    this.combat.burst(this.player.x, this.player.y - 20, 0x76d7c4, 18);
-    const cam = this.cameras.main;
-    cam.fadeOut(260, 10, 30, 30);
-    cam.once(Phaser.Cameras.Scene2D.Events.FADE_OUT_COMPLETE, () => {
-      this.player.setPosition(gate.arriveX, WORLD.groundY - 2).setVelocity(0, 0);
-      this.net.send('player:warp', { kind: 'gate' });
-      this.setMap(MAPS[gate.to]);
-      cam.centerOn(this.player.x, this.player.y);
-      cam.fadeIn(320, 10, 30, 30);
-      this.combat.burst(this.player.x, this.player.y - 20, 0x76d7c4, 18);
-      this.warping = false;
-    });
   }
 
   /** ท่าน้ำตกปลา (ซ้ายสุดของหมู่บ้าน): แม่น้ำ + สะพานไม้ + เรือ + ครัวป้าสา */
@@ -388,32 +344,6 @@ export class GameScene extends Phaser.Scene {
     if (!img('food_stall', -262, 1)) img('stall', -262, 1, { tint: 0xf5cba7 });
     // ต้นมะพร้าวริมน้ำ
     img('palm', -460, 0, { shadowW: 0.4 }); img('palm', -120, 0, { flip: true, shadowW: 0.4 });
-  }
-
-  /** ประตูวาร์ป: หมู่บ้าน ⇄ ป่าผีดุ */
-  buildGates(label) {
-    const gy = WORLD.groundY;
-    for (const map of Object.values(MAPS)) for (const gt of map.gates) {
-      const gx = gt.x;
-      let gate;
-      if (this.textures.exists('warp_gate')) gate = this.add.image(gx, gy + 4, 'warp_gate').setOrigin(0.5, 1).setDepth(2);
-      else {                                               // ซุ้มประตูสำรอง (วาดเอง)
-        gate = this.add.graphics().setDepth(2);
-        gate.fillStyle(0x5d4037).fillRect(gx - 22, gy - 60, 6, 60).fillRect(gx + 16, gy - 60, 6, 60).fillRect(gx - 28, gy - 66, 56, 7);
-        gate.fillStyle(0xc0392b).fillRect(gx - 22, gy - 58, 6, 3).fillRect(gx + 16, gy - 58, 6, 3);
-        gate.fillStyle(0xf1c40f).fillRect(gx - 4, gy - 64, 8, 4);
-      }
-      const portal = this.add.ellipse(gx, gy - 28, 30, 54, 0x48c9b0, 0.3).setDepth(2.1).setBlendMode(Phaser.BlendModes.ADD);
-      this.tweens.add({ targets: portal, scaleX: { from: 0.85, to: 1.05 }, alpha: { from: 0.2, to: 0.45 }, duration: 900, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
-      this.add.particles(gx, gy - 28, 'particle', {
-        x: { min: -12, max: 12 }, y: { min: -24, max: 24 }, lifespan: 1200, speedY: { min: -14, max: -4 },
-        scale: { start: 0.35, end: 0 }, alpha: { start: 0.9, end: 0 }, tint: [0x76d7c4, 0xd6eaf8], frequency: 140, blendMode: 'ADD',
-      }).setDepth(2.2);
-      label(gx, gy - 74, gt.labelTh, gt.minLv ? '#d7bde2' : '#76d7c4', '8px');
-      if (gt.minLv) {                                     // ประตูล็อกเลเวล: ม่านสีม่วง
-        portal.fillColor = 0x8e44ad;
-      }
-    }
   }
 
   // ------------------------------------------------------------
@@ -477,7 +407,7 @@ export class GameScene extends Phaser.Scene {
     if (this.player.x < mp.minX - 150 || this.player.x > mp.maxX + 150) { this.setMap(mapAt(this.player.x)); mp = this.map; }  // ถูกย้ายตำแหน่ง (ฟื้น/วาร์ป)
     if (this.player.x < mp.minX + 8) { this.player.x = mp.minX + 8; this.player.setVelocityX(0); }
     if (this.player.x > mp.maxX - 8) { this.player.x = mp.maxX - 8; this.player.setVelocityX(0); }
-    this.monsters.getChildren().forEach((m) => m.update(time, this.player));
+    this.monsters.getChildren().forEach((m) => { if (m.active || m.isBoss) m.update(time, this.player); });
     this.combat.update();
     this.remotes.forEach((r) => r.update());
     this.net.sendState(time, this.player.netState());
@@ -485,6 +415,7 @@ export class GameScene extends Phaser.Scene {
     const cam = this.cameras.main;
     this.bgFar.tilePositionX = cam.scrollX * 0.15;
     this.bgMid.tilePositionX = cam.scrollX * 0.35;
+    this.world.update(cam);
     if (this.bgTown) {
       this.bgTown.tilePositionX = cam.scrollX * 0.25;
       this.bgTown.setAlpha(Phaser.Math.Clamp(1 - (cam.scrollX - (WORLD.townEndX - 200)) / 500, 0, 0.85));
@@ -503,14 +434,15 @@ export class GameScene extends Phaser.Scene {
     this.ui.updateSkillBar(time);
     this.ui.updateFrame(time);
     const px = this.player.x;
-    const zone = px < FISH_SPOT.to + 40 ? 'ท่าน้ำบางผี' : px < WORLD.townEndX + 60 ? 'หมู่บ้านบางผี' : px < WORLD.campEndX ? 'ค่ายพักพราน' : px >= WORLD.arenaX ? 'ลานพญายักษ์' : px >= WORLD.graveX ? 'ป่าช้าผีตายโหง' : 'ป่าผีดุ';
+    const zone = mp.id === 'village' ? (px < FISH_SPOT.to + 40 ? 'ท่าน้ำบางผี' : 'หมู่บ้านบางผี')
+      : mp.boss ? 'ลานพญายักษ์' : `${mp.no}. ${mp.nameTh}`;
     if (zone !== this.zone) { this.ui.setZone(zone, !!this.zone); this.zone = zone; }
     const night = this.clock.light < 0.35;
     this.sfx.music(
-      px >= WORLD.arenaX - 120 && this.boss.alive ? 'boss'
-        : px < WORLD.townEndX + 200 && this.invasion.active ? 'boss'
-        : px < WORLD.townEndX ? (night ? 'townNight' : 'town')
-        : night ? 'wild' : 'field');
+      mp.boss && this.boss.alive ? 'boss'
+        : mp.id === 'village' && this.invasion.active ? 'boss'
+        : mp.id === 'village' ? (night ? 'townNight' : 'town')
+        : REGIONS[mp.region]?.music || 'wild');
   }
 
   /** ประกายน้ำในแม่น้ำ */

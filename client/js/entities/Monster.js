@@ -5,6 +5,7 @@
 // ============================================================
 import { MONSTERS } from '/shared/data/monsters.js';
 import { WORLD } from '/shared/constants.js';
+import { mapAt } from '/shared/data/maps.js';
 import { makeText, rand } from '../systems/util.js';
 
 const EV = Phaser.Animations.Events;
@@ -52,7 +53,11 @@ export class Monster extends Phaser.Physics.Arcade.Sprite {
   get alive() { return this.state !== 'dead' && this.state !== 'dormant'; }
 
   /** ตัวคูณตามเวลา (กลางคืน/เดือนดับ) */
-  get mods() { return this.scene.clock?.mods || { atk: 1, hp: 1, exp: 1, gold: 1 }; }
+  get mods() {
+    const m = this.scene.clock?.mods || { atk: 1, hp: 1, exp: 1, gold: 1 };
+    // ผีกลางคืน (กระสือ ผีพราย โขมด โพง): กลางคืนดุและให้รางวัลเพิ่ม
+    return this.def.nightBoost && this.scene.clock?.night ? { ...m, atk: m.atk * 1.15, exp: m.exp * 1.2, gold: m.gold * 1.2 } : m;
+  }
 
   /** ผีที่ออกเฉพาะกลางคืน: กลางวันหายตัว กลางคืนปรากฏ */
   checkNightOnly() {
@@ -114,7 +119,8 @@ export class Monster extends Phaser.Physics.Arcade.Sprite {
     const dy = player.y - this.y;
     // ระยะห่างระหว่าง "ขอบ" hitbox (ไม่ใช่จุดกึ่งกลาง) → ตัวใหญ่/เล็กตีถึงเท่ากัน
     const gap = this.gapTo(player);
-    const aggro = player.alive && player.x > WORLD.campEndX &&
+    const pm = mapAt(player.x);
+    const aggro = player.alive && !pm.safe && player.x > (pm.safeEndX ?? 0) &&
       Math.abs(dx) < AGGRO_X && Math.abs(dy) < AGGRO_Y;
     this.state = aggro ? 'chase' : 'patrol';
 

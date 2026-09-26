@@ -5,15 +5,23 @@
 // ============================================================
 import { ITEMS } from '/shared/data/items.js';
 import { MONSTERS } from '/shared/data/monsters.js';
-import { WORLD, MAPS } from '/shared/constants.js';
-import { HERB_NODES, HERB_RESPAWN_MS, GATHER_MS, CHEST, rollChest, dailyBounties } from '/shared/data/village.js';
+import { WORLD } from '/shared/constants.js';
+import { MAPS, HUNT_MAPS, mapAt } from '/shared/data/maps.js';
+import { HERB_RESPAWN_MS, GATHER_MS, CHEST, rollChest, dailyBounties } from '/shared/data/village.js';
 import { todayKey } from '/shared/data/blessings.js';
 import { addItem } from './Inventory.js';
 import { makeText, itemIcon, uiIcon } from './util.js';
 
 const $ = (s) => document.querySelector(s);
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
-const CAMP = MAPS.forest.camp;
+const M1 = MAPS.m1;
+const CAMP = { x: M1.minX + 150, npcX: M1.minX + 175 };
+/** สมุนไพรตามภาค: แมพละ 2 จุด */
+const REGION_HERBS = {
+  r1: ['herb_aloe', 'herb_lemongrass'], r2: ['herb_anchan', 'herb_bamboo'], r3: ['herb_turmeric', 'herb_honey'],
+  r4: ['herb_mushroom', 'herb_turmeric'], r5: ['herb_mushroom', 'herb_honey'],
+};
+const HERB_NODES = HUNT_MAPS.flatMap((m) => REGION_HERBS[m.region].map((item, k) => ({ x: m.minX + 420 + k * 330 + (m.idx % 3) * 20, item })));
 
 export class Forest {
   constructor(scene) {
@@ -36,26 +44,21 @@ export class Forest {
   // ------------------------------------------------------------
   //  ค่ายพักพราน
   // ------------------------------------------------------------
+  get npcX() { return CAMP.npcX; }
+
   buildCamp() {
     const s = this.scene, gy = WORLD.groundY;
-    if (s.textures.exists('camp_tent')) {
-      s.add.image(CAMP.x + 10, gy + 4, 'camp_tent').setOrigin(0.5, 1).setDepth(1);
-      s.add.ellipse(CAMP.x + 10, gy + 1, 80, 6, 0x000000, 0.3).setDepth(5.5);
+    // กองไฟจุดพักทุกแมพ (ฟื้นพลังเร็ว · จุดฟื้นเมื่อตาย · ผีไม่ไล่เข้ามา)
+    for (const m of [...HUNT_MAPS, MAPS.arena]) {
+      const fx = m.fireX ?? m.respawnX;
+      if (s.textures.exists('campfire')) s.add.image(fx, gy + 3, 'campfire').setOrigin(0.5, 1).setDepth(6).setScale(0.6);
+      const glow = s.add.circle(fx, gy - 10, 34, 0xff9f43, 0.12).setDepth(5.8).setBlendMode(Phaser.BlendModes.ADD);
+      s.tweens.add({ targets: glow, scale: { from: 0.92, to: 1.08 }, alpha: { from: 0.1, to: 0.2 }, duration: 380, yoyo: true, repeat: -1 });
+      s.add.particles(fx, gy - 8, 'particle', {
+        x: { min: -4, max: 4 }, speedY: { min: -30, max: -14 }, speedX: { min: -4, max: 4 }, lifespan: 700,
+        scale: { start: 0.45, end: 0 }, tint: [0xf39c12, 0xe74c3c, 0xf7dc6f], frequency: 110, blendMode: 'ADD',
+      }).setDepth(6.1);
     }
-    // กองไฟ
-    const fx = CAMP.fireX;
-    if (s.textures.exists('campfire')) s.add.image(fx, gy + 3, 'campfire').setOrigin(0.5, 1).setDepth(6).setScale(0.6);
-    else {
-      const g = s.add.graphics().setDepth(6);
-      g.fillStyle(0x5d4037).fillRect(fx - 9, gy - 3, 18, 3);
-    }
-    this.fireGlow = s.add.circle(fx, gy - 10, 34, 0xff9f43, 0.12).setDepth(5.8).setBlendMode(Phaser.BlendModes.ADD);
-    s.tweens.add({ targets: this.fireGlow, scale: { from: 0.92, to: 1.08 }, alpha: { from: 0.1, to: 0.2 }, duration: 380, yoyo: true, repeat: -1 });
-    s.add.particles(fx, gy - 8, 'particle', {
-      x: { min: -4, max: 4 }, speedY: { min: -30, max: -14 }, speedX: { min: -4, max: 4 }, lifespan: 700,
-      scale: { start: 0.45, end: 0 }, tint: [0xf39c12, 0xe74c3c, 0xf7dc6f], frequency: 90, blendMode: 'ADD',
-    }).setDepth(6.1);
-    makeText(s, CAMP.x, gy - 74, '⛺ ค่ายพักพราน', { fontSize: '8px', color: '#f5cba7' }).setOrigin(0.5).setDepth(2);
     if (s.textures.exists('bounty_board')) s.add.image(CAMP.npcX + 30, gy + 3, 'bounty_board').setOrigin(0.5, 1).setDepth(5.9).setScale(0.75);
     // พรานบุญ
     const key = s.textures.exists('npc_phran_bun') ? 'npc_phran_bun' : 'npc_maekha';
@@ -66,7 +69,7 @@ export class Forest {
     makeText(s, CAMP.npcX, gy - this.npc.height - 17, '[ค่าหัวรายวัน]', { fontSize: '6px', color: '#ecf0f1' }).setOrigin(0.5, 1).setDepth(6);
   }
 
-  nearFire(x) { return Math.abs(x - CAMP.fireX) < 70; }
+  nearFire(x) { const m = mapAt(x); return m.fireX != null && Math.abs(x - m.fireX) < 70; }
 
   // ------------------------------------------------------------
   //  สมุนไพร
@@ -129,7 +132,9 @@ export class Forest {
   spawnChest() {
     const s = this.scene;
     if (this.chest) return;
-    const plats = s.platforms.getChildren().filter((p) => p.x > CAMP.endX && p.x < MAPS.forest.maxX - 120);
+    const m = s.map;
+    if (!m?.mon) return;                                            // เกิดเฉพาะแมพล่าผีที่เรายืนอยู่
+    const plats = s.platforms.getChildren().filter((p) => p.x > m.safeEndX && p.x < m.maxX - 60);
     if (!plats.length) return;
     const p = plats[Math.floor(Math.random() * plats.length)];
     const x = p.x + 8 + Math.random() * Math.max(1, p.width - 16), y = p.y;
@@ -139,7 +144,7 @@ export class Forest {
     const glow = s.add.circle(x, y - 8, 14, 0xf7dc6f, 0.18).setDepth(6.1).setBlendMode(Phaser.BlendModes.ADD);
     s.tweens.add({ targets: glow, scale: { from: 0.8, to: 1.2 }, alpha: { from: 0.1, to: 0.3 }, duration: 700, yoyo: true, repeat: -1 });
     this.chest = { x, y, spr, glow, until: s.time.now + CHEST.lifeMs };
-    if (s.map?.id === 'forest') s.ui.toast('✨ มีหีบสมบัติโบราณโผล่ขึ้นมาในป่า! (ดูจุดสีทองบนมินิแมป)');
+    s.ui.toast('✨ มีหีบสมบัติโบราณโผล่ขึ้นมาในป่า! (ดูจุดสีทองบนมินิแมป)');
   }
 
   openChest() {
@@ -180,7 +185,7 @@ export class Forest {
       const m = MONSTERS[b.mon], done = b.prog >= b.n;
       const btn = b.claimed ? '<span class="meta">✔ รับแล้ว</span>' : done ? `<button data-bounty="${i}" class="gold">รับค่าหัว</button>` : `<span class="meta">${b.prog}/${b.n}</span>`;
       return `<div class="quest ${b.claimed ? 'done' : done ? 'ready' : 'active'}"><div><b>${uiIcon('wanted', '📜')} ${esc(m.nameTh)} <span class="meta">Lv.${m.level}</span></b>
-        <small>🎯 ปราบ ${b.n} ตัว ${b.claimed ? '' : `<b>${Math.min(b.prog, b.n)}/${b.n}</b>`}</small><small>🎁 ${b.exp} EXP · ฿${b.gold}</small></div>${btn}</div>`;
+        <small>🎯 ปราบ ${b.n} ตัว ที่ ${esc(MAPS[m.mapId]?.nameTh ?? '')} ${b.claimed ? '' : `<b>${Math.min(b.prog, b.n)}/${b.n}</b>`}</small><small>🎁 ${b.exp} EXP · ฿${b.gold}</small></div>${btn}</div>`;
     }).join('');
   }
 
@@ -222,7 +227,7 @@ export class Forest {
       const ok = now >= n.readyAt && (!n.night || s.clock.night);
       if (n.spr.visible !== ok) { n.spr.setVisible(ok); n.spark.setVisible(ok); }
     }
-    if (this.chest && time > this.chest.until) {
+    if (this.chest && (time > this.chest.until || mapAt(this.chest.x) !== s.map)) {
       const ch = this.chest; this.chest = null;
       s.tweens.add({ targets: [ch.spr, ch.glow], alpha: 0, duration: 800, onComplete: () => { ch.spr.destroy(); ch.glow.destroy(); } });
     }

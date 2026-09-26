@@ -93,7 +93,7 @@ export class Clock {
     const tint = Phaser.Display.Color.Interpolate.ColorWithColor(
       Phaser.Display.Color.ValueToColor(0x6f6490), Phaser.Display.Color.ValueToColor(0xffffff), 100, Math.round(L * 100));
     const tc = Phaser.Display.Color.GetColor(tint.r, tint.g, tint.b);
-    [s.bgFar, s.bgMid, s.bgTown].forEach((o) => o?.setTint(tc));
+    [s.bgFar, s.bgMid, s.bgTown, s.world?.bgA].forEach((o) => o?.setTint(tc));
 
     // HUD นาฬิกา
     const per = this.period;

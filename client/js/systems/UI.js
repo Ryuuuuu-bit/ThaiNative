@@ -10,6 +10,7 @@ import * as Inv from './Inventory.js';
 import { SKILLS, SKILL_SLOTS, SKILL_BY_ID, MAX_SKILL_LV, skillStats, canLearn } from '/shared/data/skills.js';
 import { MONSTERS } from '/shared/data/monsters.js';
 import { WORLD } from '/shared/constants.js';
+import { MAPS, MAP_LIST, REGIONS, mapAt } from '/shared/data/maps.js';
 import { learnSkill, assignHotbar } from './Character.js';
 import { saveSettings, toggleFullscreen } from './Settings.js';
 import { PORTRAITS } from '../gfx/SpriteFactory.js';
@@ -165,7 +166,7 @@ export class UI {
       this.scene.monsters.getChildren().forEach((m) => m.alive && inMap(m.x) && (html += `<i class="mm-dot ${m.isBoss ? 'boss' : 'mob'}" style="left:${pct(m.x)}"></i>`));
       const ch = this.scene.forest?.chest;
       if (ch && inMap(ch.x)) html += `<i class="mm-dot chest" style="left:${pct(ch.x)}"></i>`;
-      if (mp.camp) html += `<i class="mm-dot npc" style="left:${pct(mp.camp.npcX)}"></i>`;
+      if (mp.fireX) html += `<i class="mm-dot fire" style="left:${pct(mp.fireX)}"></i>`;
       $('#mm-dots').innerHTML = html;
     }
   }
@@ -179,7 +180,7 @@ export class UI {
       town.classList.add('river'); arena.style.width = '0';
     } else {
       town.classList.remove('river'); town.style.width = '0';
-      arena.style.width = mp.id === 'grave' ? `${((mp.maxX - WORLD.arenaX) / W) * 100}%` : '0';
+      arena.style.width = mp.boss ? '100%' : '0';
     }
   }
 
@@ -333,35 +334,23 @@ export class UI {
   // ============================================================
   //  แผนที่โลก (M)
   // ============================================================
-  renderMap() {
-    const X0 = WORLD.minX, W = WORLD.width - X0, pct = (x) => `${((x - X0) / W) * 100}%`;
-    const zones = [
-      { nameTh: '🎣 ท่าน้ำ', from: X0, to: -200, town: true, sub: 'ตกปลา · ครัวป้าสา' },
-      { nameTh: 'Map 1 หมู่บ้านบางผี', from: -200, to: 1060, town: true, sub: 'Safe Zone · ยายติ๋ม · ผู้ใหญ่ชัย · ลุงดำ · วาร์ป→ป่า' },
-      { nameTh: '⛺', from: 1090, to: 1360, town: true, sub: 'ค่าย' }];
-    // แบ่งเขตตามมอนสเตอร์ (เรียงตามเลเวล)
-    const mons = Object.values(MONSTERS).sort((a, b) => a.level - b.level);
-    const bands = [[1360, 1720], [1720, 2380], [2380, 2980], [2980, WORLD.graveX], [WORLD.graveX, WORLD.arenaX]];
-    const names = ['ทุ่งผีน้อย', 'ป่ากล้วยตานี', 'บึงผีพราย', 'ดงเปรตสมิง', 'ป่าช้าผีตายโหง'];
-    bands.forEach(([a, b], i) => {
-      const here = mons.filter((m) => m.zone[0] < b && m.zone[1] > a);
-      const lv = here.length ? `Lv.${Math.min(...here.map((m) => m.level))}–${Math.max(...here.map((m) => m.level))}` : '';
-      zones.push({ nameTh: names[i], from: a, to: b, sub: `${lv}<br>${here.map((m) => m.nameTh).join(' · ')}` });
-    });
-    zones.push({ nameTh: '👹 ลานพญายักษ์', from: WORLD.arenaX, to: WORLD.width, boss: true, sub: 'เรดบอส Lv.15<br>รวมพลังหลายคน · เกิดใหม่ทุก 2 นาที' });
-    const plats = this.scene.platforms.getChildren().map((p) => `<i class="wm-plat" style="left:${pct(p.x)};width:${(p.width / W) * 100}%;top:${40 + (p.y / 270) * 40}%"></i>`).join('');
-    this.mapStatic = zones.map((z) => `<div class="wm-zone ${z.town ? 'town' : ''} ${z.boss ? 'boss' : ''}" style="left:${pct(z.from)};width:${((z.to - z.from) / W) * 100}%"><b>${z.nameTh}</b><span>${z.sub}</span></div>`).join('') + plats
-      + `${this.scene.npcs.map((n) => `<span class="wm-pin" style="left:${pct(n.x)};top:84%" title="${n.nameTh}">${{ shop: '🏪', quest: '📋', smith: '🔨', cook: '🍳' }[n.id]}</span>`).join('')}<span class="wm-pin" style="left:${pct(990)};top:84%">🌀</span><span class="wm-pin" style="left:${pct(240)};top:84%">⛩️</span><span class="wm-pin" style="left:${pct(110)};top:84%">🛕</span>`;
-    this.updateMap();
-  }
+  renderMap() { this.updateMap(); }
 
+  /** แผนที่โลก: การ์ด 5 ภาค × 4 แมพ + หมู่บ้าน + ลานบอส (ไฮไลต์แมพปัจจุบัน / จำนวนเพื่อนในแต่ละแมพ) */
   updateMap() {
-    const X0 = WORLD.minX, W = WORLD.width - X0, pct = (x) => `${((x - X0) / W) * 100}%`, y = (v) => `${Math.min(84, 40 + (v / 270) * 44)}%`;
-    const p = this.scene.player;
-    let dots = `<i class="wm-dot me" style="left:${pct(p.x)};top:${y(p.y)}" title="${esc(p.char.name)}"></i>`;
-    this.scene.remotes.forEach((r) => (dots += `<i class="wm-dot ally" style="left:${pct(r.x)};top:${y(r.y)}"></i>`));
-    this.scene.monsters.getChildren().forEach((m) => m.alive && (dots += `<i class="wm-dot ${m.isBoss ? 'boss' : 'mob'}" style="left:${pct(m.x)};top:${y(m.y)}"></i>`));
-    $('#world-map').innerHTML = this.mapStatic + dots;
+    const s = this.scene, cur = s.map?.id, lv = s.player.char.level;
+    const friends = {};
+    s.remotes.forEach((r) => { const id = mapAt(r.x).id; friends[id] = (friends[id] || 0) + 1; });
+    const chip = (m) => {
+      const mon = m.mon ? MONSTERS[m.mon] : null, lock = lv < (m.minLv || 1);
+      const sub = m.id === 'village' ? 'Safe Zone · NPC · ตกปลา' : m.boss ? 'เรดบอส Lv.15' : `${mon.nameTh} Lv.${mon.level}${mon.nightBoost ? ' 🌙' : ''}`;
+      return `<div class="wm-map ${m.id === cur ? 'cur' : ''} ${lock ? 'lock' : ''} ${m.boss ? 'boss' : ''}">
+        <b>${m.no && !m.boss ? m.no + '. ' : ''}${esc(m.nameTh)}</b><span>${esc(sub)}${lock ? ` · 🔒Lv.${m.minLv}` : ''}</span>
+        ${m.id === cur ? '<i class="wm-me">📍 คุณอยู่ที่นี่</i>' : ''}${friends[m.id] ? `<i class="wm-fr">👥 ${friends[m.id]}</i>` : ''}</div>`;
+    };
+    const html = `<div class="wm-region village"><h4>🏘️ หมู่บ้าน</h4><div class="wm-maps">${chip(MAPS.village)}</div></div>`
+      + Object.values(REGIONS).map((R) => `<div class="wm-region ${R.id}"><h4>ภาค ${R.no} · ${esc(R.nameTh)}</h4><div class="wm-maps">${MAP_LIST.filter((m) => m.region === R.id).map(chip).join('')}</div></div>`).join('');
+    if (html !== this.mapHtml) { this.mapHtml = html; $('#world-map').innerHTML = html; }
   }
 
   // ============================================================

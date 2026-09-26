@@ -70,6 +70,64 @@ const TRACKS = {
     drums: { klong: 'x.......x.....x.', ching: '....x.......x...' },
     wail: true, amb: 'wild',
   },
+  // ===== เพลงประจำภาค (20 แมพล่าผี) =====
+  // ภาค 1 ทุ่งนา – ลูกทุ่งอีสานสบายๆ: แคน (pad+pi) + โปงลาง (ranat) + กลองโทน
+  r1: {
+    bpm: 100,
+    layers: [
+      { inst: 'ranat', vol: 0.13, notes: [67, 69, 72, _, 74, 72, 69, _, 67, _, 64, 67, 69, _, _, _, 72, 74, 76, _, 79, 76, 74, _, 72, _, 69, 72, 67, _, _, _] },
+      { inst: 'pi', vol: 0.07, notes: [_, _, _, _, _, _, _, _, 79, _, 76, _, 74, _, 72, _, _, _, _, _, _, _, _, _, 76, _, 74, _, 72, _, 69, _] },
+      { inst: 'pad', vol: 0.03, notes: [55, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, 60, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _], len: 16 },
+      { inst: 'bass', vol: 0.16, notes: [43, _, _, 50, 43, _, 50, _, 48, _, _, 55, 48, _, 55, _] },
+    ],
+    drums: { thon: 'x..x..x.x..x..x.', ching: '..x...x...x...x.' },
+    amb: 'paddy',
+  },
+  // ภาค 2 บึงบัว – ช้า หลอน น้ำหยด: ระนาดทุ้มห่างๆ + เสียงโหยหวน + โดรน
+  r2: {
+    bpm: 66,
+    layers: [
+      { inst: 'ranat', vol: 0.1, notes: [64, _, _, 67, _, _, 69, _, 71, _, _, _, 69, _, 67, _, 64, _, _, _, 62, _, 64, _, _, _, _, _, _, _, _, _] },
+      { inst: 'ghost', vol: 0.05, notes: [_, _, _, _, 76, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, 74, _, _, _, _, _, _, _, _, _, _, _] },
+      { inst: 'pad', vol: 0.045, notes: [40, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, 43, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _], len: 16 },
+    ],
+    drums: { ching: '........x.......' },
+    wail: true, amb: 'swamp',
+  },
+  // ภาค 3 ป่าดงดิบ – กลองป่าหนักแน่น ปี่ผจญภัย ไมเนอร์
+  r3: {
+    bpm: 104,
+    layers: [
+      { inst: 'pi', vol: 0.09, notes: [69, _, _, 72, 74, _, 72, _, 69, _, 67, _, 69, _, _, _, 76, _, 74, _, 72, _, 74, 76, 79, _, 76, _, 74, _, _, _] },
+      { inst: 'khong', vol: 0.06, notes: [45, _, _, _, _, _, _, _, 52, _, _, _, _, _, _, _, 48, _, _, _, _, _, _, _, 50, _, _, _, _, _, _, _] },
+      { inst: 'bass', vol: 0.2, notes: [33, _, 33, _, _, 40, _, _, 36, _, 36, _, _, 43, _, _] },
+    ],
+    drums: { klong: 'x.....x...x.....', thon: '..x.x...x.x.x.x.', ching: 'x...x...x...x...' },
+    amb: 'jungle',
+  },
+  // ภาค 4 ป่าช้าวัดร้าง – ฆ้องเดี่ยวช้าๆ เสียงสวดต่ำ ระฆังไกลๆ
+  r4: {
+    bpm: 60,
+    layers: [
+      { inst: 'khong', vol: 0.08, notes: [52, _, _, _, _, _, _, _, 55, _, _, _, 53, _, _, _, 52, _, _, _, _, _, _, _, 48, _, _, _, _, _, _, _] },
+      { inst: 'saw', vol: 0.035, notes: [40, _, _, _, 40, _, _, _, 41, _, _, _, 40, _, _, _] },
+      { inst: 'ghost', vol: 0.05, notes: [_, _, _, _, _, _, _, _, _, _, _, _, 79, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, 77, _, _, _] },
+      { inst: 'pad', vol: 0.05, notes: [36, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, 37, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _], len: 16 },
+    ],
+    drums: { klong: 'x...............' },
+    wail: true, amb: 'grave',
+  },
+  // ภาค 5 หุบเขาอสุรกาย – เร็ว ดุดัน ลีดซอ กลองรัว
+  r5: {
+    bpm: 132,
+    layers: [
+      { inst: 'saw', vol: 0.075, notes: [64, _, 67, 64, 70, _, 67, _, 64, _, 63, _, 64, _, _, _, 71, _, 70, 67, 64, _, 67, _, 70, _, 67, _, 64, _, _, _] },
+      { inst: 'khong', vol: 0.07, notes: [52, _, _, _, _, _, _, _, 51, _, _, _, _, _, _, _] },
+      { inst: 'bass', vol: 0.22, notes: [28, _, 28, _, 40, _, 28, _, 27, _, 27, _, 39, _, 31, _] },
+    ],
+    drums: { klong: 'x..x..x.x..x..x.', thon: '..x...x...x.x.x.', chap: 'x.......x.......' },
+    amb: 'cursed',
+  },
   // เรดบอส – เร็ว ดุดัน กลองใหญ่รัว ลีดซอ + ฆ้องเตือน
   boss: {
     bpm: 148,
@@ -295,6 +353,25 @@ export class Sound {
       else if (r < 0.14) { this.tone(420, 0.35, { type: 'sine', to: 380, vol: 0.025, delay, bus, attack: 0.05 });  // นกฮูก
                            this.tone(400, 0.45, { type: 'sine', to: 340, vol: 0.025, delay: delay + 0.45, bus, attack: 0.05 }); }
       else if (r < 0.16) this.noise(1.6, { freq: 300, to: 900, q: 2, vol: 0.03, delay, bus });              // ลมพัด
+    } else if (kind === 'paddy') {
+      if (r < 0.1) this.tone(900 + Math.random() * 200, 0.08, { type: 'square', to: 600, vol: 0.008, delay, bus, lp: 1800 });   // กบร้อง
+      else if (r < 0.13) this.tone(4600, 0.04, { type: 'square', vol: 0.005, delay, bus, lp: 5200 });                        // จิ้งหรีด
+    } else if (kind === 'swamp') {
+      if (r < 0.06) this.tone(1500 + Math.random() * 800, 0.05, { type: 'sine', to: 700, vol: 0.03, delay, bus });            // น้ำหยด
+      else if (r < 0.12) this.tone(300 + Math.random() * 80, 0.18, { type: 'square', to: 220, vol: 0.008, delay, bus, lp: 700 }); // อึ่งอ่าง
+    } else if (kind === 'jungle') {
+      if (r < 0.04) { const f = 1600 + Math.random() * 1400;                                                                  // นกป่า
+        this.tone(f, 0.12, { type: 'sine', to: f * 1.5, vol: 0.02, delay, bus }); this.tone(f * 1.2, 0.1, { type: 'sine', to: f, vol: 0.018, delay: delay + 0.15, bus }); }
+      else if (r < 0.14) this.tone(5200, 0.03, { type: 'square', vol: 0.004, delay, bus, lp: 6000 });                        // แมลง
+      else if (r < 0.15) this.noise(1.2, { freq: 400, to: 1200, q: 1.5, vol: 0.025, delay, bus });                          // ใบไม้ไหว
+    } else if (kind === 'grave') {
+      if (r < 0.012) this.khong(midi(84), delay, 0.03, bus);                                                                // ระฆังวัดไกลๆ
+      else if (r < 0.03) this.noise(2, { freq: 200, to: 600, q: 3, vol: 0.03, delay, bus });                                // ลมหวีด
+      else if (r < 0.04) { this.tone(420, 0.35, { type: 'sine', to: 380, vol: 0.02, delay, bus, attack: 0.05 });            // นกแสก
+                           this.tone(400, 0.45, { type: 'sine', to: 340, vol: 0.02, delay: delay + 0.45, bus, attack: 0.05 }); }
+    } else if (kind === 'cursed') {
+      if (r < 0.03) this.noise(1.6, { type: 'lowpass', freq: 180, to: 60, vol: 0.08, delay, bus });                         // ธรณีคำราม
+      else if (r < 0.08) this.noise(0.08, { type: 'highpass', freq: 3000, vol: 0.015, delay, bus });                        // ถ่านไฟแตก
     } else if (kind === 'boss' && r < 0.03) {
       this.noise(1.8, { type: 'lowpass', freq: 250, to: 60, vol: 0.12, delay, bus });                       // ฟ้าคำราม
     }

@@ -44,14 +44,6 @@ export const BREWS = [
 // ============================================================
 //  Map 2: ป่าผีดุ
 // ============================================================
-/** จุดเก็บสมุนไพร (x, ชนิด, y = บนแพลตฟอร์ม) – เก็บแล้วงอกใหม่ใน respawn ms (แยกต่อผู้เล่น) */
-export const HERB_NODES = [
-  { x: 1420, item: 'herb_aloe' },       { x: 1560, item: 'herb_lemongrass' }, { x: 1690, item: 'herb_bamboo' },
-  { x: 1800, item: 'herb_aloe' },       { x: 1950, item: 'herb_turmeric' },   { x: 2125, item: 'herb_honey', y: 172 },
-  { x: 2260, item: 'herb_lemongrass' }, { x: 2400, item: 'herb_anchan' },     { x: 2560, item: 'herb_bamboo' },
-  { x: 2700, item: 'herb_turmeric' },   { x: 2860, item: 'herb_anchan' },     { x: 3110, item: 'herb_mushroom', night: true },
-  { x: 3030, item: 'herb_honey', y: 166 }, { x: 3300, item: 'herb_mushroom' }, { x: 3440, item: 'herb_aloe' },
-];
 export const HERB_RESPAWN_MS = 90000;
 export const GATHER_MS = 1400;
 
@@ -106,23 +98,23 @@ export const ENHANCE = {
 export const QUESTS = [
   { id: 'q_fish1', lv: 1, nameTh: 'ปลาไว้กินมื้อเย็น', text: 'ป้าสาบ่นว่าครัวไม่มีปลา ไปตกปลาที่ท่าน้ำ (ซ้ายสุดของหมู่บ้าน) มาให้หน่อย',
     goal: { fish: 'any', n: 3 }, reward: { exp: 40, gold: 60, items: [{ id: 'food_pla_pao', qty: 1 }] } },
-  { id: 'q_tuay', lv: 1, nameTh: 'ผีถ้วยแก้วป่วนทุ่ง', text: 'ผีถ้วยแก้วออกมาป่วนทุ่งหน้าป่า ออกประตูวาร์ปไปจัดการ 8 ตัว',
+  { id: 'q_tuay', lv: 1, nameTh: 'ผีถ้วยแก้วป่วนทุ่ง', text: 'ผีถ้วยแก้วป่วนทุ่งนา วาร์ปไป Map 1 ทุ่งถ้วยแก้ว แล้วจัดการ 8 ตัว',
     goal: { kill: 'phi_tuay_kaew', n: 8 }, reward: { exp: 120, gold: 120, items: [{ id: 'hp_s', qty: 5 }] } },
-  { id: 'q_herb', lv: 2, nameTh: 'สมุนไพรให้ยาย', text: 'ยายติ๋มยาใกล้หมด ไปเก็บสมุนไพรในป่าผีดุ (มีประกายวิบวับ กด F) มาให้ 5 ครั้ง',
+  { id: 'q_herb', lv: 2, nameTh: 'สมุนไพรให้ยาย', text: 'ยายติ๋มยาใกล้หมด ไปเก็บสมุนไพรในแมพล่าผี (มีประกายวิบวับ กด F) มาให้ 5 ครั้ง',
     goal: { herb: 'any', n: 5 }, reward: { exp: 150, gold: 150, items: [{ id: 'pot_aloe', qty: 3 }] } },
-  { id: 'q_camp', lv: 4, nameTh: 'เห็ดผีกลางป่าลึก', text: 'พรานบุญเล่าว่ามีเห็ดเรืองแสงขึ้นลึกในป่า เก็บมา 2 ครั้ง แล้วลองให้ยายปรุงยาอายุวัฒนะ',
+  { id: 'q_camp', lv: 11, nameTh: 'เห็ดผีกลางป่าลึก', text: 'พรานบุญเล่าว่ามีเห็ดเรืองแสงขึ้นในภาค 4–5 เก็บมา 2 ครั้ง แล้วลองให้ยายปรุงยาอายุวัฒนะ',
     goal: { herb: 'herb_mushroom', n: 2 }, reward: { exp: 420, gold: 300, items: [{ id: 'herb_honey', qty: 2 }] } },
-  { id: 'q_kuman', lv: 3, nameTh: 'กุมารทองหลงทาง', text: 'กุมารทองซนเกินไปแล้ว สั่งสอนมัน 10 ตัว',
+  { id: 'q_kuman', lv: 3, nameTh: 'กุมารทองหลงทาง', text: 'กุมารทองซนเกินไปแล้ว ไปสั่งสอนมันที่ Map 2 คันนากุมาร 10 ตัว',
     goal: { kill: 'kuman_thong', n: 10 }, reward: { exp: 260, gold: 200, items: [{ id: 'black_iron', qty: 1 }] } },
-  { id: 'q_krasue', lv: 5, nameTh: 'กระสือกินไก่ชาวบ้าน', text: 'กลางคืนกระสือบินมากินไก่ในเล้า ไปปราบ 6 ตัว (ออกเฉพาะกลางคืน)',
+  { id: 'q_krasue', lv: 5, nameTh: 'กระสือกินไก่ชาวบ้าน', text: 'กระสือบินมากินไก่ในเล้า ไปปราบที่ Map 3 เล้าไก่กระสือ 6 ตัว (กลางคืนดุกว่าเดิม)',
     goal: { kill: 'krasue', n: 6 }, reward: { exp: 520, gold: 350, items: [{ id: 'mp_m', qty: 3 }] } },
   { id: 'q_chon', lv: 5, nameTh: 'ต้มยำให้ผู้ใหญ่', text: 'ผู้ใหญ่อยากกินต้มยำปลาช่อน ตกปลาช่อนมา 2 ตัว',
     goal: { fish: 'pla_chon', n: 2 }, reward: { exp: 300, gold: 250, items: [{ id: 'food_tom_yum', qty: 1 }] } },
-  { id: 'q_pob', lv: 7, nameTh: 'ปอบในป่ากล้วย', text: 'มีคนเห็นปอบเดินเพ่นพ่าน กำจัด 12 ตัว',
+  { id: 'q_pob', lv: 7, nameTh: 'ปอบในป่ากล้วย', text: 'มีคนเห็นปอบเพ่นพ่านที่ Map 5 หมู่บ้านร้าง กำจัด 12 ตัว',
     goal: { kill: 'phi_pob', n: 12 }, reward: { exp: 900, gold: 500, items: [{ id: 'black_iron', qty: 2 }] } },
-  { id: 'q_pret', lv: 9, nameTh: 'เปรตหิวโหย', text: 'เปรตตัวสูงเท่าต้นตาลกำลังเข้าใกล้หมู่บ้าน ปราบ 8 ตัว',
+  { id: 'q_pret', lv: 9, nameTh: 'เปรตหิวโหย', text: 'เปรตตัวสูงเท่าต้นตาลสิงอยู่ที่ Map 8 ศาลาเปรตหิวโหย ปราบ 8 ตัว',
     goal: { kill: 'pret', n: 8 }, reward: { exp: 1500, gold: 800, items: [{ id: 'hua_mu', qty: 1 }] } },
-  { id: 'q_grave', lv: 11, nameTh: 'ป่าช้าไม่สงบ', text: 'ผีในป่าช้าตายโหงลุกขึ้นมาทั้งป่า ปราบผีอะไรก็ได้ในป่าช้า 20 ตัว',
+  { id: 'q_grave', lv: 11, nameTh: 'ป่าช้าไม่สงบ', text: 'ผีในภาค 4–5 (ป่าช้าวัดร้าง/หุบเขาอสุรกาย) ลุกขึ้นมาทั้งป่า ปราบผีตัวไหนก็ได้ในนั้น 20 ตัว',
     goal: { kill: 'grave', n: 20 }, reward: { exp: 3200, gold: 1500, items: [{ id: 'black_iron', qty: 3 }] } },
   { id: 'q_buek', lv: 8, nameTh: 'ตำนานปลาบึก', text: 'ปู่เล่าว่ามีปลาบึกยักษ์ในแม่น้ำหน้าหมู่บ้าน ตกมาให้ดูสักตัว',
     goal: { fish: 'pla_buek', n: 1 }, reward: { exp: 1200, gold: 1000, items: [{ id: 'takrut', qty: 1 }] } },

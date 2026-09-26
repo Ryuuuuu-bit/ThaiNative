@@ -428,3 +428,23 @@ kbd { display: inline-block; min-width: 1.6em; text-align: center; padding: 0 .3
 #shop-tabs .px-ico { width: 1.3em; height: 1.3em; }
 .slot.pot .px-ico { width: 1.9em; height: 1.9em; }
 .mm-dot.chest { background: #f4d03f; box-shadow: 0 0 6px #f1c40f; width: .55em; height: .55em; }
+
+/* ---------- แผนที่โลก 5 ภาค / วาร์ป ---------- */
+.world-map { display: flex; flex-direction: column; gap: .35em; height: auto; max-height: 62vh; overflow-y: auto; pointer-events: auto; background: none; border: none; }
+.wm-region { border-radius: 8px; padding: .3em .5em .45em; background: rgba(255,255,255,.04); border-left: 4px solid #7f8c8d; }
+.wm-region h4 { margin: 0 0 .25em; font-size: .85em; color: var(--gold-soft); }
+.wm-region.village { border-color: #58d68d; } .wm-region.r1 { border-color: #f5b041; } .wm-region.r2 { border-color: #76d7c4; }
+.wm-region.r3 { border-color: #27ae60; } .wm-region.r4 { border-color: #a569bd; } .wm-region.r5 { border-color: #e74c3c; }
+.wm-maps { display: grid; grid-template-columns: repeat(auto-fill, minmax(10em, 1fr)); gap: .3em; }
+.wm-map { position: relative; padding: .3em .45em; border-radius: 6px; background: rgba(0,0,0,.28); font-size: .78em; display: flex; flex-direction: column; }
+.wm-map b { color: #fdebd0; } .wm-map span { color: var(--muted); font-size: .9em; }
+.wm-map.cur { outline: 2px solid var(--gold); background: rgba(212,175,55,.18); }
+.wm-map.lock { opacity: .45; } .wm-map.boss { background: rgba(142,68,173,.25); }
+.wm-me { font-style: normal; color: var(--gold); font-size: .85em; } .wm-fr { position: absolute; right: .4em; top: .3em; font-style: normal; font-size: .85em; color: #5dade2; }
+.travel-list { max-height: 64vh; overflow-y: auto; pointer-events: auto; }
+.travel-list h4 { margin: .5em 0 .25em; font-size: .85em; color: var(--gold-soft); }
+.tv-row { display: grid; grid-template-columns: repeat(auto-fill, minmax(10.5em, 1fr)); gap: .3em; }
+.tv { display: flex; flex-direction: column; align-items: flex-start; text-align: left; padding: .35em .5em; border-radius: 6px; border: 1px solid rgba(212,175,55,.45); background: var(--panel-2); color: var(--text); }
+.tv small { color: var(--muted); font-size: .78em; } .tv:hover:not(:disabled) { background: #4a3160; }
+.tv.cur { outline: 2px solid var(--gold); } .tv:disabled { opacity: .45; cursor: default; }
+.mm-dot.fire { background: #f39c12; box-shadow: 0 0 5px #e67e22; }
