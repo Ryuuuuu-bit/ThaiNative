@@ -46,6 +46,8 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     });
     // เฟรมที่ "ดาบ/หมัด โดนเป้า" หรือ "ปล่อยกระสุน" (เฟรมที่ 3 ของท่าโจมตี)
     this.on(EV.ANIMATION_UPDATE, (anim, frame) => {
+      // ฝุ่นตอนเท้าแตะพื้น (เฟรม 4 และ 8 ของวงจรเดิน)
+      if (anim.key.endsWith(':walk') && (frame.index === 4 || frame.index === 8) && this.body.blocked.down) scene.combat?.dust(this.x - this.facing * 3, this.y, 3);
       if (anim.key.endsWith(':attack') && frame.index === (STRIKE_FRAME[anim.frames.length] || 3)) {
         scene.combat.playerStrike(this, this.pendingSkill);
         this.pendingSkill = null;

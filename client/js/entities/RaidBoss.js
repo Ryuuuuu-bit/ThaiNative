@@ -93,7 +93,11 @@ export class RaidBoss extends Phaser.Physics.Arcade.Sprite {
 
   update() {
     if (!this.alive) return;
-    this.x += (this.serverX - this.x) * 0.2;                    // เลื่อนตาม server แบบนุ่มนวล
+    const step = (this.serverX - this.x) * 0.2;
+    this.x += step;                                             // เลื่อนตาม server แบบนุ่มนวล
+    // ท่ายืน/เดินตามการเคลื่อนที่จริง (ไม่ไถล)
+    const attacking = this.anims.currentAnim?.key.endsWith(':attack') && this.anims.isPlaying;
+    if (!attacking) this.playA(Math.abs(step) > 0.15 ? 'walk' : 'idle');
     this.body.updateFromGameObject?.();
     const top = this.y - this.displayHeight;
     this.label.setPosition(this.x, top - 6);

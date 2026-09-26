@@ -155,6 +155,15 @@ def main():
         manifest['bosses'][bid] = {'file': f'assets/bosses/{bid}.png', 'frameWidth': W, 'frameHeight': H,
                                    'anims': ANIMS, 'rates': {'walk': 4, 'attack': 5, 'hit': 6, 'die': 5}}
 
+    # ภาพนิ่งต้นฉบับของผี/บอส → เกมสร้างท่าทางแบบหุ่นตัดต่อ (client/js/gfx/Rig.js) ตอนรัน
+    os.makedirs(os.path.join(OUT, 'bases'), exist_ok=True)
+    manifest['monsterBases'] = {}
+    for mid in list(MONSTERS) + list(BOSSES) + list(NPC):
+        src = os.path.join(SRC, 'bosses', f'{mid}.png') if mid in BOSSES else os.path.join(SRC, f'{mid}.png')
+        if os.path.exists(src):
+            load_clean(src).save(os.path.join(OUT, 'bases', f'{mid}.png'))
+            manifest['monsterBases'][mid] = f'assets/bases/{mid}.png'
+
     # ตัวละครผู้เล่น: คัดลอกภาพต้นฉบับ (เกมย้อมสี + สร้างท่าทางเองตอนรัน)
     pdir = os.path.join(SRC, 'players')
     if os.path.isdir(pdir):

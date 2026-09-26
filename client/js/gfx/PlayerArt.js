@@ -8,6 +8,7 @@
 import { OUTFITS, HAIRSTYLES } from '/shared/data/appearance.js';
 import { JOBS } from '/shared/data/classes.js';
 import { CHAR_ANIMS } from './CharacterArt.js';
+import { buildRig, drawRig, poseFor } from './Rig.js';
 
 export const PAD_X = 12, PAD_TOP = 6;
 export const baseKey = (a) => `pbase_${a.job}_${a.gender}`;
@@ -176,8 +177,65 @@ function weaponFx(ctx, weapon, cx, cy, W, H, t) {
 /**
  * วาดเฟรม: ctx อยู่ในพื้นที่ FW×FH, base = ภาพที่ย้อมสีแล้ว
  */
+/** การตั้งค่าหุ่นตามอาวุธ/อาชีพ (มุมเหวี่ยงขา, จุดสะโพก) */
+const PLAYER_RIG = {
+  sword: { hip: 0.62, neck: 0.3, swing: 0.45 },
+  staff: { hip: 0.66, neck: 0.3, swing: 0.16 },     // เสื้อคลุมยาว: ก้าวสั้น
+  bow:   { hip: 0.62, neck: 0.3, swing: 0.45 },
+  wraps: { hip: 0.6,  neck: 0.3, swing: 0.5 },
+};
+
+/** ท่าโจมตีเฉพาะอาวุธ (6 เฟรม) – ใช้กับหุ่นตัดต่อ */
+const ATTACK_POSES = {
+  sword: [{ dx: -2, lean: -0.2, sy: 0.96, front: 0.15, back: -0.1, head: -0.08 }, { dx: -3, lean: -0.32, sy: 0.94, front: 0.3, back: -0.2 },
+          { dx: 3, lean: 0.25, front: -0.5, back: 0.35 }, { dx: 7, lean: 0.4, sx: 1.05, front: -0.6, back: 0.5 },
+          { dx: 6, lean: 0.3, front: -0.45, back: 0.4 }, { dx: 2, lean: 0.08, front: -0.1, back: 0.1 }],
+  staff: [{ lean: -0.08, torsoSy: 1.04, head: -0.1 }, { dx: -1, lean: -0.16, torsoSy: 1.07, head: -0.15 }, { dx: 1, lean: 0.06 },
+          { dx: 3, lean: 0.16, sx: 1.04, sy: 0.97 }, { dx: 2, lean: 0.1 }, { dx: 0, lean: 0.03 }],
+  bow:   [{ dx: -1, lean: -0.06, back: 0.15, front: -0.1 }, { dx: -2, lean: -0.14, back: 0.25, front: -0.15, head: -0.05 },
+          { dx: -3, lean: -0.18, back: 0.3, front: -0.2 }, { dx: -1, lean: -0.02, sx: 1.03 }, { dx: -2, lean: -0.08 }, { lean: 0 }],
+  wraps: [{ dx: -1, lean: -0.1, front: 0.2, back: -0.15 }, { dx: 2, lean: 0.12, front: -0.35, back: 0.3 },
+          { dx: 5, lean: 0.25, front: -0.55, back: 0.45, sx: 1.05 }, { dx: 8, lean: 0.38, front: -0.7, back: 0.55, sx: 1.1, sy: 0.95 },
+          { dx: 5, lean: 0.2, front: -0.4, back: 0.3 }, { dx: 1, lean: 0.05 }],
+};
+
+function playerRigFrame(ctx, base, anim, i, weapon, FW, FH) {
+  const cfg = PLAYER_RIG[weapon] || PLAYER_RIG.sword;
+  base._rig ||= buildRig(base, cfg);
+  const rig = base._rig, W = rig.W, H = rig.H;
+  const footX = FW / 2, footY = FH - 2, cy = footY - H * 0.55;
+  let pose;
+  if (anim === 'idle') {
+    const t = (i / 6) * Math.PI * 2;
+    pose = { torsoSy: 1 + Math.sin(t) * 0.025, head: Math.sin(t) * 0.03, lean: weapon === 'wraps' ? 0.08 + Math.sin(t) * 0.04 : Math.sin(t) * 0.02,
+      front: weapon === 'wraps' ? -0.12 : 0, back: weapon === 'wraps' ? 0.12 : 0, dy: weapon === 'wraps' ? Math.round(Math.sin(t * 2)) : 0 };
+  } else if (anim === 'walk') {
+    pose = poseFor('biped', 'walk', i, { swing: cfg.swing });
+  } else if (anim === 'attack') {
+    pose = (ATTACK_POSES[weapon] || ATTACK_POSES.sword)[i] || {};
+  } else if (anim === 'hit') {
+    pose = [{ dx: -3, lean: -0.32, sx: 0.95, tint: 'rgba(255,255,255,0.8)', front: 0.2, back: -0.1 },
+            { dx: -4, lean: -0.2, tint: 'rgba(255,60,60,0.4)' }, { dx: -2, lean: -0.08, tint: 'rgba(255,60,60,0.15)' }][i];
+  } else if (anim === 'jump') {
+    pose = i === 0 ? { dy: -2, sy: 1.05, sx: 0.96, front: -0.6, back: 0.5, frontLift: 3, backLift: 2, lean: 0.06 }
+                   : { dy: -2, front: -0.3, back: 0.7, frontLift: 2, backLift: 3, lean: 0.1 };
+  }
+  drawRig(ctx, rig, pose, footX, footY);
+  const dx = pose.dx || 0;
+  if (anim === 'attack') {
+    if (i === 3) weaponFx(ctx, weapon, footX + dx, cy, W, H, 0.3);
+    if (i === 4 && weapon !== 'bow') { ctx.globalAlpha = 0.55; weaponFx(ctx, weapon, footX + dx, cy, W, H, 0.9); ctx.globalAlpha = 1; }
+    if (i >= 2 && i <= 4 && weapon !== 'staff') {
+      ctx.fillStyle = 'rgba(255,255,255,0.35)';
+      for (let k = 0; k < 3; k++) ctx.fillRect(footX - W / 2 - 6 + dx - k * 2, footY - H * (0.7 - k * 0.18), 5, 1);
+    }
+  }
+  if (anim !== 'jump') shadow(ctx, footX + dx, FH, W * 0.32);
+}
+
 export function drawPlayerFrame(ctx, base, anim, i, weapon, FW, FH) {
   ctx.imageSmoothingEnabled = false;
+  if (anim !== 'die') return playerRigFrame(ctx, base, anim, i, weapon, FW, FH);
   const W = base.width, H = base.height;
   const bx = Math.round((FW - W) / 2), by = FH - 2 - H;
   const cx = FW / 2, cy = by + H * 0.45;

@@ -334,7 +334,7 @@ export class GameScene extends Phaser.Scene {
   footsteps(time) {
     const p = this.player;
     const onFloor = p.body.blocked.down || p.body.touching.down;
-    if (onFloor && !this.wasOnFloor && p.body.velocity.y >= 0 && this.airSince && time - this.airSince > 250) this.sfx.play('land');
+    if (onFloor && !this.wasOnFloor && p.body.velocity.y >= 0 && this.airSince && time - this.airSince > 250) { this.sfx.play('land'); this.combat.dust(p.x, p.y, 7, 1.6); }
     if (!onFloor && this.wasOnFloor) this.airSince = time;
     this.wasOnFloor = onFloor;
     if (onFloor && p.state === 'walk' && time - (this.lastStep || 0) > 300) { this.lastStep = time; this.sfx.play('step'); }

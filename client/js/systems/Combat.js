@@ -395,6 +395,16 @@ export class Combat {
     this.scene.tweens.add({ targets: t, y: y - 18, alpha: 0, duration: 900, ease: 'Cubic.easeOut', onComplete: () => t.destroy() });
   }
 
+  /** ฝุ่นฟุ้งตอนเท้าแตะพื้น/ลงพื้น */
+  dust(x, y, qty = 4, spread = 1) {
+    const em = this.scene.add.particles(x, y - 1, 'particle', {
+      speedX: { min: -25 * spread, max: 25 * spread }, speedY: { min: -18, max: -4 }, lifespan: 380, gravityY: 40,
+      scale: { start: 0.55, end: 0 }, alpha: { start: 0.55, end: 0 }, tint: 0xc9b79c, quantity: qty, emitting: false,
+    }).setDepth(9);
+    em.explode(qty);
+    this.scene.time.delayedCall(450, () => em.destroy());
+  }
+
   burst(x, y, tint, qty = 8) {
     const em = this.scene.add.particles(x, y, 'particle', {
       speed: { min: 30, max: 90 }, lifespan: 350, scale: { start: 0.8, end: 0 }, tint, quantity: qty, emitting: false,

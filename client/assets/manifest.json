@@ -212,6 +212,20 @@
       }
     }
   },
+  "monsterBases": {
+    "phi_tuay_kaew": "assets/bases/phi_tuay_kaew.png",
+    "kuman_thong": "assets/bases/kuman_thong.png",
+    "krasue": "assets/bases/krasue.png",
+    "nang_tani": "assets/bases/nang_tani.png",
+    "phi_pob": "assets/bases/phi_pob.png",
+    "phi_jang_nang": "assets/bases/phi_jang_nang.png",
+    "phi_phrai": "assets/bases/phi_phrai.png",
+    "pret": "assets/bases/pret.png",
+    "saming": "assets/bases/saming.png",
+    "phi_ha": "assets/bases/phi_ha.png",
+    "phaya_yak": "assets/bases/phaya_yak.png",
+    "npc_maekha": "assets/bases/npc_maekha.png"
+  },
   "players": {
     "archer_female": "assets/players/archer_female.png",
     "archer_male": "assets/players/archer_male.png",

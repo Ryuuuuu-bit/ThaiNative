@@ -8,6 +8,7 @@ import { MONSTERS } from '/shared/data/monsters.js';
 import { JOBS } from '/shared/data/classes.js';
 import { appearanceKey } from '/shared/data/appearance.js';
 import { baseKey, recolorBase, drawPlayerFrame, frameSize, PLAYER_ANIMS } from './PlayerArt.js';
+import { buildRig, trimImage, bakeRigSheet, ANIM_SPEC } from './Rig.js';
 
 function makeCanvas(w, h) {
   const c = document.createElement('canvas');
@@ -340,4 +341,26 @@ export function generateAll(scene) {
   bakeProjectiles(scene);
   bakeNpc(scene);
   Object.keys(MONSTERS).forEach((id) => bakeMonster(scene, id));
+}
+
+// ------------------------------------------------------------
+//  มอนสเตอร์/บอสจากภาพนิ่ง PixelLab → หุ่นตัดต่อ (Rig) มีท่าทางครบ
+//  idle 6 · walk 8 · attack 6 · hit 2 · die 6 (สลายเป็นวิญญาณ)
+// ------------------------------------------------------------
+export function bakeRigMonster(scene, key, srcImg, cfg) {
+  const rig = buildRig(trimImage(srcImg), cfg);
+  const sheet = bakeRigSheet(rig, cfg.kind, cfg);
+  if (scene.textures.exists(key)) scene.textures.remove(key);
+  for (const anim of Object.keys(ANIM_SPEC)) if (scene.anims.exists(`${key}:${anim}`)) scene.anims.remove(`${key}:${anim}`);
+  const tex = scene.textures.addCanvas(key, sheet.canvas);
+  sheet.frames.forEach((f) => tex.add(f.name, 0, f.x, 0, sheet.fw, sheet.fh));
+  for (const [anim, spec] of Object.entries(ANIM_SPEC)) {
+    scene.anims.create({
+      key: `${key}:${anim}`,
+      frames: Array.from({ length: spec.frames }, (_, i) => ({ key, frame: `${anim}_${i}` })),
+      frameRate: cfg.kind === 'heavy' ? Math.round(spec.rate * 0.8) : spec.rate,
+      repeat: spec.repeat,
+    });
+  }
+  return { fw: sheet.fw, fh: sheet.fh, bodyW: Math.round(rig.W * (cfg.kind === 'quad' ? 0.8 : 0.6)), bodyH: rig.H, floatPad: cfg.kind === 'float' ? 10 : 0 };
 }

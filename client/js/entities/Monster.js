@@ -23,7 +23,9 @@ export class Monster extends Phaser.Physics.Arcade.Sprite {
     scene.physics.add.existing(this);
     this.setOrigin(0.5, 1).setDepth(8);
     const { w, h } = def.frame;
-    this.body.setSize(Math.round(w * 0.6), Math.round(h * 0.85)).setOffset(Math.round(w * 0.2), Math.round(h * 0.15));
+    // hitbox: ใช้ขนาดตัวจริงจากหุ่นตัดต่อ (เฟรมมีขอบเผื่อท่าทาง) ถ้ามี
+    const bw = def.frame.bodyW || Math.round(w * 0.6), bh = Math.round((def.frame.bodyH || h) * 0.85);
+    this.body.setSize(bw, bh).setOffset(Math.round((w - bw) / 2), h - 2 - bh - (def.frame.floatPad ? 4 : 0));
     this.setCollideWorldBounds(true);
 
     this.isFlyer = def.behavior === 'flyer';
@@ -35,7 +37,9 @@ export class Monster extends Phaser.Physics.Arcade.Sprite {
     this.label = makeText(scene, 0, 0, `Lv.${def.level} ${def.nameTh}`, { fontSize: '6px', color: '#f5b7b1' }).setOrigin(0.5).setDepth(9);
 
     this.on(EV.ANIMATION_UPDATE, (anim, frame) => {
-      if (anim.key === `${this.key}:attack` && frame.index === 2) scene.combat.monsterStrike(this);
+      if (anim.key === `${this.key}:attack` && frame.index === (anim.frames.length >= 6 ? 4 : 2)) scene.combat.monsterStrike(this);
+      // ฝุ่นตอนเท้าแตะพื้น (ผีที่เดินด้วยขา)
+      if (anim.key === `${this.key}:walk` && !this.isFlyer && anim.frames.length >= 8 && (frame.index === 3 || frame.index === 7) && this.body.blocked.down) scene.combat.dust?.(this.x, this.y, 3);
     });
     this.on(EV.ANIMATION_COMPLETE, (anim) => {
       if (anim.key === `${this.key}:die`) { this.setVisible(false); this.showUi(false); return; }
@@ -138,6 +142,7 @@ export class Monster extends Phaser.Physics.Arcade.Sprite {
     }
     if (this.state === 'attack') return;
     this.setVelocityX(vx);
+    this.animateMove(vx);
 
     // การเคลื่อนที่แนวตั้งตามประเภท
     if (this.isFlyer) {
@@ -147,6 +152,15 @@ export class Monster extends Phaser.Physics.Arcade.Sprite {
       this.setVelocityY(-220);
       this.nextJump = time + rand(900, 1600);
     }
+  }
+
+  /** เลือกท่ายืน/เดิน + ความเร็วท่าเดินตามความเร็วจริง (เท้าไม่ไถลบนพื้น) */
+  animateMove(vx) {
+    const hasIdle = this.scene.anims.exists(`${this.key}:idle`);
+    const speed = Math.abs(vx);
+    if (speed < 4 && hasIdle) { this.play(`${this.key}:idle`, true); this.anims.timeScale = 1; return; }
+    this.play(`${this.key}:walk`, true);
+    this.anims.timeScale = Phaser.Math.Clamp(speed / Math.max(10, this.def.speed * 0.8), 0.45, 1.5);
   }
 
   /** ระยะตีประชิด (ช่องว่างระหว่างขอบ hitbox) */
@@ -167,6 +181,7 @@ export class Monster extends Phaser.Physics.Arcade.Sprite {
     this.lastAttack = time;
     this.state = 'attack';
     this.setVelocityX(0);
+    this.anims.timeScale = 1;
     this.play(`${this.key}:attack`);
   }
 
@@ -209,6 +224,7 @@ export class Monster extends Phaser.Physics.Arcade.Sprite {
     if (this.def.level >= 8) { this.setVelocityX(dir * knock * 0.2); return; }
     this.state = 'hit';
     this.setVelocityX(dir * knock);
+    this.anims.timeScale = 1;
     this.play(`${this.key}:hit`);
   }
 
@@ -217,6 +233,7 @@ export class Monster extends Phaser.Physics.Arcade.Sprite {
     this.hp = 0;
     this.body.enable = false;
     this.showUi(false);
+    this.anims.timeScale = 1;
     this.play(`${this.key}:die`);
     this.scene.combat.onMonsterKilled(this);
     this.scene.time.delayedCall(RESPAWN_MS, () => this.reset(rand(this.def.zone[0], this.def.zone[1])));
