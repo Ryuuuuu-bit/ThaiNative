@@ -16,11 +16,12 @@ const AGGRO_X = 170, AGGRO_Y = 90, RESPAWN_MS = 9000;
 export class Monster extends Phaser.Physics.Arcade.Sprite {
   constructor(scene, id, gi = -1) {
     const def = MONSTERS[id];
+    if (def.art) def.frame = MONSTERS[def.art].frame;            // บอสภาคใช้ภาพผีประจำแมพ (ขยาย)
     const x = rand(def.zone[0], def.zone[1]);
-    super(scene, x, WORLD.groundY - 40, `mon_${id}`, 'walk_0');
+    super(scene, x, WORLD.groundY - 40, `mon_${def.art || id}`, 'walk_0');
     this.id = id;
     this.def = def;
-    this.key = `mon_${id}`;
+    this.key = `mon_${def.art || id}`;
     this.gi = gi;                                // ลำดับผีทั้งเกม (ตรงกับ server)
     this.srv = null;                             // สถานะล่าสุดจาก server
 
@@ -36,11 +37,17 @@ export class Monster extends Phaser.Physics.Arcade.Sprite {
     this.isFlyer = def.behavior === 'flyer';
     this.home = MAPS[def.mapId] || null;        // แมพของผีตัวนี้ (ห้ามออกนอกแมพ)
     if (this.isFlyer) this.body.setAllowGravity(false);
+    if (def.regionBoss) {                       // บอสประจำภาค: ตัวใหญ่ + ย้อมสี + ไม่มี AI ในเครื่อง (server เท่านั้น)
+      this.isRegionBoss = true;
+      this.setScale(def.scale || 1.8).setTint(def.tint || 0xffffff);
+      this.baseTint = def.tint || 0xffffff;
+      this.bossGlow = scene.add.ellipse(x, WORLD.groundY, 70, 9, def.tint || 0xf1c40f, 0.35).setDepth(7).setVisible(false);
+    }
 
     // หลอดเลือด + ชื่อ
     this.hpBg = scene.add.rectangle(0, 0, 20, 3, 0x000000, 0.7).setDepth(9);
     this.hpBar = scene.add.rectangle(0, 0, 20, 3, 0xe74c3c).setOrigin(0, 0.5).setDepth(9);
-    this.label = makeText(scene, 0, 0, `Lv.${def.level} ${def.nameTh}`, { fontSize: '6px', color: '#f5b7b1' }).setOrigin(0.5).setDepth(9);
+    this.label = makeText(scene, 0, 0, `Lv.${def.level} ${def.nameTh}`, { fontSize: def.regionBoss ? '8px' : '6px', color: def.regionBoss ? '#f9e79f' : '#f5b7b1' }).setOrigin(0.5).setDepth(9);
 
     this.on(EV.ANIMATION_UPDATE, (anim, frame) => {
       if (anim.key === `${this.key}:attack` && frame.index === (anim.frames.length >= 6 ? 4 : 2)) scene.combat.monsterStrike(this);
@@ -53,6 +60,7 @@ export class Monster extends Phaser.Physics.Arcade.Sprite {
     });
 
     this.reset(x);
+    if (def.regionBoss) { this.state = 'dead'; this.setVisible(false); this.showUi(false); this.body.enable = false; }   // รอ server สั่งเกิด
   }
 
   /** มีชีวิต + อยู่ในแมพที่ผู้เล่นอยู่ (ผีแมพอื่นถูกพักไว้ ตี/โดนตีไม่ได้) */
@@ -176,13 +184,14 @@ export class Monster extends Phaser.Physics.Arcade.Sprite {
     this.setPosition(x, this.isFlyer ? this.homeY : WORLD.groundY - 5);
     this.body.setVelocity(0, 0);
     this.setAlpha(1).clearTint();
+    if (this.baseTint) this.setTint(this.baseTint);
     this.body.enable = true;
     this.setVisible(this.active && !this.awaitSync);   // เกิดใหม่ตอนผู้เล่นอยู่แมพอื่น → ยังซ่อนไว้
     this.showUi(this.active && !this.awaitSync);
     this.play(`${this.key}:walk`);
   }
 
-  showUi(v) { this.hpBg.setVisible(v); this.hpBar.setVisible(v); this.label.setVisible(v); }
+  showUi(v) { this.hpBg.setVisible(v); this.hpBar.setVisible(v); this.label.setVisible(v); this.bossGlow?.setVisible(v); }
 
   update(time, player) {
     this.checkNightOnly();
@@ -194,10 +203,12 @@ export class Monster extends Phaser.Physics.Arcade.Sprite {
     if (this.x < lo) { this.x = lo; if (this.body.velocity.x < 0) this.body.velocity.x = 0; }
     else if (this.x > hi) { this.x = hi; if (this.body.velocity.x > 0) this.body.velocity.x = 0; }
     const d = this.def;
-    const { h } = d.frame;
-    this.hpBg.setPosition(this.x, this.y - h - 3);
-    this.hpBar.setPosition(this.x - 10, this.y - h - 3).setSize(20 * (this.hp / d.hp), 3);
+    const h = d.frame.h * (d.scale || 1);
+    const bw = d.regionBoss ? 44 : 20;
+    this.hpBg.setPosition(this.x, this.y - h - 3).setSize(bw, 3);
+    this.hpBar.setPosition(this.x - bw / 2, this.y - h - 3).setSize(bw * Math.max(0, this.hp / d.hp), 3);
     this.label.setPosition(this.x, this.y - h - 9);
+    if (this.bossGlow) { this.bossGlow.setPosition(this.x, WORLD.groundY); this.bossGlow.setScale(1 + Math.sin(time / 300) * 0.08, 1); }
 
     // ติดสถานะมึนงง/ตรึง → ขยับไม่ได้
     if (time < (this.stunnedUntil || 0)) {
@@ -207,6 +218,7 @@ export class Monster extends Phaser.Physics.Arcade.Sprite {
     } else if (this.anims.isPaused) { this.anims.resume(); this.clearTint(); }
 
     if (this.synced) return this.follow();
+    if (this.isRegionBoss) { this.setVelocity(0, 0); return; }     // บอสภาคไม่มี AI ในเครื่อง
 
     if (this.state === 'attack' || this.state === 'hit') {
       if (this.isFlyer) this.setVelocity(this.body.velocity.x * 0.9, this.body.velocity.y * 0.9);
@@ -338,10 +350,11 @@ export class Monster extends Phaser.Physics.Arcade.Sprite {
     if (net) this.hp = Math.max(1, this.hp - result.dmg);   // server ตัดสินตาย (mob:die) · แสดง HP ล่วงหน้า
     else this.hp -= result.dmg;
     this.setTintFill(0xffffff);
-    this.scene.time.delayedCall(70, () => this.alive && this.clearTint());
+    this.scene.time.delayedCall(70, () => { if (!this.alive) return; this.clearTint(); if (this.baseTint) this.setTint(this.baseTint); });
     if (!net && this.hp <= 0) return this.die();
     this.scene.ui?.setTarget(this);
-    // มอนสเตอร์ Lv.8+ มี "เกราะ" ไม่สะดุ้งเวลาโดนตี (ไม่ถูกขัดจังหวะโจมตี)
+    // มอนสเตอร์ Lv.8+ / บอสภาค มี "เกราะ" ไม่สะดุ้งเวลาโดนตี (ไม่ถูกขัดจังหวะโจมตี)
+    if (this.isRegionBoss) return;
     if (this.def.level >= 8) { this.setVelocityX(dir * knock * 0.2); return; }
     this.state = 'hit';
     this.setVelocityX(dir * knock);
@@ -372,6 +385,8 @@ export class Monster extends Phaser.Physics.Arcade.Sprite {
     this.scene.combat.onMonsterKilled(this);
     this.scene.time.delayedCall(RESPAWN_MS, () => this.reset(rand(this.def.zone[0], this.def.zone[1])));
   }
+
+  destroy(fromScene) { this.bossGlow?.destroy(); super.destroy(fromScene); }
 
   /** ค่าสำหรับคำนวณความเสียหาย */
   get atkStats() { const a = Math.round(this.def.atk * this.mods.atk); return { patk: a, matk: a, accuracy: this.def.acc, critRate: 0.05, critDmg: 1.5 }; }

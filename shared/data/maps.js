@@ -4,7 +4,7 @@
 //  ใช้ร่วมกันทั้ง client และ server
 // ============================================================
 import { WORLD } from '../constants.js';
-import { MONSTERS } from './monsters.js';
+import { MONSTERS, MONSTER_IDS } from './monsters.js';
 
 /** ภาค: ฉากหลัง, เพลง, บรรยากาศ, สีหมอก, สีพื้น, ของตกแต่ง */
 export const REGIONS = {
@@ -78,14 +78,20 @@ const arena = {
   id: 'arena', no: 21, nameTh: 'ลานพญายักษ์', region: 'r5', boss: true, minX: lastX, maxX: lastX + 700,
   minLv: 26, respawnX: lastX + 70, arriveX: lastX + 90, safeEndX: lastX + 120, gates: [{ x: lastX + 32 }],
 };
+/** สุสานใต้ดิน (ดันเจี้ยนปาร์ตี้) – แยกห้องตามปาร์ตี้ (instance) เข้าได้ทางหลวงพ่อทองในหมู่บ้านเท่านั้น */
+const dgX = arena.maxX + 100;
+const dungeon = {
+  id: 'dungeon', no: 22, nameTh: 'สุสานใต้ดิน', region: 'r4', dungeon: true, minX: dgX, maxX: dgX + 1300,
+  minLv: 5, respawnX: dgX + 90, arriveX: dgX + 110, safeEndX: dgX + 180, gates: [{ x: dgX + 32 }], noTravel: true,
+};
 
-export const MAP_LIST = [village, ...hunts, arena];
+export const MAP_LIST = [village, ...hunts, arena, dungeon];
 export const MAPS = Object.fromEntries(MAP_LIST.map((m) => [m.id, m]));
 export const HUNT_MAPS = hunts;
 
 // ตรวจว่าค่าคงที่โลกตรงกับจำนวนแมพ
-if (WORLD.width !== arena.maxX || WORLD.arenaX !== arena.minX || WORLD.graveX !== hunts[12].minX) {
-  console.warn('[maps] WORLD constants mismatch', { width: arena.maxX, arenaX: arena.minX, graveX: hunts[12].minX });
+if (WORLD.width !== dungeon.maxX || WORLD.arenaX !== arena.minX || WORLD.arenaEndX !== arena.maxX || WORLD.graveX !== hunts[12].minX) {
+  console.warn('[maps] WORLD constants mismatch', { width: dungeon.maxX, arenaX: arena.minX, arenaEndX: arena.maxX, graveX: hunts[12].minX });
 }
 
 // ผีแต่ละชนิดอยู่แมพเดียว: เกิดทั่วแมพ (เว้นจุดพักซ้าย), ตัวละ 5 (อสุรกาย 2)
@@ -97,8 +103,38 @@ for (const h of hunts) {
   if (m.nightOnly) { m.nightOnly = false; m.nightBoost = true; }   // แมพเดี่ยว: มีทั้งวัน แต่กลางคืนดุขึ้น
 }
 
+// ============================================================
+//  บอสประจำภาค (เจ้าถิ่น): แมพสุดท้ายของแต่ละภาค · 1 ตัว · เกิดใหม่ทุก 20 นาที (server คุม)
+//  ใช้ภาพผีประจำแมพนั้นขยายใหญ่ · ต่อท้าย MONSTER_IDS (ลำดับ gi ของผีเดิมไม่เลื่อน)
+// ============================================================
+const RB_INFO = {
+  r1: { nameTh: 'นางพญาตานีทอง', hp: 25, tint: 0xf7dc6f },
+  r2: { nameTh: 'เปรตราชาหิวโหย', hp: 25, tint: 0xbb8fce },
+  r3: { nameTh: 'พญาโขมดไฟ', hp: 25, tint: 0xff7043 },
+  r4: { nameTh: 'ผีโพงเจ้าห้วย', hp: 25, tint: 0x76d7c4 },
+  r5: { nameTh: 'ท้าวอสุรกายทมิฬ', hp: 12, tint: 0xe74c3c },
+};
+export const REGION_BOSS_IDS = [];
+for (const R of Object.values(REGIONS)) {
+  const h = [...hunts].reverse().find((m) => m.region === R.id), b = MONSTERS[h.mon], I = RB_INFO[R.id];
+  const id = `rb_${R.id}`;
+  if (!MONSTERS[id]) {
+    MONSTERS[id] = {
+      ...b, nameTh: `👑 ${I.nameTh}`, nameEn: `Region Boss ${R.no}`, desc: `เจ้าถิ่นแห่ง${R.nameTh}`, art: h.mon, regionBoss: true, region: R.id, scale: 1.8, tint: I.tint,
+      level: b.level + 3, hp: Math.round(b.hp * I.hp), atk: Math.round(b.atk * 1.7), def: Math.round(b.def * 1.4 + 3), acc: b.acc + 8, eva: Math.round(b.eva * 0.6),
+      exp: Math.round(b.exp * 30), gold: b.gold.map((g) => Math.round(g * 25)), count: 1, zone: [h.safeEndX + 300, h.maxX - 120], mapId: h.id,
+      respawnMs: 20 * 60 * 1000, attackRange: Math.round(b.attackRange * 1.6), attackCooldown: Math.max(1600, Math.round(b.attackCooldown * 1.3)),
+      speed: Math.round(b.speed * 0.8), drops: (b.drops || []).map((d) => ({ ...d, chance: 1 })), nightBoost: false, nightOnly: false,
+    };
+    MONSTER_IDS.push(id);
+  }
+  REGION_BOSS_IDS.push(id);
+  h.rboss = id;
+}
+
 export function mapAt(x) {
   if (x < HUNT_X0 - 35) return village;
+  if (x >= dungeon.minX - 35) return dungeon;
   if (x >= arena.minX - 35) return arena;
   const i = Math.max(0, Math.min(hunts.length - 1, Math.floor((x - HUNT_X0 + 50) / MAP_STEP)));
   return hunts[i];

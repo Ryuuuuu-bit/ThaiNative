@@ -4,6 +4,8 @@
 // ============================================================
 import express from 'express';
 import { createStore, hashPassword, verifyPassword } from './store.js';
+import { newCharacter, migrate } from '../shared/charmodel.js';
+import { runAction } from '../shared/economy.js';
 
 const USER_RE = /^[A-Za-z0-9_฀-๿]{3,20}$/;       // อังกฤษ/ตัวเลข/_/ไทย 3–20 ตัว
 const MAX_CHAR_BYTES = 128 * 1024;
@@ -11,8 +13,9 @@ const MAX_CHAR_BYTES = 128 * 1024;
 const ADMIN_IDS = new Set(String(process.env.ADMIN_IDS || '').split(',').map((s) => s.trim().toLowerCase()).filter(Boolean));
 export const isAdmin = (username) => !!username && ADMIN_IDS.has(String(username).toLowerCase());
 
-export function setupAuth(app) {
+export function setupAuth(app, hooks = {}) {
   const storeReady = createStore();
+  const live = (accId) => hooks.onlineChar?.(accId) || null;       // ตัวละครที่กำลังออนไลน์ (server ถือข้อมูลล่าสุด)
   const api = express.Router();
   api.use(express.json({ limit: '200kb' }));
 
@@ -91,15 +94,31 @@ export function setupAuth(app) {
   }));
 
   api.get('/me', auth(async (req, res) => {
-    res.json({ account: pub(req.account), character: await req.store.getCharacter(req.account.id) });
+    res.json({ account: pub(req.account), character: live(req.account.id) || await req.store.getCharacter(req.account.id) });
   }));
 
+  // สร้างตัวละครใหม่: server สร้างเองจากชื่อ + รูปลักษณ์ (client ส่งค่าพลัง/ของ/เงินมาเองไม่ได้)
+  api.post('/character/new', limited, auth(async (req, res) => {
+    const { name, appearance, weapon } = req.body || {};
+    if (typeof name !== 'string' || !appearance || typeof appearance !== 'object') return res.status(400).json({ error: 'ข้อมูลตัวละครไม่ถูกต้อง' });
+    if (live(req.account.id)) return res.status(409).json({ error: 'ตัวละครนี้กำลังออนไลน์อยู่ที่อื่น' });
+    const c = newCharacter(name, appearance);
+    if (typeof weapon === 'string') runAction(c, 'equip', { id: weapon });
+    await req.store.saveCharacter(req.account.id, c);
+    res.json({ character: c });
+  }));
+
+  // เซฟจาก client (เวอร์ชันเก่า/ปิดแท็บ): รับเฉพาะ Hotbar – ของ/เงิน/เลเวล server เป็นคนเซฟเองเท่านั้น
   api.put('/character', auth(async (req, res) => {
     const data = req.body?.character;
-    if (!data || typeof data !== 'object' || Array.isArray(data) || typeof data.name !== 'string' || !data.appearance)
-      return res.status(400).json({ error: 'ข้อมูลตัวละครไม่ถูกต้อง' });
+    if (!data || typeof data !== 'object' || Array.isArray(data)) return res.status(400).json({ error: 'ข้อมูลตัวละครไม่ถูกต้อง' });
     if (Buffer.byteLength(JSON.stringify(data)) > MAX_CHAR_BYTES) return res.status(413).json({ error: 'ข้อมูลตัวละครใหญ่เกินไป' });
-    await req.store.saveCharacter(req.account.id, data);
+    if (live(req.account.id)) return res.json({ ok: true, ignored: true });
+    const cur = migrate(await req.store.getCharacter(req.account.id));
+    if (!cur) return res.status(404).json({ error: 'ยังไม่มีตัวละคร' });
+    const hb = data.hotbar && typeof data.hotbar === 'object' ? data.hotbar : null;
+    if (hb) for (const k of Object.keys(cur.hotbar)) if (hb[k] === null || (typeof hb[k] === 'string' && cur.skills[hb[k]] > 0)) cur.hotbar[k] = hb[k];
+    await req.store.saveCharacter(req.account.id, cur);
     res.json({ ok: true });
   }));
 

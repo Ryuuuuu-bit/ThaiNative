@@ -9,7 +9,8 @@ import { rollGearDrop } from '/shared/data/gear.js';
 import { WORLD } from '/shared/constants.js';
 import { getDerived, gainExp } from './Character.js';
 import { PATH_LV } from '/shared/data/classes.js';
-import { addItem } from './Inventory.js';
+import { grantKill } from '/shared/economy.js';
+import { QUEST_BY_ID } from '/shared/data/village.js';
 import { makeText, rand } from './util.js';
 
 export class Combat {
@@ -226,11 +227,11 @@ export class Combat {
     const c = player.char, d = getDerived(c);
     if (sk.heal) {
       const amt = Math.round(d.maxHp * sk.heal);
-      c.hp = Math.min(d.maxHp, c.hp + amt);
+      if (!this.scene.econ?.server) c.hp = Math.min(d.maxHp, c.hp + amt);      // ออนไลน์: server ฮีลให้ (pl:hp)
       this.popupText(player.x, player.y - 46, `+${amt} HP`, '#58d68d', 10);
     }
+    player.buffs = player.buffs.filter((b) => b.sk !== sk.id);
     player.buffs.push({ buff: sk.buff, until: this.scene.time.now + sk.duration, name: sk.nameTh, icon: sk.icon, sk: sk.id, untilMs: Date.now() + sk.duration });
-    this.scene.sendChar?.();
     this.popupText(player.x, player.y - 56, sk.nameTh, '#f7dc6f', 9);
     this.burst(player.x, player.y - 18, 0xf7dc6f, 18);
 
@@ -343,7 +344,7 @@ export class Combat {
     } else {
       this.sfx.play('enemySwing');
       // โดนเมื่อช่องว่างระหว่างขอบ hitbox ≤ ระยะตี (+6 เผื่อผู้เล่นขยับ) และอยู่ระดับความสูงเดียวกัน
-      if (mon.gapTo(p) <= mon.reach + 6 && mon.verticalOverlap(p, 4)) {
+      if (!this.scene.econ?.server && mon.gapTo(p) <= mon.reach + 6 && mon.verticalOverlap(p, 4)) {   // ออฟไลน์เท่านั้น (ออนไลน์ server ตัดสิน)
         const d = p.combatStats();
         p.takeHit(rollDamage(mon.atkStats, { def: d.def, eva: d.eva }, 'physical', 1), mon.x);
       }
@@ -352,8 +353,10 @@ export class Combat {
 
   onShotHitPlayer(shot) {
     if (!shot.active || !this.player.alive) return;
-    const d = this.player.combatStats();
-    this.player.takeHit(rollDamage(shot.getData('atk'), { def: d.def, eva: d.eva }, 'magic', 1), shot.getData('fromX'));
+    if (!this.scene.econ?.server) {
+      const d = this.player.combatStats();
+      this.player.takeHit(rollDamage(shot.getData('atk'), { def: d.def, eva: d.eva }, 'magic', 1), shot.getData('fromX'));
+    }
     shot.destroy();
   }
 
@@ -369,37 +372,23 @@ export class Combat {
   // ============================================================
   //  รางวัล
   // ============================================================
+  /** ออฟไลน์: ผีตาย → คำนวณรางวัลในเครื่อง (สูตรเดียวกับ server) */
   onMonsterKilled(mon) {
-    const c = this.player.char;
-    const def = mon.def;
-    // ตัวคูณ: กลางคืน/เดือนดับ × พรจากเซียมซี/ศาลพระภูมิ
+    const c = this.player.char, def = mon.def;
     const m = mon.mods, bl = this.player.blessingMods();
-    const gold = Math.round(rand(def.gold[0], def.gold[1]) * m.gold * bl.goldMul);
-    const exp = Math.round(def.exp * m.exp * bl.expMul);
-    c.gold += gold;
-    const tag = m.exp > 1 ? ' 🌙' : '';
-    this.popupText(mon.x, mon.y - def.frame.h - 8, `+${exp} EXP  +฿${gold}${tag}`, m.exp > 1 ? '#d7bde2' : '#f7dc6f');
-    this.sfx.play('ghostDie');
-    this.scene.time.delayedCall(250, () => this.sfx.play('coin'));
-    this.grantExp(exp);
-    this.scene.social?.shareExp(exp);          // แบ่ง EXP ให้เพื่อนในปาร์ตี้ที่อยู่ใกล้
-    this.scene.village?.questEvent('kill', mon.id);
-    this.scene.forest?.onKill(mon.id);
-
-    this.scene.ui.loot(`☠️ ${def.nameTh}: +${exp} EXP · +฿${gold}`);
-    for (const drop of def.drops) {
-      if (Math.random() < drop.chance * bl.dropMul) {
-        addItem(c, drop.item);
-        this.scene.ui.loot(`🎁 ได้รับ ${ITEMS[drop.item].icon} ${ITEMS[drop.item].nameTh}`);
-      }
-    }
-    const gear = rollGearDrop(def.level, bl.dropMul);           // ออฟไลน์: อุปกรณ์ขั้นสูง (หายาก)
-    if (gear) { addItem(c, gear); this.scene.ui.loot(`✨ ได้รับ ${ITEMS[gear].nameTh} (Lv.${ITEMS[gear].lv})`); this.scene.ui.banner(`✨ ดรอปหายาก! ${ITEMS[gear].nameTh}`); }
-    this.scene.saveSoon();
+    const out = {
+      mon: mon.id, kind: 'kill', night: m.exp > 1, x: mon.x, y: mon.y,
+      gold: Math.round(rand(def.gold[0], def.gold[1]) * m.gold * bl.goldMul), exp: Math.round(def.exp * m.exp * bl.expMul),
+      items: def.drops.filter((d) => Math.random() < d.chance * bl.dropMul).map((d) => ({ id: d.item, qty: 1 })),
+    };
+    const gear = rollGearDrop(def.level, bl.dropMul);
+    if (gear) out.items.push({ id: gear, qty: 1, rare: true });
+    Object.assign(out, grantKill(c, out));
+    this.onServerReward(out, true);
   }
 
-  /** รางวัลจาก server (ออนไลน์): EXP/เงิน/ของดรอป คำนวณฝั่ง server แล้ว */
-  onServerReward(r) {
+  /** รางวัลฆ่าผี (server ใส่เซฟให้แล้ว → แสดงผลอย่างเดียว) */
+  onServerReward(r, local = false) {
     const c = this.player.char, def = MONSTERS[r.mon];
     if (!def) return;
     const x = r.x ?? this.player.x, y = (r.y ?? this.player.y) - def.frame.h - 8;
@@ -407,49 +396,47 @@ export class Combat {
       this.popupText(x, y, `+${r.exp} EXP (ช่วยตี)`, '#aed6f1');
       this.scene.ui.loot(`🤝 ช่วยตี ${def.nameTh}: +${r.exp} EXP`);
     } else {
-      c.gold += r.gold || 0;
       this.popupText(x, y, `+${r.exp} EXP  +฿${r.gold}${r.night ? ' 🌙' : ''}`, r.night ? '#d7bde2' : '#f7dc6f');
       this.sfx.play('ghostDie');
       this.scene.time.delayedCall(250, () => this.sfx.play('coin'));
       this.scene.ui.loot(`☠️ ${def.nameTh}: +${r.exp} EXP · +฿${r.gold}`);
       for (const it of r.items || []) {
-        addItem(c, it.id, it.qty || 1);
         const I = ITEMS[it.id];
         this.scene.ui.loot(`${it.rare ? '✨' : '🎁'} ได้รับ ${I.icon} ${I.nameTh}${I.lv ? ` (Lv.${I.lv})` : ''}`);
         if (it.rare) { this.scene.ui.banner(`✨ ดรอปหายาก! ${I.nameTh}`); this.sfx.play('levelup'); }
       }
     }
-    this.grantExp(r.exp || 0);
-    this.scene.village?.questEvent('kill', r.mon);
-    this.scene.forest?.onKill(r.mon);
-    this.scene.saveSoon();
+    this.afterGrant(r);
+    if (local) this.scene.saveSoon();
   }
 
-  /** ช่วยเพื่อนตีผี (ทำดาเมจ ≥15%) → ได้ EXP เต็ม + นับเควส (เงิน/ของดรอปเป็นของคนตีจบ) */
-  onAssist(mon) {
-    const def = mon.def, m = mon.mods, bl = this.player.blessingMods();
-    const exp = Math.round(def.exp * m.exp * bl.expMul);
-    this.popupText(mon.x, mon.y - def.frame.h - 8, `+${exp} EXP (ช่วยตี)`, '#aed6f1');
-    this.scene.ui.loot(`🤝 ช่วยตี ${def.nameTh}: +${exp} EXP`);
-    this.grantExp(exp);
-    this.scene.village?.questEvent('kill', mon.id);
-    this.scene.forest?.onKill(mon.id);
-    this.scene.saveSoon();
+  /** หลังได้รางวัล (server หรือออฟไลน์): เลเวลอัป · เควสครบ · ค่าหัวครบ · ฉายาใหม่ */
+  afterGrant(r = {}) {
+    if (r.ups) this.levelUpFx(r.ups);
+    for (const qid of r.quests || []) { const q = QUEST_BY_ID[qid]; if (q) { this.scene.ui.toast(`✔ เควส "${q.nameTh}" ครบแล้ว! กลับไปหาผู้ใหญ่ชัย`); this.sfx.play('blessing'); } }
+    if (r.bounty) this.scene.ui.toast(`📜 ค่าหัว "${MONSTERS[r.bounty]?.nameTh}" ครบแล้ว! กลับไปหาพรานบุญที่ค่าย`);
+    if (r.titles?.length) this.scene.social?.onNewTitles(r.titles);
+    this.scene.village?.renderTracker();
+    this.scene.ui.hudCache = '';
   }
 
-  /** ได้ EXP (จากผี / ปาร์ตี้ / เรดบอส) + เอฟเฟกต์เลเวลอัป */
-  grantExp(amount) {
+  /** เอฟเฟกต์เลเวลอัป (ค่าในเซฟถูกเพิ่มแล้ว) */
+  levelUpFx(ups) {
     const c = this.player.char;
-    const ups = gainExp(c, amount);
-    if (ups) {
-      this.scene.ui.toast(`+${ups * 5} แต้มสถานะ (กด C เพื่ออัปค่าพลัง)`);
-      this.scene.ui.banner(`LEVEL UP!  Lv.${c.level}`);
-      this.popupText(this.player.x, this.player.y - 50, 'LEVEL UP!', '#f1c40f', 12);
-      this.burst(this.player.x, this.player.y - 20, 0xf1c40f, 24);
-      this.sfx.play('levelup');
-      if (!c.path && c.level >= PATH_LV && c.level - ups < PATH_LV)
-        this.scene.time.delayedCall(1800, () => this.scene.ui.banner(`🎖️ Lv.${PATH_LV}! ไปหาผู้ใหญ่ชัยที่หมู่บ้านเพื่อเลือกสายหลัก`));
-    }
+    this.scene.ui.toast(`+${ups * 5} แต้มสถานะ (กด C เพื่ออัปค่าพลัง)`);
+    this.scene.ui.banner(`LEVEL UP!  Lv.${c.level}`);
+    this.popupText(this.player.x, this.player.y - 50, 'LEVEL UP!', '#f1c40f', 12);
+    this.burst(this.player.x, this.player.y - 20, 0xf1c40f, 24);
+    this.sfx.play('levelup');
+    if (!c.path && c.level >= PATH_LV && c.level - ups < PATH_LV)
+      this.scene.time.delayedCall(1800, () => this.scene.ui.banner(`🎖️ Lv.${PATH_LV}! ไปหาผู้ใหญ่ชัยที่หมู่บ้านเพื่อเลือกสายหลัก`));
+  }
+
+  /** ได้ EXP ในเครื่อง (ออฟไลน์เท่านั้น) */
+  grantExp(amount) {
+    if (this.scene.econ?.server) return 0;
+    const ups = gainExp(this.player.char, amount);
+    if (ups) this.levelUpFx(ups);
     return ups;
   }
 

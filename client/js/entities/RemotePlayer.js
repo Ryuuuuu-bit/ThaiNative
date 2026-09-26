@@ -7,6 +7,7 @@ import { Aura } from '../gfx/Aura.js';
 import { NET } from '/shared/constants.js';
 import { bakeCharacter } from '../gfx/SpriteFactory.js';
 import { makeText } from '../systems/util.js';
+import { TITLE_BY_ID } from '/shared/data/titles.js';
 
 export class RemotePlayer extends Phaser.GameObjects.Sprite {
   constructor(scene, info) {
@@ -23,8 +24,11 @@ export class RemotePlayer extends Phaser.GameObjects.Sprite {
     this.setOrigin(0.5, 1).setDepth(9).setAlpha(0.95);
     this.nameTag = makeText(scene, info.x, info.y - this.height + (this.texture.customData?.padTop || 0), info.name, { fontSize: '7px', color: '#aed6f1' }).setOrigin(0.5).setDepth(9);
     this.hpBar = scene.add.rectangle(info.x, info.y - 40, 18, 2, 0xe59866).setDepth(9);
+    this.titleTag = makeText(scene, info.x, info.y - 50, '', { fontSize: '6px', color: '#f7dc6f' }).setOrigin(0.5).setDepth(9);
     this.aura = new Aura(scene, this);
     this.aura.setTier(info.appearance?.aura || 0);
+    this.inst = info.inst || 0;
+    this.setTitle(info.appearance);
     this.pushState(info);
     // คลิกที่ผู้เล่น → เมนูเชิญปาร์ตี้ / เทรด
     this.setInteractive({ useHandCursor: true, pixelPerfect: false });
@@ -42,9 +46,16 @@ export class RemotePlayer extends Phaser.GameObjects.Sprite {
     if (s.maxHp) { this.hp = s.hp; this.maxHp = s.maxHp; this.hpBar.width = 18 * Phaser.Math.Clamp(s.hp / s.maxHp, 0, 1); }
     if (s.level) this.level = s.level;
     if ('party' in s) this.partyId = s.party;
+    if ('inst' in s) this.inst = s.inst || 0;
+  }
+
+  setTitle(a) {
+    const t = TITLE_BY_ID[a?.title];
+    this.titleTag.setText(t ? `« ${t.nameTh} »` : '').setColor(t?.color || '#f7dc6f');
   }
 
   setAppearance(appearance) {
+    this.setTitle(appearance);
     this.aura.setTier(appearance?.aura || 0);
     this.texKey = bakeCharacter(this.scene, appearance);
     this.setTexture(this.texKey, 'idle_0');
@@ -52,6 +63,9 @@ export class RemotePlayer extends Phaser.GameObjects.Sprite {
   }
 
   update() {
+    // คนละห้องดันเจี้ยน (instance) → มองไม่เห็นกัน
+    const vis = (this.inst || 0) === (this.scene.dungeon?.instId || 0);
+    if (vis !== this.visible) { this.setVisible(vis); this.nameTag.setVisible(vis); this.hpBar.setVisible(vis); this.titleTag.setVisible(vis); this.aura.setVisible?.(vis); }
     this.aura.update(performance.now());
     const renderT = performance.now() - NET.interpDelay;
     const b = this.buffer;
@@ -75,6 +89,7 @@ export class RemotePlayer extends Phaser.GameObjects.Sprite {
       this.play(this.scene.anims.exists(k) ? k : `${this.texKey}:${latest.anim.startsWith('fish') || latest.anim === 'gather' ? 'idle' : 'attack'}`);
     }
     this.nameTag.setPosition(this.x, this.y - this.height + (this.texture.customData?.padTop || 0) + 2);
+    this.titleTag.setPosition(this.x, this.y - this.height + (this.texture.customData?.padTop || 0) - 6);
     this.hpBar.setPosition(this.x, this.y - this.height + (this.texture.customData?.padTop || 0) + 7);
     // เพื่อนร่วมปาร์ตี้: ชื่อสีเขียว + แถบ HP สีเขียว
     const ally = !!this.partyId && this.partyId === this.scene.social?.party?.id;
@@ -94,6 +109,7 @@ export class RemotePlayer extends Phaser.GameObjects.Sprite {
 
   destroy(fromScene) {
     this.nameTag?.destroy();
+    this.titleTag?.destroy();
     this.hpBar?.destroy();
     this.aura?.destroy();
     super.destroy(fromScene);

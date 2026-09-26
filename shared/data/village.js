@@ -70,7 +70,7 @@ export function dailyBounties(level, dayKey, name, monsters) {
   let seed = 0;
   for (const ch of dayKey + name) seed = (seed * 31 + ch.charCodeAt(0)) >>> 0;
   const rnd = () => ((seed = (seed * 1103515245 + 12345) >>> 0) / 4294967296);
-  const pool = Object.entries(monsters).filter(([, m]) => !m.nightOnly && m.level <= level + 1 && m.level >= Math.max(1, level - 5));
+  const pool = Object.entries(monsters).filter(([, m]) => !m.nightOnly && !m.regionBoss && m.mapId && m.level <= level + 1 && m.level >= Math.max(1, level - 5));
   const list = [];
   const used = new Set();
   for (let i = 0; i < Math.min(3, pool.length); i++) {

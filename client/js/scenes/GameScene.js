@@ -4,7 +4,6 @@
 // ============================================================
 import { WORLD, VIEW } from '/shared/constants.js';
 import { MAPS, mapAt, REGIONS } from '/shared/data/maps.js';
-import { charPayload } from '/shared/character.js';
 import { World } from '../systems/World.js';
 import { MONSTER_IDS, MONSTERS } from '/shared/data/monsters.js';
 import { Player } from '../entities/Player.js';
@@ -14,14 +13,17 @@ import { RaidBoss } from '../entities/RaidBoss.js';
 import { Social } from '../systems/Social.js';
 import { Clock } from '../systems/Clock.js';
 import { Shrine } from '../systems/Shrine.js';
-import { Village, FISH_SPOT } from '../systems/Village.js';
+import { Village } from '../systems/Village.js';
+import { FISH_SPOT, NPCS } from '/shared/data/npcs.js';
+import { Dungeon } from '../systems/Dungeon.js';
+import { Econ } from '../net/Econ.js';
 import { Forest } from '../systems/Forest.js';
 import { Combat } from '../systems/Combat.js';
 import { UI } from '../systems/UI.js';
 import { Network } from '../net/Network.js';
 import { getDerived, saveCharacter } from '../systems/Character.js';
 import { account } from '../net/Account.js';
-import { useItem, count, equip, unequip, tradeLock } from '../systems/Inventory.js';
+import { count, tradeLock } from '../systems/Inventory.js';
 import * as Inv from '../systems/Inventory.js';
 import { makeText } from '../systems/util.js';
 import { ITEMS } from '/shared/data/items.js';
@@ -33,19 +35,6 @@ const HP_POTS = ['hp_s', 'hp_m', 'pot_aloe', 'pot_turmeric'];   // ปุ่ม 
 const MP_POTS = ['mp_s', 'mp_m', 'pot_anchan'];
 
 const NPC_X = 720;
-/** ชาวบ้าน (Map 1) – key = ภาพ, fb = ภาพสำรองถ้ายังไม่มี (ย้อมสีจากป้าติ๋มเดิม) */
-const NPCS = [
-  { id: 'shop',  key: 'npc_yai_tim',   x: NPC_X, nameTh: 'ยายติ๋ม', role: 'ร้านยา·ของใช้', color: '#82e0aa', tint: 0xd7bde2, flip: true },
-  { id: 'quest', key: 'npc_lung_chai', x: 520,   nameTh: 'ผู้ใหญ่ชัย', role: 'เควส', color: '#f7dc6f', tint: 0xf0b27a },
-  { id: 'smith', key: 'npc_lung_dam',  x: 846,   nameTh: 'ลุงดำ', role: 'ช่างตีเหล็ก', color: '#f5b041', tint: 0x7f8c8d, flip: true },
-  { id: 'tailor', key: 'npc_mae_choy', x: 380,   nameTh: 'แม่ช้อย', role: 'ร้านชุดแต่งตัว', color: '#f5b7b1', tint: 0xf5b7b1, flip: true },
-  { id: 'cook',  key: 'npc_pa_sa',     x: -300,  nameTh: 'ป้าสา', role: 'ครัว·รับซื้อปลา', color: '#85c1e9', tint: 0xf5cba7, flip: true },
-  // ลานฝึกวิชา: ครูประจำ 4 อาชีพ (ขายอุปกรณ์สายตัวเอง)
-  { id: 'kru_sword',  key: 'npc_kru_sword',  x: -200, nameTh: 'ครูเหม',     role: 'สำนักดาบ',      color: '#f1948a', tint: 0xe6b0aa, flip: true },
-  { id: 'kru_mage',   key: 'npc_kru_mage',   x: -125, nameTh: 'หลวงตาเผือก', role: 'หมอธรรม·อาคม', color: '#bb8fce', tint: 0xd2b4de, flip: true },
-  { id: 'kru_archer', key: 'npc_kru_archer', x: -50,  nameTh: 'พรานแก้ว',   role: 'ค่ายพรานไพร',  color: '#82e0aa', tint: 0xa9dfbf, flip: true },
-  { id: 'kru_boxer',  key: 'npc_kru_boxer',  x: 25,   nameTh: 'ครูแดง',     role: 'ค่ายมวย',      color: '#f5b041', tint: 0xf5cba7, flip: true },
-];
 const SPAWN_X = WORLD.spawnX;
 
 export class GameScene extends Phaser.Scene {
@@ -79,6 +68,7 @@ export class GameScene extends Phaser.Scene {
     this.physics.add.collider(this.monsters, this.platforms, null, notFlyer);
 
     // ---------- ระบบต่างๆ ----------
+    this.econ = new Econ(this);           // เปลี่ยนของ/เงิน/เลเวล → server (ออนไลน์) หรือในเครื่อง (ออฟไลน์)
     this.combat = new Combat(this);
     this.combat.bind(this.player, this.monsters);
     this.ui = new UI(this);
@@ -89,6 +79,7 @@ export class GameScene extends Phaser.Scene {
     this.shrine = new Shrine(this);       // เซียมซี + ศาลพระภูมิ
     this.village = new Village(this);     // ตกปลา · เควส · ครัว · ตีบวก
     this.forest = new Forest(this);       // Map 2: ค่ายพราน · สมุนไพร · หีบสมบัติ · ค่าหัว
+    this.dungeon = new Dungeon(this);     // สุสานใต้ดิน (ดันเจี้ยนปาร์ตี้)
 
     // ---------- กล้อง ----------
     const cam = this.cameras.main;
@@ -104,16 +95,16 @@ export class GameScene extends Phaser.Scene {
       this.forest.cancelGather();
       this.ui.closeAll();                           // ปิดหน้าต่างวาร์ป ฯลฯ ตอนตาย
       this.time.delayedCall(2500, () => {
-        const rx = mapAt(this.player.x).respawnX;   // ฟื้นที่จุดพัก (กองไฟ) ของแมพที่อยู่ตอนนี้ (ตรงกับ server)
+        const cur = mapAt(this.player.x);
+        const rx = cur.dungeon && !this.dungeon.active ? MAPS.village.respawnX : cur.respawnX;   // ฟื้นที่จุดพัก (กองไฟ) ของแมพที่อยู่ตอนนี้ (server แก้ให้ถ้าไม่ตรง)
         this.player.respawn(rx, W.groundY - 2);
         this.net.send('player:warp', { kind: 'respawn' });
         this.setMap(mapAt(rx));
       });
     });
     this.time.addEvent({ delay: 1000, loop: true, callback: () => this.regenTick() });
-    this.time.addEvent({ delay: 10000, loop: true, callback: () => saveCharacter(this.player.char) });
-    // ปิดแท็บ/ซ่อนหน้า → เซฟขึ้น server ทันที (keepalive)
-    this.saveNow = () => { saveCharacter(this.player.char); account.flush(); };
+    this.time.addEvent({ delay: 10000, loop: true, callback: () => saveCharacter(this.player.char) });   // ออฟไลน์เท่านั้น (บัญชีออนไลน์ server เซฟเอง)
+    this.saveNow = () => saveCharacter(this.player.char);
     window.addEventListener('beforeunload', this.saveNow);
     document.addEventListener('visibilitychange', () => document.visibilityState === 'hidden' && this.saveNow());
 
@@ -216,7 +207,7 @@ export class GameScene extends Phaser.Scene {
     this.npcs = NPCS.map((n) => {
       const real = this.textures.exists(n.key);
       const spr = this.add.sprite(n.x, gy, real ? n.key : 'npc_maekha', 'idle_0').setOrigin(0.5, 1).setDepth(6).setFlipX(!!n.flip);
-      if (!real) spr.setTint(n.tint);
+      if (!real || n.forceTint) spr.setTint(n.tint);
       spr.play(`${real ? n.key : 'npc_maekha'}:idle`);
       const tag = makeText(this, n.x, gy - spr.height - 4, `${n.nameTh}`, { fontSize: '8px', color: n.color }).setOrigin(0.5, 1).setDepth(6);
       const role = makeText(this, n.x, gy - spr.height - 17, `[${n.role}]`, { fontSize: '6px', color: '#ecf0f1' }).setOrigin(0.5, 1).setDepth(6);
@@ -294,20 +285,25 @@ export class GameScene extends Phaser.Scene {
     const c = this.player.char;
     const id = ids.find((i) => count(c, i) > 0);
     if (!id) return quiet ? null : this.ui.toast('ไม่มียาเหลือแล้ว', 'warn');
-    const r = useItem(c, id);
-    if (r.ok) this.sfx.play('potion');
-    if (quiet && r.ok) { this.ui.loot(`🧪 กินยาอัตโนมัติ: ${ITEMS[id].nameTh}`); this.ui.result({ ok: true }); }
-    else if (!quiet) this.ui.result(r);
-    return r;
+    if (!this.player.alive) return null;
+    return this.econ.act('use', { id }).then((r) => {
+      if (r.ok) this.sfx.play('potion');
+      if (quiet && r.ok) { this.ui.loot(`🧪 กินยาอัตโนมัติ: ${ITEMS[id].nameTh}`); this.ui.result({ ok: true }); }
+      else if (!quiet) this.ui.result(r);
+      return r;
+    });
   }
 
   /** กินยาอัตโนมัติเมื่อ HP/MP ต่ำกว่า % ที่ตั้งไว้ (ตั้งค่า → การต่อสู้) */
   autoPotion(time) {
     const p = this.player, set = this.settings || {};
-    if (!p.alive || tradeLock.on || time < (this.nextAutoPot || 0)) return;
+    if (!p.alive || tradeLock.on || time < (this.nextAutoPot || 0) || this.econ.pending) return;
     const c = p.char, d = getDerived(c);
-    if (set.autoHp && c.hp / d.maxHp * 100 < set.autoHp && this.quickUse(HP_POTS, true)?.ok) { this.nextAutoPot = time + 1500; return; }
-    if (set.autoMp && c.mp / d.maxMp * 100 < set.autoMp && this.quickUse(MP_POTS, true)?.ok) this.nextAutoPot = time + 1500;
+    const hp = set.autoHp && c.hp / d.maxHp * 100 < set.autoHp && HP_POTS.some((i) => count(c, i));
+    const mp = !hp && set.autoMp && c.mp / d.maxMp * 100 < set.autoMp && MP_POTS.some((i) => count(c, i));
+    if (!hp && !mp) return;
+    this.nextAutoPot = time + 1500;
+    this.quickUse(hp ? HP_POTS : MP_POTS, true);
   }
 
   /** Tab: สลับอาวุธวนไปเรื่อยๆ (อาวุธในกระเป๋า + มือเปล่า) → แนวต่อสู้/Hotbar เปลี่ยนตาม */
@@ -321,9 +317,8 @@ export class GameScene extends Phaser.Scene {
     ring.push(null);                                                     // มือเปล่า = ท้ายวง
     if (ring.length < 2) return this.ui.toast('ไม่มีอาวุธให้สลับ', 'warn');
     const next = ring[(ring.indexOf(cur) + 1) % ring.length];
-    const r = next ? equip(c, next) : unequip(c, 'weapon');
     this.sfx.play('swing');
-    this.ui.result(r);
+    this.ui.result(this.econ.act(next ? 'equip' : 'unequip', next ? { id: next } : { slot: 'weapon' }));
   }
 
   nearNpc() { return Math.abs(this.player.x - NPC_X) < 40 && this.player.alive; }
@@ -367,6 +362,7 @@ export class GameScene extends Phaser.Scene {
     else if (spot.id === 'herb') this.forest.startGather(spot.herb);
     else if (spot.id === 'chest') this.forest.openChest();
     else if (spot.id === 'shrine') this.shrine.openShrine();
+    else if (spot.id === 'dungeon') this.dungeon.openPanel();
     else if (spot.id === 'siamsi') this.shrine.openSiamsi();
   }
 
@@ -433,14 +429,24 @@ export class GameScene extends Phaser.Scene {
       if (!on) {                                                  // หลุดการเชื่อมต่อ → ล้างสถานะออนไลน์ทั้งหมด (ต่อใหม่จะได้ข้อมูลสด)
         this.remotes.forEach((r) => r.destroy()); this.remotes.clear();
         if (this.social) { this.social.party = null; this.social.renderParty(); this.social.closeTrade(); }
-      } else this.sendChar();
+        this.dungeon?.onDisconnect();
+      }
       this.ui.setOnline(on, this.remotes.size);
     })
-      .on('init', ({ players, serverTime, dayMs }) => {
+      .on('init', ({ players, serverTime, dayMs, admin }) => {
         const ids = new Set(players.map((p) => p.id));
         for (const [id, r] of this.remotes) if (!ids.has(id)) { r.destroy(); this.remotes.delete(id); }   // ผีค้าง (ออกไปตอนเราหลุด)
         players.forEach(addRemote); this.ui.setOnline(true, this.remotes.size); if (serverTime) this.clock?.sync(serverTime, dayMs);
+        if (account.account) account.account.admin = !!admin;
+        this.social?.refreshFriends();
       })
+      .on('char:load', (s) => this.econ.apply(s))                                     // server ส่งตัวละครจริง (ของ/เงิน/เลเวล/HP)
+      .on('char:sync', (s) => this.econ.apply(s))
+      .on('rejected', ({ msg }) => { this.ui.toast(msg || 'เข้าเกมไม่สำเร็จ', 'warn', 6000); this.rejected = true; })
+      .on('kicked', ({ msg }) => { this.ui.banner(msg || 'บัญชีนี้เข้าเกมจากเครื่องอื่น'); this.kicked = true; this.net.socket?.disconnect(); this.ui.toast('บัญชีนี้ถูกเข้าใช้จากเครื่องอื่น – รีเฟรชหน้าเพื่อเล่นต่อที่นี่', 'warn', 15000); })
+      .on('pl:hit', (d) => this.player.onServerHit(d))                                 // โดนตี (server ตัดสิน)
+      .on('pl:die', () => this.player.die())
+      .on('pl:hp', ({ hp, maxHp }) => { const c = this.player.char; if (Number.isFinite(hp)) { c.hp = Math.min(hp, getDerived(c).maxHp); } })
       .on('joined', (p) => { addRemote(p); this.ui.chat({ name: '📢 ระบบ', text: `${p.name} เข้าสู่โลก` }); this.ui.setOnline(true, this.remotes.size); })
       .on('left', (id) => { this.remotes.get(id)?.destroy(); this.remotes.delete(id); this.ui.setOnline(true, this.remotes.size); })
       .on('snapshot', ({ t, players, boss }) => {
@@ -463,38 +469,35 @@ export class GameScene extends Phaser.Scene {
       .on('chat', (m) => this.ui.chat(m))
       .on('skill', (d) => this.combat.remoteVfx(d, this.remotes.get(d.id)));   // สกิลของผู้เล่นอื่น
 
-    net.connect(char.name, () => ({ appearance: this.player.char.appearance, x: Math.round(this.player.x), y: Math.round(this.player.y), char: this.charPayload() }));
-    this.time.addEvent({ delay: 8000, loop: true, callback: () => this.sendChar() });
+    if (this.econ.server) net.connect(char.name, () => ({ token: account.token, x: Math.round(this.player.x), y: Math.round(this.player.y) }));
+    else { this.ui.setOnline(false, 0); this.ui.toast('โหมดออฟไลน์: เซฟในเครื่อง · ระบบออนไลน์ (ปาร์ตี้/เรด/ดันเจี้ยน) ใช้ไม่ได้', '', 6000); }
   }
 
-  /** ยันต์คืนถิ่น: ร่าย 2.5 วิ (ขยับ/โดนตี/ตาย = ยกเลิก) → วาร์ปกลับหมู่บ้าน */
+  /** ยันต์คืนถิ่น: ร่าย 2.5 วิ (ขยับ/โดนตี/ตาย = ยกเลิก) → วาร์ปกลับหมู่บ้าน · ในหมู่บ้าน = กลับจุดล่าล่าสุด */
   recall() {
     const p = this.player, c = p.char;
     if (this.recalling || this.warping) return;
-    if (this.map.id === 'village') return this.ui.toast('อยู่ในหมู่บ้านแล้ว', 'warn');
+    const toHunt = this.map.id === 'village';
+    if (toHunt && !MAPS[c.lastHunt]) return this.ui.toast('ยังไม่มีจุดล่าล่าสุด — ไปล่าผีก่อน แล้วกด B ในหมู่บ้านเพื่อกลับไปที่เดิม', 'warn');
     if (!p.alive) return;
     if (!Inv.count(c, 'yant_home')) return this.ui.toast('ไม่มียันต์คืนถิ่น (ซื้อได้ที่ร้านยายติ๋ม ฿40)', 'warn');
     if (Inv.tradeLock.on) return this.ui.toast('กำลังเทรดอยู่', 'warn');
+    if (this.dungeon?.active) return this.ui.toast('อยู่ในดันเจี้ยน – ออกจากดันเจี้ยนก่อน', 'warn');
     const hp0 = c.hp, x0 = p.x, T = 2500, t0 = this.time.now;
     this.recalling = true;
     this.sfx.play('buff');
     const ring = this.add.ellipse(p.x, p.y - 1, 34, 9, 0x76d7c4, 0.35).setDepth(8).setBlendMode(Phaser.BlendModes.ADD);
     const bar = document.getElementById('fish-ui'), fill = document.getElementById('fish-zone');
     bar.classList.remove('hidden'); document.getElementById('fish-bar').classList.remove('hidden');
-    document.getElementById('fish-msg').textContent = '🏠 กำลังร่ายยันต์คืนถิ่น… (ห้ามขยับ)';
+    document.getElementById('fish-msg').textContent = toHunt ? `🏕️ กำลังร่ายยันต์กลับไป ${MAPS[c.lastHunt].nameTh}… (ห้ามขยับ)` : '🏠 กำลังร่ายยันต์คืนถิ่น… (ห้ามขยับ)';
     const end = (ok, msg) => {
       this.recalling = false; ev.remove(); ring.destroy(); bar.classList.add('hidden');
       if (!ok) return msg && this.ui.toast(msg, 'warn');
-      Inv.removeItem(c, 'yant_home', 1);
-      const to = MAPS.village;
-      this.net.send('player:warp', { kind: 'home' });
-      this.cameras.main.fadeOut(220, 10, 30, 30);
-      this.cameras.main.once(Phaser.Cameras.Scene2D.Events.FADE_OUT_COMPLETE, () => {
-        p.setPosition(to.arriveX, WORLD.groundY - 2).setVelocity(0, 0);
-        this.setMap(to);
-        this.cameras.main.centerOn(p.x, p.y).fadeIn(320, 10, 30, 30);
-        this.combat.burst(p.x, p.y - 20, 0x76d7c4, 18);
-        this.saveSoon();
+      this.econ.act('recall', { to: toHunt ? 'hunt' : 'home' }).then((r) => {
+        if (!r.ok) return this.ui.toast(r.msg, 'warn');
+        const to = toHunt ? MAPS[r.to] : MAPS.village, tx = toHunt ? to.respawnX : to.arriveX;
+        this.warpLocal(to, Number.isFinite(r.x) ? r.x : tx);
+        if (r.msg) this.ui.toast(r.msg);
       });
     };
     const ev = this.time.addEvent({ delay: 50, loop: true, callback: () => {
@@ -508,13 +511,24 @@ export class GameScene extends Phaser.Scene {
     } });
   }
 
-  /** ข้อมูลตัวละครที่ server ใช้คำนวณดาเมจ/รางวัล (สถานะ อุปกรณ์ สกิล พร บัฟ) */
-  charPayload() { return charPayload(this.player.char, this.player.buffs || []); }
-  sendChar() { if (this.net?.online) this.net.send('player:char', this.charPayload()); }
+  /** ย้ายตัวเองไปแมพอื่นพร้อมเอฟเฟกต์ (server ตัดสินตำแหน่งแล้ว) */
+  warpLocal(to, x) {
+    const p = this.player;
+    this.cameras.main.fadeOut(220, 10, 30, 30);
+    this.cameras.main.once(Phaser.Cameras.Scene2D.Events.FADE_OUT_COMPLETE, () => {
+      p.setPosition(x, WORLD.groundY - 2).setVelocity(0, 0);
+      this.setMap(to);
+      this.cameras.main.centerOn(p.x, p.y).fadeIn(320, 10, 30, 30);
+      this.combat.burst(p.x, p.y - 20, 0x76d7c4, 18);
+    });
+  }
 
-  onAppearanceChanged() {
+  /** ค่าพลัง/บัฟเปลี่ยน (server ถือข้อมูลอยู่แล้ว – เก็บไว้เพื่อความเข้ากันได้) */
+  sendChar() {}
+
+  onAppearanceChanged(fromServer = false) {
     this.player.refreshAppearance();
-    this.net.sendAppearance(this.player.char.appearance);
+    if (!fromServer) this.net.sendAppearance(this.player.char.appearance);
   }
 
   // ------------------------------------------------------------
@@ -522,18 +536,15 @@ export class GameScene extends Phaser.Scene {
     const p = this.player;
     if (!p.alive) return;
     const c = p.char, d = getDerived(c);
-    c.mp = Math.min(d.maxMp, c.mp + 1 + d.maxMp * 0.02);
-    if (p.x < WORLD.townEndX || this.forest.nearFire(p.x)) {        // ในหมู่บ้าน / ข้างกองไฟค่ายพราน ฟื้นเร็ว
-      c.hp = Math.min(d.maxHp, c.hp + d.maxHp * 0.05);
-      c.mp = Math.min(d.maxMp, c.mp + d.maxMp * 0.04);
-    }
+    const safe = this.map.safe || this.forest.nearFire(p.x);
+    c.mp = Math.min(d.maxMp, c.mp + 1 + d.maxMp * (safe ? 0.06 : 0.02));
+    if (this.econ.server) return;                                    // HP: server ฟื้นให้ (pl:hp)
+    if (safe) c.hp = Math.min(d.maxHp, c.hp + d.maxHp * 0.05);
   }
 
   saveSoon() {
     clearTimeout(this._saveT);
     this._saveT = setTimeout(() => saveCharacter(this.player.char), 800);
-    clearTimeout(this._charT);                                    // ค่าพลัง/สกิล/อุปกรณ์ → ส่งให้ server ทันที (ไม่ต้องรอเซฟ)
-    this._charT = setTimeout(() => this.sendChar(), 40);
   }
 
   update(time) {
@@ -569,6 +580,7 @@ export class GameScene extends Phaser.Scene {
     this.clock.tick();
     this.village.update(time, this.game.loop.delta / 1000);
     this.forest.update(time);
+    this.dungeon.update(time);
     this.animateWater(time);
     const spot = this.interactable();
     this.ui.prompt(spot ? spot.prompt : '');
@@ -578,11 +590,12 @@ export class GameScene extends Phaser.Scene {
     this.ui.updateFrame(time);
     const px = this.player.x;
     const zone = mp.id === 'village' ? (px < FISH_SPOT.to + 40 ? 'ท่าน้ำบางผี' : 'หมู่บ้านบางผี')
-      : mp.boss ? 'ลานพญายักษ์' : `${mp.no}. ${mp.nameTh}`;
+      : mp.boss ? 'ลานพญายักษ์' : mp.dungeon ? 'สุสานใต้ดิน' : `${mp.no}. ${mp.nameTh}`;
     if (zone !== this.zone) { this.ui.setZone(zone, !!this.zone); this.zone = zone; }
     const night = this.clock.light < 0.35;
     this.sfx.music(
       mp.boss && this.boss.alive ? 'boss'
+        : mp.dungeon ? (this.dungeon.bossPhase ? 'boss' : 'r4')
         : mp.id === 'village' ? (night ? 'townNight' : 'town')
         : REGIONS[mp.region]?.music || 'wild');
   }

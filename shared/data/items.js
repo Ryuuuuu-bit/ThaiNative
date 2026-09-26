@@ -181,7 +181,7 @@ export const SHOPS = {
     stock: ['wood_sword', 'iron_dab', 'oak_staff', 'yant_staff', 'bamboo_bow', 'horn_bow', 'hand_wrap', 'mongkol',
       'yant_shirt', 'takrut', 'prajiad', 'amulet_coin', 'amulet_ganesh', 'amulet_somdej', 'amulet_pidta',
       'kuman_statue', 'naga_statue', 'yak_statue', 'black_iron', 'yant_guard'],
-    tabs: ['buy', 'sell', 'enhance'],
+    tabs: ['buy', 'sell', 'enhance', 'forge'],
   },
   tailor: {
     nameTh: 'แม่ช้อย ร้านชุดไทยและเครื่องประดับ',
@@ -191,7 +191,7 @@ export const SHOPS = {
       'cos_head_ngob', 'cos_head_hunter', 'cos_head_mongkol', 'cos_head_lotus', 'cos_face_takhon', 'cos_face_khon',
       'cos_back_umbrella', 'cos_back_kinnari', 'cos_back_flag',
       'cos_outfit_royal', 'cos_outfit_kinnari', 'cos_outfit_pob', 'cos_outfit_nakleng', 'cos_outfit_sky'],
-    tabs: ['buy', 'sell'],
+    tabs: ['buy', 'sell', 'dye'],
   },
   // ---------- ครูประจำอาชีพ (ขายอุปกรณ์สายตัวเอง Lv.1–20) ----------
   kru_sword: {

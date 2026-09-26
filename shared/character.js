@@ -8,6 +8,7 @@ import { ITEMS } from './data/items.js';
 import { computeDerived, STAT_KEYS, MAX_LEVEL, POINTS_PER_LEVEL, clamp } from './stats.js';
 import { SKILL_BY_ID, MAX_SKILL_LV, SP_PER_LEVEL, START_SP, skillStats } from './data/skills.js';
 import { combineBlessings } from './data/blessings.js';
+import { setInfo } from './data/gear.js';
 
 /** ช่องสวมใส่ (เครื่องประดับ 2 ข้าง) → ชนิดไอเทมที่ใส่ได้ */
 export const EQUIP_SLOTS = ['weapon', 'armor', 'accessory', 'accessory2'];
@@ -23,6 +24,7 @@ export function equipmentBonus(c) {
     const lv = c.enhance?.[slot] || 0;                  // ตีบวกกับลุงดำ (บวกตามช่อง)
     if (lv && ENHANCE.bonus[slot]) add(ENHANCE.bonus[slot](lv));
   }
+  add(setInfo(c.equipment)?.bonus);                     // โบนัสชุดประจำสาย (2/3/4 ชิ้น)
   return bonus;
 }
 

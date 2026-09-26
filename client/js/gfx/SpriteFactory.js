@@ -367,7 +367,7 @@ export function generateAll(scene) {
   bakeEnvironment(scene);
   bakeProjectiles(scene);
   bakeNpc(scene);
-  Object.keys(MONSTERS).forEach((id) => bakeMonster(scene, id));
+  Object.keys(MONSTERS).filter((id) => !MONSTERS[id].art).forEach((id) => bakeMonster(scene, id));
 }
 
 // ------------------------------------------------------------

@@ -65,7 +65,7 @@ export class World {
       makeText(s, m.minX + 300, gy - 96, `${mon.nameTh} Lv.${mon.level}`, { fontSize: '7px', color: '#f5b7b1' }).setOrigin(0.5).setDepth(2);
     }
     // ประตูวาร์ปทุกแมพ
-    for (const m of MAP_LIST) m.gates.forEach((g, i) => this.gate(m, g, i));
+    for (const m of MAP_LIST) if (!m.dungeon) m.gates.forEach((g, i) => this.gate(m, g, i));
 
     // ฉากหลังของภาค (ซ้อนบนฉากหลังเดิม) + หมอก + อนุภาค
     this.skyA = s.add.image(480, 270, '__DEFAULT').setScrollFactor(0).setDepth(-8.6).setAlpha(0);   // ท้องฟ้าประจำภาค
@@ -205,7 +205,7 @@ export class World {
     if (m.id === 'village') text = '🌀 วาร์ป · เลือกแมพล่าผี';
     else if (i === 1) {
       const next = MAP_LIST[MAP_LIST.indexOf(m) + 1];
-      text = next ? `→ ${next.boss ? '👹 ' : ''}${next.nameTh} (Lv.${next.minLv}+)` : '';
+      text = next && !next.noTravel ? `→ ${next.boss ? '👹 ' : ''}${next.nameTh} (Lv.${next.minLv}+)` : '';
     } else text = '← วาร์ป · กลับหมู่บ้าน / เลือกแมพ';
     if (text) makeText(s, gx + (i === 1 ? -6 : 6), gy - 66, text, { fontSize: '7px', color: i === 1 ? '#f8c471' : '#76d7c4' }).setOrigin(i === 1 ? 1 : 0, 0.5).setDepth(2);
   }
@@ -218,9 +218,10 @@ export class World {
     const s = this.scene, x = s.player.x, m = mapAt(x), g = gateNear(x, 40);
     if (!g) return;
     const i = m.gates.indexOf(g);
+    if (m.dungeon) return s.dungeon.active ? (confirm('ออกจากดันเจี้ยนกลับหมู่บ้าน? (ทีมที่เหลือสู้ต่อได้)') && s.dungeon.leave()) : s.net.send('dg:leave');
     if (m.id !== 'village' && i === 1) {
       const next = MAP_LIST[MAP_LIST.indexOf(m) + 1];
-      if (next) return this.travel(next.id);
+      if (next && !next.noTravel) return this.travel(next.id);
     }
     this.openTravel();
   }
@@ -239,9 +240,9 @@ export class World {
     svg.innerHTML = `<path d="${d}" fill="none" stroke="rgba(0,0,0,.45)" stroke-width="5" stroke-linejoin="round" stroke-linecap="round"/>
       <path d="${d}" fill="none" stroke="#e8c766" stroke-width="2" stroke-dasharray="4 3" stroke-linejoin="round" stroke-linecap="round"/>`;
     const nodes = MAP_LIST.map((m) => {
-      const p = pos[m.id]; if (!p) return '';
+      const p = pos[m.id]; if (!p || m.noTravel) return '';
       const lock = lv < (m.minLv || 1), isCur = m.id === cur;
-      const cls = `wmap-node ${m.id === 'village' ? 'village' : ''} ${m.boss ? 'boss' : ''} ${lock ? 'lock' : ''} ${isCur ? 'cur' : ''}`;
+      const cls = `wmap-node ${m.id === 'village' ? 'village' : ''} ${m.boss ? 'boss' : ''} ${lock ? 'lock' : ''} ${isCur ? 'cur' : ''} ${m.rboss && s.social?.rbossAlive?.[m.id] ? 'rboss' : ''}`;
       const label = m.id === 'village' ? '🏘️' : m.boss ? '👹' : m.no;
       return `<button class="${cls}" data-to="${m.id}" style="left:${p[0]}%;top:${p[1]}%" ${isCur ? 'disabled' : ''}>${label}</button>`;
     }).join('');
@@ -250,7 +251,8 @@ export class World {
     const tip = $('#wmap-tip');
     $('#wmap-nodes').querySelectorAll('.wmap-node').forEach((b) => {
       const m = MAPS[b.dataset.to], mon = m.mon ? MONSTERS[m.mon] : null, lock = lv < (m.minLv || 1);
-      const sub = m.id === 'village' ? 'Safe Zone · NPC · ตกปลา' : m.boss ? `เรดบอส Lv.${m.minLv}+ · รวมพลังหลายคน` : `${mon.nameTh} Lv.${mon.level}${mon.nightBoost ? ' 🌙' : ''}`;
+      const rb = m.rboss && s.social?.rbossAlive?.[m.id] ? ' · 👑 บอสภาคอยู่!' : m.rboss ? ' · 👑 จุดเกิดบอสภาค' : '';
+      const sub = m.id === 'village' ? 'Safe Zone · NPC · ตกปลา' : m.boss ? `เรดบอส Lv.${m.minLv}+ · รวมพลังหลายคน` : `${mon.nameTh} Lv.${mon.level}${mon.nightBoost ? ' 🌙' : ''}${rb}`;
       const show = () => {
         tip.innerHTML = `<b>${m.no ? `${m.no}. ` : ''}${esc(m.nameTh)}</b><small>${esc(sub)}${lock ? ` · 🔒 ต้อง Lv.${m.minLv}` : ''}${m.id === cur ? ' · คุณอยู่ที่นี่' : ''}</small>`;
         tip.style.left = b.style.left; tip.style.top = `calc(${b.style.top} - 1.2em)`;

@@ -12,6 +12,8 @@ import { makeText } from '../systems/util.js';
 import { STRIKE_FRAME, STRIKE_ANIMS, skillAnim } from '../gfx/PlayerArt.js';
 import { combineBlessings } from '/shared/data/blessings.js';
 import { SKILL_BY_ID, skillStats } from '/shared/data/skills.js';
+import { TITLE_BY_ID } from '/shared/data/titles.js';
+import { sanitizeAppearance } from '/shared/data/appearance.js';
 
 const EV = Phaser.Animations.Events;
 
@@ -40,6 +42,8 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     this.dashing = false;
 
     this.nameTag = makeText(scene, x, y - this.height - 2, char.name, { fontSize: '7px', color: '#f3d98b' }).setOrigin(0.5).setDepth(11);
+    this.titleTag = makeText(scene, x, y - this.height - 10, '', { fontSize: '6px', color: '#f7dc6f' }).setOrigin(0.5).setDepth(11);
+    this.refreshTitle();
     this.aura = new Aura(scene, this);                   // ออร่าตีบวก
     this.aura.setTier(char.appearance.aura || 0);
 
@@ -108,8 +112,15 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
    * @param {{left:boolean,right:boolean,jump:boolean,attack:boolean,skill:string|null}} input
    *   ← → เดิน | ↑ กระโดด | Space โจมตีปกติ | Q W E R สกิล
    */
+  /** ฉายาเหนือชื่อ */
+  refreshTitle() {
+    const t = TITLE_BY_ID[this.char.appearance?.title];
+    this.titleTag.setText(t ? `« ${t.nameTh} »` : '').setColor(t?.color || '#f7dc6f');
+  }
+
   update(time, input) {
     this.nameTag.setPosition(this.x, this.y - this.height + this.padTop + 2);
+    this.titleTag.setPosition(this.x, this.y - this.height + this.padTop - 6);
     this.aura.update(time);
     if (this.state === 'dead' || this.dashing) return;
 
@@ -216,20 +227,34 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
   }
 
 
-  /** โดนโจมตี */
+  /** โดนโจมตี (ออฟไลน์: คำนวณเอง · ออนไลน์: server ส่งผลมาทาง onServerHit) */
   takeHit(result, fromX) {
     if (!this.alive || this.dashing || this.scene.time.now < this.invulnUntil) return false;
+    if (this.scene.econ?.server) return false;                    // ออนไลน์: server ตัดสินเท่านั้น
     this.scene.combat.popup(this.x, this.y - 36, result);
     if (!result.hit) return false;
-
     this.char.hp = Math.max(0, this.char.hp - result.dmg);
+    return this.hurtFx(result.dmg, fromX);
+  }
+
+  /** ผลจาก server: โดน/หลบ/ตาย */
+  onServerHit(d) {
+    if (this.state === 'dead') return;
+    if (!d.hit) { this.scene.combat.popup(this.x, this.y - 36, { hit: false }); return; }
+    this.scene.combat.popup(this.x, this.y - 36, { hit: true, crit: d.crit, dmg: d.dmg });
+    if (Number.isFinite(d.hp)) this.char.hp = d.hp;
+    if (d.stun) { this.stunUntil = this.scene.time.now + d.stun; this.scene.combat.popupText(this.x, this.y - 52, 'มึนงง!', '#bb8fce', 8); }
+    if (this.char.hp <= 0) return;                                // pl:die จะตามมา
+    this.hurtFx(d.dmg, d.x ?? this.x);
+  }
+
+  hurtFx(dmg, fromX) {
     this.invulnUntil = this.scene.time.now + 700;
     this.scene.sfx.play('hurt');
     this.setTintFill(0xffffff);
     this.scene.time.delayedCall(80, () => this.clearTint());
-
-    if (this.char.hp <= 0) { this.die(); return true; }
-
+    if (this.char.hp <= 0) { if (!this.scene.econ?.server) this.die(); return true; }
+    if (this.dashing) return true;
     this.state = 'hit';
     this.playAnim('hit', true);
     const dir = Math.sign(this.x - fromX) || 1;
@@ -238,10 +263,12 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
   }
 
   die() {
+    if (this.state === 'dead') return;
     this.state = 'dead';
     this.dashing = false;
+    this.body.setAllowGravity(true);
     this.buffs = [];
-    this.scene.sendChar?.();                                      // บัฟหายตอนตาย → แจ้ง server
+    this.char.hp = 0;
     this.scene.sfx.play('die');
     this.setVelocityX(0);
     this.playAnim('die', true);
@@ -262,6 +289,8 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
 
   /** เปลี่ยนชุด/อาชีพ → สร้าง spritesheet ใหม่แล้วสลับ texture */
   refreshAppearance() {
+    this.previewUntil = 0;
+    this.refreshTitle();
     this.aura.setTier(this.char.appearance.aura || 0);
     this.texKey = bakeCharacter(this.scene, this.char.appearance);
     this.setTexture(this.texKey, 'idle_0');
@@ -269,17 +298,28 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     this.playAnim(this.state === 'dead' ? 'die' : 'idle', true);
   }
 
+  /** ลองชุดชั่วคราว (แค่ภาพ) แล้วกลับเป็นของจริง */
+  previewAppearance(a, ms = 6000) {
+    this.texKey = bakeCharacter(this.scene, sanitizeAppearance(a));
+    this.setTexture(this.texKey, 'idle_0');
+    this.fitBody();
+    this.playAnim('idle', true);
+    const until = (this.previewUntil = this.scene.time.now + ms);
+    this.scene.time.delayedCall(ms, () => { if (this.previewUntil === until) this.refreshAppearance(); });
+  }
+
   /** สถานะที่ส่งให้ server */
   netState() {
     return {
       x: Math.round(this.x), y: Math.round(this.y),
       anim: this.state === 'dead' ? 'die' : this.state === 'attack' || this.state === 'fish' ? this.animName || this.state : this.state,
-      flipX: this.flipX, hp: this.char.hp, maxHp: this.derived.maxHp, level: this.char.level,
+      flipX: this.flipX, mp: Math.round(this.char.mp),
     };
   }
 
   destroy(fromScene) {
     this.nameTag?.destroy();
+    this.titleTag?.destroy();
     super.destroy(fromScene);
   }
 }

@@ -5,9 +5,11 @@
 import { ITEMS } from '/shared/data/items.js';
 import { JOBS } from '/shared/data/classes.js';
 import { WORLD } from '/shared/constants.js';
+import { MAPS } from '/shared/data/maps.js';
 import { RAID_BOSS as RB } from '/shared/data/raid.js';
-import { addItem, removeItem, count, tradeLock } from './Inventory.js';
+import { count, tradeLock } from './Inventory.js';
 import { rand, itemIcon } from './util.js';
+import { TITLE_BY_ID } from '/shared/data/titles.js';
 
 const $ = (s) => document.querySelector(s);
 const JOB_ICON = { swordman: '⚔️', mage: '🔮', archer: '🏹', boxer: '🥊' };
@@ -44,6 +46,8 @@ export class Social {
       $('#player-menu').classList.add('hidden');
       if (act === 'party') this.invite(id);
       if (act === 'trade') this.requestTrade(id);
+      if (act === 'friend') this.addFriend(id);
+      if (act === 'whisper') { const r = this.scene.remotes.get(id), inp = $('#chat-input'); if (r) { inp.value = `/w ${r.name} `; inp.focus(); } }
     };
     // เทรด
     $('#tr-gold').addEventListener('keydown', (e) => e.stopPropagation());
@@ -91,7 +95,34 @@ export class Social {
       if (act === 'trade') this.requestTrade(id);
       if (act === 'leave') this.net.send('party:leave');
       if (act === 'kick') this.net.send('party:kick', { id });
+      if (act === 'friend') this.addFriend(id);
+      if (act === 'unfriend') { if (confirm('ลบเพื่อนคนนี้?')) this.net.send('friends:del', { acc: +b.dataset.acc }); }
     });
+    // แท็บแผงสังคม
+    document.querySelectorAll('[data-soctab]').forEach((b) => (b.onclick = () => {
+      this.socTab = b.dataset.soctab;
+      document.querySelectorAll('[data-soctab]').forEach((x) => x.classList.toggle('active', x === b));
+      document.querySelectorAll('.soc-page').forEach((pg) => pg.classList.toggle('hidden', pg.dataset.page !== this.socTab));
+      this.scene.sfx.play('click');
+      this.renderSocialPanel();
+    }));
+  }
+
+  addFriend(id) {
+    if (!this.net.online) return this.ui.toast('ต้องออนไลน์ก่อน', 'warn');
+    this.net.send('friends:add', { id });
+  }
+  refreshFriends() { if (this.net.online) this.net.send('friends:get'); }
+
+  /** ได้ฉายาใหม่ */
+  onNewTitles(ids) {
+    for (const id of ids) {
+      const t = TITLE_BY_ID[id];
+      if (!t || id === 'rookie') continue;
+      this.ui.banner(`🏅 ได้รับฉายา “${t.nameTh}”`);
+      this.ui.toast(`🏅 ฉายาใหม่: ${t.nameTh} — เลือกใช้ได้ที่แผงสังคม (P) › ฉายา`, '', 6000);
+      this.scene.sfx.play('victory');
+    }
   }
 
   /** คลิกที่ผู้เล่นอื่น → เมนู */
@@ -116,7 +147,7 @@ export class Social {
     if (!this.player.alive) return;
     this.net.send('trade:request', { id });
   }
-  shareExp(amount) { if (this.party) this.net.send('party:exp', { amount }); }
+  shareExp() {}
   partyChat(text) { this.net.send('party:chat', text); }
 
   // ---------------- คำเชิญ (ปาร์ตี้/เทรด) ใช้กล่องเดียวกัน ----------------
@@ -157,10 +188,28 @@ export class Social {
       () => n.send('party:respond', { fromId, accept: false }),
     ))
       .on('party:state', (st) => { this.party = st; this.renderParty(); })
-      .on('party:exp', ({ amount, from }) => {
+      .on('party:exp', ({ amount, ups }) => {
         this.fx.popupText(this.player.x, this.player.y - 44, `+${amount} EXP (ปาร์ตี้)`, '#aed6f1', 7);
-        this.fx.grantExp(amount);
-        this.scene.saveSoon();
+        this.fx.afterGrant({ ups });
+      })
+      .on('friends:state', (list) => { this.friends = list || []; if (!$('#social-panel').classList.contains('hidden')) this.renderFriends(); })
+      .on('title:new', ({ id }) => this.onNewTitles([id]))
+      .on('rboss:spawn', ({ nameTh, mapId }) => { const m = MAPS[mapId]; this.ui.banner(`👑 ${nameTh} ปรากฏตัว!`); this.ui.toast(`👑 บอสประจำภาคเกิดที่ ${m ? `${m.no}. ${m.nameTh}` : mapId} — ไปล่าได้เลย!`, '', 7000); this.scene.sfx.play('bossRoar'); this.rbossAlive = { ...(this.rbossAlive || {}), [mapId]: true }; })
+      .on('rboss:list', (list) => { this.rbossAlive = {}; for (const b of list) this.rbossAlive[b.mapId] = b.alive; })
+      .on('rboss:down', ({ nameTh, killer }) => { this.ui.toast(`👑 ${killer} ปราบ${nameTh}แล้ว`); })
+      .on('rboss:slam', ({ gi, x }) => {                                       // บอสภาคทุบพื้น: เตือนวงแดง
+        const s = this.scene, gy = WORLD.groundY;
+        if (Math.abs(this.player.x - x) > 500) return;
+        const r = s.add.ellipse(x, gy - 1, 190, 10, 0xe74c3c, 0.35).setDepth(6);
+        s.tweens.add({ targets: r, alpha: { from: 0.15, to: 0.55 }, duration: 110, yoyo: true, repeat: 2, onComplete: () => { r.destroy(); s.cameras.main.shake(200, 0.01); this.fx.burst(x, gy - 6, 0xe67e22, 20); } });
+      })
+      .on('rboss:reward', (r) => {
+        this.fx.popupText(this.player.x, this.player.y - 60, `+${r.exp} EXP  +฿${r.gold}`, '#f7dc6f', 10);
+        const items = r.items.map((it) => `${ITEMS[it.id]?.icon}${ITEMS[it.id]?.nameTh} x${it.qty}`).join(', ');
+        this.ui.banner(`👑 ปราบ${r.nameTh}!`);
+        this.ui.toast(`👑 รางวัลบอสภาค (อันดับ ${r.rank} · ${r.share}%): ${items}`, '', 7000);
+        this.scene.sfx.play('victory');
+        this.fx.afterGrant(r);
       })
       .on('trade:request', ({ fromId, fromName }) => this.ask(
         `<b>${esc(fromName)}</b> ขอแลกเปลี่ยนสิ่งของกับคุณ`,
@@ -170,11 +219,6 @@ export class Social {
       .on('trade:state', (st) => this.onTradeState(st))
       .on('trade:closed', ({ reason }) => { this.closeTrade(); this.ui.toast(reason || 'ยกเลิกการเทรด', 'warn'); })
       .on('trade:complete', (d) => this.onTradeComplete(d))
-      .on('trade:verify', ({ give }) => {          // server ถามก่อนแลก: ยังมีของ/เงินครบไหม
-        const c = this.player.char;
-        const ok = !!give && give.gold <= c.gold && give.items.every((it) => count(c, it.id) >= it.qty);
-        n.send('trade:verified', { ok });
-      })
       .on('raid:state', (b) => this.scene.boss?.setServer(b))
       .on('raid:spawn', () => {
         this.ui.banner(`👹 ${RB.nameTh} ปรากฏตัว!`);
@@ -229,9 +273,25 @@ export class Social {
       ? list.map((r) => `<div class="soc-row"><span>${esc(r.name)} <small>Lv.${r.level || '?'} · ห่าง ${Math.round(Math.abs(r.x - this.player.x) / 10)} ม.</small></span>
           <span>${inParty.has(r.netId) ? '<small class="ok">ในปาร์ตี้</small>' : `<button class="btn ghost sm" data-act="invite" data-id="${r.netId}">🤝 เชิญ</button>`}
           <button class="btn ghost sm" data-act="trade" data-id="${r.netId}">💱 เทรด</button>
+          <button class="btn ghost sm" data-act="friend" data-id="${r.netId}" title="เพิ่มเพื่อน">➕👥</button>
           <button class="btn ghost sm" data-act="whisper" data-name="${esc(r.name)}">💬</button></span></div>`).join('')
       : '<p class="empty">ยังไม่มีผู้เล่นอื่นออนไลน์</p>';
     this.renderLeaderboard();
+    this.renderFriends();
+    const tl = $('#soc-titles');
+    if (tl && this.socTab === 'titles') this.ui.renderTitles(tl);
+  }
+
+  /** รายชื่อเพื่อน */
+  renderFriends() {
+    const el = $('#soc-friends');
+    if (!el) return;
+    const list = this.friends || [];
+    const on = list.filter((f) => f.online), off = list.filter((f) => !f.online);
+    const row = (f) => `<div class="soc-row ${f.online ? '' : 'off'}"><span>${f.online ? '🟢' : '⚫'} ${esc(f.name)} <small>${f.online ? `Lv.${f.level} · ${JOBS[f.job]?.nameTh ?? 'ชาวบ้าน'} · ${esc(f.map || '')}` : 'ออฟไลน์'}</small></span>
+      <span>${f.online ? `<button class="btn ghost sm" data-act="invite" data-id="${f.id}">🤝</button><button class="btn ghost sm" data-act="whisper" data-name="${esc(f.name)}">💬</button>` : ''}<button class="btn ghost sm" data-act="unfriend" data-acc="${f.acc}" title="ลบเพื่อน">✕</button></span></div>`;
+    el.innerHTML = !this.net.online ? '<p class="empty">ออฟไลน์อยู่</p>' : list.length ? [...on, ...off].map(row).join('') : '<p class="empty">ยังไม่มีเพื่อน – กด ➕👥 ที่รายชื่อผู้เล่น หรือคลิกตัวละครคนอื่นแล้วเลือก "เพิ่มเพื่อน"</p>';
+    const c = $('#soc-friend-count'); if (c) c.textContent = list.length ? `(${on.length}/${list.length} ออนไลน์)` : '';
   }
 
   /** ตารางอันดับจาก server (แคช 30 วิ) */
@@ -312,16 +372,8 @@ export class Social {
     }).join('') || '<p class="empty">กระเป๋าว่าง</p>';
   }
 
-  onTradeComplete({ give, get, with: name }) {
-    const c = this.player.char;
-    // ตรวจอีกครั้งว่ายังมีของ/เงินครบ (กันกรณีใช้ของไประหว่างเทรด)
-    const ok = give.gold <= c.gold && give.items.every((it) => count(c, it.id) >= it.qty);
-    tradeLock.on = false;
-    if (!ok) { this.ui.toast('ของในกระเป๋าไม่ตรงกับข้อเสนอ – การเทรดถูกยกเลิก', 'warn'); this.closeTrade(); return; }
-    give.items.forEach((it) => removeItem(c, it.id, it.qty));
-    c.gold -= give.gold;
-    get.items.forEach((it) => addItem(c, it.id, it.qty));
-    c.gold += get.gold;
+  onTradeComplete({ get, with: name }) {
+    // server แลกของในเซฟให้แล้ว (char:sync ตามมา) → แสดงผลอย่างเดียว
     this.closeTrade();
     const got = [...get.items.map((it) => `${ITEMS[it.id]?.icon}x${it.qty}`), get.gold ? `฿${get.gold}` : ''].filter(Boolean).join(' ');
     this.ui.toast(`เทรดกับ ${name} สำเร็จ! ${got ? 'ได้รับ ' + got : ''}`);
@@ -384,9 +436,8 @@ export class Social {
     this.clearTelegraphs();
     s.boss?.impact(a.type);
     this.hideBossWarn();
-    const onGround = p.body.blocked.down || p.body.touching.down;
     const dmgOf = (base) => { const d = p.combatStats(); return Math.max(1, Math.round(base * (a.enraged ? 1.25 : 1) * rand(0.9, 1.1) - d.def * 0.6)); };
-    const hurt = (base, fromX) => p.alive && p.takeHit({ hit: true, crit: false, dmg: dmgOf(base) }, fromX);
+    const hurt = (base, fromX) => p.alive && !this.scene.econ?.server && p.takeHit({ hit: true, crit: false, dmg: dmgOf(base) }, fromX);   // ออนไลน์: server ตัดสิน (pl:hit)
     const near = Math.abs(p.x - a.x) < 520;
 
     if (a.type === 'slam') {
@@ -419,11 +470,8 @@ export class Social {
   }
 
   onBossReward(r) {
-    const c = this.player.char;
-    c.gold += r.gold;
-    for (const it of r.items) addItem(c, it.id, it.qty);
     this.fx.popupText(this.player.x, this.player.y - 60, `+${r.exp} EXP  +฿${r.gold}`, '#f7dc6f', 10);
-    this.fx.grantExp(r.exp);
+    this.fx.afterGrant(r);
     const items = r.items.map((it) => `${ITEMS[it.id]?.icon}${ITEMS[it.id]?.nameTh} x${it.qty}`).join(', ');
     this.ui.toast(`🏆 รางวัลเรด (อันดับ ${r.rank} · ${r.share}% ของดาเมจ): ${items}`);
     if (r.items.some((it) => it.id === 'acc_yant_gold')) this.ui.banner('✨ ได้รับ ยันต์ทองพญายักษ์! ✨');
@@ -441,7 +489,7 @@ export class Social {
       const onGround = p.body.blocked.down || p.body.touching.down;
       if (!w.hit && p.alive && onGround && Math.abs(p.x - w.x) < 10) {
         w.hit = true;
-        p.takeHit({ hit: true, crit: false, dmg: Math.max(1, Math.round(w.dmg - p.combatStats().def * 0.6)) }, w.x - w.dir * 10);
+        if (!this.scene.econ?.server) p.takeHit({ hit: true, crit: false, dmg: Math.max(1, Math.round(w.dmg - p.combatStats().def * 0.6)) }, w.x - w.dir * 10);
       }
       if ((w.dir > 0 && w.x >= w.end) || (w.dir < 0 && w.x <= w.end)) { w.g.destroy(); w.done = true; }
     }

@@ -5,13 +5,17 @@
 import { JOBS, JOB_IDS, PATH_LV, STAT_PLAN } from '/shared/data/classes.js';
 import { ITEMS, SHOPS, sellPrice, WTYPE_JOB } from '/shared/data/items.js';
 import { STAT_KEYS, STAT_INFO, expToNext, MAX_LEVEL } from '/shared/stats.js';
-import { getDerived, allocateStat, pathName } from './Character.js';
+import { getDerived, pathName } from './Character.js';
 import * as Inv from './Inventory.js';
+import { setInfo, SET_TEXT } from '/shared/data/gear.js';
+import { TITLES, TITLE_BY_ID } from '/shared/data/titles.js';
+import { DYE_PRICE } from '/shared/economy.js';
+import { OUTFITS, HAIRSTYLES } from '/shared/data/appearance.js';
 import { SKILLS, SKILL_SLOTS, SKILL_BY_ID, MAX_SKILL_LV, skillStats, canLearn, skillCap } from '/shared/data/skills.js';
 import { MONSTERS } from '/shared/data/monsters.js';
 import { WORLD } from '/shared/constants.js';
 import { MAPS, MAP_LIST, REGIONS, mapAt } from '/shared/data/maps.js';
-import { learnSkill, assignHotbar } from './Character.js';
+
 import { saveSettings, toggleFullscreen } from './Settings.js';
 import { PORTRAITS } from '../gfx/SpriteFactory.js';
 import { modsText } from '/shared/data/blessings.js';
@@ -19,7 +23,6 @@ import { ENHANCE } from '/shared/data/village.js';
 import { itemIcon, skillIcon, uiIcon } from './util.js';
 import { bindAccountSettings } from './AuthScreen.js';
 import { account } from '../net/Account.js';
-import { gainExp, syncAppearance } from './Character.js';
 
 const $ = (s) => document.querySelector(s);
 const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -86,34 +89,15 @@ export class UI {
 
   /** คำสั่ง GM (เฉพาะบัญชีใน ADMIN_IDS ของ server): /gm gold 1000000 · /gm lv 30 · /gm item yant_guard 10 · /gm sp 20 · /gm stat 50 · /gm enh weapon 20 · /gm heal */
   gmCommand(text) {
-    if (!account.account?.admin) return this.toast('คำสั่งนี้ใช้ได้เฉพาะแอดมิน', 'warn');
-    const c = this.char, [, cmd = 'help', a1, a2] = text.trim().split(/\s+/);
-    const n = (v, d) => Math.max(0, Math.floor(Number(v) || d));
-    const say = (m) => { this.toast(`🛠️ ${m}`); this.chat({ name: 'GM', text: m }); };
-    switch (cmd.toLowerCase()) {
-      case 'gold': c.gold = Math.min(999999999, c.gold + n(a1, 1000000)); say(`เสกเงิน → ฿${c.gold.toLocaleString()}`); break;
-      case 'lv': case 'level': {
-        const to = Math.min(MAX_LEVEL, Math.max(c.level, n(a1, MAX_LEVEL)));
-        while (c.level < to) gainExp(c, expToNext(c.level) - c.exp);
-        say(`เลเวล → Lv.${c.level} (แต้มสถานะ ${c.statPoints} · SP ${c.sp})`); break;
-      }
-      case 'exp': this.scene.combat.grantExp(n(a1, 1000)); say(`+EXP ${n(a1, 1000)}`); break;
-      case 'item': {
-        const id = a1 && ITEMS[a1] ? a1 : Object.keys(ITEMS).find((k) => ITEMS[k].nameTh === a1);
-        if (!id) return this.toast(`ไม่พบไอเทม "${a1}" (ใช้ id เช่น yant_guard, cos_head_naga)`, 'warn');
-        Inv.addItem(c, id, n(a2, 1)); say(`ได้รับ ${ITEMS[id].nameTh} x${n(a2, 1)}`); break;
-      }
-      case 'sp': c.sp = (c.sp || 0) + n(a1, 10); say(`SP → ${c.sp}`); break;
-      case 'stat': c.statPoints = (c.statPoints || 0) + n(a1, 10); say(`แต้มสถานะ → ${c.statPoints}`); break;
-      case 'enh': {
-        const slot = ['weapon', 'armor', 'accessory', 'accessory2'].includes(a1) ? a1 : 'weapon';
-        (c.enhance ||= {})[slot] = Math.min(ENHANCE.max, n(a2, ENHANCE.max));
-        if (syncAppearance(c)) this.scene.onAppearanceChanged(); say(`ตีบวก ${slot} → +${c.enhance[slot]}`); break;
-      }
-      case 'heal': { const d = getDerived(c); c.hp = d.maxHp; c.mp = d.maxMp; say('ฟื้น HP/MP เต็ม'); break; }
-      default: this.chat({ name: 'GM', text: 'คำสั่ง: /gm gold [จำนวน] · /gm lv [เลเวล] · /gm exp [จำนวน] · /gm item <id> [จำนวน] · /gm sp [n] · /gm stat [n] · /gm enh <weapon|armor|accessory> [ขั้น] · /gm heal' });
-    }
-    this.hudCache = ''; this.updateHud(); this.refreshOpen?.();
+    if (!account.account?.admin && this.scene.econ.server) return this.toast('คำสั่งนี้ใช้ได้เฉพาะแอดมิน', 'warn');
+    const [, cmd = 'help', a1, a2] = text.trim().split(/\s+/);
+    this.scene.econ.act('gm', { cmd, a1, a2 }).then((r) => {
+      if (!r.ok) return this.toast(r.msg, 'warn');
+      this.toast(`🛠️ ${r.msg}`); this.chat({ name: 'GM', text: r.msg });
+      if (r.ups) this.scene.combat.levelUpFx(r.ups);
+      this.result({ ok: true, jobChanged: r.jobChanged, titles: r.titles });
+      if (r.ok && !this.scene.econ.server) { const c = this.char, d = getDerived(c); c.hp = Math.min(c.hp, d.maxHp); }
+    });
   }
   get typing() { return document.activeElement === $('#chat-input'); }
 
@@ -218,7 +202,8 @@ export class UI {
       const pct = (x) => `${((x - mp.minX) / W) * 100}%`;
       let html = `<i class="mm-dot me" style="left:${pct(p.x)}"></i>`;
       mp.gates.forEach((g) => (html += `<i class="mm-dot gate" style="left:${pct(g.x)}"></i>`));
-      if (mp.safe) this.scene.npcs.forEach((n) => (html += `<i class="mm-dot npc" style="left:${pct(n.x)}"></i>`));
+      if (mp.safe) this.scene.npcs.forEach((n) => (html += `<i class="mm-dot npc" style="left:${pct(n.x)}" title="${esc(n.nameTh)}"><em>${n.icon || '•'}</em></i>`));
+      if (mp.id === 'm1') html += `<i class="mm-dot npc" style="left:${pct(this.scene.forest.npcX)}"><em>📜</em></i>`;
       this.scene.remotes.forEach((r) => inMap(r.x) && (html += `<i class="mm-dot ally" style="left:${pct(r.x)}"></i>`));
       this.scene.monsters.getChildren().forEach((m) => m.alive && inMap(m.x) && (html += `<i class="mm-dot ${m.isBoss ? 'boss' : 'mob'}" style="left:${pct(m.x)}"></i>`));
       const ch = this.scene.forest?.chest;
@@ -344,10 +329,12 @@ export class UI {
   }
 
   assign(key, id) {
-    if (!assignHotbar(this.char, key, id)) return this.toast('ต้องเรียนสกิลก่อนจึงติดตั้งได้', 'warn');
-    this.scene.sfx.play('click');
-    this.toast(id ? `ติดตั้ง ${SKILL_BY_ID[id].nameTh} ที่ช่อง ${key}` : `ถอดสกิลออกจากช่อง ${key}`);
-    this.refreshPanels(); this.scene.saveSoon();
+    this.scene.econ.act('hotbar', { key, id }).then((r) => {
+      if (!r.ok) return this.toast(r.msg || 'ต้องเรียนสกิลก่อนจึงติดตั้งได้', 'warn');
+      this.scene.sfx.play('click');
+      this.toast(id ? `ติดตั้ง ${SKILL_BY_ID[id].nameTh} ที่ช่อง ${key}` : `ถอดสกิลออกจากช่อง ${key}`);
+      this.refreshPanels(); this.scene.saveSoon();
+    });
   }
 
   // ============================================================
@@ -387,19 +374,13 @@ export class UI {
       </div>`;
     }).join('');
 
-    $('#sk-tree').querySelectorAll('[data-learn]').forEach((b) => (b.onclick = () => {
-      const r = learnSkill(c, b.dataset.learn);
+    const learn = (id, max) => this.scene.econ.act('learn', { id, max }).then((r) => {
       this.scene.sfx.play(r.ok ? 'buff' : 'error');
       this.toast(r.msg, r.ok ? '' : 'warn');
       this.refreshPanels(); this.scene.saveSoon();
-    }));
-    $('#sk-tree').querySelectorAll('[data-learnmax]').forEach((b) => (b.onclick = () => {
-      let n = 0, r;
-      while ((r = learnSkill(c, b.dataset.learnmax)).ok) n++;
-      this.scene.sfx.play(n ? 'buff' : 'error');
-      this.toast(n ? `${SKILL_BY_ID[b.dataset.learnmax].nameTh} +${n} เลเวล (Lv.${c.skills[b.dataset.learnmax]})` : r.msg, n ? '' : 'warn');
-      this.refreshPanels(); this.scene.saveSoon();
-    }));
+    });
+    $('#sk-tree').querySelectorAll('[data-learn]').forEach((b) => (b.onclick = () => learn(b.dataset.learn, false)));
+    $('#sk-tree').querySelectorAll('[data-learnmax]').forEach((b) => (b.onclick = () => learn(b.dataset.learnmax, true)));
     $('#sk-tree').querySelectorAll('[data-as]').forEach((b) => (b.onclick = () => this.assign(b.dataset.as, b.dataset.id)));
     $('#sk-tree').querySelectorAll('.sk-icon[draggable="true"]').forEach((ic) => {
       ic.addEventListener('dragstart', (e) => { e.dataTransfer.setData('text/skill', ic.dataset.id); e.dataTransfer.effectAllowed = 'copy'; });
@@ -424,9 +405,9 @@ export class UI {
     const friends = {};
     s.remotes.forEach((r) => { const id = mapAt(r.x).id; friends[id] = (friends[id] || 0) + 1; });
     const chip = (m) => {
-      const mon = m.mon ? MONSTERS[m.mon] : null, lock = lv < (m.minLv || 1);
-      const sub = m.id === 'village' ? 'Safe Zone · NPC · ตกปลา' : m.boss ? 'เรดบอส Lv.15' : `${mon.nameTh} Lv.${mon.level}${mon.nightBoost ? ' 🌙' : ''}`;
-      return `<div class="wm-map ${m.id === cur ? 'cur' : ''} ${lock ? 'lock' : ''} ${m.boss ? 'boss' : ''}">
+      const mon = m.mon ? MONSTERS[m.mon] : null, lock = lv < (m.minLv || 1), rb = m.rboss && s.social?.rbossAlive?.[m.id];
+      const sub = m.id === 'village' ? 'Safe Zone · NPC · ตกปลา' : m.boss ? 'เรดบอส Lv.30' : `${mon.nameTh} Lv.${mon.level}${mon.nightBoost ? ' 🌙' : ''}${rb ? ' · 👑 บอสภาคอยู่!' : m.rboss ? ' · 👑' : ''}`;
+      return `<div class="wm-map ${m.id === cur ? 'cur' : ''} ${lock ? 'lock' : ''} ${m.boss ? 'boss' : ''} ${rb ? 'rboss' : ''}">
         <b>${m.no && !m.boss ? m.no + '. ' : ''}${esc(m.nameTh)}</b><span>${esc(sub)}${lock ? ` · 🔒Lv.${m.minLv}` : ''}</span>
         ${m.id === cur ? '<i class="wm-me">📍 คุณอยู่ที่นี่</i>' : ''}${friends[m.id] ? `<i class="wm-fr">👥 ${friends[m.id]}</i>` : ''}</div>`;
     };
@@ -500,9 +481,13 @@ export class UI {
 
   /** ผลลัพธ์จาก Inventory → แจ้งเตือน + รีเฟรช */
   result(r) {
+    if (r?.then) return r.then((x) => this.result(x));            // รับ Promise จาก econ.act ได้
+    if (!r) return;
     if (r.home) { this.closeAll(); return this.scene.recall(); }
     if (r.msg) this.toast(r.msg, r.ok ? '' : 'warn');
     if (r.jobChanged) this.scene.onAppearanceChanged();
+    if (r.titles?.length) this.scene.social?.onNewTitles(r.titles);
+    if (r.ups) this.scene.combat.levelUpFx(r.ups);
     this.hudCache = '';
     this.refreshPanels();
     this.scene.saveSoon();
@@ -558,11 +543,10 @@ export class UI {
         give.forEach((g) => (D[g.k] = (D[g.k] || 0) + g.n));
       }
       if (a === 'ok') {
-        for (const k of STAT_KEYS) for (let i = 0; i < (D[k] || 0); i++) allocateStat(c, k);
+        const add = { ...D };
         this.statDraft = {};
         this.scene.sfx.play('buff');
-        this.toast(`ลงแต้มสถานะแล้ว ${used} แต้ม`);
-        return this.result({ ok: true });
+        return this.result(this.scene.econ.act('alloc', { add }));
       }
       this.scene.sfx.play('click');
       this.renderStats();
@@ -591,8 +575,15 @@ export class UI {
     const COS_TH = { head: 'หมวก/มงกุฎ', face: 'หน้ากาก', back: 'ของหลัง', outfit: 'ชุดแต่งตัว' };
     $('#inv-equip').innerHTML += `<div class="eq-cos">${Object.entries(COS_TH).map(([slot, th]) => { const id = c.costume?.[slot];
       return `<div class="eq cos"><small>${th}</small>${id ? `${itemIcon(id, ITEMS[id].icon)} ${ITEMS[id].nameTh} <button class="close" data-uncos="${slot}">✕</button>` : '—'}</div>`; }).join('')}</div>`;
-    $('#inv-equip').querySelectorAll('[data-unequip]').forEach((b) => (b.onclick = () => this.result(Inv.unequip(c, b.dataset.unequip))));
-    $('#inv-equip').querySelectorAll('[data-uncos]').forEach((b) => (b.onclick = () => this.result(Inv.takeOffCostume(c, b.dataset.uncos))));
+    // โบนัสชุดประจำสาย
+    const si = setInfo(c.equipment);
+    const fmt = (b) => Object.entries(b).map(([k, v]) => `${k.toUpperCase()}+${k === 'crit' ? Math.round(v * 100) + '%' : v}`).join(' ');
+    $('#inv-equip').innerHTML += si
+      ? `<div class="set-box"><b>✦ ${esc(si.nameTh)}</b> <span class="meta">${si.n}/4 ชิ้น · ระดับ Lv.${si.lv}</span>
+          ${si.tiers.map((t) => `<div class="${t.on ? 'on' : ''}">${t.on ? '✔' : '○'} ${SET_TEXT[t.n]}: ${fmt(t.bonus)}</div>`).join('')}</div>`
+      : '<div class="set-box off"><span class="meta">✦ โบนัสชุด: สวมอุปกรณ์สายเดียวกัน 2/3/4 ชิ้น (ซื้อจากครูประจำสาย) จะได้โบนัสเพิ่ม · ยิ่งเลเวลของสูงยิ่งแรง</span></div>';
+    $('#inv-equip').querySelectorAll('[data-unequip]').forEach((b) => (b.onclick = () => this.result(this.scene.econ.act('unequip', { slot: b.dataset.unequip }))));
+    $('#inv-equip').querySelectorAll('[data-uncos]').forEach((b) => (b.onclick = () => this.result(this.scene.econ.act('cosOff', { slot: b.dataset.uncos }))));
 
     if (!c.inventory.length) { $('#inv-list').innerHTML = '<div class="empty">กระเป๋าว่างเปล่า</div>'; return; }
     // แท็บกรอง + เรียงลำดับ
@@ -634,11 +625,12 @@ export class UI {
     $('#inv-sort').onchange = (e) => { this.invSort = e.target.value; this.renderInventory(); };
     $('#inv-list').querySelectorAll('[data-cat]').forEach((b) => (b.onclick = () => { this.invCat = b.dataset.cat; this.scene.sfx.play('click'); this.renderInventory(); }));
     $('#inv-list').querySelectorAll('[data-lock]').forEach((b) => (b.onclick = () => {
-      const on = Inv.toggleLock(c, b.dataset.lock);
-      this.toast(on ? `🔒 ล็อก ${ITEMS[b.dataset.lock].nameTh} (จะไม่ถูกขาย)` : `🔓 ปลดล็อก ${ITEMS[b.dataset.lock].nameTh}`);
-      this.scene.sfx.play('click'); this.renderInventory(); this.scene.saveSoon();
+      this.scene.econ.act('lock', { id: b.dataset.lock }).then((r) => {
+        this.toast(r.locked ? `🔒 ล็อก ${ITEMS[b.dataset.lock].nameTh} (จะไม่ถูกขาย)` : `🔓 ปลดล็อก ${ITEMS[b.dataset.lock].nameTh}`);
+        this.scene.sfx.play('click'); this.renderInventory(); this.scene.saveSoon();
+      });
     }));
-    $('#inv-list').querySelectorAll('[data-use]').forEach((b) => (b.onclick = () => this.result(Inv.useItem(c, b.dataset.use))));
+    $('#inv-list').querySelectorAll('[data-use]').forEach((b) => (b.onclick = () => this.result(this.scene.econ.act('use', { id: b.dataset.use }))));
   }
 
   // ---------------- ร้านค้า NPC ----------------
@@ -647,7 +639,7 @@ export class UI {
     const shop = SHOPS[shopId];
     $('#shop-title').textContent = shop.nameTh;
     $('#shop-greet').textContent = `“${shop.greeting}”`;
-    const TAB_TH = { buy: 'ซื้อ', sell: 'ขาย', enhance: `${uiIcon('anvil', '🔨')} ตีบวก`, cook: `${uiIcon('soup', '🍳')} ทำอาหาร`, brew: `${uiIcon('herb', '🌿')} ปรุงยา` };
+    const TAB_TH = { buy: 'ซื้อ', sell: 'ขาย', enhance: `${uiIcon('anvil', '🔨')} ตีบวก`, cook: `${uiIcon('soup', '🍳')} ทำอาหาร`, brew: `${uiIcon('herb', '🌿')} ปรุงยา`, forge: '⚒️ หลอมอุปกรณ์', dye: '🎨 ย้อมสี' };
     const tabs = shop.tabs || ['buy', 'sell'];
     this.shopTab = tabs[0];
     $('#shop-tabs').innerHTML = tabs.map((t, i) => `<button data-tab="${t}" class="${i ? '' : 'active'}">${TAB_TH[t]}</button>`).join('');
@@ -662,6 +654,8 @@ export class UI {
     if (this.shopTab === 'enhance') return this.scene.village.renderEnhance($('#shop-list'));
     if (this.shopTab === 'cook') return this.scene.village.renderCook($('#shop-list'));
     if (this.shopTab === 'brew') return this.scene.village.renderBrew($('#shop-list'));
+    if (this.shopTab === 'forge') return this.scene.village.renderForge($('#shop-list'));
+    if (this.shopTab === 'dye') return this.renderDye($('#shop-list'));
     // เลือกจำนวน: x1 / x5 / x10 / สูงสุด (ใช้ทั้งซื้อและขาย)
     const QTY = [[1, 'x1'], [5, 'x5'], [10, 'x10'], [9999, 'สูงสุด']];
     const q = this.shopQty || 1;
@@ -683,8 +677,9 @@ export class UI {
         const bonus = it.bonus ? `<span class="meta"> ${Object.entries(it.bonus).map(([k, v]) => `${k.toUpperCase()}+${k === 'crit' ? v * 100 + '%' : v}`).join(' ')}</span>` : '';
         const food = it.buff ? `<span class="meta"> ${esc(it.buff.textTh)}</span>` : '';
         const have = Inv.count(c, id);
+        const prev = ['costume', 'armor', 'weapon'].includes(it.type) ? `<button class="prev-btn" data-prev="${id}" title="ลองใส่ดูก่อนซื้อ">👁</button>` : '';
         return `<div class="item ${under ? 'under' : ''}"><span class="ic">${itemIcon(id, it.icon)}</span><span>${esc(it.nameTh)}${have ? ` <span class="meta">(มี ${have})</span>` : ''}${job}${bonus}${food}${under ? ' <span class="need-lv">🔒 ต้อง Lv.' + it.lv + '</span>' : ''}</span>
-          <span class="price">฿${(it.price * n).toLocaleString()}</span>
+          <span class="price">${prev}฿${(it.price * n).toLocaleString()}</span>
           <button data-buy="${id}" data-n="${n}" ${owned || c.gold < it.price ? 'disabled' : ''}>${owned ? 'มีแล้ว' : n > 1 ? `ซื้อ x${n}` : 'ซื้อ'}</button></div>`;
       }).join('');
     } else {
@@ -720,13 +715,52 @@ export class UI {
       qin.addEventListener('focus', () => (this.scene.input.keyboard.enabled = false));
       qin.addEventListener('blur', () => (this.scene.input.keyboard.enabled = true));
     }
-    $('#shop-list').querySelectorAll('[data-buy]').forEach((b) => (b.onclick = () => trade(Inv.buy(c, b.dataset.buy, +b.dataset.n || 1))));
-    $('#shop-list').querySelectorAll('[data-sell]').forEach((b) => (b.onclick = () => trade(Inv.sell(c, b.dataset.sell, +b.dataset.n || 1))));
+    const E = this.scene.econ, shopId = this.shopId;
+    $('#shop-list').querySelectorAll('[data-buy]').forEach((b) => (b.onclick = () => E.act('buy', { shop: shopId, id: b.dataset.buy, qty: +b.dataset.n || 1 }).then(trade)));
+    $('#shop-list').querySelectorAll('[data-sell]').forEach((b) => (b.onclick = () => E.act('sell', { id: b.dataset.sell, qty: +b.dataset.n || 1 }).then(trade)));
+    $('#shop-list').querySelectorAll('[data-prev]').forEach((b) => (b.onclick = () => this.preview(b.dataset.prev)));
     $('#shop-list').querySelectorAll('[data-bulk]').forEach((b) => (b.onclick = () => {
       const list = Inv.bulkSellList(c, b.dataset.bulk);
       const total = list.reduce((a, s) => a + sellPrice(s.id) * s.qty, 0), n = list.reduce((a, s) => a + s.qty, 0);
       if (!list.length || !confirm(`ขาย${b.dataset.bulk === 'fish' ? 'ปลา' : 'ของดรอป'} ${list.length} ชนิด (${n} ชิ้น) ได้ ฿${total.toLocaleString()}\n(ของที่ล็อก 🔒 จะไม่ถูกขาย) ยืนยันไหม?`)) return;
-      trade(Inv.sellMany(c, list));
+      E.act('sellMany', { kind: b.dataset.bulk }).then(trade);
     }));
+  }
+
+  /** ลองชุด/อาวุธก่อนซื้อ: สวมทับตัวละคร 6 วิ (แค่ภาพ ไม่มีผลค่าพลัง) */
+  preview(id) {
+    const s = this.scene, p = s.player, it = ITEMS[id];
+    if (!it) return;
+    const a = { ...p.char.appearance, costume: { ...(p.char.appearance.costume || {}) } };
+    if (it.type === 'costume') a.costume[it.slot] = id;
+    else if (it.type === 'armor') a.armor = id;
+    else if (it.type === 'weapon') a.weapon = id;
+    p.previewAppearance(a);
+    this.toast(`👁 ลองใส่ ${it.nameTh} (ดูตัวละคร 6 วิ)`);
+    s.sfx.play('click');
+  }
+
+  /** ร้านแม่ช้อย: ย้อมสีผม / เปลี่ยนชุดพื้นฐาน */
+  renderDye(el) {
+    const c = this.char, a = c.appearance;
+    const row = (part, list, th) => `<div class="dye-row"><b>${th}</b> <span class="meta">ตอนนี้: ${esc(list[a[part]]?.nameTh || '')}</span><div class="dye-opts">${list.map((o, i) => `<button data-dye="${part}" data-v="${i}" class="${a[part] === i ? 'active' : ''}" title="${esc(o.nameTh)}">${i + 1}</button>`).join('')}</div></div>`;
+    el.innerHTML = `<p class="hint">ย้อมสีผม / เปลี่ยนชุดพื้นฐาน ครั้งละ ฿${DYE_PRICE} · กด 👁 เพื่อลองดูก่อน (ไม่เสียเงิน)</p>` + row('hair', HAIRSTYLES, '💇 สีผม') + row('outfit', OUTFITS, '👘 ชุดพื้นฐาน');
+    el.querySelectorAll('[data-dye]').forEach((b) => {
+      b.onmouseenter = () => this.scene.player.previewAppearance({ ...a, [b.dataset.dye]: +b.dataset.v }, 1500);
+      b.onclick = () => {
+        if (!confirm(`ย้อม${b.dataset.dye === 'hair' ? 'ผม' : 'ชุด'}เป็นแบบที่ ${+b.dataset.v + 1} (฿${DYE_PRICE})?`)) return;
+        this.scene.econ.act('dye', { part: b.dataset.dye, v: +b.dataset.v }).then((r) => { this.scene.sfx.play(r.ok ? 'buy' : 'error'); this.result(r); });
+      };
+    });
+  }
+
+  /** เลือกฉายา (แผงสังคม) */
+  renderTitles(el) {
+    const c = this.char, have = new Set(c.titles || []);
+    el.innerHTML = `<div class="title-list">${TITLES.map((t) => {
+      const on = c.title === t.id, ok = have.has(t.id);
+      return `<button class="title-row ${ok ? '' : 'locked'} ${on ? 'active' : ''}" data-title="${t.id}" ${ok ? '' : 'disabled'} style="--tc:${t.color}"><b>${ok ? '' : '🔒 '}${esc(t.nameTh)}</b><small>${esc(t.hint)}</small>${on ? '<i>✔ ใช้อยู่</i>' : ''}</button>`;
+    }).join('')}</div><button class="btn ghost sm" data-title="">ซ่อนฉายา</button>`;
+    el.querySelectorAll('[data-title]').forEach((b) => (b.onclick = () => this.scene.econ.act('title', { id: b.dataset.title || null }).then((r) => { this.scene.sfx.play(r.ok ? 'buff' : 'error'); this.result(r); this.renderTitles(el); })));
   }
 }

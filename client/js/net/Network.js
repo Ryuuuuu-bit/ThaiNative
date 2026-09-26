@@ -56,10 +56,15 @@ export class Network {
     s.on('mob:dmg', (d) => this.emitLocal('mob:dmg', d));
     s.on('mob:reward', (d) => this.emitLocal('mob:reward', d));
     // ระบบ MMO: ปาร์ตี้ · เทรด · เรดบอส → ส่งต่อด้วยชื่อ event เดิม
-    for (const ev of ['party:invite', 'party:state', 'party:exp', 'trade:request', 'trade:state', 'trade:closed', 'trade:complete', 'trade:verify',
-      'raid:state', 'raid:spawn', 'raid:attack', 'raid:impact', 'raid:dmg', 'raid:reward', 'raid:defeated']) {
+    for (const ev of ['party:invite', 'party:state', 'party:exp', 'trade:request', 'trade:state', 'trade:closed', 'trade:complete',
+      'raid:state', 'raid:spawn', 'raid:attack', 'raid:impact', 'raid:dmg', 'raid:reward', 'raid:defeated',
+      'char:load', 'char:sync', 'pl:hit', 'pl:die', 'pl:hp', 'friends:state', 'title:new',
+      'rboss:spawn', 'rboss:list', 'rboss:down', 'rboss:slam', 'rboss:reward',
+      'dg:start', 'dg:state', 'dg:wave', 'dg:cleared', 'dg:dmg', 'dg:die', 'dg:exp', 'dg:slam', 'dg:end', 'dg:exit']) {
       s.on(ev, (d) => this.emitLocal(ev, d));
     }
+    s.on('player:rejected', (d) => this.emitLocal('rejected', d));
+    s.on('player:kicked', (d) => this.emitLocal('kicked', d));
   }
 
   /** ส่ง event ทั่วไปไป server (ออฟไลน์ = ไม่ทำอะไร) */

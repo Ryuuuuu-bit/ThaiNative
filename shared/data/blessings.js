@@ -51,6 +51,8 @@ export function combineBlessings(list = [], now = Date.now()) {
   return r;
 }
 
-/** วันที่ (เวลาเครื่อง) ใช้จำกัดเซียมซีวันละครั้ง */
-export const todayKey = (d = new Date()) => `${d.getFullYear()}-${d.getMonth() + 1}-${d.getDate()}`;
-export function endOfToday(d = new Date()) { const e = new Date(d); e.setHours(23, 59, 59, 999); return e.getTime(); }
+/** วันที่ตามเวลาไทย (UTC+7) ใช้จำกัดเซียมซี/ค่าหัววันละครั้ง – client และ server ได้ค่าเดียวกันเสมอ */
+const TH = 7 * 3600e3;
+const toMs = (d) => (d instanceof Date ? d.getTime() : Number.isFinite(d) ? d : Date.now());
+export const todayKey = (d = Date.now()) => { const t = new Date(toMs(d) + TH); return `${t.getUTCFullYear()}-${t.getUTCMonth() + 1}-${t.getUTCDate()}`; };
+export function endOfToday(d = Date.now()) { const t = toMs(d) + TH; return t - (t % 86400e3) + 86400e3 - 1 - TH; }

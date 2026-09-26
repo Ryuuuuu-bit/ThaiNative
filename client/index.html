@@ -92,6 +92,12 @@
           <div class="bar boss"><i id="bb-fill"></i><span id="bb-hp"></span></div>
         </div>
 
+        <!-- ดันเจี้ยน (กลางบน) -->
+        <div id="dg-bar" class="boss-bar dg-bar hidden">
+          <div class="bb-name"><b>🕯️ สุสานใต้ดิน</b><span id="dg-wave"></span><span id="dg-time"></span></div>
+          <div class="bar boss dg"><i id="dg-fill"></i></div>
+        </div>
+
         <!-- เตือนสกิลบอส -->
         <div id="boss-warn" class="boss-warn hidden">
           <div class="bw-name" id="bw-name"></div>
@@ -202,16 +208,38 @@
         <b id="pm-name"></b>
         <button data-act="party">🤝 เชิญเข้าปาร์ตี้</button>
         <button data-act="trade">💱 ขอเทรด</button>
+        <button data-act="friend">👥 เพิ่มเพื่อน</button>
+        <button data-act="whisper">💬 กระซิบ</button>
         <button data-act="close">✕ ปิด</button>
       </div>
 
       <!-- ปาร์ตี้ & ผู้เล่นออนไลน์ (P) -->
       <section id="social-panel" class="panel window hidden">
-        <header>ปาร์ตี้ & ผู้เล่นออนไลน์ <button class="close">✕</button></header>
-        <div class="soc-sec"><h4>ปาร์ตี้ของคุณ <small id="soc-party-info"></small></h4><div id="soc-party"></div></div>
-        <div class="soc-sec"><h4>ผู้เล่นในโลก</h4><div id="soc-players"></div></div>
-        <div class="soc-sec"><h4>🏆 ตารางอันดับ <span class="lb-tabs"><button data-lb="level" class="active">เลเวล</button><button data-lb="enhance">ตีบวก</button></span></h4><div id="soc-lb"></div></div>
-        <p class="hint">ปาร์ตี้สูงสุด 4 คน · ฆ่าผีแล้วเพื่อนที่อยู่ใกล้ได้ EXP 60% · <b>/p ข้อความ</b> = คุยในปาร์ตี้ · <b>/w ชื่อ ข้อความ</b> = กระซิบ · คลิกที่ตัวผู้เล่นเพื่อเชิญ/เทรดได้เลย</p>
+        <header>สังคม <span class="soc-tabs"><button data-soctab="party" class="active">👥 ปาร์ตี้/ผู้เล่น</button><button data-soctab="friends">💚 เพื่อน</button><button data-soctab="lb">🏆 อันดับ</button><button data-soctab="titles">🏅 ฉายา</button></span> <button class="close">✕</button></header>
+        <div class="soc-page" data-page="party">
+          <div class="soc-sec"><h4>ปาร์ตี้ของคุณ <small id="soc-party-info"></small></h4><div id="soc-party"></div></div>
+          <div class="soc-sec"><h4>ผู้เล่นในโลก</h4><div id="soc-players"></div></div>
+          <p class="hint">ปาร์ตี้สูงสุด 4 คน · ฆ่าผีแล้วเพื่อนที่อยู่ใกล้ได้ EXP 60% · <b>/p ข้อความ</b> = คุยในปาร์ตี้ · <b>/w ชื่อ ข้อความ</b> = กระซิบ · คลิกที่ตัวผู้เล่นเพื่อเชิญ/เทรด/เพิ่มเพื่อน</p>
+        </div>
+        <div class="soc-page hidden" data-page="friends">
+          <div class="soc-sec"><h4>รายชื่อเพื่อน <small id="soc-friend-count"></small></h4><div id="soc-friends"></div></div>
+          <p class="hint">เพื่อนออนไลน์จะแจ้งเตือนในแชท · เชิญเข้าปาร์ตี้/กระซิบได้จากรายชื่อ · เก็บได้ 50 คน</p>
+        </div>
+        <div class="soc-page hidden" data-page="lb">
+          <div class="soc-sec"><h4>🏆 ตารางอันดับ <span class="lb-tabs"><button data-lb="level" class="active">เลเวล</button><button data-lb="enhance">ตีบวก</button></span></h4><div id="soc-lb"></div></div>
+        </div>
+        <div class="soc-page hidden" data-page="titles">
+          <div class="soc-sec"><h4>🏅 ฉายา <small>แสดงเหนือชื่อ ทุกคนเห็น</small></h4><div id="soc-titles"></div></div>
+        </div>
+      </section>
+
+      <!-- ดันเจี้ยน (หลวงพ่อทอง) -->
+      <section id="dg-panel" class="panel window hidden">
+        <header>🕯️ สุสานใต้ดิน – หลวงพ่อทอง <button class="close">✕</button></header>
+        <p class="npc-say">“ใต้วัดบางผีมีสุสานเก่าแก่ที่วิญญาณร้ายซ่อนอยู่ ถ้าเจ้ากับพวกกล้าพอ ข้าจะเปิดทางให้… แต่จำไว้ ตายหมดทีมเมื่อไหร่ สุสานจะกลืนเจ้ากลับขึ้นมา”</p>
+        <p id="dg-party" class="meta"></p>
+        <div id="dg-tiers" class="dg-tiers"></div>
+        <p class="hint">เข้าได้ 1–4 คน (ห้องแยกของปาร์ตี้) · 3 ระลอก + บอส · จำกัด 10 นาที · ผู้เล่นที่ตายฟื้นได้ที่ต้นสุสานถ้ายังมีเพื่อนสู้อยู่ · หลังจบรอ 3 นาทีถึงเข้าใหม่ได้</p>
       </section>
 
       <!-- เทรด -->
@@ -300,7 +328,10 @@
           <div><kbd>B</kbd> ยันต์คืนถิ่น (ร่าย 2.5 วิ กลับหมู่บ้าน)</div><div><kbd>Tab</kbd> สลับอาวุธ</div>
           <div>💬 <b>/w ชื่อ ข้อความ</b> กระซิบ · <b>/r ข้อความ</b> ตอบกลับ · <b>/p</b> แชทปาร์ตี้</div><div>🏆 ตารางอันดับอยู่ในหน้าต่างผู้เล่น (P)</div>
           <div>⚔️ ลานฝึกวิชา (ซ้ายของวัด): ครูประจำ 4 อาชีพขายอาวุธ/ชุด/เครื่องประดับ Lv.1–20</div><div>✨ อุปกรณ์ Lv.22–30 ดรอปจากผีตามเลเวลแมพ/หีบสมบัติ · ✦ชิ้นตำนานจากพญายักษ์</div>
-          <div>💍 เครื่องประดับใส่ได้ 2 ชิ้น · อุปกรณ์มีเลเวลขั้นต่ำ</div>
+          <div>💍 เครื่องประดับใส่ได้ 2 ชิ้น · อุปกรณ์มีเลเวลขั้นต่ำ</div><div>✦ <b>โบนัสชุด</b>: ใส่ของสายเดียวกัน 2/3/4 ชิ้น ได้โบนัสเพิ่ม (ดูในกระเป๋า)</div>
+          <div>🕯️ <b>สุสานใต้ดิน</b> (หลวงพ่อทอง ข้างศาลา): ดันเจี้ยนปาร์ตี้ 1–4 คน 3 ระดับ</div><div>👑 <b>บอสประจำภาค</b> เกิดแมพสุดท้ายของแต่ละภาคทุก 20 นาที (แจ้งในแชท/แผนที่)</div>
+          <div>⚒️ <b>โรงหลอมลุงดำ</b>: หลอมอุปกรณ์ Lv.22–30 จากของดรอปภาค 3–5</div><div>🎨 แม่ช้อย: ย้อมสีผม/ชุด · กด 👁 ในร้านเพื่อลองใส่ก่อนซื้อ</div>
+          <div>🏅 <b>ฉายา</b> ปลดล็อกจากความสำเร็จ เลือกใช้ที่แผงสังคม (P)</div><div>💚 <b>เพื่อน</b>: เพิ่มจากรายชื่อผู้เล่น · <kbd>B</kbd> ในหมู่บ้าน = กลับจุดล่าล่าสุด</div>
         </div>
       </section>
 

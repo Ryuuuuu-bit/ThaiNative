@@ -5,6 +5,7 @@
 // ============================================================
 import { JOB_IDS } from './classes.js';
 import { ITEMS, weaponStyle } from './items.js';
+import { TITLE_BY_ID } from './titles.js';
 
 export const GENDERS = [
   { id: 'male', nameTh: 'ชาย' },
@@ -77,6 +78,7 @@ export function sanitizeAppearance(a = {}) {
     costume: sanitizeCostume(a.costume),
     aura: Number.isInteger(a.aura) && a.aura >= 0 && a.aura <= 5 ? a.aura : 0,      // ออร่าตีบวก (0–5)
     wenh: enhLv(a.wenh), aenh: enhLv(a.aenh),                                         // ขั้นตีบวกอาวุธ/เสื้อ (0–20) → แสงเรืองที่อุปกรณ์
+    title: typeof a.title === 'string' && TITLE_BY_ID[a.title] ? a.title : null,      // ฉายาเหนือชื่อ
   };
 }
 

@@ -63,22 +63,12 @@ class AccountClient {
     try { localStorage.removeItem(TOKEN_KEY); } catch { /* ignore */ }
   }
 
-  /** เซฟตัวละครขึ้น server (รวบหลายครั้งเป็นครั้งเดียวทุก ~1.5 วิ) */
-  saveCharacter(char) {
-    if (!this.loggedIn) return;
-    this.pending = char;
-    if (this.saveTimer) return;
-    this.saveTimer = setTimeout(() => this.flush(), 1500);
-  }
+  /** สร้างตัวละครใหม่บน server (server กำหนดค่าเริ่มต้นเอง) */
+  async createCharacter(name, appearance, weapon) { return (await this.api('/character/new', 'POST', { name, appearance, weapon })).character; }
 
-  async flush() {
-    clearTimeout(this.saveTimer); this.saveTimer = null;
-    const char = this.pending;
-    if (!char || !this.loggedIn) return;
-    this.pending = null;
-    try { await this.api('/character', 'PUT', { character: char }); this.lastSaved = Date.now(); }
-    catch (e) { if (e.status !== 401 && e.status !== 400) this.pending = this.pending || char; }   // ลองใหม่รอบหน้า
-  }
+  /** (เลิกใช้) ตัวละครออนไลน์ server เป็นคนเซฟเอง */
+  saveCharacter() {}
+  async flush() {}
 }
 
 export const account = new AccountClient();

@@ -6,9 +6,10 @@
 import { ITEMS } from '/shared/data/items.js';
 import { MONSTERS } from '/shared/data/monsters.js';
 import { WORLD } from '/shared/constants.js';
-import { rollFish, RECIPES, BREWS, ENHANCE, QUESTS, QUEST_BY_ID } from '/shared/data/village.js';
-import { addItem, removeItem, count, tradeLock } from './Inventory.js';
-import { getDerived, choosePath, syncAppearance } from './Character.js';
+import { ENHANCE, QUESTS, QUEST_BY_ID } from '/shared/data/village.js';
+import { count, tradeLock, questState as qState } from './Inventory.js';
+import { craftList, canCraft, MAX_ACTIVE_QUESTS } from '/shared/economy.js';
+import { FISH_SPOT } from '/shared/data/npcs.js';
 import { AURA_TH, AURA_COLOR } from '../gfx/Aura.js';
 import { JOBS, JOB_IDS, PATH_LV } from '/shared/data/classes.js';
 import { SKILLS } from '/shared/data/skills.js';
@@ -17,10 +18,8 @@ import { itemIcon } from './util.js';
 const $ = (s) => document.querySelector(s);
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const SLOT_TH = { weapon: 'อาวุธ', armor: 'ชุดเกราะ', accessory: 'เครื่องประดับ 1', accessory2: 'เครื่องประดับ 2' };
-const MAX_ACTIVE = 3;
-
-/** ช่วงท่าน้ำที่ตกปลาได้ (ปลายสะพานไม้) */
-export const FISH_SPOT = { from: WORLD.minX + 20, to: WORLD.minX + 250 };
+const MAX_ACTIVE = MAX_ACTIVE_QUESTS;
+export { FISH_SPOT };
 
 export class Village {
   constructor(scene) {
@@ -40,6 +39,7 @@ export class Village {
 
   get char() { return this.scene.player.char; }
   get ui() { return this.scene.ui; }
+  get econ() { return this.scene.econ; }
 
   // ============================================================
   //  ตกปลา
@@ -69,17 +69,24 @@ export class Village {
     const f = this.fish, s = this.scene;
     if (!f) return;
     if (f.stage === 'wait') return this.stop('เก็บเบ็ดแล้ว');
-    if (f.stage === 'bite') {                                          // วัดจังหวะ → เข้าสู่มินิเกม
-      f.stage = 'reel';
-      f.catch = rollFish(s.clock?.night);
-      const hard = f.catch.hard;
-      f.zoneW = 0.34 - hard * 0.24;                                     // ช่องเขียวแคบลงตามความยาก
-      f.zoneX = 0.1 + Math.random() * (0.8 - f.zoneW);
-      f.speed = 0.7 + hard * 1.1;                                       // ความเร็วเข็ม (รอบ/วินาที)
-      f.pos = 0; f.dir = 1; f.tries = 3;
-      this.showBar(true);
-      $('#fish-msg').textContent = 'กด F เมื่อเข็มอยู่ในช่องสีเขียว!';
-      s.sfx.play('click');
+    if (f.stage === 'bite') {                                          // วัดจังหวะ → ขอปลาจาก server → เข้าสู่มินิเกม
+      if (f.asking) return;
+      f.asking = true;
+      this.econ.act('fishBite').then((r) => {
+        if (this.fish !== f) return;
+        f.asking = false;
+        if (!r.ok) { f.stage = 'wait'; f.biteAt = s.time.now + 1500 + Math.random() * 3500; $('#fish-msg').textContent = r.msg || 'ปลาหนีไปแล้ว… รอตัวใหม่'; return; }
+        f.stage = 'reel';
+        f.catch = { id: r.fish, hard: r.hard };
+        const hard = r.hard;
+        f.zoneW = 0.34 - hard * 0.24;                                   // ช่องเขียวแคบลงตามความยาก
+        f.zoneX = 0.1 + Math.random() * (0.8 - f.zoneW);
+        f.speed = 0.7 + hard * 1.1;
+        f.pos = 0; f.dir = 1; f.tries = 3;
+        this.showBar(true);
+        $('#fish-msg').textContent = 'กด F เมื่อเข็มอยู่ในช่องสีเขียว!';
+        s.sfx.play('click');
+      });
       return;
     }
     if (f.stage === 'reel') {
@@ -88,15 +95,22 @@ export class Village {
       f.tries--;
       s.sfx.play('error');
       s.cameras.main.shake(80, 0.002);
-      if (f.tries <= 0) return this.stop('ปลาหลุดเบ็ดไปแล้ว…', 'warn');
+      if (f.tries <= 0) { this.econ.act('fishLose'); return this.stop('ปลาหลุดเบ็ดไปแล้ว…', 'warn'); }
       $('#fish-msg').textContent = `พลาด! เหลือโอกาสอีก ${f.tries} ครั้ง`;
     }
   }
 
   landFish() {
-    const f = this.fish, s = this.scene, c = this.char;
-    const it = ITEMS[f.catch.id];
-    addItem(c, f.catch.id);
+    const f = this.fish, s = this.scene;
+    f.stage = 'landing';
+    this.econ.act('fishLand').then((r) => {
+      if (!r.ok) return this.stop(r.msg || 'ปลาหลุดเบ็ดไปแล้ว…', 'warn');
+      this.fishFx(f, r);
+    });
+  }
+
+  fishFx(f, r) {
+    const s = this.scene, it = ITEMS[f.catch.id];
     s.sfx.play(f.catch.id === 'junk_boot' ? 'error' : 'coin');
     const p = s.player;
     // ปลากระโดดขึ้นจากน้ำเข้ามือ
@@ -107,7 +121,7 @@ export class Village {
     s.combat.burst(f.bobX, f.bobY, 0x85c1e9, 10);
     const rare = ['pla_buek', 'pla_phrai'].includes(f.catch.id);
     if (rare) { s.ui.banner(`🎣 ได้ ${it.icon} ${it.nameTh}!!`); s.sfx.play('levelup'); }
-    this.questEvent('fish', f.catch.id);
+    s.combat.afterGrant(r);
     this.stop(`ได้ ${it.icon} ${it.nameTh}${f.catch.id === 'junk_boot' ? ' (ซวยจัง)' : ''}`);
     s.saveSoon();
   }
@@ -115,6 +129,7 @@ export class Village {
   stop(msg, type) {
     const f = this.fish;
     if (!f) return;
+    if (f.stage === 'reel') this.econ.act('fishLose');
     f.line.destroy(); f.bob.destroy();
     this.fish = null;
     $('#fish-ui').classList.add('hidden');
@@ -135,6 +150,7 @@ export class Village {
     if (!f) return;
     const p = s.player;
     if (!p.alive || Math.abs(p.body.velocity.x) > 5 || !this.canFish(p.x)) return this.stop('เลิกตกปลา');
+    if (f.stage === 'landing') { f.bob.setPosition(f.bobX, f.bobY); return; }
     // ทุ่นลอยน้ำ
     let by = f.bobY + Math.sin(time / 300) * 1;
     if (f.stage === 'wait' && time >= f.biteAt) {
@@ -170,44 +186,43 @@ export class Village {
   // ============================================================
   //  ครัวป้าสา
   // ============================================================
-  renderCook(el) { this.renderCraft(el, RECIPES, 'ป้าสา', 'ตกปลาได้ที่ท่าน้ำซ้ายสุดของหมู่บ้าน · หน่อไม้เก็บได้ในภาค 2 · กลางคืนมีโอกาสได้ปลาพรายวิญญาณ'); }
-  renderBrew(el) { this.renderCraft(el, BREWS, 'ยายติ๋ม', 'สมุนไพรเก็บได้ในแมพล่าผี (แต่ละภาคมีชนิดต่างกัน) · เห็ดผีเรืองแสงอยู่ภาค 4–5'); }
+  renderCook(el) { this.renderCraft(el, 'cook', 'ตกปลาได้ที่ท่าน้ำซ้ายสุดของหมู่บ้าน · หน่อไม้เก็บได้ในภาค 2 · กลางคืนมีโอกาสได้ปลาพรายวิญญาณ'); }
+  renderBrew(el) { this.renderCraft(el, 'brew', 'สมุนไพรเก็บได้ในแมพล่าผี (แต่ละภาคมีชนิดต่างกัน) · เห็ดผีเรืองแสงอยู่ภาค 4–5'); }
+  renderForge(el) { this.renderCraft(el, 'forge', 'หลอมอุปกรณ์ขั้นสูง Lv.22–30 จากของดรอปภาค 3–5 + แร่เหล็กไหล · ไม่ต้องรอดวงดรอป · เขี้ยวพญายักษ์/เขาอสุรกายได้จากบอส'); }
 
-  /** รายการสูตร (ครัวป้าสา / ปรุงยายายติ๋ม) */
-  renderCraft(el, list, who, hint) {
-    const c = this.char;
-    el.innerHTML = list.map((r, i) => {
+  /** รายการสูตร (ครัวป้าสา / ปรุงยายายติ๋ม / โรงหลอมลุงดำ) → ส่งคำสั่ง craft ให้ server */
+  renderCraft(el, list, hint) {
+    const c = this.char, all = craftList(list);
+    let filt = '';
+    let rows = all.map((r, i) => ({ r, i }));
+    if (list === 'forge') {                                             // กรอง: สายตัวเอง / ทั้งหมด / ของใช้
+      const F = { mine: `สาย${JOBS[c.path]?.nameTh || 'ตัวเอง'}`, all: 'ทุกสาย', util: 'ของใช้' };
+      const f = this.forgeFilter || (c.path ? 'mine' : 'all');
+      filt = `<div class="qty-bar gear-filter"><span>แสดง:</span>${Object.entries(F).map(([k, l]) => `<button data-ff="${k}" class="${k === f ? 'active' : ''}">${l}</button>`).join('')}</div>`;
+      rows = rows.filter(({ r }) => f === 'all' ? !r.util : f === 'util' ? r.util : r.job === c.path);
+    }
+    el.innerHTML = filt + rows.map(({ r, i }) => {
       const it = ITEMS[r.out];
       const needs = Object.entries(r.need).map(([id, n]) => {
         const have = count(c, id);
         return `<span class="${have >= n ? 'ok' : 'miss'}">${itemIcon(id, ITEMS[id].icon)}${esc(ITEMS[id].nameTh)} ${have}/${n}</span>`;
       }).join(' ');
-      const can = Object.entries(r.need).every(([id, n]) => count(c, id) >= n) && c.gold >= r.fee;
-      // ทำได้สูงสุดกี่ชุด (ตามวัตถุดิบและเงิน)
+      const can = canCraft(c, r);
       const max = Math.min(...Object.entries(r.need).map(([id, n]) => Math.floor(count(c, id) / n)), r.fee ? Math.floor(c.gold / r.fee) : 99);
-      const eff = it.buff ? `${esc(it.buff.textTh)} · ${it.buff.minutes} นาที` : '';
-      return `<div class="item"><span class="ic">${itemIcon(r.out, it.icon)}</span>
-        <span>${esc(it.nameTh)} <span class="meta">${eff}</span><div class="need">${needs} · ค่าแรง ฿${r.fee}</div></span>
-        <span class="craft-btns"><button data-craft="${i}" ${can ? '' : 'disabled'}>ทำ</button>${max > 1 ? `<button data-craft="${i}" data-n="${max}">ทำ x${max}</button>` : ''}</span><span></span></div>`;
-    }).join('') + `<p class="hint">${hint}</p>`;
+      const eff = it.buff ? `${esc(it.buff.textTh)} · ${it.buff.minutes} นาที` : it.bonus ? `Lv.${it.lv} · ${Object.entries(it.bonus).map(([k, v]) => `${k.toUpperCase()}+${k === 'crit' ? v * 100 + '%' : v}`).join(' ')}` : '';
+      const under = it.lv && c.level < it.lv ? ' <span class="need-lv">🔒 ต้อง Lv.' + it.lv + '</span>' : '';
+      return `<div class="item ${it.lv && c.level < it.lv ? 'under' : ''}"><span class="ic">${itemIcon(r.out, it.icon)}</span>
+        <span>${esc(it.nameTh)}${under} <span class="meta">${eff}</span><div class="need">${needs} · ค่าแรง ฿${r.fee.toLocaleString()}</div></span>
+        <span class="craft-btns"><button data-craft="${i}" ${can ? '' : 'disabled'}>${list === 'forge' ? 'หลอม' : 'ทำ'}</button>${max > 1 && list !== 'forge' ? `<button data-craft="${i}" data-n="${max}">ทำ x${max}</button>` : ''}</span><span></span></div>`;
+    }).join('') + (rows.length ? '' : '<div class="empty">ไม่มีสูตรในหมวดนี้</div>') + `<p class="hint">${hint}</p>`;
+    el.querySelectorAll('[data-ff]').forEach((b) => (b.onclick = () => { this.forgeFilter = b.dataset.ff; this.scene.sfx.play('click'); this.renderForge(el); }));
     el.querySelectorAll('[data-craft]').forEach((b) => (b.onclick = () => {
-      const n = +b.dataset.n || 1, r = list[+b.dataset.craft];
-      let done = 0, res;
-      while (done < n && (res = this.cook(r, who)).ok) done++;
-      this.ui.result(done > 1 ? { ok: true, msg: `${who}ทำ ${ITEMS[r.out].icon} ${ITEMS[r.out].nameTh} x${done} ให้แล้ว!` } : res);
+      const n = +b.dataset.n || 1, idx = +b.dataset.craft;
+      this.econ.act('craft', { list, idx, n }).then((r) => {
+        if (r.ok) { this.scene.sfx.play(r.forged ? 'levelup' : 'potion'); if (r.forged) { this.ui.banner(`⚒️ หลอมสำเร็จ: ${ITEMS[r.out].nameTh}`); this.scene.combat.burst(this.scene.player.x, this.scene.player.y - 20, 0xf39c12, 18); } }
+        this.ui.result(r);
+      });
     }));
-  }
-
-  cook(r, who = 'ป้าสา') {
-    const c = this.char;
-    if (tradeLock.on) return { ok: false, msg: 'กำลังเทรดอยู่ – ปิดหน้าต่างเทรดก่อน' };
-    if (!Object.entries(r.need).every(([id, n]) => count(c, id) >= n)) return { ok: false, msg: 'วัตถุดิบไม่พอ' };
-    if (c.gold < r.fee) return { ok: false, msg: 'เงินไม่พอจ่ายค่าแรง' };
-    Object.entries(r.need).forEach(([id, n]) => removeItem(c, id, n));
-    c.gold -= r.fee;
-    addItem(c, r.out);
-    this.scene.sfx.play('potion');
-    return { ok: true, msg: `${who}ทำ ${ITEMS[r.out].icon} ${ITEMS[r.out].nameTh} ให้แล้ว!` };
   }
 
   // ============================================================
@@ -238,33 +253,26 @@ export class Village {
   enhance(slot) {
     const c = this.char, s = this.scene, lv = c.enhance[slot] || 0;
     if (tradeLock.on) return s.ui.toast('กำลังเทรดอยู่ – ปิดหน้าต่างเทรดก่อน', 'warn');
-    const cost = ENHANCE.cost(lv), ore = ENHANCE.ore(lv), fang = ENHANCE.fang(lv);
-    if (!c.equipment[slot] || lv >= ENHANCE.max || c.gold < cost || count(c, 'black_iron') < ore || count(c, 'yak_fang') < fang) return;
-    const guard = lv >= 10 && this.useGuard && count(c, 'yant_guard') > 0;
-    c.gold -= cost;
-    if (ore) removeItem(c, 'black_iron', ore);
-    if (fang) removeItem(c, 'yak_fang', fang);
-    if (guard) removeItem(c, 'yant_guard', 1);
+    if (this.enhancing) return;
+    this.enhancing = true;
     s.sfx.play('hit');
-    const ok = Math.random() < ENHANCE.rate(lv);
-    let msg;
-    if (ok) {
-      c.enhance[slot] = lv + 1;
-      s.sfx.play('levelup');
-      s.combat.burst(s.player.x, s.player.y - 20, AURA_COLOR[ENHANCE.auraTier(lv + 1)] || 0xf39c12, 16 + lv);
-      if (lv + 1 >= 10) s.cameras.main.flash(250, 255, 230, 150);
-      msg = `🔨 ตีบวกสำเร็จ! ${SLOT_TH[slot]} +${lv + 1}`;
-      if (ENHANCE.auraTier(lv + 1) > ENHANCE.auraTier(lv)) { this.ui.banner(`✨ ปลดออร่า${AURA_TH[ENHANCE.auraTier(lv + 1)]}!`); }
-    } else {
-      const drop = guard ? 0 : ENHANCE.drop(lv);
-      c.enhance[slot] = Math.max(0, lv - drop);
-      s.sfx.play('error');
-      s.cameras.main.shake(180, 0.006);
-      msg = drop ? `💥 ตีพลาด! ${SLOT_TH[slot]} ลดเหลือ +${lv - drop}` : `💥 ตีพลาด… ${SLOT_TH[slot]} ยังคง +${lv}${guard ? ' (ยันต์กันลดขั้นช่วยไว้)' : ''}`;
-    }
-    const d = getDerived(c); c.hp = Math.min(c.hp, d.maxHp);
-    if (syncAppearance(c)) s.onAppearanceChanged();                        // ออร่าเปลี่ยน → คนอื่นเห็นด้วย
-    this.ui.result({ ok, msg });
+    this.econ.act('enhance', { slot, guard: !!this.useGuard }).then((r) => {
+      this.enhancing = false;
+      if (!r.success && r.msg) return this.ui.result(r);                  // ทำไม่ได้ (เงิน/แร่ไม่พอ ฯลฯ)
+      let msg;
+      if (r.success) {
+        s.sfx.play('levelup');
+        s.combat.burst(s.player.x, s.player.y - 20, AURA_COLOR[ENHANCE.auraTier(r.lv)] || 0xf39c12, 16 + r.lv);
+        if (r.lv >= 10) s.cameras.main.flash(250, 255, 230, 150);
+        msg = `🔨 ตีบวกสำเร็จ! ${SLOT_TH[slot]} +${r.lv}`;
+        if (ENHANCE.auraTier(r.lv) > ENHANCE.auraTier(r.from)) this.ui.banner(`✨ ปลดออร่า${AURA_TH[ENHANCE.auraTier(r.lv)]}!`);
+      } else {
+        s.sfx.play('error');
+        s.cameras.main.shake(180, 0.006);
+        msg = r.drop ? `💥 ตีพลาด! ${SLOT_TH[slot]} ลดเหลือ +${r.lv}` : `💥 ตีพลาด… ${SLOT_TH[slot]} ยังคง +${r.lv}${r.guard ? ' (ยันต์กันลดขั้นช่วยไว้)' : ''}`;
+      }
+      this.ui.result({ ok: r.success, msg, jobChanged: r.jobChanged, titles: r.titles });
+    });
   }
 
   // ============================================================
@@ -276,12 +284,7 @@ export class Village {
     this.renderQuests();
   }
 
-  questState(q) {
-    const Q = this.char.quests;
-    if (Q.done.includes(q.id)) return 'done';
-    if (q.id in Q.active) return Q.active[q.id] >= q.goal.n ? 'ready' : 'active';
-    return this.char.level >= q.lv ? 'open' : 'locked';
-  }
+  questState(q) { return qState(this.char, q); }
 
   goalText(q) {
     const g = q.goal;
@@ -319,14 +322,14 @@ export class Village {
       const j = b.dataset.path;
       if (!this.nearChai()) return this.ui.toast('ต้องยืนคุยกับผู้ใหญ่ชัยที่หมู่บ้านก่อน', 'warn');
       if (!confirm(`เลือกสายหลัก “${JOBS[j].pathTitle}”?\n(เปลี่ยนภายหลังได้ด้วยคัมภีร์เปลี่ยนสายหลักที่ร้านยายติ๋ม)`)) return;
-      const r = choosePath(c, j);
-      if (!r.ok) return this.ui.toast(r.msg, 'warn');
-      addItem(c, `armor_${j}`);
-      this.scene.sfx.play('victory');
-      this.ui.banner(`🎖️ ${JOBS[j].pathTitle}`);
-      this.ui.toast(`${r.msg} ได้รับ ${ITEMS[`armor_${j}`].nameTh} (สวมที่กระเป๋า I) · สกิลสาย${JOBS[j].nameTh}อัปได้ถึง Lv.5 แล้ว`);
-      this.scene.onAppearanceChanged();
-      this.afterChange();
+      this.econ.act('path', { job: j }).then((r) => {
+        if (!r.ok) return this.ui.toast(r.msg, 'warn');
+        this.scene.sfx.play('victory');
+        this.ui.banner(`🎖️ ${JOBS[j].pathTitle}`);
+        this.ui.toast(`${r.msg} ได้รับ ${ITEMS[`armor_${j}`].nameTh} (สวมที่กระเป๋า I) · สกิลสาย${JOBS[j].nameTh}อัปได้ถึง Lv.5 แล้ว`);
+        if (r.jobChanged) this.scene.onAppearanceChanged();
+        this.afterChange();
+      });
     }));
   }
 
@@ -348,35 +351,31 @@ export class Village {
   }
 
   accept(id) {
-    const q = QUEST_BY_ID[id], Q = this.char.quests;
-    if (!q || this.questState(q) !== 'open' || Object.keys(Q.active).length >= MAX_ACTIVE) return;
-    Q.active[id] = 0;
-    this.scene.sfx.play('open');
-    this.ui.toast(`รับเควส: ${q.nameTh}`);
-    this.afterChange();
+    this.econ.act('qAccept', { id }).then((r) => {
+      if (!r.ok) return r.msg && this.ui.toast(r.msg, 'warn');
+      this.scene.sfx.play('open');
+      this.ui.toast(r.msg);
+      this.afterChange();
+    });
   }
 
-  drop(id) {
-    delete this.char.quests.active[id];
-    this.afterChange();
-  }
+  drop(id) { this.econ.act('qDrop', { id }).then(() => this.afterChange()); }
 
   /** ยืนอยู่ใกล้ผู้ใหญ่ชัย (หมู่บ้าน x520) */
-  nearChai() { return Math.abs(this.scene.player.x - 520) < 140; }
+  nearChai() { return this.scene.map?.id === 'village' && Math.abs(this.scene.player.x - 520) < 140; }
 
   claim(id) {
-    const q = QUEST_BY_ID[id], c = this.char, Q = c.quests;
-    if (!q || this.questState(q) !== 'ready') return;
+    const q = QUEST_BY_ID[id];
+    if (!q) return;
     if (!this.nearChai()) return this.ui.toast('กลับไปรับรางวัลกับผู้ใหญ่ชัยที่หมู่บ้าน', 'warn');
-    delete Q.active[id];
-    Q.done.push(id);
-    c.gold += q.reward.gold;
-    (q.reward.items || []).forEach((it) => addItem(c, it.id, it.qty));
-    this.scene.combat.grantExp(q.reward.exp);
-    this.scene.sfx.play('victory');
-    this.ui.banner(`✔ เควสสำเร็จ: ${q.nameTh}`);
-    this.ui.toast(`รางวัล: ${this.rewardText(q)}`);
-    this.afterChange();
+    this.econ.act('qClaim', { id }).then((r) => {
+      if (!r.ok) return r.msg && this.ui.toast(r.msg, 'warn');
+      this.scene.sfx.play('victory');
+      this.ui.banner(`✔ เควสสำเร็จ: ${q.nameTh}`);
+      this.ui.toast(`รางวัล: ${this.rewardText(q)}`);
+      this.scene.combat.afterGrant(r);
+      this.afterChange();
+    });
   }
 
   afterChange() {
@@ -385,26 +384,8 @@ export class Village {
     this.ui.result({ ok: true });
   }
 
-  /** เรียกเมื่อฆ่าผี / ตกปลาได้ */
-  questEvent(type, id) {
-    const Q = this.char.quests;
-    let changed = false;
-    for (const qid of Object.keys(Q.active)) {
-      const q = QUEST_BY_ID[qid], g = q?.goal;
-      if (!g || Q.active[qid] >= g.n) continue;
-      const match = type === 'kill' ? g.kill && (g.kill === 'any' || g.kill === id || (g.kill === 'grave' && MONSTERS[id]?.zone[0] >= WORLD.graveX))
-        : type === 'herb' ? g.herb && (g.herb === 'any' || g.herb === id)
-        : g.fish && (g.fish === 'any' ? id !== 'junk_boot' : g.fish === id);
-      if (!match) continue;
-      Q.active[qid]++;
-      changed = true;
-      if (Q.active[qid] >= g.n) { this.ui.toast(`✔ เควส "${q.nameTh}" ครบแล้ว! กลับไปหาผู้ใหญ่ชัย`); this.scene.sfx.play('blessing'); }
-    }
-    if (changed) this.renderTracker();
-  }
-
   renderTracker() {
-    const Q = this.char.quests;
+    const Q = this.char.quests || { active: {}, done: [] };
     const ids = Object.keys(Q.active);
     $('#quest-track').classList.toggle('hidden', !ids.length);
     $('#quest-track').innerHTML = ids.map((id) => {

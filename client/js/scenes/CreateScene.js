@@ -8,7 +8,7 @@ import { JOBS, PATH_LV } from '/shared/data/classes.js';
 import { ITEMS } from '/shared/data/items.js';
 import { bakeCharacter } from '../gfx/SpriteFactory.js';
 import { newCharacter, loadCharacter, saveCharacter, reviveCharacter, pathName } from '../systems/Character.js';
-import * as Inv from '../systems/Inventory.js';
+import { runAction } from '/shared/economy.js';
 import { account } from '../net/Account.js';
 import { sound } from '../systems/Sound.js';
 import { titleScreen } from '../systems/TitleScreen.js';
@@ -72,22 +72,27 @@ export class CreateScene extends Phaser.Scene {
       this.refresh();
     };
 
-    $('#cc-start').onclick = () => {
+    $('#cc-start').onclick = async () => {
       if (this.serverChar && !confirm(`บัญชีนี้มีตัวละคร “${this.serverChar.name}” (Lv.${this.serverChar.level}) อยู่แล้ว\nสร้างใหม่จะเขียนทับตัวเดิม ต้องการสร้างใหม่ไหม?`)) return;
+      if (account.loggedIn && !account.offline) {                       // บัญชีออนไลน์: server สร้างให้ (กันแก้ค่าเริ่มต้น)
+        $('#cc-start').disabled = true;
+        try { const c = await account.createCharacter($('#cc-name').value, this.a, this.a.weapon || null); return this.startGame(reviveCharacter(c)); }
+        catch (e) { alert(e.message || 'สร้างตัวละครไม่สำเร็จ'); $('#cc-start').disabled = false; return; }
+      }
       const char = newCharacter($('#cc-name').value, this.a);
-      if (this.a.weapon) Inv.equip(char, this.a.weapon);
+      if (this.a.weapon) runAction(char, 'equip', { id: this.a.weapon });
       saveCharacter(char);
       this.startGame(char);
     };
 
     // เล่นต่อ: ตัวละครบนบัญชี (server) ก่อน / ถ้าไม่มีแต่มีเซฟเก่าในเครื่อง → นำเข้าบัญชีนี้
     const btn = $('#cc-continue');
-    const saved = this.serverChar || loadCharacter();
+    const saved = this.serverChar || (account.loggedIn && !account.offline ? null : loadCharacter());   // บัญชีออนไลน์ใช้ตัวละครบน server เท่านั้น
     if (saved) {
       btn.classList.remove('hidden');
-      const from = this.serverChar ? '' : account.loggedIn ? ' · นำเข้าจากเซฟในเครื่อง' : '';
+      const from = '';
       btn.textContent = `เล่นต่อ: ${saved.name} (Lv.${saved.level} ${pathName(saved)})${from}`;
-      btn.onclick = () => { saveCharacter(saved); this.startGame(saved); };
+      btn.onclick = () => { if (!this.serverChar) saveCharacter(saved); this.startGame(saved); };
       if (this.serverChar) { btn.classList.add('primary'); }
     } else btn.classList.add('hidden');
     const acc = account.account;

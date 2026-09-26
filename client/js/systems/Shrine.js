@@ -1,8 +1,8 @@
 // ============================================================
 //  Shrine – เสี่ยงเซียมซีที่วัดบางผี + ถวายของที่ศาลพระภูมิ
 // ============================================================
-import { SIAMSI, OFFERINGS, modsText, todayKey, endOfToday } from '/shared/data/blessings.js';
-import { makeOffering, count } from './Inventory.js';
+import { SIAMSI, OFFERINGS, modsText, todayKey } from '/shared/data/blessings.js';
+import { count } from './Inventory.js';
 
 const $ = (s) => document.querySelector(s);
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -15,14 +15,11 @@ export class Shrine {
     $('#shrine-list').onclick = (e) => {
       const b = e.target.closest('button[data-offer]');
       if (!b) return;
-      const r = makeOffering(this.char, b.dataset.offer);
-      scene.ui.result(r);
-      if (r.ok) {
-        scene.sfx.play('blessing');
-        this.incense();
-        scene.saveSoon();
-      } else scene.sfx.play('error');
-      this.renderShrine();
+      scene.econ.act('offer', { key: b.dataset.offer }).then((r) => {
+        scene.ui.result(r);
+        if (r.ok) { scene.sfx.play('blessing'); this.incense(); scene.saveSoon(); } else scene.sfx.play('error');
+        this.renderShrine();
+      });
     };
   }
 
@@ -46,16 +43,15 @@ export class Shrine {
     tube.classList.remove('shaking'); void tube.offsetWidth; tube.classList.add('shaking');
     this.scene.sfx.play('siamsi');
     $('#ss-note').textContent = 'กำลังเขย่า…';
-    setTimeout(() => {
-      const card = SIAMSI[Math.floor(Math.random() * SIAMSI.length)];
-      c.siamsi = { day: todayKey(), no: card.no };
-      c.blessings = (c.blessings || []).filter((b) => b.id !== 'siamsi');
-      c.blessings.push({ id: 'siamsi', nameTh: `เซียมซีใบที่ ${card.no} (${card.luck})`, icon: card.luck === 'ร้าย' ? '📜' : '🎋', until: endOfToday(), mods: card.mods });
+    const req = this.scene.econ.act('siamsi');
+    setTimeout(() => req.then((r) => {
       tube.classList.remove('shaking');
+      if (!r.ok) { $('#ss-shake').disabled = false; $('#ss-note').textContent = r.msg || 'ลองใหม่อีกครั้ง'; return; }
+      const card = SIAMSI.find((x) => x.no === r.card);
       this.scene.sfx.play(card.luck === 'ร้าย' ? 'error' : 'blessing');
       this.showCard(card, false);
       this.scene.saveSoon();
-    }, 1600);
+    }), 1600);
   }
 
   showCard(card, already) {

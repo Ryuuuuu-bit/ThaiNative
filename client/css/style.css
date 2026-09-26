@@ -704,3 +704,42 @@ kbd { display: inline-block; min-width: 1.6em; text-align: center; padding: 0 .3
 .lb-tabs button { padding: .05em .6em; }
 .soc-row.lb.me { background: rgba(212,175,55,.12); border-radius: 4px; }
 .chat-whisper, #chat-log .whisper-msg, #chat-log .whisper-msg b { color: #f5b7b1 !important; }
+
+/* ---------- v3: เซ็ตโบนัส · ฉายา · เพื่อน · ดันเจี้ยน · บอสภาค · ย้อมสี · ลองชุด ---------- */
+.set-box { grid-column: 1 / -1; margin-top: .3em; padding: .35em .5em; border: 1px dashed rgba(212,175,55,.45); border-radius: 6px; font-size: .82em; background: rgba(212,175,55,.06); }
+.set-box.off { border-style: dotted; opacity: .8; }
+.set-box div { color: #8f8a9a; } .set-box div.on { color: #82e0aa; }
+.soc-tabs { display: inline-flex; gap: .25em; margin-left: .6em; font-weight: normal; }
+.soc-tabs button { background: #1d1229; color: #e8dcc0; border: 1px solid rgba(212,175,55,.35); border-radius: 6px; padding: .05em .5em; font: inherit; font-size: .78em; cursor: pointer; }
+.soc-tabs button.active { background: var(--gold); color: #2a1b3a; }
+.soc-row.off { opacity: .6; }
+.title-list { display: grid; grid-template-columns: 1fr 1fr; gap: .3em; margin-bottom: .4em; }
+.title-row { display: flex; flex-direction: column; align-items: flex-start; gap: .1em; text-align: left; background: rgba(0,0,0,.25); border: 1px solid rgba(212,175,55,.3); border-radius: 6px; padding: .3em .5em; color: var(--text); font: inherit; cursor: pointer; position: relative; }
+.title-row b { color: var(--tc, #f7dc6f); }
+.title-row small { color: #9a94a8; font-size: .78em; }
+.title-row i { position: absolute; right: .5em; top: .3em; font-style: normal; color: #82e0aa; font-size: .8em; }
+.title-row.active { border-color: #82e0aa; box-shadow: inset 0 0 0 1px rgba(130,224,170,.4); }
+.title-row.locked { opacity: .45; cursor: default; } .title-row.locked b { color: #8f8a9a; }
+.title-row:hover:not(:disabled) { background: rgba(212,175,55,.15); }
+.dg-tiers { display: grid; grid-template-columns: repeat(3, 1fr); gap: .5em; margin: .4em 0; }
+.dg-tier { display: flex; flex-direction: column; gap: .25em; padding: .5em; border-radius: 8px; border: 1px solid rgba(212,175,55,.35); background: rgba(0,0,0,.3); }
+.dg-tier b { font-size: 1.05em; } .dg-tier small { color: #b8b0c8; font-size: .8em; }
+.dg-tier.normal b { color: #82e0aa; } .dg-tier.hard b { color: #f5b041; } .dg-tier.hell b { color: #ff6b6b; }
+.dg-tier.lock { opacity: .55; }
+.dg-tier button { margin-top: auto; }
+.npc-say { font-style: italic; color: #d2b4de; font-size: .9em; margin: .2em 0 .4em; }
+.dg-bar { top: 2%; } .dg-bar .bb-name span { margin-left: .6em; color: #d2b4de; font-size: .85em; }
+.bar.boss.dg i { background: linear-gradient(90deg, #4a235a, #8e44ad, #d2b4de); }
+.boss-bar.dg-bar { border-color: #bb8fce !important; box-shadow: 0 0 0 3px rgba(0,0,0,.5), 0 0 16px rgba(155,89,182,.5) !important; }
+#dg-bar:not(.hidden) ~ #boss-bar { top: 9%; }
+.wm-map.rboss { box-shadow: inset 0 0 0 1px #f39c12; background: rgba(243,156,18,.18); }
+.wmap-node.rboss { box-shadow: 0 0 0 2px #f39c12, 0 0 10px #f39c12; animation: rbPulse 1s infinite alternate; }
+@keyframes rbPulse { from { box-shadow: 0 0 0 2px #f39c12, 0 0 6px #f39c12; } to { box-shadow: 0 0 0 3px #f7dc6f, 0 0 14px #f39c12; } }
+.mm-dot.npc em { position: absolute; left: 50%; top: -1.35em; transform: translateX(-50%); font-style: normal; font-size: .7em; line-height: 1; pointer-events: none; }
+.prev-btn { background: none; border: 1px solid rgba(212,175,55,.35); border-radius: 4px; color: #e8dcc0; font-size: .8em; padding: 0 .3em; margin-right: .35em; cursor: pointer; }
+.prev-btn:hover { background: rgba(212,175,55,.2); }
+.dye-row { margin: .4em 0; } .dye-row b { color: var(--gold-soft); }
+.dye-opts { display: flex; flex-wrap: wrap; gap: .25em; margin-top: .25em; }
+.dye-opts button { width: 2.2em; height: 2em; background: #1d1229; color: #e8dcc0; border: 1px solid rgba(212,175,55,.35); border-radius: 6px; font: inherit; cursor: pointer; }
+.dye-opts button.active { background: var(--gold); color: #2a1b3a; }
+.dye-opts button:hover { border-color: var(--gold); }

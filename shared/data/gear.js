@@ -113,3 +113,36 @@ export function rollGearDrop(monLevel, dropMul = 1, rnd = Math.random) {
   const pool = GEAR_IDS.filter((id) => GEAR[id].drop && GEAR[id].lv >= monLevel - 4 && GEAR[id].lv <= monLevel + 2);
   return pool.length ? pool[F(rnd() * pool.length)] : null;
 }
+
+// ============================================================
+//  โบนัสชุดประจำสาย: สวมอุปกรณ์สายเดียวกันหลายชิ้น (อาวุธ/ชุด/เครื่องประดับ 2 ข้าง)
+//  ระดับโบนัสคิดจากเลเวลต่ำสุดของชิ้นที่นับ → ใส่ชิ้นเลเวลสูงครบชุด = โบนัสแรงขึ้น
+// ============================================================
+export const SET_NAME = { swordman: 'ชุดขุนศึก', mage: 'ชุดหมอธรรม', archer: 'ชุดพรานไพร', boxer: 'ชุดนักมวยวัด' };
+const SET_BONUS = {
+  swordman: [(L) => ({ def: R(2 + L / 4) }), (L) => ({ atk: R(4 + L / 2), hp: R(30 + L * 6) }), (L) => ({ crit: 0.05, STR: R(2 + L / 6) })],
+  mage:     [(L) => ({ mp: R(20 + L * 3) }), (L) => ({ matk: R(5 + L * 0.6), INT: R(1 + L / 8) }), (L) => ({ crit: 0.04, matk: R(4 + L / 2) })],
+  archer:   [(L) => ({ DEX: R(1 + L / 8) }), (L) => ({ atk: R(4 + L / 2), CRI: R(1 + L / 8) }), (L) => ({ crit: 0.06, DEX: R(2 + L / 6) })],
+  boxer:    [(L) => ({ hp: R(25 + L * 5) }), (L) => ({ atk: R(4 + L / 2), def: R(2 + L / 5) }), (L) => ({ crit: 0.05, VIT: R(2 + L / 6) })],
+};
+export const SET_TEXT = { 2: '2 ชิ้น', 3: '3 ชิ้น', 4: 'ครบ 4 ชิ้น' };
+
+/** ชุดที่ใส่อยู่ → { job, n, lv, bonus, tiers:[{n, bonus, on}] } (null = ไม่มีชุด ≥2 ชิ้น) */
+export function setInfo(equipment = {}) {
+  const by = {};
+  for (const slot of ['weapon', 'armor', 'accessory', 'accessory2']) {
+    const it = GEAR[equipment[slot]];
+    if (!it?.job) continue;
+    (by[it.job] ||= []).push(it.lv);
+  }
+  const best = Object.entries(by).sort((a, b) => b[1].length - a[1].length || Math.min(...b[1]) - Math.min(...a[1]))[0];
+  if (!best || best[1].length < 2) return null;
+  const [job, lvs] = best, n = lvs.length, lv = Math.min(...lvs);
+  const bonus = {}, tiers = [];
+  SET_BONUS[job].forEach((f, i) => {
+    const need = i + 2, b = f(lv), on = n >= need;
+    tiers.push({ n: need, bonus: b, on });
+    if (on) for (const [k, v] of Object.entries(b)) bonus[k] = +((bonus[k] || 0) + v).toFixed(3);
+  });
+  return { job, n, lv, bonus, tiers, nameTh: SET_NAME[job] };
+}

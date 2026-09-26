@@ -7,21 +7,13 @@ import { ITEMS } from '/shared/data/items.js';
 import { MONSTERS } from '/shared/data/monsters.js';
 import { WORLD } from '/shared/constants.js';
 import { MAPS, HUNT_MAPS, mapAt } from '/shared/data/maps.js';
-import { HERB_RESPAWN_MS, GATHER_MS, CHEST, rollChest, dailyBounties } from '/shared/data/village.js';
-import { todayKey } from '/shared/data/blessings.js';
-import { addItem } from './Inventory.js';
+import { HERB_RESPAWN_MS, GATHER_MS, CHEST } from '/shared/data/village.js';
+import { CAMP, HERB_NODES } from '/shared/data/npcs.js';
+import { bountyList } from './Inventory.js';
 import { makeText, itemIcon, uiIcon } from './util.js';
 
 const $ = (s) => document.querySelector(s);
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
-const M1 = MAPS.m1;
-const CAMP = { x: M1.minX + 150, npcX: M1.minX + 175 };
-/** สมุนไพรตามภาค: แมพละ 2 จุด */
-const REGION_HERBS = {
-  r1: ['herb_aloe', 'herb_lemongrass'], r2: ['herb_anchan', 'herb_bamboo'], r3: ['herb_turmeric', 'herb_honey'],
-  r4: ['herb_mushroom', 'herb_turmeric'], r5: ['herb_mushroom', 'herb_honey'],
-};
-const HERB_NODES = HUNT_MAPS.flatMap((m) => REGION_HERBS[m.region].map((item, k) => ({ x: m.minX + 420 + k * 330 + (m.idx % 3) * 20, item })));
 
 export class Forest {
   constructor(scene) {
@@ -40,6 +32,7 @@ export class Forest {
   }
 
   get char() { return this.scene.player.char; }
+  get econ() { return this.scene.econ; }
 
   // ------------------------------------------------------------
   //  ค่ายพักพราน
@@ -76,7 +69,7 @@ export class Forest {
   // ------------------------------------------------------------
   buildHerbs() {
     const s = this.scene;
-    for (const n of HERB_NODES) {
+    HERB_NODES.forEach((n, idx) => {
       const y = (n.y ?? WORLD.groundY) + 2;
       const key = `ico_it_${n.item}`;
       const spr = s.textures.exists(key) ? s.add.image(n.x, y, key).setOrigin(0.5, 1).setDisplaySize(20, 20)
@@ -84,8 +77,8 @@ export class Forest {
       spr.setDepth(6.2);
       const spark = s.add.circle(n.x, y - 12, 2, 0xf9e79f, 0.9).setDepth(6.3).setBlendMode(Phaser.BlendModes.ADD);
       s.tweens.add({ targets: spark, y: y - 18, alpha: { from: 0.9, to: 0.2 }, duration: 900, yoyo: true, repeat: -1, delay: Math.random() * 800 });
-      this.nodes.push({ ...n, y, spr, spark, readyAt: 0 });
-    }
+      this.nodes.push({ ...n, idx, y, spr, spark, readyAt: 0 });
+    });
   }
 
   nodeAt(x, y) {
@@ -113,17 +106,18 @@ export class Forest {
   }
 
   finishGather() {
-    const s = this.scene, n = this.gather.node, c = this.char;
+    const s = this.scene, n = this.gather.node;
     this.gather = null;
     $('#fish-ui').classList.add('hidden');
-    const qty = Math.random() < 0.25 ? 2 : 1;
-    addItem(c, n.item, qty);
     n.readyAt = Date.now() + HERB_RESPAWN_MS;
-    s.combat.popupText(n.x, n.y - 24, `+${ITEMS[n.item].nameTh} x${qty}`, '#82e0aa', 8);
-    s.combat.burst(n.x, n.y - 8, 0x82e0aa, 8);
-    s.sfx.play('coin');
-    s.village.questEvent('herb', n.item);
-    s.saveSoon();
+    this.econ.act('gather', { node: n.idx }).then((r) => {
+      if (!r.ok) { n.readyAt = 0; return r.msg && s.ui.toast(r.msg, 'warn'); }
+      s.combat.popupText(n.x, n.y - 24, `+${ITEMS[r.item].nameTh} x${r.qty}`, '#82e0aa', 8);
+      s.combat.burst(n.x, n.y - 8, 0x82e0aa, 8);
+      s.sfx.play('coin');
+      s.combat.afterGrant(r);
+      s.saveSoon();
+    });
   }
 
   // ------------------------------------------------------------
@@ -148,30 +142,27 @@ export class Forest {
   }
 
   openChest() {
-    const s = this.scene, ch = this.chest, c = this.char;
+    const s = this.scene, ch = this.chest;
     if (!ch) return;
     this.animUntil = s.time.now + 700;                                       // ท่าย่อตัวเปิดหีบ
     this.chest = null;
-    const r = rollChest(c.level);
-    c.gold += r.gold;
-    r.items.forEach((it) => addItem(c, it.id, it.qty));
     if (s.textures.exists('chest_open')) ch.spr.setTexture('chest_open').setDisplaySize(22, 22);
-    s.sfx.play('levelup');
-    s.combat.burst(ch.x, ch.y - 10, 0xf1c40f, 20);
-    s.combat.popupText(ch.x, ch.y - 30, `+฿${r.gold}`, '#f7dc6f', 10);
-    s.ui.toast(`🎁 หีบสมบัติ: ฿${r.gold}${r.items.map((it) => ` · ${ITEMS[it.id].icon}${ITEMS[it.id].nameTh} x${it.qty}`).join('')}`);
     s.tweens.add({ targets: [ch.spr, ch.glow], alpha: 0, delay: 1200, duration: 600, onComplete: () => { ch.spr.destroy(); ch.glow.destroy(); } });
-    s.saveSoon();
+    this.econ.act('chest').then((r) => {
+      if (!r.ok) return s.ui.toast(r.msg || 'หีบว่างเปล่า', 'warn');
+      s.sfx.play('levelup');
+      s.combat.burst(ch.x, ch.y - 10, 0xf1c40f, 20);
+      s.combat.popupText(ch.x, ch.y - 30, `+฿${r.gold}`, '#f7dc6f', 10);
+      s.ui.toast(`🎁 หีบสมบัติ: ฿${r.gold}${r.items.map((it) => ` · ${ITEMS[it.id].icon}${ITEMS[it.id].nameTh} x${it.qty}`).join('')}`);
+      s.combat.afterGrant(r);
+      s.saveSoon();
+    });
   }
 
   // ------------------------------------------------------------
   //  ค่าหัวรายวัน (พรานบุญ)
   // ------------------------------------------------------------
-  bounties() {
-    const c = this.char, day = todayKey();
-    if (c.bounty?.day !== day) c.bounty = { day, list: dailyBounties(c.level, day, c.name, MONSTERS) };
-    return c.bounty.list;
-  }
+  bounties() { return bountyList(this.char); }
 
   openBounty() {
     const s = this.scene;
@@ -191,26 +182,15 @@ export class Forest {
   }
 
   claim(i) {
-    const b = this.bounties()[i], c = this.char, s = this.scene;
-    if (!b || b.claimed || b.prog < b.n) return;
-    b.claimed = true;
-    c.gold += b.gold;
-    s.combat.grantExp(b.exp);
-    s.sfx.play('victory');
-    s.ui.toast(`ได้รับค่าหัว ${MONSTERS[b.mon].nameTh}: ${b.exp} EXP · ฿${b.gold}`);
-    this.renderBounty();
-    s.ui.result({ ok: true });
-  }
-
-  onKill(monId) {
-    const list = this.scene.player?.char.bounty?.list;
-    if (!list || this.char.bounty.day !== todayKey()) return;
-    for (const b of list) {
-      if (b.mon === monId && !b.claimed && b.prog < b.n) {
-        b.prog++;
-        if (b.prog === b.n) this.scene.ui.toast(`📜 ค่าหัว "${MONSTERS[monId].nameTh}" ครบแล้ว! กลับไปหาพรานบุญที่ค่าย`);
-      }
-    }
+    const s = this.scene;
+    this.econ.act('bounty', { i }).then((r) => {
+      if (!r.ok) return r.msg && s.ui.toast(r.msg, 'warn');
+      s.sfx.play('victory');
+      s.ui.toast(r.msg);
+      s.combat.afterGrant(r);
+      this.renderBounty();
+      s.ui.result({ ok: true });
+    });
   }
 
   // ------------------------------------------------------------

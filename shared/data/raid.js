@@ -14,7 +14,7 @@ export const RAID_BOSS = {
   eva: 4,
   speed: 38,
   spawnX: WORLD.arenaX + 420,
-  arena: [WORLD.arenaX, WORLD.width],
+  arena: [WORLD.arenaX, WORLD.arenaEndX],
   respawnMs: 120000,       // เกิดใหม่หลังตาย 2 นาที
   enrageAt: 0.3,           // HP ต่ำกว่า 30% → เร็วขึ้น
   // ท่าโจมตี: windup = เวลาเตือน (ms) ก่อนดาเมจลง
