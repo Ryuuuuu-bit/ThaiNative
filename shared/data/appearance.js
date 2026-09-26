@@ -76,8 +76,11 @@ export function sanitizeAppearance(a = {}) {
     path: JOB_IDS.includes(a.path) ? a.path : null,
     costume: sanitizeCostume(a.costume),
     aura: Number.isInteger(a.aura) && a.aura >= 0 && a.aura <= 5 ? a.aura : 0,      // ออร่าตีบวก (0–5)
+    wenh: enhLv(a.wenh), aenh: enhLv(a.aenh),                                         // ขั้นตีบวกอาวุธ/เสื้อ (0–20) → แสงเรืองที่อุปกรณ์
   };
 }
+
+const enhLv = (v) => (Number.isInteger(v) && v > 0 ? Math.min(20, v) : 0);
 
 export const COSTUME_SLOTS = ['head', 'face', 'back', 'outfit'];
 /** ชุดแต่งตัวที่ใส่ { head, face, back, outfit } – รับเฉพาะไอเทม costume ที่ช่องตรงกัน */
@@ -92,5 +95,5 @@ export function sanitizeCostume(c = {}) {
 
 export function appearanceKey(a) {
   const cs = a.costume ? COSTUME_SLOTS.map((k) => a.costume[k] || '').join('.') : '';
-  return `chr_${a.gender[0]}${a.outfit}_${a.hair}_${a.face}_${a.weapon || a.job}_${a.armor || 'x'}_${cs}`;
+  return `chr_${a.gender[0]}${a.outfit}_${a.hair}_${a.face}_${a.weapon || a.job}_${a.armor || 'x'}_${cs}_e${a.wenh || 0}.${a.aenh || 0}`;
 }

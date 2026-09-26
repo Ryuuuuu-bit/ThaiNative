@@ -81,6 +81,14 @@ function drawHeld(ctx, h) {
   ctx.translate(h.hx, h.hy);
   ctx.rotate(h.rot || 0);
   ctx.scale(h.scale, h.scale);
+  if (h.glow) {                                                             // อาวุธตีบวก: เรืองแสงรอบอาวุธ (2 ชั้น = ฟุ้ง + คม)
+    ctx.save();
+    ctx.shadowColor = `rgba(${h.glow.color},${h.glow.alpha})`;
+    ctx.shadowBlur = h.glow.blur / h.scale;
+    ctx.drawImage(h.img, -h.gx, -h.gy);
+    if (h.glow.lv >= 10) { ctx.shadowBlur = h.glow.blur * 2.2 / h.scale; ctx.globalAlpha = 0.6; ctx.drawImage(h.img, -h.gx, -h.gy); }
+    ctx.restore();
+  }
   ctx.drawImage(h.img, -h.gx, -h.gy);
   ctx.restore();
 }
@@ -161,7 +169,17 @@ export function drawRig(ctx, rig, pose, footX, footY) {
   if (p.tint) tintOver(L, layer.c.width, layer.c.height, p.tint);
   ctx.save();
   ctx.globalAlpha = p.alpha;
-  ctx.drawImage(layer.c, Math.round(footX - ox + p.dx), Math.round(footY - oy + p.dy));
+  const X = Math.round(footX - ox + p.dx), Y = Math.round(footY - oy + p.dy);
+  if (p.glow) {                                                             // เสื้อตีบวก: แสงเรืองรอบตัว (กะพริบเบา ๆ ตามเฟรม)
+    const g = p.glow, pulse = 0.75 + 0.25 * Math.sin((g.phase || 0) * 1.1);
+    ctx.save();
+    ctx.shadowColor = `rgba(${g.color},${Math.min(1, g.alpha * pulse)})`;
+    ctx.shadowBlur = g.blur * 0.9;
+    ctx.globalAlpha = p.alpha * 0.9;
+    ctx.drawImage(layer.c, X, Y);
+    ctx.restore();
+  }
+  ctx.drawImage(layer.c, X, Y);
   ctx.restore();
 }
 

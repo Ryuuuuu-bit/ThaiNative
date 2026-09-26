@@ -11,6 +11,20 @@ const $ = (s) => document.querySelector(s);
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
 /** แพลตฟอร์มในแต่ละแมพ (ตำแหน่งสัมพัทธ์กับขอบซ้ายแมพ) – สลับ 3 แบบ */
+/** ตำแหน่งจุดวาร์ปบนแผนที่โลก (% ของภาพ) */
+const WORLD_MAP_POS = {
+  village: [29, 76],
+  m1: [50, 85], m2: [61, 72], m3: [72, 86], m4: [84, 72],          // ทุ่งนา (ล่างขวา)
+  m5: [37, 50], m6: [24, 42], m7: [21, 24], m8: [33, 15],          // บึงบัว (บนซ้าย)
+  m9: [45, 20], m10: [51, 36], m11: [58, 50], m12: [62, 30],       // ป่าดงดิบ (กลาง)
+  m13: [68, 54], m14: [78, 56], m15: [83, 42], m16: [70, 37],      // ป่าช้าวัดร้าง (ขวา)
+  m17: [68, 25], m18: [64, 13], m19: [83, 24], m20: [86, 10],      // หุบเขาไฟ (บนขวา)
+  arena: [76, 14],
+};
+/** จุดอ้อมของถนน (วาดก่อนถึงจุดนั้น) ให้เส้นทางเลี้ยวตามภูมิประเทศ */
+const WORLD_MAP_WAY = { m5: [[80, 60], [66, 62], [50, 58]], m9: [[38, 10]], m13: [[66, 44]], m17: [[74, 30]], arena: [[84, 5]] };
+const WORLD_MAP_REGION = { r1: [66, 95], r2: [26, 5], r3: [50, 5], r4: [80, 66], r5: [88, 4] };
+
 const PLAT_SETS = [
   [[300, 188, 64], [440, 162, 80], [640, 184, 64], [800, 160, 72]],
   [[320, 170, 96], [520, 186, 64], [690, 158, 80], [860, 184, 56]],
@@ -30,10 +44,6 @@ export class World {
   constructor(scene) {
     this.scene = scene;
     this.region = null;
-    $('#travel-list').onclick = (e) => {
-      const b = e.target.closest('button[data-to]');
-      if (b && !b.disabled) { scene.ui.closeAll(); this.travel(b.dataset.to); }
-    };
   }
 
   // ------------------------------------------------------------
@@ -219,15 +229,40 @@ export class World {
     const s = this.scene, lv = s.player.char.level, cur = s.map.id;
     s.ui.closeAll();
     s.ui.toggle('travel-panel', true);
-    const row = (m) => {
-      const mon = m.mon ? MONSTERS[m.mon] : null;
-      const lock = lv < (m.minLv || 1);
-      const sub = m.id === 'village' ? 'Safe Zone · NPC · ตกปลา' : m.boss ? 'เรดบอส Lv.15 · รวมพลังหลายคน' : `${mon.nameTh} Lv.${mon.level}${mon.nightBoost ? ' 🌙' : ''}`;
-      return `<button data-to="${m.id}" class="tv ${m.id === cur ? 'cur' : ''}" ${lock || m.id === cur ? 'disabled' : ''}>
-        <b>${m.no ? `${m.boss ? '👹' : m.no}.` : '🏘️'} ${esc(m.nameTh)}</b><small>${esc(sub)}${lock ? ` · 🔒 Lv.${m.minLv}` : ''}</small></button>`;
-    };
-    const groups = [['หมู่บ้าน', [MAPS.village]], ...Object.values(REGIONS).map((R) => [`ภาค ${R.no} · ${R.nameTh}`, MAP_LIST.filter((m) => m.region === R.id)])];
-    $('#travel-list').innerHTML = groups.map(([title, maps]) => `<h4>${title}</h4><div class="tv-row">${maps.map(row).join('')}</div>`).join('');
+    // ตำแหน่งบนแผนที่โลก (สัดส่วน % ของภาพ 16:9) เรียงตามถนนจากหมู่บ้านล่างซ้าย → ภูเขาไฟบนขวา
+    const pos = WORLD_MAP_POS;
+    const pts = MAP_LIST.flatMap((m) => (pos[m.id] ? [...(WORLD_MAP_WAY[m.id] || []), pos[m.id]] : []));
+    const svg = $('#wmap-svg');
+    const toXY = ([x, y]) => [x * 3.84, y * 2.16];
+    const road = pts.map(toXY);
+    const d = road.map(([x, y], i) => `${i ? 'L' : 'M'}${x.toFixed(1)} ${y.toFixed(1)}`).join(' ');
+    svg.innerHTML = `<path d="${d}" fill="none" stroke="rgba(0,0,0,.45)" stroke-width="5" stroke-linejoin="round" stroke-linecap="round"/>
+      <path d="${d}" fill="none" stroke="#e8c766" stroke-width="2" stroke-dasharray="4 3" stroke-linejoin="round" stroke-linecap="round"/>`;
+    const nodes = MAP_LIST.map((m) => {
+      const p = pos[m.id]; if (!p) return '';
+      const lock = lv < (m.minLv || 1), isCur = m.id === cur;
+      const cls = `wmap-node ${m.id === 'village' ? 'village' : ''} ${m.boss ? 'boss' : ''} ${lock ? 'lock' : ''} ${isCur ? 'cur' : ''}`;
+      const label = m.id === 'village' ? '🏘️' : m.boss ? '👹' : m.no;
+      return `<button class="${cls}" data-to="${m.id}" style="left:${p[0]}%;top:${p[1]}%" ${isCur ? 'disabled' : ''}>${label}</button>`;
+    }).join('');
+    const regions = Object.values(REGIONS).map((R) => { const p = WORLD_MAP_REGION[R.id]; return p ? `<span class="wmap-region" style="left:${p[0]}%;top:${p[1]}%">ภาค ${R.no} · ${R.nameTh}</span>` : ''; }).join('');
+    $('#wmap-nodes').innerHTML = regions + nodes;
+    const tip = $('#wmap-tip');
+    $('#wmap-nodes').querySelectorAll('.wmap-node').forEach((b) => {
+      const m = MAPS[b.dataset.to], mon = m.mon ? MONSTERS[m.mon] : null, lock = lv < (m.minLv || 1);
+      const sub = m.id === 'village' ? 'Safe Zone · NPC · ตกปลา' : m.boss ? `เรดบอส Lv.${m.minLv}+ · รวมพลังหลายคน` : `${mon.nameTh} Lv.${mon.level}${mon.nightBoost ? ' 🌙' : ''}`;
+      const show = () => {
+        tip.innerHTML = `<b>${m.no ? `${m.no}. ` : ''}${esc(m.nameTh)}</b><small>${esc(sub)}${lock ? ` · 🔒 ต้อง Lv.${m.minLv}` : ''}${m.id === cur ? ' · คุณอยู่ที่นี่' : ''}</small>`;
+        tip.style.left = b.style.left; tip.style.top = `calc(${b.style.top} - 1.2em)`;
+        tip.classList.remove('hidden');
+      };
+      b.onmouseenter = show; b.onfocus = show;
+      b.onmouseleave = () => tip.classList.add('hidden');
+      b.onclick = () => {
+        if (lock) { s.sfx.play('error'); return s.ui.toast(`🔒 ต้อง Lv.${m.minLv} ขึ้นไปถึงจะไป ${m.nameTh} ได้`, 'warn'); }
+        s.ui.closeAll(); this.travel(m.id);
+      };
+    });
   }
 
   travel(toId) {

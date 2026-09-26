@@ -46,12 +46,19 @@ export function wearInfo(a, getImg) {
   return out;
 }
 
+/** แสงเรืองของอุปกรณ์ตีบวก: สีเปลี่ยนตามช่วงขั้น ความแรงเพิ่มทุกขั้น (lv 1–20) */
+export function enhGlow(lv) {
+  if (!lv) return null;
+  const color = lv >= 20 ? '255,255,255' : lv >= 16 ? '255,90,60' : lv >= 13 ? '255,215,80' : lv >= 10 ? '190,120,255' : lv >= 7 ? '90,180,255' : lv >= 4 ? '120,230,200' : '235,235,235';
+  return { color, blur: 2 + lv * 0.35, alpha: Math.min(1, 0.25 + lv * 0.04), lv };
+}
+
 /** ข้อมูลอาวุธในมือ (null = มือเปล่า/ผ้าพันมือ) */
 export function heldInfo(a, img) {
   const it = ITEMS[a.weapon];
   if (!img || !it || it.wtype === 'wraps') return null;
   const gp = GRIP[a.weapon] || WTYPE_GRIP[it.wtype];
-  return { img, wtype: it.wtype, gx: gp.g[0], gy: gp.g[1], scale: gp.s, rot0: gp.r || 0, ox: gp.ox || 0, oy: gp.oy || 0 };
+  return { img, wtype: it.wtype, gx: gp.g[0], gy: gp.g[1], scale: gp.s, rot0: gp.r || 0, ox: gp.ox || 0, oy: gp.oy || 0, glow: enhGlow(a.wenh) };
 }
 
 // ---------------- สี ----------------
@@ -143,6 +150,7 @@ Object.assign(PLAYER_ANIMS, {
   fish_cast: { frames: 6, rate: 12, repeat: 0 },
   fish_idle: { frames: 4, rate: 3, repeat: -1 },
   fish_reel: { frames: 4, rate: 12, repeat: -1 },
+  gather:    { frames: 4, rate: 5,  repeat: -1 },   // ย่อตัวเก็บสมุนไพร/เปิดหีบ (เก็บอาวุธ)
 });
 /** ท่าที่มีจังหวะ "ตีโดน" (เรียก playerStrike ที่เฟรม STRIKE_FRAME) */
 export const STRIKE_ANIMS = new Set(['attack', 'cast', 'shoot', 'spin', 'kick', 'slam']);
@@ -352,7 +360,7 @@ const ATTACK_POSES = {
           { dx: 5, lean: 0.2, front: -0.4, back: 0.3 }, { dx: 1, lean: 0.05 }],
 };
 
-function playerRigFrame(ctx, base, anim, i, weapon, FW, FH, held, wear) {
+function playerRigFrame(ctx, base, anim, i, weapon, FW, FH, held, wear, glow = null) {
   const cfg = PLAYER_RIG[weapon] || PLAYER_RIG.sword;
   base._rig ||= buildRig(base, cfg);
   const rig = base._rig, W = rig.W, H = rig.H;
@@ -376,6 +384,10 @@ function playerRigFrame(ctx, base, anim, i, weapon, FW, FH, held, wear) {
     pose = { torsoSy: 1 + Math.sin(t) * 0.015, head: Math.sin(t) * 0.02, lean: 0.04 };
   } else if (anim === 'fish_reel') {
     pose = { lean: -0.1 - 0.06 * (i % 2), dx: -(i % 2), back: 0.12, front: -0.05 };
+  } else if (anim === 'gather') {
+    // ย่อเข่า ก้มตัว มือควานหาของที่พื้น (โยกซ้าย-ขวาเบา ๆ)
+    const k = i % 2;
+    pose = { sy: 0.8, sx: 1.04, lean: 0.5 + k * 0.06, head: 0.25 + k * 0.05, dy: 1, dx: 2 + k, front: -0.55, back: 0.45, frontLift: 4, backLift: 1, torsoSy: 0.96 };
   } else if (anim === 'jump') {
     pose = i === 0 ? { dy: -2, sy: 1.05, sx: 0.96, front: -0.6, back: 0.5, frontLift: 3, backLift: 2, lean: 0.06 }
                    : { dy: -2, front: -0.3, back: 0.7, frontLift: 2, backLift: 3, lean: 0.1 };
@@ -384,7 +396,7 @@ function playerRigFrame(ctx, base, anim, i, weapon, FW, FH, held, wear) {
   if (anim.startsWith('fish')) {                                          // ตกปลา: ถือคันเบ็ดแทนอาวุธ
     const rot = anim === 'fish_cast' ? SKILL_POSES.fish_cast.r[i] : anim === 'fish_reel' ? [-1.2, -1.4, -1.1, -1.35][i] : -0.85 + Math.sin(i * 1.57) * 0.03;
     pose = { ...pose, held: { img: rodImage(), gx: 1, gy: 2, scale: 1, hx: W * hand[0], hy: H * hand[1], rot } };
-  } else if (held) {
+  } else if (held && anim !== 'gather') {                                   // เก็บของ: ไม่ถืออาวุธ
     const swing = SKILL_POSES[anim] ? SKILL_POSES[anim].r[i] || 0 : anim === 'attack' ? (SWING[held.wtype]?.[i] || 0) : anim === 'walk' ? Math.sin((i / 8) * Math.PI * 2) * 0.12 : 0;
     pose = { ...pose, held: { ...held, hx: W * hand[0] + held.ox, hy: H * hand[1] + held.oy, rot: held.rot0 + swing } };
   }
@@ -392,10 +404,16 @@ function playerRigFrame(ctx, base, anim, i, weapon, FW, FH, held, wear) {
     const place = (w) => ({ ...w, hx: W * w.at[0], hy: H * w.at[1], rot: w.rot0 });
     pose = { ...pose, headwear: wear.headwear.map(place), backWear: wear.back ? place(wear.back) : null };
   }
+  if (glow) pose = { ...pose, glow: { ...glow, phase: i } };                // เสื้อตีบวก: ขอบตัวเรืองแสง
   if (anim === 'dash' && i >= 1) drawRig(ctx, rig, { ...pose, dx: (pose.dx || 0) - 9, alpha: 0.3, tint: 'rgba(174,214,241,0.6)' }, footX, footY);   // ภาพติดตา
   drawRig(ctx, rig, pose, footX, footY);
   const dx = pose.dx || 0;
   if (SKILL_POSES[anim] && !anim.startsWith('fish')) skillFx(ctx, anim, i, weapon, footX, footY, W, H, dx);
+  if (anim === 'gather') {                                                  // ประกายเขียวที่ปลายมือ
+    const gx = footX + W * 0.55 + (i % 2) * 2, gy = footY - H * 0.18 - (i >= 2 ? 2 : 0);
+    ctx.save(); ctx.fillStyle = `rgba(130,224,170,${0.5 + (i % 2) * 0.3})`;
+    ctx.fillRect(gx, gy, 1, 1); ctx.fillRect(gx + 3, gy - 3, 1, 1); ctx.fillRect(gx - 2, gy - 4 + i, 1, 1); ctx.restore();
+  }
   if (anim === 'attack') {
     if (i === 3) weaponFx(ctx, weapon, footX + dx, cy, W, H, 0.3);
     if (i === 4 && weapon !== 'bow') { ctx.globalAlpha = 0.55; weaponFx(ctx, weapon, footX + dx, cy, W, H, 0.9); ctx.globalAlpha = 1; }
@@ -407,9 +425,9 @@ function playerRigFrame(ctx, base, anim, i, weapon, FW, FH, held, wear) {
   if (anim !== 'jump') shadow(ctx, footX + dx, FH, W * 0.32);
 }
 
-export function drawPlayerFrame(ctx, base, anim, i, weapon, FW, FH, held = null, wear = null) {
+export function drawPlayerFrame(ctx, base, anim, i, weapon, FW, FH, held = null, wear = null, glow = null) {
   ctx.imageSmoothingEnabled = false;
-  if (anim !== 'die') return playerRigFrame(ctx, base, anim, i, weapon, FW, FH, held, wear);
+  if (anim !== 'die') return playerRigFrame(ctx, base, anim, i, weapon, FW, FH, held, wear, glow);
   const W = base.width, H = base.height;
   const bx = Math.round((FW - W) / 2), by = FH - 2 - H;
   const cx = FW / 2, cy = by + H * 0.45;

@@ -150,6 +150,7 @@ export class Forest {
   openChest() {
     const s = this.scene, ch = this.chest, c = this.char;
     if (!ch) return;
+    this.animUntil = s.time.now + 700;                                       // ท่าย่อตัวเปิดหีบ
     this.chest = null;
     const r = rollChest(c.level);
     c.gold += r.gold;

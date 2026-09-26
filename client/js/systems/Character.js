@@ -47,7 +47,9 @@ export function newCharacter(name, appearance) {
 export function syncAppearance(c) {
   const before = JSON.stringify(c.appearance), oldStyle = c.appearance?.job;
   const top = Math.max(0, ...Object.entries(c.enhance || {}).filter(([slot]) => c.equipment[slot]).map(([, v]) => v || 0));
-  c.appearance = sanitizeAppearance({ ...c.appearance, weapon: c.equipment.weapon, armor: c.equipment.armor, path: c.path, aura: ENHANCE.auraTier(top), costume: c.costume });
+  const e = c.enhance || {};
+  c.appearance = sanitizeAppearance({ ...c.appearance, weapon: c.equipment.weapon, armor: c.equipment.armor, path: c.path, aura: ENHANCE.auraTier(top), costume: c.costume,
+    wenh: c.equipment.weapon ? e.weapon || 0 : 0, aenh: c.equipment.armor ? e.armor || 0 : 0 });
   if (oldStyle && oldStyle !== c.appearance.job) swapHotbar(c, oldStyle, c.appearance.job);
   return before !== JSON.stringify(c.appearance);
 }

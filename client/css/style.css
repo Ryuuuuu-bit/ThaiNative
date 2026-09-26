@@ -612,14 +612,14 @@ kbd { display: inline-block; min-width: 1.6em; text-align: center; padding: 0 .3
 .close:hover { filter: brightness(1.2); transform: rotate(90deg); transition: transform .15s; }
 
 /* ---------- ปุ่มในหน้าต่าง (ค่าเริ่มต้น = ปุ่มลงรักขอบทอง) ---------- */
-.window button:not(.close):not(.tv):not(.path-card):not(.hb-slot) {
+.window button:not(.close):not(.tv):not(.path-card):not(.hb-slot):not(.wmap-node) {
   font-family: inherit; color: #f6ecd9; cursor: pointer;
   background: linear-gradient(180deg, #3e2856, #24163a); border: 1px solid var(--line-strong); border-radius: 6px;
   box-shadow: inset 0 1px 0 rgba(255,255,255,.08), 0 1px 0 rgba(0,0,0,.6); transition: filter .1s, transform .06s;
 }
-.window button:not(.close):hover:not(:disabled) { filter: brightness(1.25); }
+.window button:not(.close):not(.wmap-node):hover:not(:disabled) { filter: brightness(1.25); }
 .window button:not(.close):active:not(:disabled) { transform: translateY(1px); }
-.window button:disabled { opacity: .45; filter: grayscale(.6); cursor: default; }
+.window button:disabled:not(.wmap-node) { opacity: .45; filter: grayscale(.6); cursor: default; }
 /* ปุ่มยืนยัน/ซื้อ/เรียน = แดงครั่ง */
 .window .btn.primary, .window [data-buy], .window [data-sa='ok'], .window .sk-up, .window [data-learn], .window [data-enh], .window [data-make], .window [data-cook], .window [data-brew], .window [data-accept], .window [data-claim] {
   background: linear-gradient(180deg, var(--btn-red-1), var(--btn-red-2)) !important; color: #fff3c4 !important; border-color: var(--gold) !important;
@@ -661,3 +661,40 @@ kbd { display: inline-block; min-width: 1.6em; text-align: center; padding: 0 .3
 .expbar { border-top: 1px solid var(--line-strong); background: linear-gradient(180deg, #1a0f26, #0c0612); }
 .player-menu { background: linear-gradient(180deg, var(--lac-1), var(--lac-3)) !important; }
 .banner { background: linear-gradient(90deg, transparent, rgba(30,17,44,.92) 15%, rgba(30,17,44,.92) 85%, transparent) !important; border-top: 1px solid var(--gold); border-bottom: 1px solid var(--gold); }
+
+/* ---------- แชท: ไม่บังหน้าจอ ---------- */
+#chat { width: 21em; z-index: 2; transition: opacity .2s; }
+#chat-log { pointer-events: none; }
+#chat-log div { animation: chatFade 14s forwards; }
+#chat:hover #chat-log div, #chat:focus-within #chat-log div { animation: none; opacity: 1; }   /* ชี้เมาส์/พิมพ์ → เห็นข้อความเก่าทั้งหมด */
+@keyframes chatFade { 0%, 75% { opacity: 1; } 100% { opacity: 0; } }
+#chat-input { opacity: .35; }
+#chat:hover #chat-input, #chat-input:focus { opacity: 1; }
+#ui:has(.window:not(.hidden)) #chat, #ui:has(#player-menu:not(.hidden)) #chat { opacity: .15; pointer-events: none; }   /* เปิดหน้าต่างอยู่ → แชทจางลง */
+#ui:has(.window:not(.hidden)) #chat:focus-within { opacity: 1; pointer-events: auto; }
+#chat.collapsed #chat-log { display: none; }
+#chat-toggle { position: absolute; right: 0; top: -1.6em; width: 1.5em; height: 1.5em; font-size: .9em; border-radius: 50%; padding: 0; opacity: .5;
+  background: linear-gradient(180deg, #3e2856, #24163a); border: 1px solid var(--line-strong); color: #f6ecd9; cursor: pointer; }
+#chat:hover #chat-toggle { opacity: 1; }
+.qty-custom { display: inline-flex; align-items: center; gap: .3em; margin-left: .4em; color: var(--muted); }
+.qty-custom input { width: 5em; padding: .1em .4em; font-size: 1em; }
+.qty-custom.active { color: var(--gold-soft); } .qty-custom.active input { border-color: var(--gold); box-shadow: 0 0 6px rgba(212,175,55,.4); }
+
+/* ---------- แผนที่โลก (วาร์ป) ---------- */
+.wmap { position: relative; width: 100%; aspect-ratio: 16 / 9; border-radius: 8px; overflow: hidden; border: 2px solid var(--gold); box-shadow: inset 0 0 0 2px rgba(0,0,0,.5), 0 4px 14px rgba(0,0,0,.5);
+  background: #3b2a1c url('../assets/env/world_map.png') center / 100% 100% no-repeat; image-rendering: pixelated; }
+.wmap svg { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
+.wmap-node { position: absolute; transform: translate(-50%, -50%); width: 2.1em; height: 2.1em; border-radius: 50%; border: 2px solid #f5e6b8; background: radial-gradient(circle at 35% 30%, #7ee0a8, #1e8449);
+  color: #fff; font-weight: 700; font-size: .78em; display: flex; align-items: center; justify-content: center; cursor: pointer; box-shadow: 0 2px 6px rgba(0,0,0,.7), 0 0 0 2px rgba(0,0,0,.35); padding: 0; transition: transform .1s; }
+.wmap-node:hover:not(:disabled) { transform: translate(-50%, -50%) scale(1.25); z-index: 3; }
+.wmap-node.lock { background: radial-gradient(circle at 35% 30%, #8a8a8a, #3d3d3d); color: #ccc; cursor: default; }
+.wmap-node.cur { background: radial-gradient(circle at 35% 30%, #fff3c4, #d4ac0d); color: #3b2a1c; border-color: #fff; animation: wmapPulse 1.2s infinite; z-index: 2; }
+.wmap-node.village { width: 2.5em; height: 2.5em; font-size: .95em; background: radial-gradient(circle at 35% 30%, #ffd9a0, #b9770e); }
+.wmap-node.boss { width: 2.6em; height: 2.6em; background: radial-gradient(circle at 35% 30%, #ff8a80, #922b21); font-size: .95em; }
+.wmap-node.boss.lock { background: radial-gradient(circle at 35% 30%, #8a8a8a, #3d3d3d); }
+@keyframes wmapPulse { 0%, 100% { box-shadow: 0 0 0 2px rgba(244,208,63,.6), 0 2px 6px rgba(0,0,0,.7); } 50% { box-shadow: 0 0 0 7px rgba(244,208,63,0), 0 2px 6px rgba(0,0,0,.7); } }
+.wmap-tip { position: absolute; z-index: 5; pointer-events: none; background: linear-gradient(180deg, rgba(43,26,61,.96), rgba(18,10,27,.96)); border: 1px solid var(--gold); border-radius: 6px; padding: .3em .6em; font-size: .8em; white-space: nowrap; transform: translate(-50%, -115%); box-shadow: 0 3px 10px rgba(0,0,0,.6); }
+.wmap-tip b { color: var(--gold-soft); } .wmap-tip small { display: block; color: var(--muted); }
+.wmap-region { position: absolute; transform: translate(-50%, -50%); pointer-events: none; white-space: nowrap; font-size: .72em; color: #fff3c4; text-shadow: 0 1px 2px #000, 0 0 6px rgba(0,0,0,.9); letter-spacing: .02em; background: rgba(20,10,30,.45); padding: .05em .5em; border-radius: 10px; border: 1px solid rgba(212,175,55,.35); }
+.wmap-legend { display: flex; flex-wrap: wrap; gap: .3em 1em; margin-top: .5em; font-size: .78em; color: var(--muted); }
+#travel-panel { width: 54em; max-width: 96%; }

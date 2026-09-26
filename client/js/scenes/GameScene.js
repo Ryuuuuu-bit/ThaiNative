@@ -425,6 +425,13 @@ export class GameScene extends Phaser.Scene {
         m.dieVisual(true);
       })
       .on('appearance', ({ id, appearance }) => this.remotes.get(id)?.setAppearance(appearance))
+      .on('warpReject', ({ x, y }) => {                                             // server ไม่รับวาร์ป → กลับไปจุดที่ server รู้
+        if (!Number.isFinite(x)) return;
+        this.player.setPosition(x, WORLD.groundY - 2).setVelocity(0, 0);
+        this.setMap(mapAt(x));
+        this.cameras.main.centerOn(this.player.x, this.player.y);
+        this.ui.toast('วาร์ปไม่สำเร็จ — ลองเดินไปที่ประตูแล้วกด F อีกครั้ง', 'warn');
+      })
       .on('chat', (m) => this.ui.chat(m))
       .on('skill', (d) => this.combat.remoteVfx(d, this.remotes.get(d.id)));   // สกิลของผู้เล่นอื่น
 

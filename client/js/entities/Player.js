@@ -145,6 +145,9 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     if (f && this.state !== 'hit') {
       this.state = 'fish';
       this.playAnim(this.scene.time.now - f.t0 < 520 ? 'fish_cast' : f.stage === 'wait' ? 'fish_idle' : 'fish_reel');
+    } else if ((this.scene.forest?.gather || this.scene.time.now < (this.scene.forest?.animUntil || 0)) && this.state !== 'hit') {         // เก็บสมุนไพร: ย่อตัวลงเก็บ
+      this.state = 'fish';
+      this.playAnim('gather');
     } else if (this.state === 'fish') this.state = 'idle';
 
     // ---------- เลือก Animation ตามสถานะ ----------

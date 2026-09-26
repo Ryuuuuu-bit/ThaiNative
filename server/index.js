@@ -48,7 +48,7 @@ function publicPlayer(p) {
 
 const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
 /** ท่าที่ client ส่งมาได้ (ผู้เล่นอื่นเห็นท่าสกิล/ตกปลาด้วย) */
-const ANIMS = ['idle', 'walk', 'attack', 'hit', 'die', 'jump', 'cast', 'shoot', 'spin', 'kick', 'dash', 'buff', 'slam', 'fish_cast', 'fish_idle', 'fish_reel'];
+const ANIMS = ['idle', 'walk', 'attack', 'hit', 'die', 'jump', 'cast', 'shoot', 'spin', 'kick', 'dash', 'buff', 'slam', 'fish_cast', 'fish_idle', 'fish_reel', 'gather'];
 /** ตำแหน่งเริ่มตอน join: ต่อใหม่ระหว่างเล่น → ใช้ตำแหน่งเดิม (บีบให้อยู่ในแมพนั้น) */
 function startPos(d) {
   if (!Number.isFinite(d.x) || !Number.isFinite(d.y)) return {};
@@ -95,7 +95,7 @@ io.on('connection', (socket) => {
     p.lastUpdate = now;
 
     // กันวาร์ป: จำกัดระยะทางสูงสุดต่อช่วงเวลา
-    const maxStep = WORLD.maxSpeed * dt * 1.5 + 20;
+    const maxStep = WORLD.maxSpeed * dt * 2.5 + 40;                       // เผื่อสกิลพุ่ง/ตกจากที่สูง
     const nx = clamp(Number(s.x) || 0, WORLD.minX, WORLD.width);
     const ny = clamp(Number(s.y) || 0, -200, WORLD.height);
     const map = mapAt(p.x);
@@ -116,11 +116,14 @@ io.on('connection', (socket) => {
     if (!p) return;
     // ตำแหน่งล่าสุดที่ client ส่งมาอาจยังไม่ถึง (แท็บช้า/เน็ตหน่วง) → ยอมรับตำแหน่งที่แนบมาถ้าใกล้และอยู่แมพเดียวกัน
     const cx = Number(d.x);
-    if (Number.isFinite(cx) && Math.abs(cx - p.x) <= 300 && mapAt(cx).id === mapAt(p.x).id) p.x = cx;
+    if (Number.isFinite(cx) && mapAt(cx).id === mapAt(p.x).id) p.x = cx;     // ภายในแมพเดียวกัน เชื่อตำแหน่ง client (กันเซิร์ฟเวอร์ตามไม่ทัน → วาร์ปพลาด → คนอื่นมองไม่เห็นกัน)
     const map = mapAt(p.x);
     if (d.kind === 'travel') {                                  // ยืนที่ประตูไหนก็ได้ → ไปแมพที่เลเวลถึง
       const to = MAPS[d.to];
-      if (!to || !gateNear(p.x) || p.level < (to.minLv || 1)) return;
+      if (!to || !gateNear(p.x) || p.level < (to.minLv || 1)) {
+        socket.emit('player:warp:reject', { x: Math.round(p.x), y: Math.round(p.y) });   // ให้ client กลับมาตำแหน่งที่ server รู้ (ไม่หลุดซิงค์)
+        return;
+      }
       p.x = to.arriveX;
     } else if (d.kind === 'respawn') p.x = map.respawnX;
     else return;

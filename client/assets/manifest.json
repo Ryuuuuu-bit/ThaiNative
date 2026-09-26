@@ -211,7 +211,8 @@
     "pr_grave": "assets/env/pr_grave.png",
     "pr_spike": "assets/env/pr_spike.png",
     "pr_pillar": "assets/env/pr_pillar.png",
-    "pr_reeds": "assets/env/pr_reeds.png"
+    "pr_reeds": "assets/env/pr_reeds.png",
+    "world_map": "assets/env/world_map.png"
   },
   "bosses": {
     "phaya_yak": {

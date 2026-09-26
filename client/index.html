@@ -168,8 +168,9 @@
 
       <!-- วาร์ป (ประตูทุกแมพ) -->
       <section id="travel-panel" class="panel window wide hidden">
-        <header>🌀 ประตูวาร์ป · เลือกปลายทาง <button class="close">✕</button></header>
-        <div id="travel-list" class="travel-list"></div>
+        <header>🗺️ แผนที่โลก · เลือกปลายทางวาร์ป <button class="close">✕</button></header>
+        <div id="wmap" class="wmap"><svg id="wmap-svg" viewBox="0 0 384 216" preserveAspectRatio="none"></svg><div id="wmap-nodes"></div><div id="wmap-tip" class="wmap-tip hidden"></div></div>
+        <div class="wmap-legend"><span>🏘️ หมู่บ้าน</span><span><i class="lg" style="background:#f4d03f"></i>คุณอยู่ที่นี่</span><span><i class="lg" style="background:#58d68d"></i>ไปได้</span><span><i class="lg" style="background:#666"></i>🔒 เลเวลไม่ถึง</span><span>👹 เรดบอส</span></div>
       </section>
 
       <!-- ค่าหัวรายวัน (พรานบุญ · ค่ายพักพราน) -->
@@ -324,6 +325,7 @@
 
       <!-- แชท -->
       <section id="chat" class="hidden">
+        <button id="chat-toggle" title="ซ่อน/แสดงแชท">💬</button>
         <div id="chat-log"></div>
         <input id="chat-input" maxlength="120" placeholder="กด Enter เพื่อพิมพ์..." />
       </section>

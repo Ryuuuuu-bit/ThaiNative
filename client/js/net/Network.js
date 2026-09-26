@@ -43,6 +43,7 @@ export class Network {
     s.on('player:joined', (p) => this.emitLocal('joined', p));
     s.on('player:left', (id) => this.emitLocal('left', id));
     s.on('player:appearance', (d) => this.emitLocal('appearance', d));
+    s.on('player:warp:reject', (d) => this.emitLocal('warpReject', d));
     s.on('world:snapshot', (snap) => {
       // ตัดตัวเองออก เหลือแต่ผู้เล่นอื่น
       snap.players = snap.players.filter((p) => p.id !== this.selfId);

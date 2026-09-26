@@ -7,7 +7,7 @@ import { MONSTER_ANIMS, drawMonsterFrame } from './MonsterArt.js';
 import { MONSTERS } from '/shared/data/monsters.js';
 import { JOBS } from '/shared/data/classes.js';
 import { appearanceKey } from '/shared/data/appearance.js';
-import { baseKey, legacyBaseKey, heldInfo, wearInfo, recolorBase, drawPlayerFrame, frameSize, PLAYER_ANIMS, PLAYER_PAD_TOP } from './PlayerArt.js';
+import { baseKey, legacyBaseKey, heldInfo, wearInfo, recolorBase, drawPlayerFrame, frameSize, PLAYER_ANIMS, PLAYER_PAD_TOP, enhGlow } from './PlayerArt.js';
 import { buildRig, trimImage, bakeRigSheet, ANIM_SPEC, BOSS_SPEC, bossFx } from './Rig.js';
 
 function makeCanvas(w, h) {
@@ -79,7 +79,8 @@ export function bakeCharacter(scene, appearance) {
     const held = legacy ? null : heldInfo(appearance, scene.textures.exists(ik) ? scene.textures.get(ik).getSourceImage() : null);
     const { FW: pw, FH: ph } = frameSize(base);
     const wear = legacy ? null : wearInfo(appearance, (k) => (scene.textures.exists(k) ? scene.textures.get(k).getSourceImage() : null));
-    bakeSheet(scene, key, pw, ph, PLAYER_ANIMS, (ctx, anim, i) => drawPlayerFrame(ctx, base, anim, i, weapon, pw, ph, held, wear));
+    const glow = legacy ? null : enhGlow(appearance.aenh);                  // เสื้อตีบวก → ขอบตัวเรืองแสง
+    bakeSheet(scene, key, pw, ph, PLAYER_ANIMS, (ctx, anim, i) => drawPlayerFrame(ctx, base, anim, i, weapon, pw, ph, held, wear, glow));
     scene.textures.get(key).customData.padTop = PLAYER_PAD_TOP;          // เว้นที่ด้านบนเฟรม (ท่ากระโดด/ชูแขน)
     return key;
   }

@@ -71,7 +71,8 @@ export class UI {
         input.blur();
       } else if (e.key === 'Escape') input.blur();
     });
-    input.addEventListener('focus', () => (scene.input.keyboard.enabled = false));
+    $('#chat-toggle').onclick = () => { $('#chat').classList.toggle('collapsed'); input.blur(); };
+    input.addEventListener('focus', () => { scene.input.keyboard.enabled = false; $('#chat').classList.remove('collapsed'); });
     input.addEventListener('blur', () => (scene.input.keyboard.enabled = true));
   }
 
@@ -655,7 +656,9 @@ export class UI {
     // เลือกจำนวน: x1 / x5 / x10 / สูงสุด (ใช้ทั้งซื้อและขาย)
     const QTY = [[1, 'x1'], [5, 'x5'], [10, 'x10'], [9999, 'สูงสุด']];
     const q = this.shopQty || 1;
-    const qtyBar = `<div class="qty-bar"><span>จำนวน:</span>${QTY.map(([n, l]) => `<button data-qty="${n}" class="${q === n ? 'active' : ''}">${l}</button>`).join('')}</div>`;
+    const custom = !QTY.some(([n]) => n === q);
+    const qtyBar = `<div class="qty-bar"><span>จำนวน:</span>${QTY.map(([n, l]) => `<button data-qty="${n}" class="${q === n ? 'active' : ''}">${l}</button>`).join('')}
+      <label class="qty-custom ${custom ? 'active' : ''}">ระบุ <input type="number" id="shop-qty-in" min="1" max="9999" value="${custom ? q : ''}" placeholder="เช่น 25" /></label></div>`;
     if (this.shopTab === 'buy') {
       html = qtyBar + shop.stock.map((id) => {
         const it = ITEMS[id];
@@ -686,6 +689,21 @@ export class UI {
     $('#shop-list').innerHTML = html;
     const trade = (r) => { this.scene.sfx.play(r.ok ? 'buy' : 'error'); this.result(r); };
     $('#shop-list').querySelectorAll('[data-qty]').forEach((b) => (b.onclick = () => { this.shopQty = +b.dataset.qty; this.scene.sfx.play('click'); this.renderShop(); }));
+    const qin = $('#shop-qty-in');
+    if (qin) {
+      // พิมพ์จำนวนเอง → อัปเดตราคา/ปุ่มทันที (ไม่ต้องกด Enter) แต่ไม่ให้ช่องหลุดโฟกัส
+      qin.addEventListener('keydown', (e) => e.stopPropagation());
+      qin.addEventListener('input', () => {
+        const v = Math.max(1, Math.min(9999, Math.floor(+qin.value || 0)));
+        if (!qin.value) return;
+        this.shopQty = v;
+        const pos = qin.selectionStart;
+        this.renderShop();
+        const q2 = $('#shop-qty-in'); q2.focus(); try { q2.setSelectionRange(pos, pos); } catch { /* number input */ }
+      });
+      qin.addEventListener('focus', () => (this.scene.input.keyboard.enabled = false));
+      qin.addEventListener('blur', () => (this.scene.input.keyboard.enabled = true));
+    }
     $('#shop-list').querySelectorAll('[data-buy]').forEach((b) => (b.onclick = () => trade(Inv.buy(c, b.dataset.buy, +b.dataset.n || 1))));
     $('#shop-list').querySelectorAll('[data-sell]').forEach((b) => (b.onclick = () => trade(Inv.sell(c, b.dataset.sell, +b.dataset.n || 1))));
     $('#shop-list').querySelectorAll('[data-bulk]').forEach((b) => (b.onclick = () => {

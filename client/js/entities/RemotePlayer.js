@@ -72,7 +72,7 @@ export class RemotePlayer extends Phaser.GameObjects.Sprite {
     if (latest.anim !== this.currentAnim) {
       this.currentAnim = latest.anim;
       const k = `${this.texKey}:${latest.anim}`;
-      this.play(this.scene.anims.exists(k) ? k : `${this.texKey}:${latest.anim.startsWith('fish') ? 'idle' : 'attack'}`);
+      this.play(this.scene.anims.exists(k) ? k : `${this.texKey}:${latest.anim.startsWith('fish') || latest.anim === 'gather' ? 'idle' : 'attack'}`);
     }
     this.nameTag.setPosition(this.x, this.y - this.height + (this.texture.customData?.padTop || 0) + 2);
     this.hpBar.setPosition(this.x, this.y - this.height + (this.texture.customData?.padTop || 0) + 7);
