@@ -52,6 +52,19 @@ export function useItem(c, id) {
     return { ok: true, msg: `เปลี่ยนอาชีพเป็น ${JOBS[it.job].nameTh}! (คืน SP ทั้งหมด กด K เพื่อเรียนสกิล)`, jobChanged: true };
   }
 
+  if (it.type === 'food') {                  // อาหารป้าสา: ฟื้นฟู + บัฟ (ได้ทีละจาน กินใหม่ = แทนที่)
+    const d = getDerived(c);
+    if (it.effect.hp) c.hp = Math.min(d.maxHp, c.hp + it.effect.hp);
+    if (it.effect.mp) c.mp = Math.min(d.maxMp, c.mp + it.effect.mp);
+    removeItem(c, id);
+    const now = Date.now();
+    c.blessings = (c.blessings || []).filter((b) => b.until > now && b.id !== 'food');
+    c.blessings.push({ id: 'food', nameTh: it.nameTh, icon: it.icon, until: now + it.buff.minutes * 60000, mods: it.buff.mods });
+    return { ok: true, msg: `กิน${it.nameTh} อร่อย! ${it.buff.textTh} (${it.buff.minutes} นาที)`, ate: true };
+  }
+
+  if (it.type === 'fish') return { ok: false, msg: `${it.nameTh}: นำไปให้ป้าสาทำอาหาร หรือขายได้` };
+
   if (it.type === 'offering') return { ok: false, msg: `${it.nameTh}: นำไปถวายที่ศาลพระภูมิ (ยืนหน้าศาลแล้วกด F)` };
 
   if (SLOT_OF[it.type]) return equip(c, id);
@@ -61,7 +74,7 @@ export function useItem(c, id) {
 /** ถวายของที่ศาลพระภูมิ → ได้พร (ถวายซ้ำชนิดเดิม = ต่อเวลา สูงสุด 60 นาที) */
 export function makeOffering(c, key) {
   const o = OFFERINGS[key];
-  if (!o || !count(c, o.item)) return { ok: false, msg: `ไม่มี${o?.nameTh ?? 'ของถวาย'} (ซื้อได้ที่ร้านป้าติ๋ม)` };
+  if (!o || !count(c, o.item)) return { ok: false, msg: `ไม่มี${o?.nameTh ?? 'ของถวาย'} (ซื้อได้ที่ร้านยายติ๋ม)` };
   removeItem(c, o.item);
   const now = Date.now();
   c.blessings = (c.blessings || []).filter((b) => b.until > now);

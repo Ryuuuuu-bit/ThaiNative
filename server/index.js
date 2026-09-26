@@ -7,7 +7,7 @@ import { createServer } from 'node:http';
 import { Server } from 'socket.io';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { WORLD } from '../shared/constants.js';
+import { WORLD, MAPS, mapAt } from '../shared/constants.js';
 import { sanitizeAppearance } from '../shared/data/appearance.js';
 import { SKILL_BY_ID, MAX_SKILL_LV } from '../shared/data/skills.js';
 import { setupSocial } from './social.js';
@@ -38,7 +38,7 @@ const events = setupEvents(io, players);
 function publicPlayer(p) {
   return {
     id: p.id, name: p.name, appearance: p.appearance,
-    x: p.x, y: p.y, anim: p.anim, flipX: p.flipX, hp: p.hp, maxHp: p.maxHp, level: p.level,
+    x: p.x, y: p.y, anim: p.anim, flipX: p.flipX, hp: p.hp, maxHp: p.maxHp, level: p.level, wp: p.wp || 0,
   };
 }
 
@@ -82,9 +82,11 @@ io.on('connection', (socket) => {
 
     // กันวาร์ป: จำกัดระยะทางสูงสุดต่อช่วงเวลา
     const maxStep = WORLD.maxSpeed * dt * 1.5 + 20;
-    const nx = clamp(Number(s.x) || 0, 0, WORLD.width);
+    const nx = clamp(Number(s.x) || 0, WORLD.minX, WORLD.width);
     const ny = clamp(Number(s.y) || 0, -200, WORLD.height);
-    p.x += clamp(nx - p.x, -maxStep, maxStep);
+    const map = mapAt(p.x);
+    // เดินข้ามแผนที่ไม่ได้ (ต้องใช้ประตูวาร์ป)
+    p.x = clamp(p.x + clamp(nx - p.x, -maxStep, maxStep), map.minX, map.maxX);
     p.y += clamp(ny - p.y, -maxStep * 2, maxStep * 2);
 
     p.anim = ['idle', 'walk', 'attack', 'hit', 'die', 'jump'].includes(s.anim) ? s.anim : 'idle';
@@ -92,6 +94,18 @@ io.on('connection', (socket) => {
     p.hp = clamp(Number(s.hp) || 0, 0, 99999);
     p.maxHp = clamp(Number(s.maxHp) || 1, 1, 99999);
     p.level = clamp(Number(s.level) || 1, 1, 999);
+  });
+
+  // 2.1) วาร์ประหว่างแผนที่: ต้องยืนใกล้ประตู / หรือฟื้นหลังตาย
+  socket.on('player:warp', (d = {}) => {
+    const p = players.get(socket.id);
+    if (!p) return;
+    const map = mapAt(p.x);
+    if (d.kind === 'gate' && map.gate && Math.abs(p.x - map.gate.x) < 90) p.x = map.gate.arriveX;
+    else if (d.kind === 'respawn') p.x = d.arena && map.id === 'forest' ? WORLD.arenaX - 140 : WORLD.spawnX;
+    else return;
+    p.y = WORLD.spawnY;
+    p.wp = (p.wp || 0) + 1;
   });
 
   // 3) เปลี่ยนรูปลักษณ์ / อาชีพ (เช่น ซื้อ Skin จากร้าน)

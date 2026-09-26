@@ -7,7 +7,7 @@ import { JOBS } from '/shared/data/classes.js';
 import { WORLD } from '/shared/constants.js';
 import { RAID_BOSS as RB } from '/shared/data/raid.js';
 import { addItem, removeItem, count } from './Inventory.js';
-import { rand } from './util.js';
+import { rand, itemIcon } from './util.js';
 
 const $ = (s) => document.querySelector(s);
 const JOB_ICON = { swordman: '⚔️', mage: '🔮', archer: '🏹', boxer: '🥊' };
@@ -253,7 +253,7 @@ export class Social {
     if (!st) return;
     const me = this.selfId, other = st.a === me ? st.b : st.a;
     const c = this.player.char;
-    const itemHtml = (list) => list.length ? list.map((it) => `<div class="tr-item" data-id="${it.id}" title="${esc(ITEMS[it.id]?.nameTh)}">${ITEMS[it.id]?.icon ?? '?'}<small>x${it.qty}</small><span>${esc(ITEMS[it.id]?.nameTh)}</span></div>`).join('') : '<p class="empty">—</p>';
+    const itemHtml = (list) => list.length ? list.map((it) => `<div class="tr-item" data-id="${it.id}" title="${esc(ITEMS[it.id]?.nameTh)}">${itemIcon(it.id, ITEMS[it.id]?.icon ?? '?')}<small>x${it.qty}</small><span>${esc(ITEMS[it.id]?.nameTh)}</span></div>`).join('') : '<p class="empty">—</p>';
     $('#tr-with').textContent = $('#tr-name2').textContent = st.names?.[other] ?? '?';
     // ข้อเสนอของเรา (ใช้ค่าที่ server ยืนยันแล้ว)
     const mine = st.offer[me] || { items: [], gold: 0 };
@@ -275,7 +275,7 @@ export class Social {
     $('#tr-inv').innerHTML = c.inventory.filter((it) => ITEMS[it.id]).map((it) => {
       const used = mine.items.find((x) => x.id === it.id)?.qty || 0;
       const left = it.qty - used;
-      return `<div class="tr-item ${left <= 0 ? 'used' : ''}" data-id="${left > 0 && !locked ? it.id : ''}" title="${esc(ITEMS[it.id].nameTh)}">${ITEMS[it.id].icon}<small>x${left}</small></div>`;
+      return `<div class="tr-item ${left <= 0 ? 'used' : ''}" data-id="${left > 0 && !locked ? it.id : ''}" title="${esc(ITEMS[it.id].nameTh)}">${itemIcon(it.id, ITEMS[it.id].icon)}<small>x${left}</small></div>`;
     }).join('') || '<p class="empty">กระเป๋าว่าง</p>';
   }
 

@@ -14,6 +14,7 @@ import { learnSkill, assignHotbar } from './Character.js';
 import { saveSettings, toggleFullscreen } from './Settings.js';
 import { PORTRAITS } from '../gfx/SpriteFactory.js';
 import { modsText } from '/shared/data/blessings.js';
+import { itemIcon, skillIcon, uiIcon } from './util.js';
 
 const $ = (s) => document.querySelector(s);
 const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -33,13 +34,16 @@ export class UI {
     // ปุ่มเปิด/ปิดหน้าต่าง
     document.querySelectorAll('[data-open]').forEach((b) => (b.onclick = () => this.toggle(b.dataset.open)));
     document.querySelectorAll('.window .close').forEach((b) => (b.onclick = () => b.closest('.window').classList.add('hidden')));
-    document.querySelectorAll('#shop-panel .tabs button').forEach((b) => (b.onclick = () => {
+    $('#shop-tabs').onclick = (e) => {
+      const b = e.target.closest('button[data-tab]');
+      if (!b) return;
       this.shopTab = b.dataset.tab;
-      document.querySelectorAll('#shop-panel .tabs button').forEach((x) => x.classList.toggle('active', x === b));
+      $('#shop-tabs').querySelectorAll('button').forEach((x) => x.classList.toggle('active', x === b));
       this.renderShop();
-    }));
+    };
 
     this.bindSettings();
+    this.applyUiIcons();
 
     // แชท
     const input = $('#chat-input');
@@ -152,13 +156,37 @@ export class UI {
     // มินิแมป (อัปเดตทุก 200ms)
     if (this.scene.settings.minimap && time - (this.mmAt || 0) > 200) {
       this.mmAt = time;
-      const W = this.scene.physics.world.bounds.width;
-      const pct = (x) => `${(x / W) * 100}%`;
-      let html = `<i class="mm-dot npc" style="left:${pct(this.scene.npc.x)}"></i><i class="mm-dot me" style="left:${pct(p.x)}"></i>`;
-      this.scene.remotes.forEach((r) => (html += `<i class="mm-dot ally" style="left:${pct(r.x)}"></i>`));
-      this.scene.monsters.getChildren().forEach((m) => m.alive && (html += `<i class="mm-dot ${m.isBoss ? 'boss' : 'mob'}" style="left:${pct(m.x)}"></i>`));
+      const mp = this.scene.map, W = mp.maxX - mp.minX, inMap = (x) => x >= mp.minX && x <= mp.maxX;
+      const pct = (x) => `${((x - mp.minX) / W) * 100}%`;
+      let html = `<i class="mm-dot me" style="left:${pct(p.x)}"></i><i class="mm-dot gate" style="left:${pct(mp.gate.x)}"></i>`;
+      if (mp.safe) this.scene.npcs.forEach((n) => (html += `<i class="mm-dot npc" style="left:${pct(n.x)}"></i>`));
+      this.scene.remotes.forEach((r) => inMap(r.x) && (html += `<i class="mm-dot ally" style="left:${pct(r.x)}"></i>`));
+      this.scene.monsters.getChildren().forEach((m) => m.alive && inMap(m.x) && (html += `<i class="mm-dot ${m.isBoss ? 'boss' : 'mob'}" style="left:${pct(m.x)}"></i>`));
       $('#mm-dots').innerHTML = html;
     }
+  }
+
+  /** แถบสีบนมินิแมป: หมู่บ้าน = ท่าน้ำ, ป่า = ลานบอส */
+  refreshMinimap() {
+    const mp = this.scene.map, W = mp.maxX - mp.minX;
+    const town = $('.mm-town'), arena = $('.mm-arena');
+    if (mp.safe) {
+      town.style.left = '0'; town.style.width = `${((this.scene.riverX?.[1] ?? mp.minX) - mp.minX) / W * 100}%`;
+      town.classList.add('river'); arena.style.width = '0';
+    } else {
+      town.classList.remove('river'); town.style.width = '0';
+      arena.style.width = `${((mp.maxX - WORLD.arenaX) / W) * 100}%`;
+    }
+  }
+
+  /** ปุ่ม HUD ใช้ไอคอนภาพ (ถ้ามี) */
+  applyUiIcons() {
+    $('#quick-hp .ic').innerHTML = itemIcon('hp_s', '🧴');
+    $('#quick-mp .ic').innerHTML = itemIcon('mp_s', '🥥');
+    const q = document.querySelector('[data-open="quest-panel"]');
+    if (q && uiIcon('quest')) q.innerHTML = `${uiIcon('quest')}<small>J</small>`;
+    const f = document.querySelector('#fish-ui');
+    if (f && uiIcon('fish') && !f.querySelector('.px-ico')) f.insertAdjacentHTML('afterbegin', uiIcon('fish'));
   }
 
   setZone(name, announce = true) {
@@ -209,7 +237,7 @@ export class UI {
       if (!id || !lv) return `<div class="skill empty" data-key="${key}"><span class="k">${key}</span><span class="ic">＋</span>
         <div class="tip">ช่อง ${key} ว่าง – กด K แล้วลากสกิลมาวาง</div></div>`;
       const s = skillStats(SKILL_BY_ID[id], lv);
-      return `<div class="skill" data-key="${key}" data-id="${id}"><span class="k">${key}</span><span class="ic">${s.icon}</span><span class="mp">${s.mp}</span>
+      return `<div class="skill" data-key="${key}" data-id="${id}"><span class="k">${key}</span><span class="ic">${skillIcon(id, s.icon)}</span><span class="mp">${s.mp}</span>
         <div class="cd"></div><div class="cdt"></div>
         <div class="tip"><b>${s.nameTh}</b> Lv.${lv} (${key})<br>MP ${s.mp} · CD ${(s.cd / 1000).toFixed(1)}s${s.mult ? ` · ดาเมจ x${s.mult}` : ''}<br>${s.desc}</div></div>`;
     }).join('');
@@ -267,7 +295,7 @@ export class UI {
       const stat = (st) => `MP ${st.mp} · CD ${(st.cd / 1000).toFixed(1)}s${st.mult ? `<br>ดาเมจ x${st.mult}` : ''}${st.duration ? `<br>นาน ${(st.duration / 1000).toFixed(0)}s` : ''}`;
       const slotKey = SKILL_SLOTS.find((k) => c.hotbar[k] === base.id);
       return `<div class="sk-card ${base.ultimate ? 'ult' : ''} ${locked ? 'locked' : ''} ${lv ? '' : 'unlearned'}">
-        <div class="sk-icon" draggable="${lv > 0}" data-id="${base.id}" title="ลากไปวางที่ Hotbar">${base.icon}</div>
+        <div class="sk-icon" draggable="${lv > 0}" data-id="${base.id}" title="ลากไปวางที่ Hotbar">${skillIcon(base.id, base.icon)}</div>
         <div class="sk-name">${base.nameTh}${base.ultimate ? ' ★' : ''}</div>
         <div class="sk-pips">${Array.from({ length: MAX_SKILL_LV }, (_, i) => `<i class="${i < lv ? 'on' : ''}"></i>`).join('')}</div>
         <div class="sk-lv">Lv.${lv} / ${MAX_SKILL_LV}</div>
@@ -293,7 +321,7 @@ export class UI {
     // Hotbar ในหน้าต่างสกิล (ช่องรับวาง)
     $('#sk-hotbar').innerHTML = SKILL_SLOTS.map((k) => {
       const id = c.hotbar[k];
-      return `<div class="hb-slot ${id ? 'filled' : ''}" data-key="${k}" title="คลิกขวาเพื่อถอด"><span class="k">${k}</span>${id ? SKILL_BY_ID[id].icon : ''}</div>`;
+      return `<div class="hb-slot ${id ? 'filled' : ''}" data-key="${k}" title="คลิกขวาเพื่อถอด"><span class="k">${k}</span>${id ? skillIcon(id, SKILL_BY_ID[id].icon) : ''}</div>`;
     }).join('');
     $('#sk-hotbar').querySelectorAll('.hb-slot').forEach((el) => this.makeDropSlot(el, el.dataset.key));
   }
@@ -302,26 +330,28 @@ export class UI {
   //  แผนที่โลก (M)
   // ============================================================
   renderMap() {
-    const W = WORLD.width, pct = (x) => `${(x / W) * 100}%`;
-    const zones = [{ nameTh: 'หมู่บ้านบางผี', from: 0, to: WORLD.townEndX, town: true, sub: 'ปลอดภัย · ร้านค้า · ศาลพระภูมิ' }];
+    const X0 = WORLD.minX, W = WORLD.width - X0, pct = (x) => `${((x - X0) / W) * 100}%`;
+    const zones = [
+      { nameTh: '🎣 ท่าน้ำ', from: X0, to: -200, town: true, sub: 'ตกปลา · ครัวป้าสา' },
+      { nameTh: 'หมู่บ้านบางผี', from: -200, to: 1060, town: true, sub: 'Safe Zone · ยายติ๋ม · ผู้ใหญ่ชัย · ลุงดำ · วาร์ป→ป่า' }];
     // แบ่งเขตตามมอนสเตอร์ (เรียงตามเลเวล)
     const mons = Object.values(MONSTERS).sort((a, b) => a.level - b.level);
-    const bands = [[WORLD.townEndX, 1680], [1680, 2380], [2380, 2980], [2980, WORLD.graveX], [WORLD.graveX, WORLD.arenaX]];
+    const bands = [[1080, 1680], [1680, 2380], [2380, 2980], [2980, WORLD.graveX], [WORLD.graveX, WORLD.arenaX]];
     const names = ['ทุ่งผีน้อย', 'ป่ากล้วยตานี', 'บึงผีพราย', 'ดงเปรตสมิง', 'ป่าช้าผีตายโหง'];
     bands.forEach(([a, b], i) => {
       const here = mons.filter((m) => m.zone[0] < b && m.zone[1] > a);
       const lv = here.length ? `Lv.${Math.min(...here.map((m) => m.level))}–${Math.max(...here.map((m) => m.level))}` : '';
       zones.push({ nameTh: names[i], from: a, to: b, sub: `${lv}<br>${here.map((m) => m.nameTh).join(' · ')}` });
     });
-    zones.push({ nameTh: '👹 ลานพญายักษ์', from: WORLD.arenaX, to: W, boss: true, sub: 'เรดบอส Lv.15<br>รวมพลังหลายคน · เกิดใหม่ทุก 2 นาที' });
+    zones.push({ nameTh: '👹 ลานพญายักษ์', from: WORLD.arenaX, to: WORLD.width, boss: true, sub: 'เรดบอส Lv.15<br>รวมพลังหลายคน · เกิดใหม่ทุก 2 นาที' });
     const plats = this.scene.platforms.getChildren().map((p) => `<i class="wm-plat" style="left:${pct(p.x)};width:${(p.width / W) * 100}%;top:${40 + (p.y / 270) * 40}%"></i>`).join('');
     this.mapStatic = zones.map((z) => `<div class="wm-zone ${z.town ? 'town' : ''} ${z.boss ? 'boss' : ''}" style="left:${pct(z.from)};width:${((z.to - z.from) / W) * 100}%"><b>${z.nameTh}</b><span>${z.sub}</span></div>`).join('') + plats
-      + `<span class="wm-pin" style="left:${pct(this.scene.npc.x)};top:84%">🏪</span><span class="wm-pin" style="left:${pct(240)};top:84%">⛩️</span><span class="wm-pin" style="left:${pct(110)};top:84%">🛕</span>`;
+      + `${this.scene.npcs.map((n) => `<span class="wm-pin" style="left:${pct(n.x)};top:84%" title="${n.nameTh}">${{ shop: '🏪', quest: '📋', smith: '🔨', cook: '🍳' }[n.id]}</span>`).join('')}<span class="wm-pin" style="left:${pct(990)};top:84%">🌀</span><span class="wm-pin" style="left:${pct(240)};top:84%">⛩️</span><span class="wm-pin" style="left:${pct(110)};top:84%">🛕</span>`;
     this.updateMap();
   }
 
   updateMap() {
-    const W = WORLD.width, pct = (x) => `${(x / W) * 100}%`, y = (v) => `${Math.min(84, 40 + (v / 270) * 44)}%`;
+    const X0 = WORLD.minX, W = WORLD.width - X0, pct = (x) => `${((x - X0) / W) * 100}%`, y = (v) => `${Math.min(84, 40 + (v / 270) * 44)}%`;
     const p = this.scene.player;
     let dots = `<i class="wm-dot me" style="left:${pct(p.x)};top:${y(p.y)}" title="${esc(p.char.name)}"></i>`;
     this.scene.remotes.forEach((r) => (dots += `<i class="wm-dot ally" style="left:${pct(r.x)};top:${y(r.y)}"></i>`));
@@ -422,15 +452,15 @@ export class UI {
   renderInventory() {
     const c = this.char;
     $('#inv-equip').innerHTML = Object.entries(c.equipment).map(([slot, id]) => `
-      <div class="eq"><small>${SLOT_TH[slot]}</small>${id ? `${ITEMS[id].icon} ${ITEMS[id].nameTh} <button class="close" data-unequip="${slot}">✕</button>` : '—'}</div>`).join('');
+      <div class="eq"><small>${SLOT_TH[slot]}</small>${id ? `${itemIcon(id, ITEMS[id].icon)} ${ITEMS[id].nameTh}${c.enhance?.[slot] ? ` <b class="enh">+${c.enhance[slot]}</b>` : ''} <button class="close" data-unequip="${slot}">✕</button>` : '—'}</div>`).join('');
     $('#inv-equip').querySelectorAll('[data-unequip]').forEach((b) => (b.onclick = () => this.result(Inv.unequip(c, b.dataset.unequip))));
 
     if (!c.inventory.length) { $('#inv-list').innerHTML = '<div class="empty">กระเป๋าว่างเปล่า</div>'; return; }
     $('#inv-list').innerHTML = c.inventory.map((s) => {
       const it = ITEMS[s.id];
-      const action = { consumable: 'ใช้', offering: 'ถวาย', weapon: 'สวม', armor: 'สวม', accessory: 'สวม', skin: c.appearance.job === it.job ? 'ใช้อยู่' : 'เปลี่ยนอาชีพ' }[it.type];
+      const action = { consumable: 'ใช้', food: 'กิน', offering: 'ถวาย', weapon: 'สวม', armor: 'สวม', accessory: 'สวม', skin: c.appearance.job === it.job ? 'ใช้อยู่' : 'เปลี่ยนอาชีพ' }[it.type];
       const job = it.jobs ? ` · ${it.jobs.map((j) => JOBS[j].nameTh).join('/')}` : '';
-      return `<div class="item"><span class="ic">${it.icon}</span>
+      return `<div class="item"><span class="ic">${itemIcon(s.id, it.icon)}</span>
         <span>${esc(it.nameTh)} <span class="meta">x${s.qty}${job}</span></span>
         <span class="price">฿${sellPrice(s.id)}</span>
         ${action ? `<button data-use="${s.id}" ${action === 'ใช้อยู่' ? 'disabled' : ''}>${action}</button>` : '<span></span>'}</div>`;
@@ -444,6 +474,11 @@ export class UI {
     const shop = SHOPS[shopId];
     $('#shop-title').textContent = shop.nameTh;
     $('#shop-greet').textContent = `“${shop.greeting}”`;
+    const TAB_TH = { buy: 'ซื้อ', sell: 'ขาย', enhance: `${uiIcon('anvil', '🔨')} ตีบวก`, cook: `${uiIcon('soup', '🍳')} ทำอาหาร` };
+    const tabs = shop.tabs || ['buy', 'sell'];
+    this.shopTab = tabs[0];
+    $('#shop-tabs').innerHTML = tabs.map((t, i) => `<button data-tab="${t}" class="${i ? '' : 'active'}">${TAB_TH[t]}</button>`).join('');
+    this.closeAll();
     this.toggle('shop-panel', true);
   }
 
@@ -451,13 +486,16 @@ export class UI {
     const c = this.char, shop = SHOPS[this.shopId];
     $('#shop-gold').textContent = c.gold.toLocaleString();
     let html;
+    if (this.shopTab === 'enhance') return this.scene.village.renderEnhance($('#shop-list'));
+    if (this.shopTab === 'cook') return this.scene.village.renderCook($('#shop-list'));
     if (this.shopTab === 'buy') {
       html = shop.stock.map((id) => {
         const it = ITEMS[id];
         const owned = it.type === 'skin' && Inv.count(c, id);
         const job = it.jobs ? `<span class="meta"> · ${it.jobs.map((j) => JOBS[j].nameTh).join('/')}</span>` : '';
         const bonus = it.bonus ? `<span class="meta"> ${Object.entries(it.bonus).map(([k, v]) => `${k.toUpperCase()}+${k === 'crit' ? v * 100 + '%' : v}`).join(' ')}</span>` : '';
-        return `<div class="item"><span class="ic">${it.icon}</span><span>${esc(it.nameTh)}${job}${bonus}</span>
+        const food = it.buff ? `<span class="meta"> ${esc(it.buff.textTh)}</span>` : '';
+        return `<div class="item"><span class="ic">${itemIcon(id, it.icon)}</span><span>${esc(it.nameTh)}${job}${bonus}${food}</span>
           <span class="price">฿${it.price}</span>
           <button data-buy="${id}" ${owned || c.gold < it.price ? 'disabled' : ''}>${owned ? 'มีแล้ว' : 'ซื้อ'}</button></div>`;
       }).join('');
@@ -465,7 +503,7 @@ export class UI {
       const sellable = c.inventory.filter((s) => ITEMS[s.id].type !== 'skin');
       html = sellable.length ? sellable.map((s) => {
         const it = ITEMS[s.id];
-        return `<div class="item"><span class="ic">${it.icon}</span><span>${esc(it.nameTh)} <span class="meta">x${s.qty}</span></span>
+        return `<div class="item"><span class="ic">${itemIcon(s.id, it.icon)}</span><span>${esc(it.nameTh)} <span class="meta">x${s.qty}</span></span>
           <span class="price">฿${sellPrice(s.id)}</span><button data-sell="${s.id}">ขาย</button></div>`;
       }).join('') : '<div class="empty">ไม่มีของให้ขาย</div>';
     }

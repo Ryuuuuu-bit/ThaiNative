@@ -2,7 +2,7 @@
 //  อีเวนต์โลก: "ผีห่าบุกหมู่บ้าน" (server-authoritative)
 //  ▸ เกิดอัตโนมัติเป็นระยะ ผีเดินจากชายป่าเข้าหาศาลพระภูมิ 5 ระลอก
 //  ▸ ผู้เล่นทุกคนช่วยกันตี (server ถือ HP ผี/ศาล) → สำเร็จได้รางวัลตามส่วนร่วม
-//  ▸ ศาลแตก = ล้มเหลว ร้านป้าติ๋มปิด 10 นาที
+//  ▸ ศาลแตก = ล้มเหลว ร้านยายติ๋มปิด 10 นาที
 // ============================================================
 import { WORLD } from '../shared/constants.js';
 import { MONSTERS } from '../shared/data/monsters.js';
@@ -85,7 +85,7 @@ export function setupEvents(io, players) {
       sys('ปกป้องศาลพระภูมิได้สำเร็จ! ชาวบ้านบางผีขอบคุณผู้กล้าทุกคน');
     } else {
       ev.shopClosedUntil = Date.now() + INVASION.shopClosedMs;
-      sys('ศาลพระภูมิถูกทำลาย… ป้าติ๋มหนีไปหลบผี ร้านปิด 10 นาที');
+      sys('ศาลพระภูมิถูกทำลาย… ยายติ๋มหนีไปหลบผี ร้านปิด 10 นาที');
     }
     io.emit('event:end', { success, shopClosedMs: success ? 0 : INVASION.shopClosedMs });
   }

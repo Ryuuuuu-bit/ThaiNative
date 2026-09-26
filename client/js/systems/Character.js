@@ -1,6 +1,7 @@
 // ============================================================
 //  Character model – ข้อมูลตัวละครผู้เล่น (ใช้เซฟ/โหลด และคำนวณสถานะ)
 // ============================================================
+import { ENHANCE } from '/shared/data/village.js';
 import { JOBS } from '/shared/data/classes.js';
 import { ITEMS, STARTING_GOLD, STARTING_ITEMS } from '/shared/data/items.js';
 import { sanitizeAppearance } from '/shared/data/appearance.js';
@@ -43,9 +44,12 @@ export function newCharacter(name, appearance) {
 /** รวมโบนัสจากอุปกรณ์ที่สวมใส่ */
 export function equipmentBonus(c) {
   const bonus = {};
-  for (const id of Object.values(c.equipment)) {
+  const add = (o) => { for (const [k, v] of Object.entries(o || {})) bonus[k] = (bonus[k] || 0) + v; };
+  for (const [slot, id] of Object.entries(c.equipment)) {
     if (!id) continue;
-    for (const [k, v] of Object.entries(ITEMS[id]?.bonus || {})) bonus[k] = (bonus[k] || 0) + v;
+    add(ITEMS[id]?.bonus);
+    const lv = c.enhance?.[slot] || 0;                  // ตีบวกกับลุงดำ (บวกตามช่อง)
+    if (lv && ENHANCE.bonus[slot]) add(ENHANCE.bonus[slot](lv));
   }
   return bonus;
 }

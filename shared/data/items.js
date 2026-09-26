@@ -24,6 +24,14 @@ export const ITEMS = {
   yant_shirt:  { nameTh: 'เสื้อยันต์',         type: 'armor', icon: '👕', price: 150, bonus: { def: 5, hp: 30 } },
   takrut:      { nameTh: 'ตะกรุดโทน',        type: 'accessory', icon: '📿', price: 220, bonus: { def: 2, CRI: 4 } },
   prajiad:     { nameTh: 'ประเจียดแขน',       type: 'accessory', icon: '🎗️', price: 200, bonus: { STR: 2, DEX: 2 } },
+  // เครื่องรางพระเครื่อง (ลุงดำ)
+  amulet_coin:   { nameTh: 'เหรียญหลวงพ่อเงิน',  type: 'accessory', icon: '🪙', price: 380, bonus: { CRI: 3, DEX: 2 } },
+  amulet_ganesh: { nameTh: 'เหรียญพระพิฆเนศ',   type: 'accessory', icon: '🐘', price: 420, bonus: { INT: 4, mp: 30 } },
+  amulet_somdej: { nameTh: 'พระสมเด็จ',         type: 'accessory', icon: '🛕', price: 450, bonus: { def: 3, hp: 40 } },
+  amulet_pidta:  { nameTh: 'พระปิดตา',          type: 'accessory', icon: '🙈', price: 520, bonus: { def: 4, VIT: 2 } },
+  kuman_statue:  { nameTh: 'กุมารทองบูชา',      type: 'accessory', icon: '👶', price: 600, bonus: { STR: 2, DEX: 2, CRI: 2 } },
+  naga_statue:   { nameTh: 'พญานาคราชบูชา',     type: 'accessory', icon: '🐉', price: 700, bonus: { hp: 80, VIT: 3 } },
+  yak_statue:    { nameTh: 'ท้าวเวสสุวรรณ',      type: 'accessory', icon: '👹', price: 750, bonus: { STR: 4, def: 2 } },
   acc_yant_gold: { nameTh: 'ยันต์ทองพญายักษ์',  type: 'accessory', icon: '🏵️', sell: 400, bonus: { STR: 4, INT: 4, DEX: 3, hp: 80, def: 4 } },
 
   // ---------- Skin อาชีพ (ใบเปลี่ยนอาชีพ) ----------
@@ -57,6 +65,26 @@ export const ITEMS = {
   chamot_scale: { nameTh: 'เกล็ดผีจะมอด',       type: 'material', icon: '🐊', sell: 55 },
   asura_horn:   { nameTh: 'เขาเปรตอสุรกาย',     type: 'material', icon: '🦬', sell: 220 },
 
+  // ---------- ปลา (ตกที่ท่าน้ำ ซ้ายสุดของหมู่บ้าน) – ขายป้าสา หรือให้ป้าสาทำอาหาร ----------
+  pla_nin:     { nameTh: 'ปลานิล',            type: 'fish', icon: '🐟', sell: 6 },
+  pla_taphian: { nameTh: 'ปลาตะเพียนเงิน',     type: 'fish', icon: '🐟', sell: 9 },
+  pla_duk:     { nameTh: 'ปลาดุก',            type: 'fish', icon: '🐟', sell: 12 },
+  pla_chon:    { nameTh: 'ปลาช่อน',           type: 'fish', icon: '🐟', sell: 16 },
+  kung:        { nameTh: 'กุ้งแม่น้ำ',          type: 'fish', icon: '🦐', sell: 22 },
+  pla_buek:    { nameTh: 'ปลาบึกยักษ์',        type: 'fish', icon: '🐋', sell: 120 },
+  pla_phrai:   { nameTh: 'ปลาพรายวิญญาณ',     type: 'fish', icon: '👻', sell: 90 },
+  junk_boot:   { nameTh: 'รองเท้าแตะเก่า',     type: 'material', icon: '🩴', sell: 1 },
+
+  // ---------- อาหารฝีมือป้าสา (ฟื้น HP/MP + บัฟ) ----------
+  food_pla_pao: { nameTh: 'ปลาเผาเกลือ',       type: 'food', icon: '🍢', price: 60, effect: { hp: 250 }, buff: { minutes: 10, mods: { def: 4 }, textTh: 'ป้องกัน +4' } },
+  food_khao_tom:{ nameTh: 'ข้าวต้มปลา',         type: 'food', icon: '🍲', price: 55, effect: { hp: 120, mp: 80 }, buff: { minutes: 10, mods: { expMul: 1.1 }, textTh: 'EXP +10%' } },
+  food_tom_yum: { nameTh: 'ต้มยำปลาช่อน',       type: 'food', icon: '🍜', price: 140, effect: { hp: 400, mp: 120 }, buff: { minutes: 15, mods: { atkMul: 0.1 }, textTh: 'โจมตี +10%' } },
+  food_kung_ob: { nameTh: 'กุ้งอบวุ้นเส้น',      type: 'food', icon: '🦞', price: 220, effect: { hp: 500, mp: 200 }, buff: { minutes: 15, mods: { critAdd: 0.05, atkMul: 0.05 }, textTh: 'คริ +5% · โจมตี +5%' } },
+  food_phrai:   { nameTh: 'แกงส้มปลาพราย',     type: 'food', icon: '🥘', sell: 150, effect: { hp: 800, mp: 300 }, buff: { minutes: 20, mods: { atkMul: 0.15, dropMul: 1.3 }, textTh: 'โจมตี +15% · ของดรอป +30%' } },
+
+  // ---------- วัตถุดิบตีบวก (ลุงดำ) ----------
+  black_iron:  { nameTh: 'แร่เหล็กไหล',       type: 'material', icon: '🪨', price: 60 },
+
   // ---------- ของถวายศาลพระภูมิ (กด F ที่ศาล) ----------
   garland:   { nameTh: 'พวงมาลัยดาวเรือง', type: 'offering', icon: '🌼', price: 30 },
   nam_daeng: { nameTh: 'น้ำแดง',           type: 'offering', icon: '🥤', price: 25 },
@@ -70,14 +98,27 @@ export function sellPrice(id) {
   return it.sell ?? Math.floor((it.price || 0) * 0.5);
 }
 
-/** NPC ร้านค้า */
+/** NPC ร้านค้า (หมู่บ้านบางผี) */
 export const SHOPS = {
   mae_kha: {
-    nameTh: 'ป้าติ๋ม ร้านโชห่วย',
-    greeting: 'มาจ้ะหลาน ของดีราคาถูก ผีหลอกก็ไม่กลัว!',
-    stock: ['hp_s', 'hp_m', 'mp_s', 'mp_m', 'garland', 'nam_daeng', 'khai_tom', 'hua_mu', 'yant_shirt', 'takrut', 'prajiad',
-      'wood_sword', 'iron_dab', 'oak_staff', 'yant_staff', 'bamboo_bow', 'horn_bow', 'hand_wrap', 'mongkol',
+    nameTh: 'ยายติ๋ม ร้านยาและของใช้',
+    greeting: 'มาจ้ะหลาน ยาดีของยาย ผีหลอกก็ไม่กลัว!',
+    stock: ['hp_s', 'hp_m', 'mp_s', 'mp_m', 'garland', 'nam_daeng', 'khai_tom', 'hua_mu',
       'skin_swordman', 'skin_mage', 'skin_archer', 'skin_boxer'],
+  },
+  lung_dam: {
+    nameTh: 'ลุงดำ โรงตีเหล็ก',
+    greeting: 'เหล็กดีต้องตีตอนร้อน! อยากได้อาวุธหรือจะตีบวกก็ว่ามา',
+    stock: ['wood_sword', 'iron_dab', 'oak_staff', 'yant_staff', 'bamboo_bow', 'horn_bow', 'hand_wrap', 'mongkol',
+      'yant_shirt', 'takrut', 'prajiad', 'amulet_coin', 'amulet_ganesh', 'amulet_somdej', 'amulet_pidta',
+      'kuman_statue', 'naga_statue', 'yak_statue', 'black_iron'],
+    tabs: ['buy', 'sell', 'enhance'],
+  },
+  pa_sa: {
+    nameTh: 'ป้าสา ครัวริมน้ำ',
+    greeting: 'ได้ปลามาเหรอลูก เอามาให้ป้าทำกับข้าวให้ อร่อยจนผีต้องร้องขอ!',
+    stock: ['food_khao_tom', 'food_pla_pao', 'food_tom_yum', 'food_kung_ob'],
+    tabs: ['buy', 'sell', 'cook'],
   },
 };
 

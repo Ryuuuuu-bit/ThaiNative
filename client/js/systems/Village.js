@@ -1,0 +1,337 @@
+// ============================================================
+//  Village – หมู่บ้านบางผี (Map 1 · Safe Zone)
+//  ▸ ตกปลาที่ท่าน้ำ (มินิเกมจังหวะ)   ▸ เควสผู้ใหญ่ชัย
+//  ▸ ครัวป้าสา (ทำอาหารจากปลา)       ▸ ตีบวกกับลุงดำ
+// ============================================================
+import { ITEMS } from '/shared/data/items.js';
+import { MONSTERS } from '/shared/data/monsters.js';
+import { WORLD } from '/shared/constants.js';
+import { rollFish, RECIPES, ENHANCE, QUESTS, QUEST_BY_ID } from '/shared/data/village.js';
+import { addItem, removeItem, count } from './Inventory.js';
+import { getDerived } from './Character.js';
+import { itemIcon } from './util.js';
+
+const $ = (s) => document.querySelector(s);
+const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const SLOT_TH = { weapon: 'อาวุธ', armor: 'เสื้อ', accessory: 'เครื่องราง' };
+const MAX_ACTIVE = 3;
+
+/** ช่วงท่าน้ำที่ตกปลาได้ (ปลายสะพานไม้) */
+export const FISH_SPOT = { from: WORLD.minX + 20, to: WORLD.minX + 250 };
+
+export class Village {
+  constructor(scene) {
+    this.scene = scene;
+    this.fish = null;                         // สถานะการตกปลาปัจจุบัน
+    const c = this.char;
+    c.quests ||= { active: {}, done: [] };
+    c.enhance ||= {};
+    $('#quest-list').onclick = (e) => {
+      const b = e.target.closest('button[data-q]');
+      if (!b) return;
+      const [act, id] = b.dataset.q.split(':');
+      if (act === 'accept') this.accept(id); else if (act === 'claim') this.claim(id); else if (act === 'drop') this.drop(id);
+    };
+    this.renderTracker();
+  }
+
+  get char() { return this.scene.player.char; }
+  get ui() { return this.scene.ui; }
+
+  // ============================================================
+  //  ตกปลา
+  // ============================================================
+  canFish(x) { return x >= FISH_SPOT.from && x <= FISH_SPOT.to; }
+  get fishing() { return !!this.fish; }
+
+  startFishing() {
+    const s = this.scene, p = s.player;
+    if (this.fish) return this.press();
+    s.ui.closeAll();
+    p.setVelocity(0, 0);
+    p.setFlipX(true);                                                    // หันหน้าลงแม่น้ำ (ซ้าย)
+    const rodX = p.x - 14, rodY = p.y - 26;
+    const bobX = p.x - 58 - Math.random() * 30, bobY = WORLD.groundY + 12;
+    const line = s.add.graphics().setDepth(12);
+    const bob = s.add.circle(bobX, bobY, 2, 0xe74c3c).setStrokeStyle(1, 0xffffff).setDepth(12);
+    this.fish = { stage: 'wait', line, bob, rodX, rodY, bobX, bobY, t0: s.time.now, biteAt: s.time.now + 2200 + Math.random() * 4500 };
+    s.sfx.play('swing');
+    this.showBar(false);
+    $('#fish-ui').classList.remove('hidden');
+    $('#fish-msg').textContent = 'รอปลากินเหยื่อ… (กด F อีกครั้งเพื่อเก็บเบ็ด)';
+  }
+
+  /** กด F / Space ระหว่างตกปลา */
+  press() {
+    const f = this.fish, s = this.scene;
+    if (!f) return;
+    if (f.stage === 'wait') return this.stop('เก็บเบ็ดแล้ว');
+    if (f.stage === 'bite') {                                          // วัดจังหวะ → เข้าสู่มินิเกม
+      f.stage = 'reel';
+      f.catch = rollFish(s.clock?.night);
+      const hard = f.catch.hard;
+      f.zoneW = 0.34 - hard * 0.24;                                     // ช่องเขียวแคบลงตามความยาก
+      f.zoneX = 0.1 + Math.random() * (0.8 - f.zoneW);
+      f.speed = 0.7 + hard * 1.1;                                       // ความเร็วเข็ม (รอบ/วินาที)
+      f.pos = 0; f.dir = 1; f.tries = 3;
+      this.showBar(true);
+      $('#fish-msg').textContent = 'กด F เมื่อเข็มอยู่ในช่องสีเขียว!';
+      s.sfx.play('click');
+      return;
+    }
+    if (f.stage === 'reel') {
+      const inZone = f.pos >= f.zoneX && f.pos <= f.zoneX + f.zoneW;
+      if (inZone) return this.landFish();
+      f.tries--;
+      s.sfx.play('error');
+      s.cameras.main.shake(80, 0.002);
+      if (f.tries <= 0) return this.stop('ปลาหลุดเบ็ดไปแล้ว…', 'warn');
+      $('#fish-msg').textContent = `พลาด! เหลือโอกาสอีก ${f.tries} ครั้ง`;
+    }
+  }
+
+  landFish() {
+    const f = this.fish, s = this.scene, c = this.char;
+    const it = ITEMS[f.catch.id];
+    addItem(c, f.catch.id);
+    s.sfx.play(f.catch.id === 'junk_boot' ? 'error' : 'coin');
+    const p = s.player;
+    // ปลากระโดดขึ้นจากน้ำเข้ามือ
+    const tk = `ico_it_${f.catch.id}`;
+    const fishTxt = s.textures.exists(tk) ? s.add.image(f.bobX, f.bobY, tk).setDisplaySize(16, 16).setDepth(40)
+      : s.add.text(f.bobX, f.bobY, it.icon, { fontSize: '12px' }).setOrigin(0.5).setDepth(40);
+    s.tweens.add({ targets: fishTxt, x: p.x, y: p.y - 40, duration: 500, ease: 'Quad.easeOut', onComplete: () => s.tweens.add({ targets: fishTxt, alpha: 0, y: p.y - 56, duration: 500, onComplete: () => fishTxt.destroy() }) });
+    s.combat.burst(f.bobX, f.bobY, 0x85c1e9, 10);
+    const rare = ['pla_buek', 'pla_phrai'].includes(f.catch.id);
+    if (rare) { s.ui.banner(`🎣 ได้ ${it.icon} ${it.nameTh}!!`); s.sfx.play('levelup'); }
+    this.questEvent('fish', f.catch.id);
+    this.stop(`ได้ ${it.icon} ${it.nameTh}${f.catch.id === 'junk_boot' ? ' (ซวยจัง)' : ''}`);
+    s.saveSoon();
+  }
+
+  stop(msg, type) {
+    const f = this.fish;
+    if (!f) return;
+    f.line.destroy(); f.bob.destroy();
+    this.fish = null;
+    $('#fish-ui').classList.add('hidden');
+    if (msg) this.ui.toast(msg, type);
+  }
+
+  showBar(on) {
+    $('#fish-bar').classList.toggle('hidden', !on);
+    if (on) {
+      const f = this.fish;
+      $('#fish-zone').style.left = `${f.zoneX * 100}%`;
+      $('#fish-zone').style.width = `${f.zoneW * 100}%`;
+    }
+  }
+
+  update(time, dt) {
+    const f = this.fish, s = this.scene;
+    if (!f) return;
+    const p = s.player;
+    if (!p.alive || Math.abs(p.body.velocity.x) > 5 || !this.canFish(p.x)) return this.stop('เลิกตกปลา');
+    // ทุ่นลอยน้ำ
+    let by = f.bobY + Math.sin(time / 300) * 1;
+    if (f.stage === 'wait' && time >= f.biteAt) {
+      f.stage = 'bite'; f.biteEnd = time + 1100;
+      $('#fish-msg').textContent = '❗ ปลากินเบ็ด! กด F เร็ว!';
+      s.sfx.play('hit');
+      s.combat.popupText(f.bobX, f.bobY - 14, '!', '#f1c40f', 14);
+    }
+    if (f.stage === 'bite') {
+      by += Math.sin(time / 40) * 2;                                  // ทุ่นจมกระตุก
+      if (time > f.biteEnd) { f.stage = 'wait'; f.biteAt = time + 1500 + Math.random() * 3500; $('#fish-msg').textContent = 'ช้าไป ปลาหนีไปแล้ว… รอตัวใหม่'; }
+    }
+    if (f.stage === 'reel') {
+      f.pos += f.dir * f.speed * dt;
+      if (f.pos > 1) { f.pos = 1; f.dir = -1; } else if (f.pos < 0) { f.pos = 0; f.dir = 1; }
+      $('#fish-needle').style.left = `${f.pos * 100}%`;
+      by += Math.sin(time / 60) * 1.5;
+    }
+    f.bob.setPosition(f.bobX, by);
+    // สายเบ็ด (โค้ง)
+    const rx = p.x - 16, ry = p.y - 30;
+    f.line.clear().lineStyle(1, 0x5d4037, 1).lineBetween(p.x - 4, p.y - 18, rx, ry);          // คันเบ็ด
+    f.line.lineStyle(1, 0xecf0f1, 0.7).beginPath().moveTo(rx, ry);
+    const midX = (rx + f.bobX) / 2, midY = Math.max(ry, by) + 10;
+    for (let i = 1; i <= 8; i++) {
+      const t = i / 8, x = (1 - t) * (1 - t) * rx + 2 * (1 - t) * t * midX + t * t * f.bobX, y = (1 - t) * (1 - t) * ry + 2 * (1 - t) * t * midY + t * t * by;
+      f.line.lineTo(x, y);
+    }
+    f.line.strokePath();
+  }
+
+  // ============================================================
+  //  ครัวป้าสา
+  // ============================================================
+  renderCook(el) {
+    const c = this.char;
+    el.innerHTML = RECIPES.map((r, i) => {
+      const it = ITEMS[r.out];
+      const needs = Object.entries(r.need).map(([id, n]) => {
+        const have = count(c, id);
+        return `<span class="${have >= n ? 'ok' : 'miss'}">${itemIcon(id, ITEMS[id].icon)}${esc(ITEMS[id].nameTh)} ${have}/${n}</span>`;
+      }).join(' ');
+      const can = Object.entries(r.need).every(([id, n]) => count(c, id) >= n) && c.gold >= r.fee;
+      return `<div class="item"><span class="ic">${itemIcon(r.out, it.icon)}</span>
+        <span>${esc(it.nameTh)} <span class="meta">${esc(it.buff.textTh)} · ${it.buff.minutes} นาที</span><div class="need">${needs} · ค่าแรง ฿${r.fee}</div></span>
+        <span></span><button data-cook="${i}" ${can ? '' : 'disabled'}>ทำ</button></div>`;
+    }).join('') + '<p class="hint">ตกปลาได้ที่ท่าน้ำซ้ายสุดของหมู่บ้าน · กลางคืนมีโอกาสได้ปลาพรายวิญญาณ</p>';
+    el.querySelectorAll('[data-cook]').forEach((b) => (b.onclick = () => this.ui.result(this.cook(RECIPES[+b.dataset.cook]))));
+  }
+
+  cook(r) {
+    const c = this.char;
+    if (!Object.entries(r.need).every(([id, n]) => count(c, id) >= n)) return { ok: false, msg: 'วัตถุดิบไม่พอ' };
+    if (c.gold < r.fee) return { ok: false, msg: 'เงินไม่พอจ่ายค่าแรง' };
+    Object.entries(r.need).forEach(([id, n]) => removeItem(c, id, n));
+    c.gold -= r.fee;
+    addItem(c, r.out);
+    this.scene.sfx.play('potion');
+    return { ok: true, msg: `ป้าสาทำ ${ITEMS[r.out].icon} ${ITEMS[r.out].nameTh} ให้แล้ว!` };
+  }
+
+  // ============================================================
+  //  ตีบวก (ลุงดำ)
+  // ============================================================
+  renderEnhance(el) {
+    const c = this.char;
+    el.innerHTML = Object.keys(SLOT_TH).map((slot) => {
+      const id = c.equipment[slot], lv = c.enhance[slot] || 0;
+      if (lv >= ENHANCE.max) return `<div class="item"><span class="ic">🔥</span><span>${SLOT_TH[slot]} <b>+${lv}</b> <span class="meta">สูงสุดแล้ว</span></span><span></span><span></span></div>`;
+      const cost = ENHANCE.cost(lv), ore = ENHANCE.ore(lv), rate = ENHANCE.rate(lv);
+      const next = Object.entries(ENHANCE.bonus[slot](lv + 1)).filter(([, v]) => v).map(([k, v]) => `${k.toUpperCase()}+${v}`).join(' ');
+      const can = id && c.gold >= cost && count(c, 'black_iron') >= ore;
+      return `<div class="item"><span class="ic">${id ? itemIcon(id, ITEMS[id].icon) : '▫️'}</span>
+        <span>${SLOT_TH[slot]} <b>+${lv}</b> → +${lv + 1} <span class="meta">${id ? esc(ITEMS[id].nameTh) : 'ยังไม่ได้สวมใส่'}</span>
+          <div class="need">รวมเป็น ${next} · สำเร็จ ${Math.round(rate * 100)}%${ore ? ` · 🪨 แร่เหล็กไหล ${count(c, 'black_iron')}/${ore}` : ''}</div></span>
+        <span class="price">฿${cost.toLocaleString()}</span><button data-enh="${slot}" ${can ? '' : 'disabled'}>ตี</button></div>`;
+    }).join('') + '<p class="hint">บวกติดกับช่องสวมใส่ (เปลี่ยนอาวุธค่าบวกยังอยู่) · ตีพลาดเสียเงินและแร่ แต่ขั้นไม่ลด</p>';
+    el.querySelectorAll('[data-enh]').forEach((b) => (b.onclick = () => this.enhance(b.dataset.enh)));
+  }
+
+  enhance(slot) {
+    const c = this.char, s = this.scene, lv = c.enhance[slot] || 0;
+    const cost = ENHANCE.cost(lv), ore = ENHANCE.ore(lv);
+    if (!c.equipment[slot] || lv >= ENHANCE.max || c.gold < cost || count(c, 'black_iron') < ore) return;
+    c.gold -= cost;
+    if (ore) removeItem(c, 'black_iron', ore);
+    s.sfx.play('hit');
+    const ok = Math.random() < ENHANCE.rate(lv);
+    if (ok) {
+      c.enhance[slot] = lv + 1;
+      const d = getDerived(c); c.hp = Math.min(c.hp, d.maxHp);
+      s.sfx.play('levelup');
+      s.combat.burst(s.player.x, s.player.y - 20, 0xf39c12, 16);
+    } else s.sfx.play('error');
+    this.ui.result({ ok, msg: ok ? `🔨 ตีบวกสำเร็จ! ${SLOT_TH[slot]} +${lv + 1}` : `💥 ตีพลาด… ${SLOT_TH[slot]} ยังคง +${lv}` });
+  }
+
+  // ============================================================
+  //  เควส (ผู้ใหญ่ชัย)
+  // ============================================================
+  openQuests() {
+    this.ui.closeAll();
+    this.ui.toggle('quest-panel', true);
+    this.renderQuests();
+  }
+
+  questState(q) {
+    const Q = this.char.quests;
+    if (Q.done.includes(q.id)) return 'done';
+    if (q.id in Q.active) return Q.active[q.id] >= q.goal.n ? 'ready' : 'active';
+    return this.char.level >= q.lv ? 'open' : 'locked';
+  }
+
+  goalText(q) {
+    const g = q.goal;
+    if (g.kill) return `ปราบ ${g.kill === 'any' ? 'ผีตัวไหนก็ได้' : g.kill === 'grave' ? 'ผีในป่าช้า' : MONSTERS[g.kill]?.nameTh} ${g.n} ตัว`;
+    return `ตก${g.fish === 'any' ? 'ปลาอะไรก็ได้' : ITEMS[g.fish]?.nameTh} ${g.n} ตัว`;
+  }
+
+  rewardText(q) {
+    const r = q.reward;
+    return [`${r.exp} EXP`, `฿${r.gold}`, ...(r.items || []).map((it) => `${ITEMS[it.id].icon}${ITEMS[it.id].nameTh} x${it.qty}`)].join(' · ');
+  }
+
+  renderQuests() {
+    const Q = this.char.quests, order = { ready: 0, active: 1, open: 2, locked: 3, done: 4 };
+    const list = QUESTS.map((q) => ({ q, st: this.questState(q) })).sort((a, b) => order[a.st] - order[b.st]);
+    const nActive = Object.keys(Q.active).length;
+    $('#quest-list').innerHTML = list.map(({ q, st }) => {
+      const prog = q.id in Q.active ? `${Math.min(Q.active[q.id], q.goal.n)}/${q.goal.n}` : '';
+      const btn = st === 'ready' ? `<button data-q="claim:${q.id}" class="gold">รับรางวัล</button>`
+        : st === 'active' ? `<button data-q="drop:${q.id}" class="ghost">ยกเลิก</button>`
+        : st === 'open' ? `<button data-q="accept:${q.id}" ${nActive >= MAX_ACTIVE ? 'disabled' : ''}>รับเควส</button>`
+        : st === 'locked' ? `<span class="meta">Lv.${q.lv}</span>` : '<span class="meta">✔ สำเร็จ</span>';
+      return `<div class="quest ${st}"><div><b>${esc(q.nameTh)}</b> <span class="meta">Lv.${q.lv}+</span>
+        <p>${esc(q.text)}</p><small>🎯 ${esc(this.goalText(q))} ${prog ? `<b>${prog}</b>` : ''}</small><small>🎁 ${esc(this.rewardText(q))}</small></div>${btn}</div>`;
+    }).join('');
+    $('#quest-note').textContent = `รับเควสได้พร้อมกัน ${MAX_ACTIVE} เควส (ตอนนี้ ${nActive})`;
+  }
+
+  accept(id) {
+    const q = QUEST_BY_ID[id], Q = this.char.quests;
+    if (!q || this.questState(q) !== 'open' || Object.keys(Q.active).length >= MAX_ACTIVE) return;
+    Q.active[id] = 0;
+    this.scene.sfx.play('open');
+    this.ui.toast(`รับเควส: ${q.nameTh}`);
+    this.afterChange();
+  }
+
+  drop(id) {
+    delete this.char.quests.active[id];
+    this.afterChange();
+  }
+
+  claim(id) {
+    const q = QUEST_BY_ID[id], c = this.char, Q = c.quests;
+    if (!q || this.questState(q) !== 'ready') return;
+    delete Q.active[id];
+    Q.done.push(id);
+    c.gold += q.reward.gold;
+    (q.reward.items || []).forEach((it) => addItem(c, it.id, it.qty));
+    this.scene.combat.grantExp(q.reward.exp);
+    this.scene.sfx.play('victory');
+    this.ui.banner(`✔ เควสสำเร็จ: ${q.nameTh}`);
+    this.ui.toast(`รางวัล: ${this.rewardText(q)}`);
+    this.afterChange();
+  }
+
+  afterChange() {
+    this.renderTracker();
+    if (!$('#quest-panel').classList.contains('hidden')) this.renderQuests();
+    this.ui.result({ ok: true });
+  }
+
+  /** เรียกเมื่อฆ่าผี / ตกปลาได้ */
+  questEvent(type, id) {
+    const Q = this.char.quests;
+    let changed = false;
+    for (const qid of Object.keys(Q.active)) {
+      const q = QUEST_BY_ID[qid], g = q?.goal;
+      if (!g || Q.active[qid] >= g.n) continue;
+      const match = type === 'kill' ? g.kill && (g.kill === 'any' || g.kill === id || (g.kill === 'grave' && MONSTERS[id]?.zone[0] >= WORLD.graveX))
+        : g.fish && (g.fish === 'any' ? id !== 'junk_boot' : g.fish === id);
+      if (!match) continue;
+      Q.active[qid]++;
+      changed = true;
+      if (Q.active[qid] >= g.n) { this.ui.toast(`✔ เควส "${q.nameTh}" ครบแล้ว! กลับไปหาผู้ใหญ่ชัย`); this.scene.sfx.play('blessing'); }
+    }
+    if (changed) this.renderTracker();
+  }
+
+  renderTracker() {
+    const Q = this.char.quests;
+    const ids = Object.keys(Q.active);
+    $('#quest-track').classList.toggle('hidden', !ids.length);
+    $('#quest-track').innerHTML = ids.map((id) => {
+      const q = QUEST_BY_ID[id];
+      if (!q) return '';
+      const n = Math.min(Q.active[id], q.goal.n), done = n >= q.goal.n;
+      return `<div class="${done ? 'done' : ''}"><b>${esc(q.nameTh)}</b><span>${esc(this.goalText(q))} ${n}/${q.goal.n}${done ? ' ✔' : ''}</span></div>`;
+    }).join('');
+  }
+}

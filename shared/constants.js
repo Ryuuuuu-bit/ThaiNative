@@ -5,6 +5,7 @@ export const WORLD = {
   groundY: 232,    // ระดับพื้น
   spawnX: 140,
   spawnY: 200,
+  minX: -700,      // ขอบซ้ายสุดของหมู่บ้าน (ท่าน้ำตกปลา)
   townEndX: 1000,  // เขตหมู่บ้าน (ไม่มีมอนสเตอร์)
   graveX: 3650,    // ป่าช้าผีตายโหง (ผี Lv.11–18)
   arenaX: 4950,    // ลานพญายักษ์ (เรดบอส) ตั้งแต่ X นี้ถึงสุดแผนที่
@@ -27,3 +28,16 @@ export const PARTY = {
   shareRange: 500,   // สมาชิกที่อยู่ห่างไม่เกินนี้ได้รับ EXP แบ่ง
   shareRatio: 0.6,   // สมาชิกคนอื่นได้ EXP 60% ของที่ผู้ฆ่าได้ (ผู้ฆ่าได้เต็ม)
 };
+
+/**
+ * แผนที่ (อยู่ในพิกัด X เดียวกัน แต่แยกกันด้วยประตูวาร์ป – เดินข้ามกันไม่ได้)
+ *  village: หมู่บ้านเริ่มต้น (Safe Zone) มีท่าน้ำตกปลาด้านซ้าย
+ *  forest : ป่าผีดุ → ป่าช้า → ลานพญายักษ์
+ */
+export const MAPS = {
+  village: { id: 'village', nameTh: 'หมู่บ้านบางผี', minX: -700, maxX: 1040, safe: true,
+    gate: { x: 990, to: 'forest', arriveX: 1170 } },
+  forest:  { id: 'forest', nameTh: 'ป่าผีดุ', minX: 1090, maxX: 5600,
+    gate: { x: 1125, to: 'village', arriveX: 940 } },
+};
+export const mapAt = (x) => (x < MAPS.forest.minX - 20 ? MAPS.village : MAPS.forest);

@@ -29,6 +29,11 @@ export class RemotePlayer extends Phaser.GameObjects.Sprite {
   }
 
   pushState(s) {
+    // วาร์ป → ไม่ต้องเลื่อนผ่าน แสดงที่จุดใหม่ทันที
+    if (s.wp !== undefined && s.wp !== this.wp) {
+      if (this.wp !== undefined) { this.buffer.length = 0; this.setPosition(s.x, s.y); }
+      this.wp = s.wp;
+    }
     this.buffer.push({ t: performance.now(), x: s.x, y: s.y, anim: s.anim, flipX: s.flipX });
     if (this.buffer.length > 30) this.buffer.shift();
     if (s.maxHp) { this.hp = s.hp; this.maxHp = s.maxHp; this.hpBar.width = 18 * Phaser.Math.Clamp(s.hp / s.maxHp, 0, 1); }

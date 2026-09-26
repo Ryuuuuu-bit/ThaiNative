@@ -77,7 +77,7 @@ export class Invasion {
         if (success) { s.ui.banner('🏆 ปกป้องหมู่บ้านสำเร็จ!'); s.sfx.play('victory'); }
         else {
           this.shopClosedUntil = performance.now() + shopClosedMs;
-          s.ui.banner('💔 ศาลพระภูมิถูกทำลาย… ร้านป้าติ๋มปิด 10 นาที');
+          s.ui.banner('💔 ศาลพระภูมิถูกทำลาย… ร้านยายติ๋มปิด 10 นาที');
           s.sfx.play('die');
         }
       });
@@ -113,7 +113,7 @@ export class Invasion {
       $('#ev-fill').style.width = `${Math.max(0, (st.shrineHp / st.shrineMax) * 100)}%`;
       $('#ev-hp').textContent = `ศาลพระภูมิ ${Math.max(0, st.shrineHp).toLocaleString()} / ${st.shrineMax.toLocaleString()}`;
     }
-    // ป้าติ๋มหลบหนีระหว่างอีเวนต์ / ร้านปิด
+    // ยายติ๋มหลบหนีระหว่างอีเวนต์ / ร้านปิด
     const npc = this.scene.npc;
     if (npc) npc.setVisible(!this.shopClosed);
     if (this.scene.npcLabel) this.scene.npcLabel.setVisible(!this.shopClosed);

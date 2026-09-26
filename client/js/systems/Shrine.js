@@ -87,7 +87,7 @@ export class Shrine {
     const act = (c.blessings || []).filter((b) => b.until > now);
     $('#shrine-active').innerHTML = act.length
       ? act.map((b) => `<div>${b.icon} ${esc(b.nameTh)} <small>${modsText(b.mods)} · เหลือ ${Math.ceil((b.until - now) / 60000)} นาที</small></div>`).join('')
-      : '<p class="empty">ยังไม่มีพร – ซื้อของถวายได้ที่ร้านป้าติ๋ม</p>';
+      : '<p class="empty">ยังไม่มีพร – ซื้อของถวายได้ที่ร้านยายติ๋ม</p>';
   }
 
   /** ควันธูปลอยขึ้นจากศาล */

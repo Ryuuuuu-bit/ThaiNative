@@ -255,30 +255,61 @@ function floatPad(kind) { return kind === 'float' ? 10 : kind === 'hop' ? 8 : 6;
 
 /** ประเภทการเคลื่อนไหวของผีแต่ละตัว (ภาพนิ่ง PixelLab → หุ่นตัดต่อ) */
 export const MONSTER_RIG = {
-  phi_tuay_kaew: { kind: 'float', waveFrom: 0.1, waveAmp: 1.5, waveFreq: 0.6 },
-  kuman_thong:   { kind: 'hop', hip: 0.66, neck: 0.45 },
-  krasue:        { kind: 'float', waveFrom: 0.45, waveAmp: 2.5 },
-  nang_tani:     { kind: 'float', waveFrom: 0.55, waveAmp: 2 },
-  phi_pob:       { kind: 'biped', hip: 0.7, neck: 0.4, swing: 0.35 },
-  phi_jang_nang: { kind: 'glide', waveFrom: 0.55, waveAmp: 2 },
-  phi_phrai:     { kind: 'float', waveFrom: 0.5, waveAmp: 3, waveFreq: 0.25 },
-  pret:          { kind: 'heavy', hip: 0.55, neck: 0.18, swing: 0.25 },
-  saming:        { kind: 'quad', hip: 0.6, neck: 0.02, swing: 0.35 },
-  phi_ha:        { kind: 'float', waveFrom: 0.05, waveAmp: 2.5, waveFreq: 0.5 },
-  phaya_yak:     { kind: 'heavy', hip: 0.64, neck: 0.25, swing: 0.3 },
-  npc_maekha:    { kind: 'biped', hip: 0.72, neck: 0.3, swing: 0.2 },
+  phi_tuay_kaew: { h: 24, kind: 'float', waveFrom: 0.1, waveAmp: 1.5, waveFreq: 0.6 },
+  kuman_thong:   { h: 30, kind: 'hop', hip: 0.66, neck: 0.45 },
+  krasue:        { h: 34, kind: 'float', waveFrom: 0.45, waveAmp: 2.5 },
+  nang_tani:     { h: 44, kind: 'float', waveFrom: 0.55, waveAmp: 2 },
+  phi_pob:       { h: 46, kind: 'biped', hip: 0.7, neck: 0.4, swing: 0.35 },
+  phi_jang_nang: { h: 46, kind: 'glide', waveFrom: 0.55, waveAmp: 2 },
+  phi_phrai:     { h: 46, kind: 'float', waveFrom: 0.5, waveAmp: 3, waveFreq: 0.25 },
+  pret:          { h: 92, kind: 'heavy', hip: 0.55, neck: 0.18, swing: 0.25 },
+  saming:        { h: 30, kind: 'quad', hip: 0.6, neck: 0.02, swing: 0.35 },
+  phi_ha:        { h: 46, kind: 'float', waveFrom: 0.05, waveAmp: 2.5, waveFreq: 0.5 },
+  phaya_yak:     { h: 132, kind: 'heavy', hip: 0.64, neck: 0.25, swing: 0.3 },
+  npc_yai_tim:   { h: 42, kind: 'biped', hip: 0.72, neck: 0.3, swing: 0.2 },
+  npc_lung_chai: { h: 47, kind: 'biped', hip: 0.7, neck: 0.3, swing: 0.2 },
+  npc_lung_dam:  { h: 48, kind: 'biped', hip: 0.7, neck: 0.3, swing: 0.2 },
+  npc_pa_sa:     { h: 44, kind: 'biped', hip: 0.72, neck: 0.3, swing: 0.2 },
+  npc_maekha:    { h: 44, kind: 'biped', hip: 0.72, neck: 0.3, swing: 0.2 },
   // ---- ผีป่าช้า: ภาพ PixelLab ยังไม่มา → ใช้ภาพผีตัวอื่นย้อมสีเป็นตัวแทนชั่วคราว (fallback) ----
-  krahang:         { kind: 'float', waveFrom: 0.5, waveAmp: 2, fallback: { from: 'phi_ha', tint: '#8d6e63', scale: 0.9 } },
-  khamot:          { kind: 'float', waveFrom: 0.1, waveAmp: 1.5, waveFreq: 0.6, fallback: { from: 'phi_tuay_kaew', tint: '#f5b041' } },
-  phi_dip:         { kind: 'heavy', hip: 0.68, neck: 0.4, swing: 0.25, fallback: { from: 'phi_pob', tint: '#7d8f69' } },
-  nang_takhian:    { kind: 'float', waveFrom: 0.55, waveAmp: 1.5, fallback: { from: 'nang_tani', tint: '#6e4b2a' } },
-  tai_hong:        { kind: 'biped', hip: 0.7, neck: 0.4, swing: 0.4, fallback: { from: 'phi_pob', tint: '#c0392b' } },
-  phi_phong:       { kind: 'biped', hip: 0.7, neck: 0.4, swing: 0.35, fallback: { from: 'phi_pob', tint: '#2c3e50' } },
-  kong_koi:        { kind: 'hop', hip: 0.66, neck: 0.45, fallback: { from: 'kuman_thong', tint: '#4e342e', scale: 1.1 } },
-  phi_lang_kluang: { kind: 'float', waveFrom: 0.55, waveAmp: 2, fallback: { from: 'phi_phrai', tint: '#d7bde2' } },
-  phi_chamot:      { kind: 'quad', hip: 0.6, neck: 0.02, swing: 0.3, fallback: { from: 'saming', tint: '#1e8449' } },
-  pret_asura:      { kind: 'heavy', hip: 0.55, neck: 0.18, swing: 0.22, fallback: { from: 'pret', tint: '#922b21', scale: 1.25 } },
+  krahang:         { h: 48, kind: 'float', waveFrom: 0.5, waveAmp: 2, fallback: { from: 'phi_ha', tint: '#8d6e63', scale: 0.9 } },
+  khamot:          { h: 20, kind: 'float', waveFrom: 0.1, waveAmp: 1.5, waveFreq: 0.6, fallback: { from: 'phi_tuay_kaew', tint: '#f5b041' } },
+  phi_dip:         { h: 45, kind: 'heavy', hip: 0.68, neck: 0.4, swing: 0.25, fallback: { from: 'phi_pob', tint: '#7d8f69' } },
+  nang_takhian:    { h: 48, kind: 'float', waveFrom: 0.55, waveAmp: 1.5, fallback: { from: 'nang_tani', tint: '#6e4b2a' } },
+  tai_hong:        { h: 47, kind: 'biped', hip: 0.7, neck: 0.4, swing: 0.4, fallback: { from: 'phi_pob', tint: '#c0392b' } },
+  phi_phong:       { h: 40, kind: 'biped', hip: 0.7, neck: 0.4, swing: 0.35, fallback: { from: 'phi_pob', tint: '#2c3e50' } },
+  kong_koi:        { h: 30, kind: 'hop', hip: 0.66, neck: 0.45, fallback: { from: 'kuman_thong', tint: '#4e342e', scale: 1.1 } },
+  phi_lang_kluang: { h: 46, kind: 'float', waveFrom: 0.55, waveAmp: 2, fallback: { from: 'phi_phrai', tint: '#d7bde2' } },
+  phi_chamot:      { h: 34, kind: 'quad', hip: 0.6, neck: 0.02, swing: 0.3, fallback: { from: 'saming', tint: '#1e8449' } },
+  pret_asura:      { h: 112, kind: 'heavy', hip: 0.55, neck: 0.18, swing: 0.22, fallback: { from: 'pret', tint: '#922b21', scale: 1.25 } },
 };
+
+/**
+ * ปรับขนาดภาพให้สูงเท่าความสูงจริงที่กำหนด (ผู้เล่นสูง ~46px ≈ 1.75 ม.)
+ * ย่อ: ใช้ smoothing แล้วตัดขอบโปร่งแสงให้คม / ขยาย: nearest-neighbor
+ */
+export function fitHeight(src, h) {
+  if (!h) return src;
+  const { c: t, ctx: tc } = canvas(src.width, src.height);
+  tc.drawImage(src, 0, 0);
+  const d = tc.getImageData(0, 0, src.width, src.height).data;
+  let top = src.height, bot = -1;
+  for (let y = 0; y < src.height; y++) for (let x = 0; x < src.width; x++) if (d[(y * src.width + x) * 4 + 3] > 20) { if (y < top) top = y; bot = y; break; }
+  if (bot < 0) return src;
+  const s = h / (bot - top + 1);
+  if (Math.abs(s - 1) < 0.07) return src;
+  const w = Math.max(1, Math.round(src.width * s)), hh = Math.max(1, Math.round(src.height * s));
+  const { c, ctx } = canvas(w, hh);
+  ctx.imageSmoothingEnabled = s < 1;
+  if (s < 1) ctx.imageSmoothingQuality = 'high';
+  ctx.drawImage(src, 0, 0, w, hh);
+  if (s < 1) {                                      // ขอบคม: alpha เป็น 0 หรือ 255
+    const img = ctx.getImageData(0, 0, w, hh), p = img.data;
+    for (let i = 3; i < p.length; i += 4) p[i] = p[i] > 110 ? 255 : 0;
+    ctx.putImageData(img, 0, 0);
+  }
+  return c;
+}
 
 /** ภาพตัวแทน: ย้อมสี (+ย่อ/ขยาย) ภาพผีตัวอื่น ใช้ระหว่างรอภาพจริง */
 export function tintedCopy(src, tint, scale = 1) {

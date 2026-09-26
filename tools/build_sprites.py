@@ -25,9 +25,13 @@ MONSTERS = {
     'saming': 'walk', 'phi_ha': 'float',
 }
 NPC = {'npc_maekha': 'npc_maekha'}
+# ภาพนิ่งที่ใช้แค่หุ่นตัดต่อ (ไม่ต้องสร้าง spritesheet เก่า): ผีป่าช้า + ชาวบ้าน
+BASES_ONLY = ['krahang', 'khamot', 'phi_dip', 'nang_takhian', 'tai_hong', 'phi_phong', 'kong_koi',
+              'phi_lang_kluang', 'phi_chamot', 'pret_asura', 'npc_yai_tim', 'npc_lung_chai', 'npc_lung_dam', 'npc_pa_sa']
 # ฉาก/สิ่งปลูกสร้างในเมือง (ภาพนิ่ง): key ในเกม → ไฟล์ใน assets_src/pixellab/env/
 ENV = {'house': 'house', 'temple': 'temple', 'stall': 'stall', 'spirit_house': 'spirit_house',
-       'sala': 'sala', 'palm': 'palm', 'bg_town': 'bg_town'}
+       'sala': 'sala', 'palm': 'palm', 'bg_town': 'bg_town',
+       'forge': 'forge', 'food_stall': 'food_stall', 'warp_gate': 'warp_gate', 'boat': 'boat'}
 # ภาพที่ PixelLab วาดเป็นมุมเฉียง (isometric) → ดัดให้ฐานตรงแนวนอน เข้ากับเกม side-view
 ENV_DESKEW = set()   # ใส่ชื่อภาพที่ต้องดัดฐาน เช่น {'temple'}
 
@@ -44,6 +48,28 @@ def load_clean(path):
     im.putalpha(Image.eval(im.split()[3], lambda a: a if a > 60 else 0))
     box = alpha.getbbox()
     return im.crop(box)
+
+
+def strip_bg(im, tol=38):
+    """ถ้ามุมภาพทึบ (ไอคอนมีพื้นหลัง) → flood fill จากขอบภาพด้วยสีที่ใกล้เคียงให้โปร่งใส"""
+    W, H = im.size
+    px = im.load()
+    corners = [px[0, 0], px[W - 1, 0], px[0, H - 1], px[W - 1, H - 1]]
+    if sum(c[3] > 200 for c in corners) < 3:
+        return im
+    seen = set()
+    stack = [(x, y) for x in range(W) for y in (0, H - 1)] + [(x, y) for y in range(H) for x in (0, W - 1)]
+    near = lambda a, b: sum(abs(a[i] - b[i]) for i in range(3)) <= tol
+    while stack:
+        x, y = stack.pop()
+        if (x, y) in seen or not (0 <= x < W and 0 <= y < H):
+            continue
+        seen.add((x, y))
+        c = px[x, y]
+        if c[3] == 0 or any(near(c, k) for k in corners):
+            px[x, y] = (0, 0, 0, 0)
+            stack += [(x + 1, y), (x - 1, y), (x, y + 1), (x, y - 1)]
+    return im
 
 
 def deskew_base(img):
@@ -187,7 +213,7 @@ def main():
     # ภาพนิ่งต้นฉบับของผี/บอส → เกมสร้างท่าทางแบบหุ่นตัดต่อ (client/js/gfx/Rig.js) ตอนรัน
     os.makedirs(os.path.join(OUT, 'bases'), exist_ok=True)
     manifest['monsterBases'] = {}
-    for mid in list(MONSTERS) + list(BOSSES) + list(NPC):
+    for mid in list(MONSTERS) + list(BOSSES) + list(NPC) + BASES_ONLY:
         src = os.path.join(SRC, 'bosses', f'{mid}.png') if mid in BOSSES else os.path.join(SRC, f'{mid}.png')
         if os.path.exists(src):
             load_clean(src).save(os.path.join(OUT, 'bases', f'{mid}.png'))
@@ -202,6 +228,17 @@ def main():
             if f.endswith('.png'):
                 Image.open(os.path.join(pdir, f)).save(os.path.join(OUT, 'players', f))
                 manifest['players'][f[:-4]] = f'assets/players/{f}'
+
+    # ไอคอนไอเทม / สกิล (32x32): it_<itemId>.png, sk_<skillId>.png → ลบพื้นหลังทึบที่มุมภาพ
+    idir = os.path.join(SRC, 'icons')
+    manifest['icons'] = {}
+    if os.path.isdir(idir):
+        os.makedirs(os.path.join(OUT, 'icons'), exist_ok=True)
+        for f in sorted(os.listdir(idir)):
+            if f.endswith('.png'):
+                im = strip_bg(Image.open(os.path.join(idir, f)).convert('RGBA'))
+                im.save(os.path.join(OUT, 'icons', f))
+                manifest['icons'][f[:-4]] = f'assets/icons/{f}'
 
     with open(os.path.join(OUT, 'manifest.json'), 'w', encoding='utf-8') as fp:
         json.dump(manifest, fp, ensure_ascii=False, indent=2)
