@@ -44,6 +44,12 @@ function publicPlayer(p) {
 }
 
 const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
+/** ตำแหน่งเริ่มตอน join: ต่อใหม่ระหว่างเล่น → ใช้ตำแหน่งเดิม (บีบให้อยู่ในแมพนั้น) */
+function startPos(d) {
+  if (!Number.isFinite(d.x) || !Number.isFinite(d.y)) return {};
+  const m = mapAt(clamp(d.x, WORLD.minX, WORLD.width));
+  return { x: clamp(d.x, m.minX + 8, m.maxX - 8), y: clamp(d.y, -200, WORLD.height) };
+}
 const cleanText = (s, max) => String(s ?? '').replace(/[<>]/g, '').trim().slice(0, max);
 
 io.on('connection', (socket) => {
@@ -57,6 +63,7 @@ io.on('connection', (socket) => {
       name: cleanText(data.name, 16) || 'ผู้กล้า',
       appearance: sanitizeAppearance(data.appearance),
       x: WORLD.spawnX, y: WORLD.spawnY,
+      ...startPos(data),
       anim: 'idle', flipX: false, hp: 1, maxHp: 1, level: 1,
       lastUpdate: Date.now(), lastChat: 0, lastSkill: 0, partyId: null, tradeId: null,
     };

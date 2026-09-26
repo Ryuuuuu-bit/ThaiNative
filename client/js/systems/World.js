@@ -200,6 +200,11 @@ export class World {
   travel(toId) {
     const s = this.scene, to = MAPS[toId];
     if (!to || s.warping) return;
+    // ต้องยืนอยู่ที่ประตูและยังมีชีวิต (server ก็ตรวจแบบเดียวกัน → ตำแหน่งไม่หลุดกัน)
+    if (!s.player.alive || !gateNear(s.player.x, 80)) {
+      s.ui.closeAll();
+      return s.ui.toast('ต้องยืนที่ประตูวาร์ปก่อน', 'warn');
+    }
     if (s.player.char.level < (to.minLv || 1)) {
       s.sfx.play('error');
       return s.ui.toast(`🔒 ต้อง Lv.${to.minLv} ขึ้นไปถึงจะไป ${to.nameTh} ได้`, 'warn');
@@ -210,6 +215,7 @@ export class World {
     const cam = s.cameras.main;
     cam.fadeOut(260, 10, 30, 30);
     cam.once(Phaser.Cameras.Scene2D.Events.FADE_OUT_COMPLETE, () => {
+      if (!s.player.alive) { s.warping = false; cam.fadeIn(200); return; }   // ตายระหว่างวาร์ป → ยกเลิก
       s.net.send('player:warp', { kind: 'travel', to: toId });
       s.player.setPosition(to.arriveX, WORLD.groundY - 2).setVelocity(0, 0);
       s.setMap(to);

@@ -22,7 +22,8 @@ export class Network {
   get selfIdOrNull() { return this.online ? this.selfId : null; }
   emitLocal(evt, data) { this.handlers[evt]?.(data); }
 
-  connect(name, appearance) {
+  /** getInfo: () => ({ appearance, x, y }) – อ่านค่าล่าสุดทุกครั้งที่ (re)connect */
+  connect(name, getInfo) {
     if (typeof window.io !== 'function') {
       console.warn('[Network] socket.io client not found → offline mode');
       this.emitLocal('status', false);
@@ -31,7 +32,8 @@ export class Network {
     const s = (this.socket = window.io({ transports: ['websocket', 'polling'], reconnectionDelay: 1500 }));
 
     s.on('connect', () => {
-      s.emit('player:join', { name, appearance });
+      const info = typeof getInfo === 'function' ? getInfo() : { appearance: getInfo };
+      s.emit('player:join', { name, ...info });          // ต่อใหม่ → เริ่มที่ตำแหน่งเดิม ไม่เด้งกลับหมู่บ้าน
       this.emitLocal('status', true);
     });
     s.on('disconnect', () => this.emitLocal('status', false));
@@ -49,7 +51,7 @@ export class Network {
     s.on('chat', (m) => this.emitLocal('chat', m));
     s.on('skill:cast', (d) => this.emitLocal('skill', d));
     // ระบบ MMO: ปาร์ตี้ · เทรด · เรดบอส → ส่งต่อด้วยชื่อ event เดิม
-    for (const ev of ['party:invite', 'party:state', 'party:exp', 'trade:request', 'trade:state', 'trade:closed', 'trade:complete',
+    for (const ev of ['party:invite', 'party:state', 'party:exp', 'trade:request', 'trade:state', 'trade:closed', 'trade:complete', 'trade:verify',
       'raid:state', 'raid:spawn', 'raid:attack', 'raid:impact', 'raid:dmg', 'raid:reward', 'raid:defeated']) {
       s.on(ev, (d) => this.emitLocal(ev, d));
     }

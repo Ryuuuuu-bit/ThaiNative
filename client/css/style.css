@@ -109,8 +109,15 @@ button { font-family: inherit; cursor: pointer; }
 .pf-portrait { position: relative; width: 3.6em; height: 3.6em; flex: none; border-radius: 50%; border: 2px solid var(--gold);
   background: radial-gradient(circle at 50% 35%, #5b3a7a, #1b1028); overflow: hidden; }
 .pf-portrait canvas { width: 100%; height: 100%; image-rendering: pixelated; }
-.pf-lv { position: absolute; bottom: -2px; right: -2px; background: var(--red); color: #fff; font-size: .72em; font-weight: 600;
-  border: 1px solid var(--gold); border-radius: 8px; padding: 0 .35em; }
+.pf-portrait-wrap { position: relative; flex: none; align-self: center; }
+.pf-lv { position: absolute; bottom: -.3em; left: 50%; transform: translateX(-50%); min-width: 1.6em; text-align: center; z-index: 1;
+  background: linear-gradient(180deg, #c0392b, #7b1d14); color: #fff; font-size: .72em; font-weight: 600; line-height: 1.35;
+  border: 1px solid var(--gold); border-radius: 8px; padding: 0 .35em; box-shadow: 0 1px 3px rgba(0,0,0,.6); }
+.pf-nm { display: flex; align-items: baseline; gap: .35em; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.lv-tag { font-size: .8em; color: #2a1b3a; background: linear-gradient(180deg, #f7dc6f, #d4ac0d); border-radius: 4px; padding: 0 .35em; font-weight: 600; }
+.lv-tag b { font-weight: 700; }
+.lv-tag.up { animation: lvup 1.2s ease-out; }
+@keyframes lvup { 0% { transform: scale(1.6); filter: brightness(2); } 100% { transform: scale(1); filter: none; } }
 .pf-info { flex: 1; min-width: 0; }
 .pf-name { display: flex; justify-content: space-between; align-items: center; font-size: .85em; margin-bottom: .15em; white-space: nowrap; }
 .job-tag { font-size: .8em; padding: 0 .45em; border-radius: 4px; background: #3d2757; color: var(--gold-soft); }
@@ -142,10 +149,13 @@ button { font-family: inherit; cursor: pointer; }
 .mm-dot.mob { background: #e74c3c; opacity: .75; }
 .mm-dot.npc { background: #58d68d; }
 .hud-buttons { display: flex; gap: .3em; justify-content: flex-end; }
-.hud-buttons button { position: relative; width: 2.3em; height: 2.3em; font-size: .9em; background: linear-gradient(180deg, #3d2757, #1d1228);
-  color: var(--text); border: 2px solid var(--gold); border-radius: 8px; }
-.hud-buttons button small { position: absolute; bottom: 0; right: 2px; font-size: .62em; color: var(--gold-soft); }
-.hud-buttons button:hover { filter: brightness(1.25); }
+.hud-buttons button { position: relative; width: 2.5em; height: 2.5em; padding: 0; font-size: .9em; display: grid; place-items: center;
+  background: radial-gradient(circle at 50% 35%, #4a2f66, #1d1228 75%); color: var(--text);
+  border: 2px solid var(--gold); border-radius: 9px; box-shadow: 0 2px 0 #5b1a14, inset 0 0 6px rgba(212,175,55,.25); transition: transform .08s, filter .12s; }
+.hud-buttons button small { position: absolute; bottom: -.35em; right: -.3em; font-size: .56em; font-weight: 600; line-height: 1.3; padding: 0 .3em;
+  color: #2a1b3a; background: linear-gradient(180deg, #f7dc6f, #d4ac0d); border-radius: 4px; box-shadow: 0 1px 2px rgba(0,0,0,.6); }
+.hud-buttons button:hover { filter: brightness(1.25); transform: translateY(-1px); }
+.hud-buttons button:active { transform: translateY(1px); }
 
 /* แถบแอ็กชัน */
 .actionbar { position: absolute; bottom: 2.2%; left: 50%; transform: translateX(-50%); display: flex; flex-direction: column; align-items: center; gap: .25em; }
@@ -416,7 +426,7 @@ kbd { display: inline-block; min-width: 1.6em; text-align: center; padding: 0 .3
 .skill .px-ico, .sk-icon .px-ico, .hb-slot .px-ico { width: 1.9em; height: 1.9em; }
 .need .px-ico { width: 1.2em; height: 1.2em; }
 .enh { color: #f5b041; }
-.hud-buttons button .px-ico { width: 1.5em; height: 1.5em; }
+.hud-buttons button .px-ico { width: 1.9em; height: 1.9em; filter: drop-shadow(0 1px 0 rgba(0,0,0,.7)); }
 .fish-ui > .px-ico { position: absolute; left: -1.2em; top: -1.2em; width: 2.6em; height: 2.6em; }
 #shop-tabs .px-ico { width: 1.3em; height: 1.3em; }
 .slot.pot .px-ico { width: 1.9em; height: 1.9em; }
@@ -493,3 +503,4 @@ kbd { display: inline-block; min-width: 1.6em; text-align: center; padding: 0 .3
 #title-sound.hint::after { content: 'คลิกเพื่อเปิดเสียง'; position: absolute; right: 115%; top: 50%; transform: translateY(-50%); white-space: nowrap;
   font-size: .6em; color: #f5e6b8; background: rgba(10,5,20,.7); padding: .2em .6em; border-radius: 6px; animation: pulse 1.6s infinite; }
 @keyframes pulse { 50% { opacity: .45; } }
+.actionbar .gold .px-ico { width: 1.3em; height: 1.3em; margin: -.2em 0; }

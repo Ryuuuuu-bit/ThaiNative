@@ -97,7 +97,11 @@ export class UI {
     this.hudCache = sig;
 
     $('#hud-name').textContent = c.name;
-    $('#hud-lv').textContent = c.level;
+    if ($('#hud-lv2').textContent !== String(c.level)) {
+      const up = +$('#hud-lv2').textContent > 0 && c.level > +$('#hud-lv2').textContent;
+      $('#hud-lv').textContent = c.level; $('#hud-lv2').textContent = c.level;
+      if (up) document.querySelectorAll('.lv-tag').forEach((el) => { el.classList.remove('up'); void el.offsetWidth; el.classList.add('up'); });
+    }
     $('#hud-job').textContent = `${pathName(c)} · ${JOBS[c.appearance.job].icon}`;
     $('#hud-job').title = `สายหลัก: ${pathName(c)} · แนวต่อสู้ตอนนี้: ${JOBS[c.appearance.job].nameTh} (ตามอาวุธที่ถือ)`;
     $('#hud-hp').textContent = `HP ${Math.ceil(c.hp)} / ${d.maxHp}`;
@@ -193,8 +197,15 @@ export class UI {
   applyUiIcons() {
     $('#quick-hp .ic').innerHTML = itemIcon('hp_s', '🧴');
     $('#quick-mp .ic').innerHTML = itemIcon('mp_s', '🥥');
-    const q = document.querySelector('[data-open="quest-panel"]');
-    if (q && uiIcon('quest')) q.innerHTML = `${uiIcon('quest')}<small>J</small>`;
+    const gold = document.querySelector('.actionbar .gold');
+    if (gold && uiIcon('gold') && !gold.querySelector('.px-ico')) gold.innerHTML = `${uiIcon('gold')} <b id="hud-gold">${$('#hud-gold').textContent}</b>`;
+    // ปุ่มเมนูขวาบน: ไอคอนชุดเดียวกัน (PixelLab ui_menu_*)
+    const MENU = { 'stats-panel': 'menu_stats', 'inv-panel': 'menu_bag', 'skill-panel': 'menu_skill', 'map-panel': 'menu_map',
+      'social-panel': 'menu_party', 'quest-panel': 'menu_quest', 'help-panel': 'menu_help', 'settings-panel': 'menu_settings' };
+    for (const [panel, key] of Object.entries(MENU)) {
+      const b = document.querySelector(`.hud-buttons [data-open="${panel}"]`), ic = uiIcon(key);
+      if (b && ic) b.innerHTML = `${ic}${b.querySelector('small')?.outerHTML || ''}`;
+    }
     const f = document.querySelector('#fish-ui');
     if (f && uiIcon('fish') && !f.querySelector('.px-ico')) f.insertAdjacentHTML('afterbegin', uiIcon('fish'));
   }

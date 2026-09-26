@@ -5,7 +5,7 @@
 // ============================================================
 import { MONSTERS } from '/shared/data/monsters.js';
 import { WORLD } from '/shared/constants.js';
-import { mapAt } from '/shared/data/maps.js';
+import { mapAt, MAPS } from '/shared/data/maps.js';
 import { makeText, rand } from '../systems/util.js';
 
 const EV = Phaser.Animations.Events;
@@ -30,6 +30,7 @@ export class Monster extends Phaser.Physics.Arcade.Sprite {
     this.setCollideWorldBounds(true);
 
     this.isFlyer = def.behavior === 'flyer';
+    this.home = MAPS[def.mapId] || null;        // แมพของผีตัวนี้ (ห้ามออกนอกแมพ)
     if (this.isFlyer) this.body.setAllowGravity(false);
 
     // หลอดเลือด + ชื่อ
@@ -50,7 +51,30 @@ export class Monster extends Phaser.Physics.Arcade.Sprite {
     this.reset(x);
   }
 
-  get alive() { return this.state !== 'dead' && this.state !== 'dormant'; }
+  /** มีชีวิต + อยู่ในแมพที่ผู้เล่นอยู่ (ผีแมพอื่นถูกพักไว้ ตี/โดนตีไม่ได้) */
+  get alive() { return this.active && this.state !== 'dead' && this.state !== 'dormant'; }
+
+  /** ขอบเขตที่ผีเดินได้: ตั้งแต่ท้ายจุดพักกองไฟ ถึงขอบขวาแมพ (ไม่เข้าแคมป์ ไม่ทะลุไปแมพอื่น) */
+  get bounds() {
+    const m = this.home;
+    return m ? [m.safeEndX + 10, m.maxX - 14] : [WORLD.minX + 10, WORLD.width - 10];
+  }
+
+  /** ผีแมพอื่น: หยุดนิ่ง/ซ่อน · กลับมาแมพนี้: ถ้าหลุดออกนอกเขตให้กลับเข้าเขต */
+  setOnMap(on) {
+    this.setActive(on);
+    if (!on) {
+      this.body.setVelocity(0, 0);
+      this.body.moves = false;
+      this.setVisible(false); this.showUi(false);
+      return;
+    }
+    this.body.moves = true;
+    const [a, b] = this.bounds;
+    if (this.state !== 'dead' && (this.x < a || this.x > b || this.y > WORLD.groundY + 40)) this.reset(rand(this.def.zone[0], this.def.zone[1]));
+    const show = this.state !== 'dead' && this.state !== 'dormant';
+    this.setVisible(show); this.showUi(show);
+  }
 
   /** ตัวคูณตามเวลา (กลางคืน/เดือนดับ) */
   get mods() {
@@ -85,9 +109,11 @@ export class Monster extends Phaser.Physics.Arcade.Sprite {
     this.nextJump = 0;
     this.homeY = WORLD.groundY - 30 - rand(0, 30);
     this.setPosition(x, this.isFlyer ? this.homeY : WORLD.groundY - 5);
-    this.setVisible(true).setAlpha(1).clearTint();
+    this.body.setVelocity(0, 0);
+    this.setAlpha(1).clearTint();
     this.body.enable = true;
-    this.showUi(true);
+    this.setVisible(this.active);                // เกิดใหม่ตอนผู้เล่นอยู่แมพอื่น → ยังซ่อนไว้
+    this.showUi(this.active);
     this.play(`${this.key}:walk`);
   }
 
@@ -96,6 +122,10 @@ export class Monster extends Phaser.Physics.Arcade.Sprite {
   update(time, player) {
     this.checkNightOnly();
     if (!this.alive) return;
+    // กันโดนกระแทก/ผลักจนหลุดเขต
+    const [lo, hi] = this.bounds;
+    if (this.x < lo) { this.x = lo; if (this.body.velocity.x < 0) this.body.velocity.x = 0; }
+    else if (this.x > hi) { this.x = hi; if (this.body.velocity.x > 0) this.body.velocity.x = 0; }
     const d = this.def;
     const { h } = d.frame;
     this.hpBg.setPosition(this.x, this.y - h - 3);
@@ -147,6 +177,9 @@ export class Monster extends Phaser.Physics.Arcade.Sprite {
       if (vx) this.setFlipX(vx < 0);
     }
     if (this.state === 'attack') return;
+    // ห้ามเดินออกนอกเขต (ไม่ไล่ตามเข้าแคมป์/ประตู ไม่ทะลุไปแมพอื่น)
+    const [bx0, bx1] = this.bounds;
+    if ((this.x <= bx0 && vx < 0) || (this.x >= bx1 && vx > 0)) vx = 0;
     this.setVelocityX(vx);
     this.animateMove(vx);
 

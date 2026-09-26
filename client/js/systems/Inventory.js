@@ -9,6 +9,10 @@ import { getDerived, resetSkills, resetStats, choosePath, syncAppearance } from 
 
 const SLOT_OF = { weapon: 'weapon', armor: 'armor', accessory: 'accessory' };
 
+/** ล็อกกระเป๋าระหว่างเทรด (กันใช้/ขายของที่เสนอไว้ → ของซ้ำ) */
+export const tradeLock = { on: false };
+const LOCKED = { ok: false, msg: 'กำลังเทรดอยู่ – ใช้/ขาย/สวมของไม่ได้จนกว่าจะเทรดเสร็จ' };
+
 export function count(c, id) {
   return c.inventory.find((s) => s.id === id)?.qty || 0;
 }
@@ -19,6 +23,7 @@ export function addItem(c, id, qty = 1) {
 }
 
 export function removeItem(c, id, qty = 1) {
+  if (tradeLock.on) return false;
   const slot = c.inventory.find((s) => s.id === id);
   if (!slot || slot.qty < qty) return false;
   slot.qty -= qty;
@@ -28,6 +33,7 @@ export function removeItem(c, id, qty = 1) {
 
 /** ใช้ยา / เปลี่ยนอาชีพ / สวมใส่ */
 export function useItem(c, id) {
+  if (tradeLock.on) return LOCKED;
   const it = ITEMS[id];
   if (!it || !count(c, id)) return { ok: false, msg: 'ไม่มีไอเทมนี้' };
 
@@ -94,6 +100,7 @@ export function makeOffering(c, key) {
 }
 
 export function equip(c, id) {
+  if (tradeLock.on) return LOCKED;
   const it = ITEMS[id];
   const slot = SLOT_OF[it.type];
   removeItem(c, id);
@@ -107,6 +114,7 @@ export function equip(c, id) {
 }
 
 export function unequip(c, slot) {
+  if (tradeLock.on) return LOCKED;
   const id = c.equipment[slot];
   if (!id) return { ok: false };
   c.equipment[slot] = null;
@@ -119,6 +127,7 @@ export function unequip(c, slot) {
 
 // ---------------- NPC Shop ----------------
 export function buy(c, id, qty = 1) {
+  if (tradeLock.on) return LOCKED;
   const it = ITEMS[id];
   if (!it?.price) return { ok: false, msg: 'ร้านไม่ขายของนี้' };
   if (it.type === 'skin' && count(c, id)) return { ok: false, msg: 'มีคัมภีร์นี้แล้ว' };
@@ -130,6 +139,7 @@ export function buy(c, id, qty = 1) {
 }
 
 export function sell(c, id, qty = 1) {
+  if (tradeLock.on) return LOCKED;
   const it = ITEMS[id];
   if (it?.type === 'skin') return { ok: false, msg: 'ขายคัมภีร์ไม่ได้' };
   if (!removeItem(c, id, qty)) return { ok: false, msg: 'ไม่มีของพอขาย' };

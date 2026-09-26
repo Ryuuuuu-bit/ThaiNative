@@ -270,7 +270,7 @@ export class Village {
     if (!box) { box = document.createElement('div'); box.id = 'path-box'; $('#quest-list').before(box); }
     const c = this.char;
     if (c.path) { box.innerHTML = ''; return; }
-    const near = Math.abs(this.scene.player.x - 520) < 140;
+    const near = this.nearChai();
     if (c.level < PATH_LV) {
       box.innerHTML = `<div class="quest locked"><div><b>🎖️ พิธีเลือกสายหลัก</b> <span class="meta">Lv.${PATH_LV}+</span>
         <p>“ตอนนี้เอ็งยังเป็นชาวบ้านธรรมดา ลองจับดาบ ไม้เท้า ธนู หรือกำหมัดดูให้ครบ พอถึง Lv.${PATH_LV} ค่อยมาบอกข้าว่าจะเดินทางไหน”</p>
@@ -286,6 +286,7 @@ export class Village {
         <button class="gold" data-path="${j}" ${near ? '' : 'disabled'}>เลือกสายนี้</button></div>`; }).join('')}</div></div></div>`;
     box.querySelectorAll('[data-path]').forEach((b) => (b.onclick = () => {
       const j = b.dataset.path;
+      if (!this.nearChai()) return this.ui.toast('ต้องยืนคุยกับผู้ใหญ่ชัยที่หมู่บ้านก่อน', 'warn');
       if (!confirm(`เลือกสายหลัก “${JOBS[j].pathTitle}”?\n(เปลี่ยนภายหลังได้ด้วยคัมภีร์เปลี่ยนสายหลักที่ร้านยายติ๋ม)`)) return;
       const r = choosePath(c, j);
       if (!r.ok) return this.ui.toast(r.msg, 'warn');
@@ -329,9 +330,13 @@ export class Village {
     this.afterChange();
   }
 
+  /** ยืนอยู่ใกล้ผู้ใหญ่ชัย (หมู่บ้าน x520) */
+  nearChai() { return Math.abs(this.scene.player.x - 520) < 140; }
+
   claim(id) {
     const q = QUEST_BY_ID[id], c = this.char, Q = c.quests;
     if (!q || this.questState(q) !== 'ready') return;
+    if (!this.nearChai()) return this.ui.toast('กลับไปรับรางวัลกับผู้ใหญ่ชัยที่หมู่บ้าน', 'warn');
     delete Q.active[id];
     Q.done.push(id);
     c.gold += q.reward.gold;

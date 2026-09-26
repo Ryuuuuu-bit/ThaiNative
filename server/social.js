@@ -209,6 +209,9 @@ export function setupSocial(io, players) {
       const from = players.get(fromId);
       if (!p || !from || !exp || exp < Date.now()) return;
       if (!accept) return sys(fromId, `${p.name} ปฏิเสธคำเชิญ`);
+      const cur = parties.get(from.partyId);
+      if (cur && cur.members.size >= PARTY.maxSize) return sys(p.id, 'ปาร์ตี้เต็มแล้ว');   // เช็คก่อน ไม่ให้หลุดปาร์ตี้เดิมฟรีๆ
+      if (cur?.members.has(p.id)) return;
       if (p.partyId) leaveParty(p.id);
       let party = parties.get(from.partyId);
       if (!party) {
@@ -277,6 +280,7 @@ export function setupSocial(io, players) {
     socket.on('trade:offer', (o) => {
       const t = tradeOf(socket.id);
       if (!t) return;
+      if (t.verifying) return;
       t.offer[socket.id] = cleanOffer(o);
       for (const s of [t.a, t.b]) { t.locked[s] = false; t.confirmed[s] = false; }   // เปลี่ยนข้อเสนอ → ปลดล็อกทั้งคู่
       pushTrade(t);
@@ -292,11 +296,23 @@ export function setupSocial(io, players) {
       if (!t || !t.locked[t.a] || !t.locked[t.b]) return;
       t.confirmed[socket.id] = true;
       if (t.confirmed[t.a] && t.confirmed[t.b]) {
-        emitTo(t.a, 'trade:complete', { give: t.offer[t.a], get: t.offer[t.b], with: players.get(t.b)?.name });
-        emitTo(t.b, 'trade:complete', { give: t.offer[t.b], get: t.offer[t.a], with: players.get(t.a)?.name });
-        trades.delete(t.id);
-        for (const id of [t.a, t.b]) { const p = players.get(id); if (p) p.tradeId = null; }
+        // ขั้นตรวจของ: ให้ทั้งสองฝั่งยืนยันว่ายังมีของ/เงินครบ ก่อนสั่งแลกจริง (กันของซ้ำ)
+        t.verified = {};
+        t.verifying = true;
+        emitTo(t.a, 'trade:verify', { give: t.offer[t.a] });
+        emitTo(t.b, 'trade:verify', { give: t.offer[t.b] });
       } else pushTrade(t);
+    });
+    socket.on('trade:verified', ({ ok } = {}) => {
+      const t = tradeOf(socket.id);
+      if (!t || !t.verifying) return;
+      if (!ok) return closeTrade(t, `${me()?.name} มีของไม่ครบตามข้อเสนอ – ยกเลิกการเทรด`);
+      t.verified[socket.id] = true;
+      if (!t.verified[t.a] || !t.verified[t.b]) return;
+      emitTo(t.a, 'trade:complete', { give: t.offer[t.a], get: t.offer[t.b], with: players.get(t.b)?.name });
+      emitTo(t.b, 'trade:complete', { give: t.offer[t.b], get: t.offer[t.a], with: players.get(t.a)?.name });
+      trades.delete(t.id);
+      for (const id of [t.a, t.b]) { const p = players.get(id); if (p) p.tradeId = null; }
     });
     socket.on('trade:cancel', () => { const t = tradeOf(socket.id); if (t) closeTrade(t, `${me()?.name} ยกเลิกการเทรด`); });
 

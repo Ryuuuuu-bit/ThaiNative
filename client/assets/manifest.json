@@ -366,6 +366,22 @@
     "ui_herb": "assets/icons/ui_herb.png",
     "ui_quest": "assets/icons/ui_quest.png",
     "ui_soup": "assets/icons/ui_soup.png",
-    "ui_wanted": "assets/icons/ui_wanted.png"
+    "ui_wanted": "assets/icons/ui_wanted.png",
+    "ui_chat": "assets/icons/ui_chat.png",
+    "ui_gold": "assets/icons/ui_gold.png",
+    "ui_hp": "assets/icons/ui_hp.png",
+    "ui_lantern": "assets/icons/ui_lantern.png",
+    "ui_level": "assets/icons/ui_level.png",
+    "ui_menu_bag": "assets/icons/ui_menu_bag.png",
+    "ui_menu_help": "assets/icons/ui_menu_help.png",
+    "ui_menu_map": "assets/icons/ui_menu_map.png",
+    "ui_menu_party": "assets/icons/ui_menu_party.png",
+    "ui_menu_quest": "assets/icons/ui_menu_quest.png",
+    "ui_menu_settings": "assets/icons/ui_menu_settings.png",
+    "ui_menu_skill": "assets/icons/ui_menu_skill.png",
+    "ui_menu_stats": "assets/icons/ui_menu_stats.png",
+    "ui_mp": "assets/icons/ui_mp.png",
+    "ui_sound": "assets/icons/ui_sound.png",
+    "ui_swords": "assets/icons/ui_swords.png"
   }
 }

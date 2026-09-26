@@ -6,7 +6,7 @@ import { ITEMS } from '/shared/data/items.js';
 import { JOBS } from '/shared/data/classes.js';
 import { WORLD } from '/shared/constants.js';
 import { RAID_BOSS as RB } from '/shared/data/raid.js';
-import { addItem, removeItem, count } from './Inventory.js';
+import { addItem, removeItem, count, tradeLock } from './Inventory.js';
 import { rand, itemIcon } from './util.js';
 
 const $ = (s) => document.querySelector(s);
@@ -168,6 +168,11 @@ export class Social {
       .on('trade:state', (st) => this.onTradeState(st))
       .on('trade:closed', ({ reason }) => { this.closeTrade(); this.ui.toast(reason || 'ยกเลิกการเทรด', 'warn'); })
       .on('trade:complete', (d) => this.onTradeComplete(d))
+      .on('trade:verify', ({ give }) => {          // server ถามก่อนแลก: ยังมีของ/เงินครบไหม
+        const c = this.player.char;
+        const ok = !!give && give.gold <= c.gold && give.items.every((it) => count(c, it.id) >= it.qty);
+        n.send('trade:verified', { ok });
+      })
       .on('raid:state', (b) => this.scene.boss?.setServer(b))
       .on('raid:spawn', () => {
         this.ui.banner(`👹 ${RB.nameTh} ปรากฏตัว!`);
@@ -238,6 +243,7 @@ export class Social {
   onTradeState(st) {
     const first = !this.trade;
     this.trade = st;
+    tradeLock.on = true;                         // ระหว่างเทรด ห้ามใช้/ขาย/สวม/ทิ้งของ
     if (first) {
       this.myOffer = { items: [], gold: 0 };
       $('#tr-gold').value = 0;
@@ -283,6 +289,7 @@ export class Social {
     const c = this.player.char;
     // ตรวจอีกครั้งว่ายังมีของ/เงินครบ (กันกรณีใช้ของไประหว่างเทรด)
     const ok = give.gold <= c.gold && give.items.every((it) => count(c, it.id) >= it.qty);
+    tradeLock.on = false;
     if (!ok) { this.ui.toast('ของในกระเป๋าไม่ตรงกับข้อเสนอ – การเทรดถูกยกเลิก', 'warn'); this.closeTrade(); return; }
     give.items.forEach((it) => removeItem(c, it.id, it.qty));
     c.gold -= give.gold;
@@ -298,6 +305,7 @@ export class Social {
 
   closeTrade() {
     this.trade = null;
+    tradeLock.on = false;
     this.myOffer = { items: [], gold: 0 };
     $('#trade-panel').classList.add('hidden');
   }

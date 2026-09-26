@@ -87,10 +87,11 @@ export class GameScene extends Phaser.Scene {
     this.events.on('player-died', () => {
       this.ui.showDeath(2500);
       // ตายในลานเรด → ฟื้นที่หน้าประตูลาน (ไม่ต้องเดินไกล)
-      const rx = mapAt(this.player.x).respawnX;   // ฟื้นที่จุดพัก (กองไฟ) ของแมพนั้น
       this.village.stop();
       this.forest.cancelGather();
+      this.ui.closeAll();                           // ปิดหน้าต่างวาร์ป ฯลฯ ตอนตาย
       this.time.delayedCall(2500, () => {
+        const rx = mapAt(this.player.x).respawnX;   // ฟื้นที่จุดพัก (กองไฟ) ของแมพที่อยู่ตอนนี้ (ตรงกับ server)
         this.player.respawn(rx, W.groundY - 2);
         this.net.send('player:warp', { kind: 'respawn' });
         this.setMap(mapAt(rx));
@@ -323,10 +324,7 @@ export class GameScene extends Phaser.Scene {
     // ซ่อนผีของแมพอื่น (ไม่ต้องอัปเดต/วาด)
     this.monsters?.getChildren().forEach((m) => {
       if (m.isBoss || !m.def?.mapId) return;
-      const on = m.def.mapId === map.id;
-      m.setActive(on);
-      m.setVisible(on && m.state !== 'dead');
-      m.showUi?.(on && m.state !== 'dead');       // ป้ายชื่อ/หลอดเลือดของผีแมพอื่นไม่ค้างบนจอ
+      m.setOnMap(m.def.mapId === map.id);          // ผีแมพอื่น: หยุด/ซ่อน (ไม่ลอยทะลุไปแมพอื่น) · ป้ายชื่อไม่ค้างจอ
     });
     if (prev && prev !== map && this.ui) {
       const R = REGIONS[map.region];
@@ -386,7 +384,7 @@ export class GameScene extends Phaser.Scene {
       .on('chat', (m) => this.ui.chat(m))
       .on('skill', (d) => this.combat.remoteVfx(d, this.remotes.get(d.id)));   // สกิลของผู้เล่นอื่น
 
-    net.connect(char.name, char.appearance);
+    net.connect(char.name, () => ({ appearance: this.player.char.appearance, x: Math.round(this.player.x), y: Math.round(this.player.y) }));
   }
 
   onAppearanceChanged() {
