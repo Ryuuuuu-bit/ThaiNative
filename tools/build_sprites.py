@@ -28,6 +28,9 @@ NPC = {'npc_maekha': 'npc_maekha'}
 # ฉาก/สิ่งปลูกสร้างในเมือง (ภาพนิ่ง): key ในเกม → ไฟล์ใน assets_src/pixellab/env/
 ENV = {'house': 'house', 'temple': 'temple', 'stall': 'stall', 'spirit_house': 'spirit_house',
        'sala': 'sala', 'palm': 'palm', 'bg_town': 'bg_town'}
+# ภาพที่ PixelLab วาดเป็นมุมเฉียง (isometric) → ดัดให้ฐานตรงแนวนอน เข้ากับเกม side-view
+ENV_DESKEW = set()   # ใส่ชื่อภาพที่ต้องดัดฐาน เช่น {'temple'}
+
 # บอสเรด
 BOSSES = {'phaya_yak': 'walk'}
 PAD_X, PAD_TOP = 5, 3
@@ -41,6 +44,29 @@ def load_clean(path):
     im.putalpha(Image.eval(im.split()[3], lambda a: a if a > 60 else 0))
     box = alpha.getbbox()
     return im.crop(box)
+
+
+def deskew_base(img):
+    """หาเส้นขอบล่างของภาพ (ฐานอาคาร) ที่เอียง แล้วเลื่อนแต่ละคอลัมน์ลงให้ฐานเป็นแนวนอน"""
+    W, H = img.size
+    px = img.load()
+    xs, ys = [], []
+    for x in range(W):
+        bottom = max((y for y in range(H) if px[x, y][3] > 60), default=None)
+        if bottom is not None:
+            xs.append(x); ys.append(bottom)
+    n = len(xs)
+    if n < 2:
+        return img
+    mx, my = sum(xs) / n, sum(ys) / n
+    k = sum((x - mx) * (y - my) for x, y in zip(xs, ys)) / max(1e-6, sum((x - mx) ** 2 for x in xs))
+    b = my - k * mx
+    base = max(b, k * (W - 1) + b)
+    out = Image.new('RGBA', (W, H + int(abs(k) * W) + 2), (0, 0, 0, 0))
+    for x in range(W):
+        shift = int(round(base - (k * x + b)))
+        out.paste(img.crop((x, 0, x + 1, H)), (x, shift))
+    return out.crop(out.getbbox())
 
 
 def tint(img, rgb, amount):
@@ -140,7 +166,10 @@ def main():
         for key, name in ENV.items():
             src = os.path.join(edir, f'{name}.png')
             if os.path.exists(src):
-                load_clean(src).save(os.path.join(OUT, 'env', f'{key}.png'))
+                im = load_clean(src)
+                if key in ENV_DESKEW:
+                    im = deskew_base(im)
+                im.save(os.path.join(OUT, 'env', f'{key}.png'))
                 manifest['env'][key] = f'assets/env/{key}.png'
 
     # บอสเรด (สร้างท่าทางแบบเดียวกับผี)

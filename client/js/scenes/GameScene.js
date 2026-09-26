@@ -128,22 +128,29 @@ export class GameScene extends Phaser.Scene {
 
     // ---------------- หมู่บ้านบางผี (0 – townEndX) ----------------
     const gy = W.groundY;
+    // สิ่งปลูกสร้าง: ฝังฐานลงดินเล็กน้อย (พื้นหญ้าบังขอบล่าง) + เงาสัมผัสพื้น → ไม่ดูลอย
     const img = (key, x, depth = 1, opts = {}) => {
       if (!this.textures.exists(key)) return null;
-      const o = this.add.image(x, gy + (opts.dy || 0), key).setOrigin(0.5, 1).setDepth(depth);
+      const sink = opts.sink ?? 5;
+      const o = this.add.image(x, gy + sink + (opts.dy || 0), key).setOrigin(0.5, 1).setDepth(depth);
       if (opts.flip) o.setFlipX(true);
       if (opts.scale) o.setScale(opts.scale);
       if (opts.tint) o.setTint(opts.tint);
+      if (opts.shadow !== false) {
+        const w = o.displayWidth * (opts.shadowW ?? 0.9);
+        this.add.ellipse(x, gy + 1, w, 7, 0x000000, 0.32).setDepth(5.5);
+        this.add.ellipse(x, gy + 1, w * 0.7, 4, 0x000000, 0.25).setDepth(5.5);
+      }
       return o;
     };
     const label = (x, y, text, color = '#f7dc6f', size = '6px') => makeText(this, x, y, text, { fontSize: size, color }).setOrigin(0.5).setDepth(2);
     // วัด (ด้านหลังจุดเกิด)
     const wat = img('temple', 110, 0);
     if (wat) label(110, gy - wat.height - 4, 'วัดบางผี');
-    this.shrineSprite = img('spirit_house', 240, 2);
+    this.shrineSprite = img('spirit_house', 240, 2, { sink: 3, shadowW: 0.7 });
     this.shrineX = 240; this.shrineY = gy - (this.shrineSprite?.height || 48) + 6;
     label(240, gy - (this.textures.get('spirit_house').getSourceImage().height || 48) - 4, 'ศาลพระภูมิ');
-    img('palm', 300, 0); img('palm', 640, 0, { flip: true }); img('palm', 965, 0);
+    img('palm', 300, 0, { shadowW: 0.4 }); img('palm', 640, 0, { flip: true, shadowW: 0.4 }); img('palm', 965, 0, { shadowW: 0.4 });
     const h1 = img('house', 420, 1);
     if (h1) label(420, gy - h1.height - 4, 'เรือนไทย', '#e5c07b');
     const sala = img('sala', 560, 1);
