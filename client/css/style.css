@@ -544,3 +544,120 @@ kbd { display: inline-block; min-width: 1.6em; text-align: center; padding: 0 .3
 #stats-panel { max-height: 94%; overflow-y: auto; }
 #stats-panel .stat-row.q { padding: .15em 0; }
 #stats-panel .stat-row .d { font-size: .72em; }
+/* ---------- ตีบวก +20 ---------- */
+.enh.t1 { color: #5dade2; text-shadow: 0 0 6px #5dade2; } .enh.t2 { color: #c39bd3; text-shadow: 0 0 6px #af7ac5; }
+.enh.t3 { color: #f4d03f; text-shadow: 0 0 6px #f4d03f; } .enh.t4 { color: #ff6f59; text-shadow: 0 0 8px #e74c3c; }
+.enh.t5 { background: linear-gradient(90deg, #e74c3c, #f39c12, #f4d03f, #58d68d, #5dade2, #af7ac5); -webkit-background-clip: text; background-clip: text; color: transparent; }
+.guard-row { display: flex; align-items: center; gap: .4em; font-size: .85em; margin: .4em 0 0; color: var(--gold-soft); }
+.eq-cos { grid-column: 1 / -1; display: grid; grid-template-columns: repeat(4, 1fr); gap: .4em; }
+.equip .eq.cos { border-color: rgba(175,122,197,.5); }
+
+/* ---------- เตือนสกิลบอส ---------- */
+.boss-warn { position: absolute; top: 19%; left: 50%; transform: translateX(-50%); min-width: 16em; text-align: center; pointer-events: none !important;
+  background: linear-gradient(180deg, rgba(60,8,12,.92), rgba(24,6,10,.92)); border: 1px solid #e74c3c; border-radius: 6px; padding: .35em 1em .45em;
+  box-shadow: 0 0 14px rgba(231,76,60,.55), inset 0 0 0 1px rgba(245,215,142,.18); animation: bwIn .18s ease-out; z-index: 6; }
+.boss-warn.roar { border-color: #bb8fce; box-shadow: 0 0 14px rgba(187,143,206,.6); }
+.boss-warn.wave { border-color: #f39c12; box-shadow: 0 0 14px rgba(243,156,18,.55); }
+.bw-name { color: #ffd6a0; font-weight: bold; font-size: 1.05em; letter-spacing: .03em; text-shadow: 0 0 6px #e74c3c; }
+.bw-hint { color: #f5d78e; font-size: .78em; margin: .1em 0 .3em; }
+.bw-bar { height: 5px; background: rgba(0,0,0,.6); border-radius: 3px; overflow: hidden; }
+.bw-bar i { display: block; height: 100%; width: 100%; background: linear-gradient(90deg, #e74c3c, #f5d78e); transform-origin: left; }
+@keyframes bwIn { from { transform: translateX(-50%) scale(1.25); opacity: 0; } to { transform: translateX(-50%) scale(1); opacity: 1; } }
+.boss-edge { position: absolute; inset: 0; pointer-events: none !important; box-shadow: inset 0 0 60px 10px rgba(231,76,60,.0); transition: box-shadow .2s; z-index: 5; }
+.boss-edge.on { animation: edgePulse .45s ease-in-out infinite alternate; }
+@keyframes edgePulse { from { box-shadow: inset 0 0 40px 6px rgba(231,76,60,.15); } to { box-shadow: inset 0 0 70px 14px rgba(231,76,60,.45); } }
+
+/* ============================================================
+   THEME LAYER – ธีมเดียวกันทั้งเกม: "ลายรดน้ำทอง บนพื้นครั่ง/ม่วงลงรัก"
+   (ทับสไตล์เดิมทุกหน้าต่าง/ปุ่ม/แท็บ/ช่องกรอก ให้หน้าตาเหมือนกัน)
+   ============================================================ */
+:root {
+  --lac-1: #2b1a3d; --lac-2: #1a0f26; --lac-3: #120a1b;
+  --line: rgba(212,175,55,.42); --line-strong: rgba(232,199,102,.85);
+  --btn-red-1: #a8322a; --btn-red-2: #6e1a15;
+  --btn-grn-1: #2e8b57; --btn-grn-2: #17603a;
+  --corner-tl: url("data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A//www.w3.org/2000/svg%27%20width%3D%2734%27%20height%3D%2734%27%20viewBox%3D%270%200%2034%2034%27%3E%3Cg%20transform%3D%27rotate%280%2017%2017%29%27%20fill%3D%27none%27%20stroke%3D%27%23e8c766%27%20stroke-linecap%3D%27round%27%3E%3Cpath%20d%3D%27M3%2031V10Q3%203%2010%203H31%27%20stroke-width%3D%272%27/%3E%3Cpath%20d%3D%27M8%2031V13Q8%208%2013%208H31%27%20stroke-width%3D%27.8%27%20opacity%3D%27.7%27/%3E%3Cpath%20d%3D%27M13%2020q0-7%207-7q-4%203-2%207q-2-3-5%200z%27%20fill%3D%27%23e8c766%27%20stroke-width%3D%27.6%27/%3E%3Cpath%20d%3D%27M3%203l3.2%203.2%27%20stroke-width%3D%271.4%27/%3E%3Crect%20x%3D%271.2%27%20y%3D%271.2%27%20width%3D%274%27%20height%3D%274%27%20transform%3D%27rotate%2845%203.2%203.2%29%27%20fill%3D%27%23f7dc6f%27%20stroke%3D%27%237a5a12%27%20stroke-width%3D%27.6%27/%3E%3C/g%3E%3C/svg%3E"); --corner-tr: url("data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A//www.w3.org/2000/svg%27%20width%3D%2734%27%20height%3D%2734%27%20viewBox%3D%270%200%2034%2034%27%3E%3Cg%20transform%3D%27rotate%2890%2017%2017%29%27%20fill%3D%27none%27%20stroke%3D%27%23e8c766%27%20stroke-linecap%3D%27round%27%3E%3Cpath%20d%3D%27M3%2031V10Q3%203%2010%203H31%27%20stroke-width%3D%272%27/%3E%3Cpath%20d%3D%27M8%2031V13Q8%208%2013%208H31%27%20stroke-width%3D%27.8%27%20opacity%3D%27.7%27/%3E%3Cpath%20d%3D%27M13%2020q0-7%207-7q-4%203-2%207q-2-3-5%200z%27%20fill%3D%27%23e8c766%27%20stroke-width%3D%27.6%27/%3E%3Cpath%20d%3D%27M3%203l3.2%203.2%27%20stroke-width%3D%271.4%27/%3E%3Crect%20x%3D%271.2%27%20y%3D%271.2%27%20width%3D%274%27%20height%3D%274%27%20transform%3D%27rotate%2845%203.2%203.2%29%27%20fill%3D%27%23f7dc6f%27%20stroke%3D%27%237a5a12%27%20stroke-width%3D%27.6%27/%3E%3C/g%3E%3C/svg%3E"); --corner-br: url("data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A//www.w3.org/2000/svg%27%20width%3D%2734%27%20height%3D%2734%27%20viewBox%3D%270%200%2034%2034%27%3E%3Cg%20transform%3D%27rotate%28180%2017%2017%29%27%20fill%3D%27none%27%20stroke%3D%27%23e8c766%27%20stroke-linecap%3D%27round%27%3E%3Cpath%20d%3D%27M3%2031V10Q3%203%2010%203H31%27%20stroke-width%3D%272%27/%3E%3Cpath%20d%3D%27M8%2031V13Q8%208%2013%208H31%27%20stroke-width%3D%27.8%27%20opacity%3D%27.7%27/%3E%3Cpath%20d%3D%27M13%2020q0-7%207-7q-4%203-2%207q-2-3-5%200z%27%20fill%3D%27%23e8c766%27%20stroke-width%3D%27.6%27/%3E%3Cpath%20d%3D%27M3%203l3.2%203.2%27%20stroke-width%3D%271.4%27/%3E%3Crect%20x%3D%271.2%27%20y%3D%271.2%27%20width%3D%274%27%20height%3D%274%27%20transform%3D%27rotate%2845%203.2%203.2%29%27%20fill%3D%27%23f7dc6f%27%20stroke%3D%27%237a5a12%27%20stroke-width%3D%27.6%27/%3E%3C/g%3E%3C/svg%3E"); --corner-bl: url("data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A//www.w3.org/2000/svg%27%20width%3D%2734%27%20height%3D%2734%27%20viewBox%3D%270%200%2034%2034%27%3E%3Cg%20transform%3D%27rotate%28270%2017%2017%29%27%20fill%3D%27none%27%20stroke%3D%27%23e8c766%27%20stroke-linecap%3D%27round%27%3E%3Cpath%20d%3D%27M3%2031V10Q3%203%2010%203H31%27%20stroke-width%3D%272%27/%3E%3Cpath%20d%3D%27M8%2031V13Q8%208%2013%208H31%27%20stroke-width%3D%27.8%27%20opacity%3D%27.7%27/%3E%3Cpath%20d%3D%27M13%2020q0-7%207-7q-4%203-2%207q-2-3-5%200z%27%20fill%3D%27%23e8c766%27%20stroke-width%3D%27.6%27/%3E%3Cpath%20d%3D%27M3%203l3.2%203.2%27%20stroke-width%3D%271.4%27/%3E%3Crect%20x%3D%271.2%27%20y%3D%271.2%27%20width%3D%274%27%20height%3D%274%27%20transform%3D%27rotate%2845%203.2%203.2%29%27%20fill%3D%27%23f7dc6f%27%20stroke%3D%27%237a5a12%27%20stroke-width%3D%27.6%27/%3E%3C/g%3E%3C/svg%3E");
+  --divider: url("data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A//www.w3.org/2000/svg%27%20width%3D%27120%27%20height%3D%2710%27%20viewBox%3D%270%200%20120%2010%27%3E%3Cpath%20d%3D%27M0%205H50M70%205H120%27%20stroke%3D%27%23d4af37%27%20stroke-width%3D%271%27%20opacity%3D%27.8%27/%3E%3Cpath%20d%3D%27M60%201l4%204-4%204-4-4z%27%20fill%3D%27%23f7dc6f%27/%3E%3Cpath%20d%3D%27M50%205q3-3%206%200q-3%203-6%200M70%205q-3-3-6%200q3%203%206%200%27%20fill%3D%27%23d4af37%27/%3E%3C/svg%3E");
+}
+/* ---------- หน้าต่าง ---------- */
+.panel, .window {
+  background-color: var(--lac-2);
+  background-image: var(--corner-tl), var(--corner-tr), var(--corner-br), var(--corner-bl),
+    radial-gradient(120% 70% at 50% 0%, rgba(120,70,160,.28), transparent 60%),
+    repeating-linear-gradient(45deg, rgba(212,175,55,.025) 0 2px, transparent 2px 9px),
+    linear-gradient(180deg, var(--lac-1), var(--lac-2) 45%, var(--lac-3));
+  background-position: 3px 3px, calc(100% - 3px) 3px, calc(100% - 3px) calc(100% - 3px), 3px calc(100% - 3px), 0 0, 0 0, 0 0;
+  background-repeat: no-repeat, no-repeat, no-repeat, no-repeat, no-repeat, repeat, no-repeat;
+  border: 2px solid var(--gold); border-radius: 12px;
+  box-shadow: 0 0 0 1px #3b2410, 0 0 0 4px rgba(0,0,0,.55), inset 0 0 0 3px rgba(26,15,38,.9), inset 0 0 0 4px rgba(212,175,55,.35), 0 10px 30px rgba(0,0,0,.6);
+}
+.window { padding: .9em 1.15em 1em; scrollbar-width: thin; scrollbar-color: var(--gold) rgba(0,0,0,.3); animation: winIn .16s ease-out; }
+@keyframes winIn { from { opacity: 0; transform: translateX(-50%) translateY(6px) scale(.985); } to { opacity: 1; transform: translateX(-50%); } }
+.window::-webkit-scrollbar { width: 8px; }
+.window::-webkit-scrollbar-thumb { background: linear-gradient(#f3d98b, #9a7b1c); border-radius: 4px; }
+.window::-webkit-scrollbar-track { background: rgba(0,0,0,.3); }
+.window header {
+  position: sticky; top: -.9em; z-index: 3; margin: -.9em -1.15em .7em; padding: .55em 1.15em .6em;
+  background: linear-gradient(180deg, rgba(58,34,80,.98), rgba(30,17,44,.97)); border-bottom: none;
+  border-radius: 10px 10px 0 0;
+}
+.window header::after { content: ''; position: absolute; left: 8%; right: 8%; bottom: -5px; height: 10px; background: var(--divider) center / 100% 100% no-repeat; pointer-events: none; }
+.window header > :first-child, .window header h2, .window header h3, .window header b {
+  background: linear-gradient(180deg, #fff3c4, #f3d98b 45%, #c9a13a); -webkit-background-clip: text; background-clip: text; color: transparent;
+  text-shadow: none; font-weight: 600; letter-spacing: .02em; filter: drop-shadow(0 1px 0 rgba(0,0,0,.8));
+}
+.window h3, .window h4 { color: var(--gold-soft); border-left: 3px solid var(--gold); padding-left: .45em; margin: .7em 0 .4em; }
+.close { width: 1.7em; height: 1.7em; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; padding: 0;
+  background: radial-gradient(circle at 35% 30%, #d9463a, #7b1d17); border: 2px solid var(--gold) !important; color: #fff3c4 !important; font-size: .85em; box-shadow: 0 1px 3px rgba(0,0,0,.6); }
+.close:hover { filter: brightness(1.2); transform: rotate(90deg); transition: transform .15s; }
+
+/* ---------- ปุ่มในหน้าต่าง (ค่าเริ่มต้น = ปุ่มลงรักขอบทอง) ---------- */
+.window button:not(.close):not(.tv):not(.path-card):not(.hb-slot) {
+  font-family: inherit; color: #f6ecd9; cursor: pointer;
+  background: linear-gradient(180deg, #3e2856, #24163a); border: 1px solid var(--line-strong); border-radius: 6px;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.08), 0 1px 0 rgba(0,0,0,.6); transition: filter .1s, transform .06s;
+}
+.window button:not(.close):hover:not(:disabled) { filter: brightness(1.25); }
+.window button:not(.close):active:not(:disabled) { transform: translateY(1px); }
+.window button:disabled { opacity: .45; filter: grayscale(.6); cursor: default; }
+/* ปุ่มยืนยัน/ซื้อ/เรียน = แดงครั่ง */
+.window .btn.primary, .window [data-buy], .window [data-sa='ok'], .window .sk-up, .window [data-learn], .window [data-enh], .window [data-make], .window [data-cook], .window [data-brew], .window [data-accept], .window [data-claim] {
+  background: linear-gradient(180deg, var(--btn-red-1), var(--btn-red-2)) !important; color: #fff3c4 !important; border-color: var(--gold) !important;
+}
+/* ปุ่มเพิ่มค่า = เขียวหยก */
+.window .stat-row button, .window [data-learnmax], .window [data-st] { background: linear-gradient(180deg, var(--btn-grn-1), var(--btn-grn-2)) !important; color: #eafaf1 !important; border-color: rgba(171,235,198,.6) !important; }
+.window .stat-row button[data-st$='-'], .window [data-n='-1'] { background: linear-gradient(180deg, #7b241c, #4a1410) !important; }
+/* แท็บทุกแบบ */
+.tabs button, .sk-tabs button, .inv-tabs button, .qty-bar button, #shop-tabs button, .window [data-tab], .window [data-cat], .window [data-sktab] {
+  background: linear-gradient(180deg, #2a1b3a, #1a0f26) !important; color: #e8dcc0 !important; border: 1px solid var(--line) !important; border-radius: 7px 7px 3px 3px !important;
+}
+.tabs button.active, .sk-tabs button.active, .inv-tabs button.active, .qty-bar button.active, #shop-tabs button.active, .window [data-tab].active, .window [data-cat].active, .window [data-sktab].active {
+  background: linear-gradient(180deg, #fbe7a1, #d4ac0d) !important; color: #2a1b3a !important; border-color: #fff3c4 !important; font-weight: 600; box-shadow: 0 0 8px rgba(244,208,63,.4);
+}
+/* ช่องกรอก / ตัวเลือก */
+.window select, .window input[type=text], .window input[type=number], .window input:not([type]), .window textarea, #chat input, .auth-panel input, .create-panel input, .create-panel select {
+  font-family: inherit; color: var(--text); background: #120a1b; border: 1px solid var(--line-strong); border-radius: 6px; padding: .2em .45em; outline: none;
+}
+.window select:focus, .window input:focus, #chat input:focus { border-color: #fff3c4; box-shadow: 0 0 0 2px rgba(212,175,55,.25); }
+.window select option { background: #1a0f26; color: var(--text); }
+.window input[type=checkbox], .window input[type=range] { accent-color: #d4ac0d; }
+/* แถวรายการ/การ์ด */
+.item, .quest, .sk-card, .path-card, .tr-col, .set-group, .equip .eq, .wm-map, .tv { border-color: var(--line) !important; }
+.item { background: linear-gradient(90deg, rgba(42,27,58,.9), rgba(18,10,27,.9)); border: 1px solid rgba(212,175,55,.18); border-left: 3px solid rgba(212,175,55,.5); }
+.item:hover { border-left-color: var(--gold); background: linear-gradient(90deg, rgba(62,40,86,.95), rgba(24,14,36,.95)); }
+.set-group { background: rgba(18,10,27,.85); border: 1px solid var(--line); }
+.window kbd, .key { display: inline-block; min-width: 1.4em; text-align: center; padding: 0 .3em; border-radius: 4px; background: linear-gradient(#3e2856,#1a0f26); border: 1px solid var(--line-strong); color: #fff3c4; font-size: .85em; }
+
+/* ---------- HUD ให้เข้าชุด ---------- */
+.pf, .hud-right .zone, .minimap, .target, .party-frames .pm, .quest-track div, .fish-ui, .boss-bar, .prompt, .toast, #chat-log div, .player-menu {
+  border-color: var(--gold) !important;
+}
+.fish-ui { background: linear-gradient(180deg, rgba(20,34,52,.92), rgba(12,20,32,.92)) !important; box-shadow: 0 0 0 3px rgba(0,0,0,.45), inset 0 0 0 1px rgba(212,175,55,.3); }
+.boss-bar { border: 2px solid var(--gold) !important; background: linear-gradient(180deg, rgba(70,12,24,.94), rgba(28,6,14,.94)) !important; box-shadow: 0 0 0 3px rgba(0,0,0,.5), 0 0 16px rgba(231,76,60,.45) !important; }
+.boss-bar .bb-name b { color: #ffd6a0; text-shadow: 0 0 6px #c0392b; }
+.toast { background: linear-gradient(180deg, rgba(43,26,61,.95), rgba(18,10,27,.95)); box-shadow: 0 0 0 2px rgba(0,0,0,.45); }
+.prompt { background: linear-gradient(180deg, rgba(43,26,61,.92), rgba(18,10,27,.92)) !important; }
+#chat input { background: rgba(18,10,27,.85); }
+.expbar { border-top: 1px solid var(--line-strong); background: linear-gradient(180deg, #1a0f26, #0c0612); }
+.player-menu { background: linear-gradient(180deg, var(--lac-1), var(--lac-3)) !important; }
+.banner { background: linear-gradient(90deg, transparent, rgba(30,17,44,.92) 15%, rgba(30,17,44,.92) 85%, transparent) !important; border-top: 1px solid var(--gold); border-bottom: 1px solid var(--gold); }

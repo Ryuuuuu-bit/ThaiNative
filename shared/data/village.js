@@ -49,12 +49,16 @@ export const GATHER_MS = 1400;
 
 /** หีบสมบัติโบราณ: โผล่บนแพลตฟอร์มในป่าเป็นระยะ */
 export const CHEST = { everyMs: 150000, lifeMs: 100000 };
+/** ชุดแต่งตัวที่ดรอปจากหีบสมบัติ (ร้านไม่ขาย) */
+export const CHEST_COSTUMES = ['cos_head_peacockq', 'cos_head_jade', 'cos_head_asura', 'cos_face_skull', 'cos_back_bat'];
 export function rollChest(level, rnd = Math.random) {
   const items = [];
   const gold = Math.round((40 + rnd() * 120) * (1 + level / 6));
   if (rnd() < 0.35) items.push({ id: 'black_iron', qty: 1 });
   if (rnd() < 0.45) items.push({ id: ['herb_honey', 'herb_mushroom', 'herb_turmeric', 'herb_anchan'][Math.floor(rnd() * 4)], qty: 2 });
   if (rnd() < 0.08) items.push({ id: ['amulet_coin', 'amulet_ganesh', 'amulet_somdej', 'amulet_pidta'][Math.floor(rnd() * 4)], qty: 1 });
+  if (rnd() < 0.04) items.push({ id: 'yant_guard', qty: 1 });                       // ยันต์กันลดขั้น (หายาก)
+  if (rnd() < 0.03) items.push({ id: CHEST_COSTUMES[Math.floor(rnd() * CHEST_COSTUMES.length)], qty: 1 }); // ชุดแต่งตัวหายาก
   return { gold, items };
 }
 
@@ -79,10 +83,16 @@ export function dailyBounties(level, dayKey, name, monsters) {
 
 /** ตีบวกอุปกรณ์ (ลุงดำ) – บวกตามช่องสวมใส่ สูงสุด +10  ล้มเหลว = เสียของ ไม่ลดขั้น */
 export const ENHANCE = {
-  max: 10,
+  max: 20,
   cost: (lv) => Math.round(80 * Math.pow(lv + 1, 1.6)),      // lv = ขั้นปัจจุบัน
-  ore: (lv) => (lv < 3 ? 0 : lv < 6 ? 1 : lv < 8 ? 2 : 3),     // แร่เหล็กไหล
-  rate: (lv) => [1, 1, 0.95, 0.85, 0.75, 0.65, 0.55, 0.45, 0.38, 0.3][lv] ?? 0.3,
+  ore: (lv) => (lv < 3 ? 0 : lv < 6 ? 1 : lv < 8 ? 2 : lv < 10 ? 3 : lv < 15 ? 5 : 8),     // แร่เหล็กไหล
+  fang: (lv) => (lv >= 15 ? 1 : 0),                            // +15 ขึ้นไปต้องใช้เขี้ยวพญายักษ์ (ดรอปเรดบอส)
+  rate: (lv) => [1, 1, 0.95, 0.85, 0.75, 0.65, 0.55, 0.45, 0.38, 0.3,
+    0.25, 0.22, 0.19, 0.16, 0.14, 0.12, 0.1, 0.08, 0.07, 0.05][lv] ?? 0.05,
+  /** ตีพลาด: ต่ำกว่า +10 ขั้นไม่ลด · +10–14 ลด 1 · +15 ขึ้นไป ลด 1 (มีโอกาส 30% ลด 2) · ยันต์กันลดขั้นกันได้ */
+  drop: (lv, rng = Math.random) => (lv < 10 ? 0 : lv < 15 ? 1 : rng() < 0.3 ? 2 : 1),
+  /** ระดับออร่า (ใช้ขั้นสูงสุดของอุปกรณ์): 0 ไม่มี · 1 ฟ้า +7 · 2 ม่วง +10 · 3 ทอง +13 · 4 เพลิงแดง +16 · 5 รุ้ง +20 */
+  auraTier: (lv) => (lv >= 20 ? 5 : lv >= 16 ? 4 : lv >= 13 ? 3 : lv >= 10 ? 2 : lv >= 7 ? 1 : 0),
   // โบนัสต่อขั้น
   bonus: {
     weapon: (lv) => ({ atk: lv * 3, matk: lv * 3 }),

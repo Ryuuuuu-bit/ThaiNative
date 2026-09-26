@@ -3,6 +3,7 @@
 //  ใช้ "Snapshot Interpolation": เก็บตำแหน่งที่ได้จาก server ไว้ในบัฟเฟอร์
 //  แล้วแสดงผลย้อนหลัง NET.interpDelay ms เพื่อให้เคลื่อนที่ลื่นแม้ network กระตุก
 // ============================================================
+import { Aura } from '../gfx/Aura.js';
 import { NET } from '/shared/constants.js';
 import { bakeCharacter } from '../gfx/SpriteFactory.js';
 import { makeText } from '../systems/util.js';
@@ -20,8 +21,10 @@ export class RemotePlayer extends Phaser.GameObjects.Sprite {
 
     scene.add.existing(this);
     this.setOrigin(0.5, 1).setDepth(9).setAlpha(0.95);
-    this.nameTag = makeText(scene, info.x, info.y - this.height, info.name, { fontSize: '7px', color: '#aed6f1' }).setOrigin(0.5).setDepth(9);
+    this.nameTag = makeText(scene, info.x, info.y - this.height + (this.texture.customData?.padTop || 0), info.name, { fontSize: '7px', color: '#aed6f1' }).setOrigin(0.5).setDepth(9);
     this.hpBar = scene.add.rectangle(info.x, info.y - 40, 18, 2, 0xe59866).setDepth(9);
+    this.aura = new Aura(scene, this);
+    this.aura.setTier(info.appearance?.aura || 0);
     this.pushState(info);
     // คลิกที่ผู้เล่น → เมนูเชิญปาร์ตี้ / เทรด
     this.setInteractive({ useHandCursor: true, pixelPerfect: false });
@@ -42,12 +45,14 @@ export class RemotePlayer extends Phaser.GameObjects.Sprite {
   }
 
   setAppearance(appearance) {
+    this.aura.setTier(appearance?.aura || 0);
     this.texKey = bakeCharacter(this.scene, appearance);
     this.setTexture(this.texKey, 'idle_0');
     this.currentAnim = '';
   }
 
   update() {
+    this.aura.update(performance.now());
     const renderT = performance.now() - NET.interpDelay;
     const b = this.buffer;
     if (!b.length) return;
@@ -66,10 +71,11 @@ export class RemotePlayer extends Phaser.GameObjects.Sprite {
     this.setFlipX(latest.flipX);
     if (latest.anim !== this.currentAnim) {
       this.currentAnim = latest.anim;
-      this.play(`${this.texKey}:${latest.anim}`);
+      const k = `${this.texKey}:${latest.anim}`;
+      this.play(this.scene.anims.exists(k) ? k : `${this.texKey}:${latest.anim.startsWith('fish') ? 'idle' : 'attack'}`);
     }
-    this.nameTag.setPosition(this.x, this.y - this.height + 2);
-    this.hpBar.setPosition(this.x, this.y - this.height + 7);
+    this.nameTag.setPosition(this.x, this.y - this.height + (this.texture.customData?.padTop || 0) + 2);
+    this.hpBar.setPosition(this.x, this.y - this.height + (this.texture.customData?.padTop || 0) + 7);
     // เพื่อนร่วมปาร์ตี้: ชื่อสีเขียว + แถบ HP สีเขียว
     const ally = !!this.partyId && this.partyId === this.scene.social?.party?.id;
     if (ally !== this.isAlly) {
@@ -89,6 +95,7 @@ export class RemotePlayer extends Phaser.GameObjects.Sprite {
   destroy(fromScene) {
     this.nameTag?.destroy();
     this.hpBar?.destroy();
+    this.aura?.destroy();
     super.destroy(fromScene);
   }
 }

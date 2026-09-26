@@ -77,6 +77,8 @@ export function useItem(c, id) {
     return { ok: true, msg: `กิน${it.nameTh} อร่อย! ${it.buff.textTh} (${it.buff.minutes} นาที)`, ate: true };
   }
 
+  if (it.type === 'costume') return wearCostume(c, id);
+
   if (it.type === 'herb') return { ok: false, msg: `${it.nameTh}: ให้ยายติ๋มปรุงยา หรือป้าสาทำอาหาร` };
   if (it.type === 'fish') return { ok: false, msg: `${it.nameTh}: นำไปให้ป้าสาทำอาหาร หรือขายได้` };
 
@@ -111,6 +113,28 @@ export function equip(c, id) {
   c.hp = Math.min(c.hp, d.maxHp); c.mp = Math.min(c.mp, d.maxMp);
   const style = it.wtype ? ` · แนว${JOBS[c.appearance.job].nameTh}` : '';
   return { ok: true, msg: `สวมใส่ ${it.nameTh}${style}`, jobChanged: changed };
+}
+
+/** สวมชุดแต่งตัว (สลับกับชิ้นเดิมในช่องเดียวกัน) */
+export function wearCostume(c, id) {
+  if (tradeLock.on) return LOCKED;
+  const it = ITEMS[id];
+  c.costume = c.costume || {};
+  removeItem(c, id);
+  if (c.costume[it.slot]) addItem(c, c.costume[it.slot]);
+  c.costume[it.slot] = id;
+  syncAppearance(c);
+  return { ok: true, msg: `แต่งตัว: ${it.nameTh}`, jobChanged: true };
+}
+
+export function takeOffCostume(c, slot) {
+  if (tradeLock.on) return LOCKED;
+  const id = c.costume?.[slot];
+  if (!id) return { ok: false };
+  c.costume[slot] = null;
+  addItem(c, id);
+  syncAppearance(c);
+  return { ok: true, msg: `ถอด ${ITEMS[id].nameTh}`, jobChanged: true };
 }
 
 export function unequip(c, slot) {

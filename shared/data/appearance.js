@@ -74,9 +74,23 @@ export function sanitizeAppearance(a = {}) {
     weapon,
     armor: itemOf(a.armor, 'armor'),
     path: JOB_IDS.includes(a.path) ? a.path : null,
+    costume: sanitizeCostume(a.costume),
+    aura: Number.isInteger(a.aura) && a.aura >= 0 && a.aura <= 5 ? a.aura : 0,      // ออร่าตีบวก (0–5)
   };
 }
 
+export const COSTUME_SLOTS = ['head', 'face', 'back', 'outfit'];
+/** ชุดแต่งตัวที่ใส่ { head, face, back, outfit } – รับเฉพาะไอเทม costume ที่ช่องตรงกัน */
+export function sanitizeCostume(c = {}) {
+  const out = {};
+  for (const slot of COSTUME_SLOTS) {
+    const id = c?.[slot];
+    out[slot] = typeof id === 'string' && ITEMS[id]?.type === 'costume' && ITEMS[id].slot === slot ? id : null;
+  }
+  return out;
+}
+
 export function appearanceKey(a) {
-  return `chr_${a.gender[0]}${a.outfit}_${a.hair}_${a.face}_${a.weapon || a.job}_${a.armor || 'x'}`;
+  const cs = a.costume ? COSTUME_SLOTS.map((k) => a.costume[k] || '').join('.') : '';
+  return `chr_${a.gender[0]}${a.outfit}_${a.hair}_${a.face}_${a.weapon || a.job}_${a.armor || 'x'}_${cs}`;
 }

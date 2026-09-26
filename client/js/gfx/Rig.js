@@ -126,6 +126,11 @@ export function drawRig(ctx, rig, pose, footX, footY) {
     L.translate(W / 2, rig.hipY); L.rotate(p.lean); L.translate(-W / 2, -rig.hipY);
     drawWavy(L, rig.img, 0, 0, p.wave.t, p.wave.amp, p.wave.from, p.wave.freq);
   } else {
+    // ของสะพายหลัง (ปีก/ผ้าคลุม/ร่ม) อยู่หลังสุด ขยับตามลำตัว
+    if (p.backWear) {
+      L.save(); L.translate(W / 2, rig.hipY); L.rotate(p.lean); L.translate(-W / 2, -rig.hipY);
+      drawHeld(L, p.backWear); L.restore();
+    }
     const leg = (img, x, pivot, ang, lift, dark) => {
       L.save();
       L.translate(pivot, rig.hipY - lift); L.rotate(ang); L.translate(-pivot, -rig.hipY);
@@ -148,6 +153,7 @@ export function drawRig(ctx, rig, pose, footX, footY) {
       if (p.held) drawHeld(L, p.held);
       L.translate(W / 2, rig.neckY); L.rotate(p.head); L.translate(-W / 2, -rig.neckY);
       L.drawImage(rig.head, 0, (p.headDy || 0));
+      for (const w of p.headwear || []) drawHeld(L, { ...w, hy: w.hy + (p.headDy || 0) });   // หมวก/มงกุฎ/หน้ากาก ขยับตามหัว
       L.restore();
     }
   }
@@ -189,11 +195,58 @@ export const ANIM_SPEC = {
   die:    { frames: 6, rate: 9,  repeat: 0 },
 };
 
+// ท่าสกิลเรดบอส: w_* = ง้าง/ชาร์จ (ยาวเท่าเวลาเตือน แล้วค้างเฟรมสุดท้าย) · x_* = จังหวะปล่อยท่า
+export const BOSS_SPEC = {
+  w_slam: { frames: 4, rate: 4.4, repeat: 0 }, x_slam: { frames: 3, rate: 10, repeat: 0 },
+  w_wave: { frames: 4, rate: 5, repeat: 0 },   x_wave: { frames: 3, rate: 10, repeat: 0 },
+  w_roar: { frames: 4, rate: 3, repeat: 0 },   x_roar: { frames: 3, rate: 8, repeat: 0 },
+  w_rain: { frames: 4, rate: 3.6, repeat: 0 }, x_rain: { frames: 3, rate: 9, repeat: 0 },
+};
+const BOSS_POSES = {
+  // ท่าชาร์จ (w_) 4 เฟรม → ท่าปล่อย (x_) 3 เฟรม  (ค่ามุมเป็นเรเดียน · dx/dy เป็นพิกเซล)
+  w_slam: [{ lean: -0.15, sy: 0.97 }, { lean: -0.32, sy: 1.04, head: -0.15, dx: -3, back: 0.2, front: -0.15 }, { lean: -0.45, sy: 1.07, head: -0.22, dx: -6, back: 0.3, front: -0.2 },
+    { lean: -0.5, sy: 1.08, head: -0.25, dx: -7, back: 0.3, front: -0.2, tint: 'rgba(255,80,60,0.22)' }],
+  x_slam: [{ lean: 0.5, dx: 8, sy: 0.92, front: -0.4, back: 0.4, head: 0.2 }, { lean: 0.62, dx: 11, sy: 0.86, sx: 1.06, front: -0.45, back: 0.45, head: 0.25, tint: 'rgba(255,120,60,0.28)' }, { lean: 0.3, dx: 5, sy: 0.96, head: 0.1 }],
+  w_wave: [{ back: 0.15 }, { front: -0.6, frontLift: 12, lean: -0.15, dy: -1 }, { front: -0.85, frontLift: 22, lean: -0.25, dy: -3, head: -0.1 }, { front: -0.9, frontLift: 26, lean: -0.28, dy: -4, head: -0.12, tint: 'rgba(243,156,18,0.2)' }],
+  x_wave: [{ front: 0.15, sy: 0.88, lean: 0.15, dy: 3, head: 0.15 }, { sy: 0.93, lean: 0.08, dy: 1 }, {}],
+  w_roar: [{ head: -0.12, lean: -0.08 }, { head: -0.3, lean: -0.16, torsoSy: 1.05, dy: -1 }, { head: -0.42, lean: -0.24, torsoSy: 1.09, sx: 1.04, dy: -2 },
+    { head: -0.5, lean: -0.28, torsoSy: 1.11, sx: 1.06, dy: -3, tint: 'rgba(187,143,206,0.26)' }],
+  x_roar: [{ head: 0.22, lean: 0.22, sx: 1.12, sy: 0.95, dx: 3, dy: 2 }, { head: 0.14, lean: 0.14, sx: 1.07, dx: -3 }, { head: 0.05, lean: 0.06 }],
+  w_rain: [{ lean: -0.1, torsoSy: 1.02, head: -0.1 }, { lean: -0.22, torsoSy: 1.06, head: -0.28, dy: -3 }, { lean: -0.3, torsoSy: 1.1, head: -0.38, dy: -6, tint: 'rgba(231,76,60,0.2)' },
+    { lean: -0.34, torsoSy: 1.11, head: -0.42, dy: -8, tint: 'rgba(231,76,60,0.34)' }],
+  x_rain: [{ lean: 0.28, dy: 4, sy: 0.9, head: 0.2, front: -0.2, back: 0.2 }, { lean: 0.15, dy: 1, sy: 0.96, head: 0.1 }, {}],
+};
+const BOSS_FX_COLOR = { slam: '231,76,60', wave: '243,156,18', roar: '187,143,206', rain: '255,90,40' };
+/** เอฟเฟกต์ท่าบอส (วงชาร์จพลังที่เท้า / ลูกไฟเหนือหัว / คลื่นเสียง) */
+export function bossFx(ctx, anim, i, pose, footX, footY, rig) {
+  const type = anim.slice(2), rgb = BOSS_FX_COLOR[type];
+  if (!rgb) return;
+  ctx.save();
+  if (anim.startsWith('w_')) {
+    const k = (i + 1) / 4;
+    ctx.strokeStyle = `rgba(${rgb},${0.4 + k * 0.4})`; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.ellipse(footX, footY - 2, rig.W * (0.35 + k * 0.25), 4 + k * 3, 0, 0, Math.PI * 2); ctx.stroke();
+    if (type === 'rain' && i >= 2) {
+      const g = ctx.createRadialGradient(footX, footY - rig.H - 10, 0, footX, footY - rig.H - 10, 14 + i * 3);
+      g.addColorStop(0, 'rgba(255,230,150,0.95)'); g.addColorStop(0.5, `rgba(${rgb},0.7)`); g.addColorStop(1, `rgba(${rgb},0)`);
+      ctx.fillStyle = g; ctx.fillRect(footX - 30, footY - rig.H - 40, 60, 60);
+    }
+    if (type === 'roar' && i >= 2) for (let n = 0; n < 3; n++) {
+      ctx.strokeStyle = `rgba(${rgb},${0.7 - n * 0.2})`; ctx.beginPath(); ctx.arc(footX + rig.W * 0.3, footY - rig.H * 0.8, 10 + n * 8 + i * 2, -0.8, 0.8); ctx.stroke();
+    }
+  } else if (anim === 'x_slam' || anim === 'x_wave') {
+    ctx.strokeStyle = `rgba(${rgb},${0.9 - i * 0.3})`; ctx.lineWidth = 3;
+    ctx.beginPath(); ctx.ellipse(footX + (anim === 'x_slam' ? rig.W * 0.45 : 0), footY - 2, rig.W * (0.4 + i * 0.25), 5 + i * 2, 0, 0, Math.PI * 2); ctx.stroke();
+  }
+  ctx.restore();
+}
+
 /** คำนวณ pose ของมอนสเตอร์/ตัวละครตามประเภท
  *  kind: 'biped' | 'heavy' | 'quad' | 'float' | 'glide' | 'hop'
  *  cfg: { swing, waveFrom, waveAmp }
  */
 export function poseFor(kind, anim, i, cfg = {}) {
+  if (BOSS_POSES[anim]) return BOSS_POSES[anim][i] || {};
   const n = ANIM_SPEC[anim]?.frames || 1, t = i / n;
   const sw = cfg.swing ?? (kind === 'heavy' ? 0.28 : kind === 'quad' ? 0.35 : 0.42);
   const floaty = kind === 'float' || kind === 'glide';
@@ -236,7 +289,8 @@ export function bakeRigSheet(rig, kind, cfg = {}, spec = ANIM_SPEC, fx = null) {
   const padX = Math.max(10, Math.round(rig.W * 0.3)), padTop = floatPad(kind);
   const fw = rig.W + padX * 2, fh = rig.H + padTop + 3;
   const total = Object.values(spec).reduce((a, s) => a + s.frames, 0);
-  const sheet = canvas(fw * total, fh);
+  const perRow = Math.max(1, Math.min(total, Math.floor(4096 / fw)));          // ห่อหลายแถว (กัน texture กว้างเกิน GPU)
+  const sheet = canvas(fw * perRow, fh * Math.ceil(total / perRow));
   const frames = [];
   let col = 0;
   const footX = fw / 2, footY = fh - 2;
@@ -244,8 +298,9 @@ export function bakeRigSheet(rig, kind, cfg = {}, spec = ANIM_SPEC, fx = null) {
     for (let i = 0; i < s.frames; i++) {
       const ctx = sheet.ctx;
       ctx.save();
-      ctx.beginPath(); ctx.rect(col * fw, 0, fw, fh); ctx.clip();
-      ctx.translate(col * fw, 0);
+      const X = (col % perRow) * fw, Y = Math.floor(col / perRow) * fh;
+      ctx.beginPath(); ctx.rect(X, Y, fw, fh); ctx.clip();
+      ctx.translate(X, Y);
       if (anim === 'die') {
         drawDissolve(ctx, rig, i / (s.frames - 1), footX, footY - (kind === 'float' ? 3 : 0), 7 + i);
       } else {
@@ -255,7 +310,7 @@ export function bakeRigSheet(rig, kind, cfg = {}, spec = ANIM_SPEC, fx = null) {
       }
       if (kind !== 'float' || anim !== 'die') shadow(ctx, footX, fh - 1.5, rig.W * (kind === 'float' ? 0.25 : 0.35), kind === 'float' ? 0.18 : 0.3);
       ctx.restore();
-      frames.push({ name: `${anim}_${i}`, x: col * fw });
+      frames.push({ name: `${anim}_${i}`, x: X, y: Y });
       col++;
     }
   }
@@ -276,11 +331,12 @@ export const MONSTER_RIG = {
   pret:          { h: 92, kind: 'heavy', hip: 0.55, neck: 0.18, swing: 0.25 },
   saming:        { h: 30, kind: 'quad', hip: 0.6, neck: 0.02, swing: 0.35 },
   phi_ha:        { h: 46, kind: 'float', waveFrom: 0.05, waveAmp: 2.5, waveFreq: 0.5 },
-  phaya_yak:     { h: 132, kind: 'heavy', hip: 0.64, neck: 0.25, swing: 0.3 },
+  phaya_yak:     { h: 132, kind: 'heavy', hip: 0.64, neck: 0.25, swing: 0.3, bossAnims: true },
   npc_yai_tim:   { h: 42, kind: 'biped', hip: 0.72, neck: 0.3, swing: 0.2 },
   npc_lung_chai: { h: 47, kind: 'biped', hip: 0.7, neck: 0.3, swing: 0.2 },
   npc_lung_dam:  { h: 48, kind: 'biped', hip: 0.7, neck: 0.3, swing: 0.2 },
   npc_pa_sa:     { h: 44, kind: 'biped', hip: 0.72, neck: 0.3, swing: 0.2 },
+  npc_mae_choy:  { h: 43, kind: 'biped', hip: 0.72, neck: 0.3, swing: 0.2 },
   npc_phran_bun: { h: 46, kind: 'biped', hip: 0.7, neck: 0.3, swing: 0.2 },
   npc_maekha:    { h: 44, kind: 'biped', hip: 0.72, neck: 0.3, swing: 0.2 },
   // ---- ผีป่าช้า: ภาพ PixelLab ยังไม่มา → ใช้ภาพผีตัวอื่นย้อมสีเป็นตัวแทนชั่วคราว (fallback) ----

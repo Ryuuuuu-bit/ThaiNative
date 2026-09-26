@@ -15,6 +15,7 @@ export const STAT_INFO = {
 };
 
 export const POINTS_PER_LEVEL = 5;
+export const MAX_LEVEL = 30;           // เลเวลตัน
 
 export const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
 

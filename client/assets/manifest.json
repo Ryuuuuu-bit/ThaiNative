@@ -204,7 +204,14 @@
     "bg_r2": "assets/env/bg_r2.png",
     "bg_r3": "assets/env/bg_r3.png",
     "bg_r4": "assets/env/bg_r4.png",
-    "bg_r5": "assets/env/bg_r5.png"
+    "bg_r5": "assets/env/bg_r5.png",
+    "pr_scarecrow": "assets/env/pr_scarecrow.png",
+    "pr_hut": "assets/env/pr_hut.png",
+    "pr_banyan": "assets/env/pr_banyan.png",
+    "pr_grave": "assets/env/pr_grave.png",
+    "pr_spike": "assets/env/pr_spike.png",
+    "pr_pillar": "assets/env/pr_pillar.png",
+    "pr_reeds": "assets/env/pr_reeds.png"
   },
   "bosses": {
     "phaya_yak": {
@@ -252,7 +259,8 @@
     "npc_lung_chai": "assets/bases/npc_lung_chai.png",
     "npc_lung_dam": "assets/bases/npc_lung_dam.png",
     "npc_pa_sa": "assets/bases/npc_pa_sa.png",
-    "npc_phran_bun": "assets/bases/npc_phran_bun.png"
+    "npc_phran_bun": "assets/bases/npc_phran_bun.png",
+    "npc_mae_choy": "assets/bases/npc_mae_choy.png"
   },
   "players": {
     "archer_female": "assets/players/archer_female.png",
@@ -382,6 +390,33 @@
     "ui_menu_stats": "assets/icons/ui_menu_stats.png",
     "ui_mp": "assets/icons/ui_mp.png",
     "ui_sound": "assets/icons/ui_sound.png",
-    "ui_swords": "assets/icons/ui_swords.png"
+    "ui_swords": "assets/icons/ui_swords.png",
+    "it_cos_head_asura": "assets/icons/it_cos_head_asura.png",
+    "it_cos_head_bronze": "assets/icons/it_cos_head_bronze.png",
+    "it_cos_head_chada": "assets/icons/it_cos_head_chada.png",
+    "it_cos_head_devata": "assets/icons/it_cos_head_devata.png",
+    "it_cos_head_emerald": "assets/icons/it_cos_head_emerald.png",
+    "it_cos_head_emperor": "assets/icons/it_cos_head_emperor.png",
+    "it_cos_head_flower": "assets/icons/it_cos_head_flower.png",
+    "it_cos_head_gem": "assets/icons/it_cos_head_gem.png",
+    "it_cos_head_jade": "assets/icons/it_cos_head_jade.png",
+    "it_cos_head_malai": "assets/icons/it_cos_head_malai.png",
+    "it_cos_head_naga": "assets/icons/it_cos_head_naga.png",
+    "it_cos_head_nil": "assets/icons/it_cos_head_nil.png",
+    "it_cos_head_peacock": "assets/icons/it_cos_head_peacock.png",
+    "it_cos_head_peacockq": "assets/icons/it_cos_head_peacockq.png",
+    "it_cos_head_yakred": "assets/icons/it_cos_head_yakred.png",
+    "it_cos_head_yaksilver": "assets/icons/it_cos_head_yaksilver.png",
+    "it_cos_head_ngob": "assets/icons/it_cos_head_ngob.png",
+    "it_cos_head_hunter": "assets/icons/it_cos_head_hunter.png",
+    "it_cos_head_mongkol": "assets/icons/it_cos_head_mongkol.png",
+    "it_cos_head_lotus": "assets/icons/it_cos_head_lotus.png",
+    "it_cos_face_takhon": "assets/icons/it_cos_face_takhon.png",
+    "it_cos_face_khon": "assets/icons/it_cos_face_khon.png",
+    "it_cos_face_skull": "assets/icons/it_cos_face_skull.png",
+    "it_cos_back_umbrella": "assets/icons/it_cos_back_umbrella.png",
+    "it_cos_back_kinnari": "assets/icons/it_cos_back_kinnari.png",
+    "it_cos_back_bat": "assets/icons/it_cos_back_bat.png",
+    "it_cos_back_flag": "assets/icons/it_cos_back_flag.png"
   }
 }

@@ -58,6 +58,7 @@ export class World {
     for (const m of MAP_LIST) m.gates.forEach((g, i) => this.gate(m, g, i));
 
     // ฉากหลังของภาค (ซ้อนบนฉากหลังเดิม) + หมอก + อนุภาค
+    this.skyA = s.add.image(480, 270, '__DEFAULT').setScrollFactor(0).setDepth(-8.6).setAlpha(0);   // ท้องฟ้าประจำภาค
     this.bgA = s.add.tileSprite(480, 288, 480, 160, '__DEFAULT').setScrollFactor(0).setDepth(-8.4).setAlpha(0);
     this.fog = s.add.rectangle(480, 270, 480, 270, 0x000000, 0).setScrollFactor(0).setDepth(-7.9);
     this.ambient = s.add.particles(0, 0, 'particle', {
@@ -69,13 +70,36 @@ export class World {
 
   platform(x, y, w, R) {
     const s = this.scene, gy = WORLD.groundY;
-    const p = s.add.tileSprite(x, y, w, 8, 'tile_plank').setOrigin(0).setDepth(4);
-    if (R.id === 'r5') p.setTint(0x8d6e63); else if (R.id === 'r4') p.setTint(0xb0a0b8);
+    const tint = R.id === 'r5' ? 0xd9a48a : R.id === 'r4' ? 0xcbbcd8 : R.id === 'r2' ? 0xc9dccb : R.id === 'r3' ? 0xd8e6b8 : 0xffffff;
+    // ราว + พื้นสะพานไม้ไผ่ (ผิวที่เหยียบได้ = แถวที่ 13 ของภาพ)
+    const TOP = 13;
+    const p = s.add.tileSprite(x, y - TOP, w, 22, 'tile_bamboo').setOrigin(0).setDepth(4).setTint(tint);
     s.physics.add.existing(p, true);
+    p.body.setSize(w, 8).setOffset(0, TOP);
     p.body.checkCollision.down = p.body.checkCollision.left = p.body.checkCollision.right = false;
     s.platforms.add(p);
-    s.add.rectangle(x + 4, y + 8, 2, gy - y - 8, 0x3e2410).setOrigin(0).setDepth(3);
-    s.add.rectangle(x + w - 6, y + 8, 2, gy - y - 8, 0x3e2410).setOrigin(0).setDepth(3);
+    // เสาค้ำไม้ไผ่ + ค้ำยันเฉียง + โคมกระดาษ
+    for (const px of [x + 6, x + w - 12]) {
+      s.add.tileSprite(px, y + 6, 6, gy - y - 4, 'tile_bamboo_post').setOrigin(0).setDepth(3).setTint(tint);
+    }
+    const g = s.add.graphics().setDepth(3);
+    g.lineStyle(2, 0x8a6b3d, 1).lineBetween(x + 9, y + 26, x + 30, y + 8).lineBetween(x + w - 9, y + 26, x + w - 30, y + 8);
+    if (s.textures.exists('lantern')) {
+      const l = s.add.image(x + w / 2, y - 2, 'lantern').setOrigin(0.5, 1).setDepth(3.9).setScale(0.85);
+      s.tweens.add({ targets: l, angle: { from: -6, to: 6 }, duration: 1400 + (x % 500), yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
+    }
+  }
+
+  /** วางภาพประกอบฉาก (ถ้ามีภาพ) – คืน true เมื่อวางแล้ว */
+  prop(key, x, y, opt = {}) {
+    const s = this.scene;
+    if (!s.textures.exists(key)) return false;
+    const im = s.add.image(x, y, key).setOrigin(0.5, 1).setDepth(opt.depth ?? 1);
+    if (opt.scale) im.setScale(opt.scale);
+    if (opt.flip) im.setFlipX(true);
+    if (opt.tint) im.setTint(opt.tint);
+    if (opt.alpha) im.setAlpha(opt.alpha);
+    return true;
   }
 
   /** ของตกแต่งตามภาค (วาดด้วยโค้ด – เบาและต่อเนื่องกันทุกแมพ) */
@@ -93,6 +117,7 @@ export class World {
         front.fillStyle(c, 1).fillRect(x, gy - h, 1, h).fillRect(x + 2, gy - h + 2, 1, h - 2);
       }
       for (let x = X0 + 200; x < X1; x += 330 + rnd() * 100) {                   // หุ่นไล่กา
+        if (this.prop('pr_scarecrow', x, gy + 2, { flip: rnd() < 0.5, scale: 0.8 })) continue;
         g.fillStyle(0x6e4b2a).fillRect(x, gy - 34, 2, 34).fillRect(x - 9, gy - 26, 20, 2);
         g.fillStyle(0xd4ac0d).fillTriangle(x - 7, gy - 34, x + 9, gy - 34, x + 1, gy - 42);
         g.fillStyle(0xc0392b).fillRect(x - 4, gy - 30, 10, 8);
@@ -106,13 +131,17 @@ export class World {
         if (rnd() < 0.5) { g.fillStyle(0xf1948a, 1).fillCircle(x + w * 0.5, gy - 5, 2); g.fillStyle(0x229954).fillRect(x + w * 0.5, gy - 4, 1, 3); }
       }
       for (let x = X0; x < X1; x += 5 + rnd() * 9) front.fillStyle(0x4d7a5a, 1).fillRect(x, gy - 4 - rnd() * 8, 1, 12); // ต้นกก
+      for (let x = X0 + 80; x < X1; x += 140 + rnd() * 120) this.prop('pr_reeds', x, gy + 3, { flip: rnd() < 0.5, scale: 0.7 + rnd() * 0.3, depth: 0.9 });
       for (let x = X0 + 150; x < X1; x += 380 + rnd() * 120) {                   // เรือนร้างจมน้ำ
+        if (this.prop('pr_hut', x + 20, gy + 10, { flip: rnd() < 0.5, scale: 0.85 })) continue;
         g.fillStyle(0x4e3b2a).fillRect(x, gy - 40, 3, 40).fillRect(x + 36, gy - 34, 3, 34).fillRect(x - 4, gy - 42, 48, 4);
         g.fillStyle(0x3b2f2f).fillTriangle(x - 8, gy - 42, x + 26, gy - 62, x + 50, gy - 46);
       }
     } else if (R.decor === 'jungle') {
-      for (let x = X0; x < X1; x += 110 + rnd() * 90) {                          // ต้นไม้ใหญ่ + รากไทร
+      const hasBanyan = s.textures.exists('pr_banyan');
+      for (let x = X0; x < X1; x += (hasBanyan ? 210 : 110) + rnd() * 90) {        // ต้นไม้ใหญ่ + รากไทร
         const h = 90 + rnd() * 50;
+        if (this.prop('pr_banyan', x + 6, gy + 2, { flip: rnd() < 0.5, scale: 0.7 + rnd() * 0.3, depth: rnd() < 0.5 ? 0.8 : 1 })) continue;
         g.fillStyle(0x3e2723).fillRect(x, gy - h, 12, h);
         g.fillStyle(0x4e342e).fillTriangle(x - 10, gy, x, gy - 20, x + 2, gy).fillTriangle(x + 22, gy, x + 12, gy - 18, x + 10, gy);
         g.fillStyle(0x1e5631, 1).fillCircle(x + 6, gy - h, 26).fillCircle(x - 14, gy - h + 10, 18).fillCircle(x + 26, gy - h + 8, 20);
@@ -122,6 +151,7 @@ export class World {
     } else if (R.decor === 'grave') {
       for (let x = X0; x < X1; x += 60 + rnd() * 50) {
         const k = Math.floor(rnd() * 3);
+        if (s.textures.exists('pr_grave')) { if (k === 0 && x - (this.lastGrave || -9999) > 260) { this.lastGrave = x; this.prop('pr_grave', x + 30, gy + 2, { flip: rnd() < 0.5, scale: 0.75 + rnd() * 0.25 }); } continue; }
         if (k === 0) {                                                           // ป้ายหลุมศพ
           g.fillStyle(0x7f8c8d, 1).fillRect(x - 5, gy - 14, 10, 14).fillCircle(x, gy - 14, 5);
           g.fillStyle(0x566573, 1).fillRect(x - 3, gy - 12, 6, 1).fillRect(x - 3, gy - 9, 6, 1);
@@ -134,12 +164,15 @@ export class World {
       }
       for (let x = X0; x < X1; x += 9 + rnd() * 9) front.fillStyle(0x5b4a6b, 1).fillRect(x, gy - 3 - rnd() * 4, 1, 7);
     } else if (R.decor === 'cursed') {
-      for (let x = X0; x < X1; x += 70 + rnd() * 70) {                           // หินแหลมสีเลือด
+      const hasSpike = s.textures.exists('pr_spike');
+      for (let x = X0; x < X1; x += (hasSpike ? 150 : 70) + rnd() * 90) {          // หินแหลมสีเลือด
         const h = 14 + rnd() * 30;
+        if (this.prop('pr_spike', x, gy + 3, { flip: rnd() < 0.5, scale: 0.5 + rnd() * 0.45 })) continue;
         g.fillStyle(0x641e16, 1).fillTriangle(x - 10, gy, x + 10, gy, x + rnd() * 6 - 3, gy - h);
         g.fillStyle(0x7b241c, 1).fillTriangle(x - 4, gy, x + 14, gy, x + 8, gy - h * 0.6);
       }
       for (let x = X0 + 180; x < X1; x += 360 + rnd() * 100) {                   // เสาหินรูปยักษ์หัก
+        if (this.prop('pr_pillar', x + 7, gy + 2, { flip: rnd() < 0.5, scale: 1.2 })) continue;
         g.fillStyle(0x5d4037).fillRect(x, gy - 50, 14, 50).fillRect(x - 3, gy - 54, 20, 5);
         g.fillStyle(0x8e44ad, 0.6).fillCircle(x + 7, gy - 40, 3);
       }
@@ -234,13 +267,16 @@ export class World {
     if ((R?.id || null) === this.region) return;
     this.region = R?.id || null;
     if (!R) {                                             // หมู่บ้าน
-      s.tweens.add({ targets: this.bgA, alpha: 0, duration: 500 });
+      s.tweens.add({ targets: [this.bgA, this.skyA], alpha: 0, duration: 500 });
       this.fog.setFillStyle(0x000000, 0);
       this.ambient.stop();
       return;
     }
     const key = this.tileTexture(R.bg);
-    s.tweens.add({ targets: this.bgA, alpha: 0, duration: 250, onComplete: () => {
+    const sky = this.skyTexture(R);
+    s.tweens.add({ targets: [this.bgA, this.skyA], alpha: 0, duration: 250, onComplete: () => {
+      this.skyA.setTexture(sky).setDisplaySize(480, 270);
+      s.tweens.add({ targets: this.skyA, alpha: 1, duration: 500 });
       if (key) this.bgA.setTexture(key);
       const h = key ? s.textures.get(key).getSourceImage().height : 160;
       this.bgA.setSize(480, h).setPosition(480, 368 - h / 2);
@@ -256,6 +292,39 @@ export class World {
     this.ambient.start();
   }
 
+  /** ท้องฟ้าประจำภาค: ไล่สีตามบรรยากาศ + เมฆ/หมอก/ดาว/ประกายไฟ */
+  skyTexture(R) {
+    const s = this.scene, tk = `sky_${R.id}`;
+    if (s.textures.exists(tk)) return tk;
+    const SKY = {
+      r1: ['#e9a15a', '#f6cf9a', '#fbe8cf', 'rgba(255,245,220,.55)'],     // ทุ่งนายามเย็น
+      r2: ['#2e6f68', '#7fb3a8', '#c8e6dc', 'rgba(220,245,238,.45)'],     // บึงหมอกเขียว
+      r3: ['#1d5a3a', '#6fae86', '#c9e7c4', 'rgba(210,240,210,.4)'],      // ป่าดงดิบชื้น
+      r4: ['#2c1a47', '#6c4f8f', '#b39ddb', 'rgba(200,180,230,.35)'],     // ป่าช้าม่วงหม่น
+      r5: ['#3b0a0a', '#922b21', '#e67e22', 'rgba(255,170,120,.35)'],     // หุบเขาไฟ
+    }[R.id] || ['#5dade2', '#aed6f1', '#fdebd0', 'rgba(255,255,255,.6)'];
+    const c = document.createElement('canvas'); c.width = 480; c.height = 270;
+    const g = c.getContext('2d');
+    const grd = g.createLinearGradient(0, 0, 0, 270);
+    grd.addColorStop(0, SKY[0]); grd.addColorStop(0.55, SKY[1]); grd.addColorStop(1, SKY[2]);
+    g.fillStyle = grd; g.fillRect(0, 0, 480, 270);
+    let seed = R.no * 97;
+    const rnd = () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
+    if (R.id === 'r4' || R.id === 'r5') {                                  // ดาว/ประกายไฟ
+      for (let i = 0; i < 70; i++) { g.fillStyle = R.id === 'r4' ? `rgba(255,255,255,${0.3 + rnd() * 0.6})` : `rgba(255,${120 + rnd() * 100 | 0},60,${0.4 + rnd() * 0.5})`; g.fillRect(rnd() * 480 | 0, rnd() * 120 | 0, 1, 1); }
+    }
+    if (R.id === 'r4') { g.fillStyle = 'rgba(240,230,255,.9)'; g.beginPath(); g.arc(380, 46, 13, 0, 7); g.fill(); g.fillStyle = SKY[0]; g.beginPath(); g.arc(386, 42, 11, 0, 7); g.fill(); }
+    if (R.id === 'r1') { const sg = g.createRadialGradient(360, 120, 4, 360, 120, 70); sg.addColorStop(0, 'rgba(255,250,220,1)'); sg.addColorStop(0.2, 'rgba(255,220,140,.8)'); sg.addColorStop(1, 'rgba(255,200,120,0)'); g.fillStyle = sg; g.fillRect(260, 40, 200, 160); }
+    if (R.id === 'r5') { const sg = g.createRadialGradient(240, 200, 10, 240, 200, 200); sg.addColorStop(0, 'rgba(255,120,40,.35)'); sg.addColorStop(1, 'rgba(255,80,20,0)'); g.fillStyle = sg; g.fillRect(0, 0, 480, 270); }
+    g.fillStyle = SKY[3];                                                  // เมฆ/หมอกเป็นแถบ
+    for (let i = 0; i < 7; i++) {
+      const x = rnd() * 480, y = 30 + rnd() * 90, w = 50 + rnd() * 90;
+      g.beginPath(); g.ellipse(x, y, w / 2, 5 + rnd() * 4, 0, 0, 7); g.ellipse(x + w * 0.2, y - 5, w / 3, 6, 0, 0, 7); g.fill();
+    }
+    s.textures.addCanvas(tk, c);
+    return tk;
+  }
+
   /** ภาพฉากหลังของภาค: ต่อภาพ + ภาพกลับด้าน ให้ขอบซ้าย-ขวาต่อกันสนิทเวลาเลื่อนวน */
   tileTexture(key) {
     const s = this.scene, tk = `${key}_tile`;
@@ -268,6 +337,12 @@ export class World {
     g.imageSmoothingEnabled = false;
     g.drawImage(src, 0, 0);
     g.save(); g.translate(src.width * 2, 0); g.scale(-1, 1); g.drawImage(src, 0, 0); g.restore();
+    // ขอบบนค่อย ๆ จางหาย กลืนกับท้องฟ้า (ไม่เห็นเส้นตัดของภาพ)
+    const fade = Math.min(36, Math.round(src.height * 0.2));
+    g.globalCompositeOperation = 'destination-out';
+    const fg = g.createLinearGradient(0, 0, 0, fade);
+    fg.addColorStop(0, 'rgba(0,0,0,1)'); fg.addColorStop(1, 'rgba(0,0,0,0)');
+    g.fillStyle = fg; g.fillRect(0, 0, c.width, fade);
     s.textures.addCanvas(tk, c);
     return tk;
   }

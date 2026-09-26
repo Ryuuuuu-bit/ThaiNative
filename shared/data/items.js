@@ -39,6 +39,44 @@ export const ITEMS = {
   yak_statue:    { nameTh: 'ท้าวเวสสุวรรณ',      type: 'accessory', icon: '👹', price: 750, bonus: { STR: 4, def: 2 } },
   acc_yant_gold: { nameTh: 'ยันต์ทองพญายักษ์',  type: 'accessory', icon: '🏵️', sell: 400, bonus: { STR: 4, INT: 4, DEX: 3, hp: 80, def: 4 } },
 
+  // ---------- ชุดแต่งตัว (Costume) – แสดงบนตัวละคร ไม่มีค่าพลัง · slot: head / face / back / outfit ----------
+  cos_head_chada:    { nameTh: 'ชฎาทองคำ',          type: 'costume', slot: 'head', icon: '👑', price: 1200 },
+  cos_head_bronze:   { nameTh: 'ชฎาสำริดโบราณ',      type: 'costume', slot: 'head', icon: '👑', price: 900 },
+  cos_head_malai:    { nameTh: 'ชฎามาลัยดอกไม้',     type: 'costume', slot: 'head', icon: '👑', price: 1500 },
+  cos_head_emerald:  { nameTh: 'ชฎาทับทิมมรกต',      type: 'costume', slot: 'head', icon: '👑', price: 1500 },
+  cos_head_nil:      { nameTh: 'มงกุฎนิลกาฬ',        type: 'costume', slot: 'head', icon: '👑', price: 1800 },
+  cos_head_devata:   { nameTh: 'ชฎาเทวดา',           type: 'costume', slot: 'head', icon: '👑', price: 2000 },
+  cos_head_flower:   { nameTh: 'ชฎาทัดดอกจำปี',      type: 'costume', slot: 'head', icon: '👑', price: 2000 },
+  cos_head_gem:      { nameTh: 'ชฎาประดับพลอยนพเก้า', type: 'costume', slot: 'head', icon: '👑', price: 2600 },
+  cos_head_peacock:  { nameTh: 'มงกุฎขนนกยูง',        type: 'costume', slot: 'head', icon: '🦚', price: 3000 },
+  cos_head_yakred:   { nameTh: 'มงกุฎยักษ์แดง',       type: 'costume', slot: 'head', icon: '👹', price: 2800 },
+  cos_head_yaksilver:{ nameTh: 'มงกุฎยักษ์เงิน',       type: 'costume', slot: 'head', icon: '👹', price: 2800 },
+  cos_head_naga:     { nameTh: 'มงกุฎพญานาคหยก',      type: 'costume', slot: 'head', icon: '🐉', price: 3200 },
+  cos_head_peacockq: { nameTh: 'มงกุฎนางพญานกยูง',    type: 'costume', slot: 'head', icon: '🦚', sell: 500, rare: true },
+  cos_head_jade:     { nameTh: 'มงกุฎหยกทิพย์',       type: 'costume', slot: 'head', icon: '💚', sell: 500, rare: true },
+  cos_head_asura:    { nameTh: 'มงกุฎอสูรเงินเลือด',   type: 'costume', slot: 'head', icon: '👹', sell: 500, rare: true },
+  cos_head_emperor:  { nameTh: 'มงกุฎจักรพรรดิพญายักษ์', type: 'costume', slot: 'head', icon: '👑', sell: 1500, rare: true },
+  // ชุดทั้งตัว (เปลี่ยนสีเสื้อผ้า ทับสีชุดเกราะ)
+  // หมวก/เครื่องประดับหัว (ภาพ 64px → wear กำหนดจุดยึดเอง)
+  cos_head_ngob:     { nameTh: 'งอบชาวนา',            type: 'costume', slot: 'head', icon: '👒', price: 600,  wear: { g: [32, 44], s: 0.4, at: [0.47, 0.15] } },
+  cos_head_hunter:   { nameTh: 'หมวกนายพรานขนนก',      type: 'costume', slot: 'head', icon: '🤠', price: 700,  wear: { g: [32, 42], s: 0.4, at: [0.47, 0.14] } },
+  cos_head_mongkol:  { nameTh: 'มงคลนักมวย',           type: 'costume', slot: 'head', icon: '⭕', price: 500,  wear: { g: [32, 32], s: 0.38, at: [0.47, 0.16] } },
+  cos_head_lotus:    { nameTh: 'ปิ่นดอกบัวทัดหู',       type: 'costume', slot: 'head', icon: '🪷', price: 500,  wear: { g: [30, 50], s: 0.22, at: [0.38, 0.15] } },
+  // หน้ากาก
+  cos_face_takhon:   { nameTh: 'หน้ากากผีตาโขน',        type: 'costume', slot: 'face', icon: '🎭', price: 900,  wear: { g: [30, 30], s: 0.32, at: [0.6, 0.16] } },
+  cos_face_khon:     { nameTh: 'หัวโขนยักษ์เขียว',       type: 'costume', slot: 'face', icon: '👺', price: 1400, wear: { g: [32, 34], s: 0.4, at: [0.5, 0.12] } },
+  cos_face_skull:    { nameTh: 'หน้ากากกะโหลกผี',       type: 'costume', slot: 'face', icon: '💀', sell: 400, rare: true, wear: { g: [30, 32], s: 0.36, at: [0.52, 0.13] } },
+  // ของสะพายหลัง
+  cos_back_umbrella: { nameTh: 'ร่มบ่อสร้างสะพายหลัง',   type: 'costume', slot: 'back', icon: '🌂', price: 1100, wear: { g: [32, 32], s: 0.62, at: [0.3, 0.5], r: -0.55 } },
+  cos_back_kinnari:  { nameTh: 'ปีกกินรีขาวทอง',        type: 'costume', slot: 'back', icon: '🪽', price: 2400, wear: { g: [44, 40], s: 0.55, at: [0.36, 0.4] } },
+  cos_back_flag:     { nameTh: 'ธงยันต์ออกศึก',          type: 'costume', slot: 'back', icon: '🚩', price: 1600, wear: { g: [16, 56], s: 0.65, at: [0.26, 0.6] } },
+  cos_back_bat:      { nameTh: 'ค้างคาวผีเกาะหลัง',      type: 'costume', slot: 'back', icon: '🦇', sell: 500, rare: true, wear: { g: [30, 34], s: 0.52, at: [0.28, 0.36] } },
+  cos_outfit_royal:  { nameTh: 'ชุดไทยจักรีทองแดง',   type: 'costume', slot: 'outfit', icon: '👘', price: 1600, look: { top: '#f4d03f', bottom: '#922b21' } },
+  cos_outfit_kinnari:{ nameTh: 'ชุดกินรีขาวทอง',     type: 'costume', slot: 'outfit', icon: '👘', price: 1800, look: { top: '#fdfefe', bottom: '#d4ac0d' } },
+  cos_outfit_pob:    { nameTh: 'ชุดผีปอบม่วงดำ',      type: 'costume', slot: 'outfit', icon: '👘', price: 1400, look: { top: '#4a235a', bottom: '#1c1c1c' } },
+  cos_outfit_nakleng:{ nameTh: 'ชุดนักเลงโบราณ',      type: 'costume', slot: 'outfit', icon: '👘', price: 1200, look: { top: '#1b2631', bottom: '#7b241c' } },
+  cos_outfit_sky:    { nameTh: 'ชุดผ้าไหมฟ้าคราม',    type: 'costume', slot: 'outfit', icon: '👘', price: 1400, look: { top: '#2e86c1', bottom: '#1b4f72' } },
+
   // ---------- ล้างแต้ม / เปลี่ยนสายหลัก ----------
   reset_water:   { nameTh: 'น้ำมนต์ล้างแต้ม', type: 'reset', icon: '💧', price: 300, desc: 'คืนแต้มสถานะและแต้มสกิลทั้งหมดให้ลงใหม่' },
   skin_swordman: { nameTh: 'คัมภีร์เปลี่ยนสายหลัก: ขุนศึก',  type: 'skin', icon: '📜', price: 800, job: 'swordman' },
@@ -107,6 +145,7 @@ export const ITEMS = {
 
   // ---------- วัตถุดิบตีบวก (ลุงดำ) ----------
   black_iron:  { nameTh: 'แร่เหล็กไหล',       type: 'material', icon: '🪨', price: 60 },
+  yant_guard:  { nameTh: 'ยันต์กันลดขั้น',      type: 'material', icon: '🧧', price: 1500, desc: 'ติ๊กใช้ตอนตีบวก +10 ขึ้นไป · ตีพลาดขั้นไม่ลด (ใช้ครั้งละ 1)' },
 
   // ---------- ของถวายศาลพระภูมิ (กด F ที่ศาล) ----------
   garland:   { nameTh: 'พวงมาลัยดาวเรือง', type: 'offering', icon: '🌼', price: 30 },
@@ -135,8 +174,18 @@ export const SHOPS = {
     greeting: 'เหล็กดีต้องตีตอนร้อน! อยากได้อาวุธหรือจะตีบวกก็ว่ามา',
     stock: ['wood_sword', 'iron_dab', 'oak_staff', 'yant_staff', 'bamboo_bow', 'horn_bow', 'hand_wrap', 'mongkol',
       'yant_shirt', 'takrut', 'prajiad', 'amulet_coin', 'amulet_ganesh', 'amulet_somdej', 'amulet_pidta',
-      'kuman_statue', 'naga_statue', 'yak_statue', 'black_iron'],
+      'kuman_statue', 'naga_statue', 'yak_statue', 'black_iron', 'yant_guard'],
     tabs: ['buy', 'sell', 'enhance'],
+  },
+  tailor: {
+    nameTh: 'แม่ช้อย ร้านชุดไทยและเครื่องประดับ',
+    greeting: 'แต่งตัวให้สมศักดิ์ศรีนักปราบผีหน่อยลูก ผีเห็นยังต้องเกรงใจ!',
+    stock: ['cos_head_chada', 'cos_head_bronze', 'cos_head_malai', 'cos_head_emerald', 'cos_head_nil', 'cos_head_devata', 'cos_head_flower',
+      'cos_head_gem', 'cos_head_peacock', 'cos_head_yakred', 'cos_head_yaksilver', 'cos_head_naga',
+      'cos_head_ngob', 'cos_head_hunter', 'cos_head_mongkol', 'cos_head_lotus', 'cos_face_takhon', 'cos_face_khon',
+      'cos_back_umbrella', 'cos_back_kinnari', 'cos_back_flag',
+      'cos_outfit_royal', 'cos_outfit_kinnari', 'cos_outfit_pob', 'cos_outfit_nakleng', 'cos_outfit_sky'],
+    tabs: ['buy', 'sell'],
   },
   pa_sa: {
     nameTh: 'ป้าสา ครัวริมน้ำ',

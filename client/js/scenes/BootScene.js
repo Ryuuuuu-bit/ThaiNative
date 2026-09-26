@@ -31,7 +31,7 @@ export class BootScene extends Phaser.Scene {
     // ภาพต้นฉบับตัวละครผู้เล่น (ย้อมสี + สร้างท่าทางตอนสร้างตัวละคร)
     // ฉากเมือง: บ้านเรือนไทย วัด ศาลา แผงตลาด ฉากหลัง
     Object.entries(manifest.env || {}).forEach(([k, file]) => this.load.image(k, file));
-    Object.entries(manifest.icons || {}).filter(([k]) => /^it_(pla_|kung|junk|herb_)/.test(k) || ITEMS[k.slice(3)]?.type === 'weapon').forEach(([k, file]) => this.load.image(`ico_${k}`, file));
+    Object.entries(manifest.icons || {}).filter(([k]) => /^it_(pla_|kung|junk|herb_)/.test(k) || ['weapon', 'costume'].includes(ITEMS[k.slice(3)]?.type)).forEach(([k, file]) => this.load.image(`ico_${k}`, file));
     Object.entries(manifest.players || {}).forEach(([k, file]) => this.load.image(`pbase_${k}`, file));
 
     this.load.once('complete', () => {

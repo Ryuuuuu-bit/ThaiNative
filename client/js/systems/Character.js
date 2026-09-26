@@ -6,7 +6,7 @@ import { account } from '../net/Account.js';
 import { JOBS, VILLAGER, PATH_LV, SUB_CAP } from '/shared/data/classes.js';
 import { ITEMS, STARTING_GOLD, STARTING_ITEMS, STARTER_WEAPON } from '/shared/data/items.js';
 import { sanitizeAppearance } from '/shared/data/appearance.js';
-import { computeDerived, expToNext, POINTS_PER_LEVEL, STAT_KEYS } from '/shared/stats.js';
+import { computeDerived, expToNext, POINTS_PER_LEVEL, STAT_KEYS, MAX_LEVEL } from '/shared/stats.js';
 import { SKILL_SLOTS, SP_PER_LEVEL, START_SP, SKILL_BY_ID, canLearn } from '/shared/data/skills.js';
 
 const SAVE_KEY = 'thainative_save_v1';
@@ -46,7 +46,8 @@ export function newCharacter(name, appearance) {
 /** รูปลักษณ์ตามของที่สวม/สายหลัก (เรียกทุกครั้งที่เปลี่ยนอาวุธ/ชุด/สาย) → true ถ้าภาพเปลี่ยน */
 export function syncAppearance(c) {
   const before = JSON.stringify(c.appearance), oldStyle = c.appearance?.job;
-  c.appearance = sanitizeAppearance({ ...c.appearance, weapon: c.equipment.weapon, armor: c.equipment.armor, path: c.path });
+  const top = Math.max(0, ...Object.entries(c.enhance || {}).filter(([slot]) => c.equipment[slot]).map(([, v]) => v || 0));
+  c.appearance = sanitizeAppearance({ ...c.appearance, weapon: c.equipment.weapon, armor: c.equipment.armor, path: c.path, aura: ENHANCE.auraTier(top), costume: c.costume });
   if (oldStyle && oldStyle !== c.appearance.job) swapHotbar(c, oldStyle, c.appearance.job);
   return before !== JSON.stringify(c.appearance);
 }
@@ -91,15 +92,17 @@ export function getDerived(c) {
 
 /** ได้ EXP – คืนจำนวนเลเวลที่ขึ้น */
 export function gainExp(c, amount) {
+  if (c.level >= MAX_LEVEL) { c.exp = 0; return 0; }                 // เลเวลตัน
   c.exp += amount;
   let ups = 0;
-  while (c.exp >= expToNext(c.level)) {
+  while (c.level < MAX_LEVEL && c.exp >= expToNext(c.level)) {
     c.exp -= expToNext(c.level);
     c.level++;
     c.statPoints += POINTS_PER_LEVEL;
     c.sp = (c.sp || 0) + SP_PER_LEVEL;
     ups++;
   }
+  if (c.level >= MAX_LEVEL) c.exp = 0;
   if (ups) { const d = getDerived(c); c.hp = d.maxHp; c.mp = d.maxMp; } // ขึ้นเลเวลแล้วฟื้นเต็ม
   return ups;
 }
@@ -187,6 +190,7 @@ function migrate(c) {
   for (const k of SKILL_SLOTS) if (!(k in c.hotbar)) c.hotbar[k] = null;
   if (!c.equipment) c.equipment = { weapon: null, armor: null, accessory: null };
   if (!c.inventory) c.inventory = [];
+  if (!c.costume) c.costume = {};
   if (typeof c.sp !== 'number') {
     const spent = Object.values(c.skills).reduce((a, b) => a + b, 0);
     c.sp = Math.max(0, totalSp(c) - spent);

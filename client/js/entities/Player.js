@@ -3,12 +3,13 @@
 //  ▸ ระบบควบคุมการเคลื่อนไหว (เดิน / กระโดด / โจมตี)
 //  ▸ State machine ของ Animation: idle → walk → jump → attack → hit → dead
 // ============================================================
+import { Aura } from '../gfx/Aura.js';
 import { WORLD } from '/shared/constants.js';
 import { JOBS } from '/shared/data/classes.js';
 import { bakeCharacter } from '../gfx/SpriteFactory.js';
 import { getDerived } from '../systems/Character.js';
 import { makeText } from '../systems/util.js';
-import { STRIKE_FRAME } from '../gfx/PlayerArt.js';
+import { STRIKE_FRAME, STRIKE_ANIMS, skillAnim } from '../gfx/PlayerArt.js';
 import { combineBlessings } from '/shared/data/blessings.js';
 import { SKILL_BY_ID, skillStats } from '/shared/data/skills.js';
 
@@ -39,6 +40,8 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     this.dashing = false;
 
     this.nameTag = makeText(scene, x, y - this.height - 2, char.name, { fontSize: '7px', color: '#f3d98b' }).setOrigin(0.5).setDepth(11);
+    this.aura = new Aura(scene, this);                   // ออร่าตีบวก
+    this.aura.setTier(char.appearance.aura || 0);
 
     // เมื่อจบท่าโจมตี/โดนตี → กลับสู่สถานะปกติ
     this.on(EV.ANIMATION_COMPLETE, (anim) => {
@@ -48,7 +51,7 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     this.on(EV.ANIMATION_UPDATE, (anim, frame) => {
       // ฝุ่นตอนเท้าแตะพื้น (เฟรม 4 และ 8 ของวงจรเดิน)
       if (anim.key.endsWith(':walk') && (frame.index === 4 || frame.index === 8) && this.body.blocked.down) scene.combat?.dust(this.x - this.facing * 3, this.y, 3);
-      if (anim.key.endsWith(':attack') && frame.index === (STRIKE_FRAME[anim.frames.length] || 3)) {
+      if (STRIKE_ANIMS.has(anim.key.split(':').pop()) && frame.index === (STRIKE_FRAME[anim.frames.length] || 3)) {
         scene.combat.playerStrike(this, this.pendingSkill);
         this.pendingSkill = null;
       }
@@ -58,12 +61,14 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
 
   /** hitbox กว้าง 14 สูง ~80% ของตัว ชิดเท้า – คำนวณจากขนาดเฟรม (รองรับภาพทุกขนาด) */
   fitBody() {
-    const fw = this.frame.width, fh = this.frame.height;
+    const fw = this.frame.width, fh = this.frame.height - this.padTop;
     const h = Math.round(fh * 0.72), w = 14;
     this.body.setSize(w, h).setOffset(Math.round((fw - w) / 2), fh - h - 1);
   }
 
   get job() { return JOBS[this.char.appearance.job]; }
+  /** ที่ว่างด้านบนเฟรม (ภาพ PixelLab เว้นไว้ให้ท่ากระโดด/ชูแขน) */
+  get padTop() { return this.texture?.customData?.padTop || 0; }
   get derived() { return getDerived(this.char); }
 
   /** ค่าสถานะรวมบัฟ (ใช้ตอนคำนวณดาเมจ) */
@@ -92,6 +97,8 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
 
   /** เล่น animation ตามชื่อท่า (ไม่เริ่มใหม่ถ้ากำลังเล่นท่าเดิมอยู่) */
   playAnim(name, restart = false) {
+    if (!this.scene.anims.exists(`${this.texKey}:${name}`)) name = name.startsWith('fish') ? 'idle' : 'attack';   // ภาพแบบเก่าไม่มีท่าใหม่
+    this.animName = name;
     this.play(`${this.texKey}:${name}`, !restart);
   }
 
@@ -102,7 +109,8 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
    *   ← → เดิน | ↑ กระโดด | Space โจมตีปกติ | Q W E R สกิล
    */
   update(time, input) {
-    this.nameTag.setPosition(this.x, this.y - this.height + 2);
+    this.nameTag.setPosition(this.x, this.y - this.height + this.padTop + 2);
+    this.aura.update(time);
     if (this.state === 'dead' || this.dashing) return;
 
     const onFloor = this.body.blocked.down || this.body.touching.down;
@@ -132,8 +140,15 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     if (!locked && this.queued && time < this.queued.until) { const k = this.queued.key; this.queued = null; this.trySkill(time, k); }
     else if (!locked && input.attack) this.tryAttack(time);
 
+    // ---------- ตกปลา: ท่าเหวี่ยงเบ็ด / ถือเบ็ด / ดึงเบ็ด ----------
+    const f = this.scene.village?.fish;
+    if (f && this.state !== 'hit') {
+      this.state = 'fish';
+      this.playAnim(this.scene.time.now - f.t0 < 520 ? 'fish_cast' : f.stage === 'wait' ? 'fish_idle' : 'fish_reel');
+    } else if (this.state === 'fish') this.state = 'idle';
+
     // ---------- เลือก Animation ตามสถานะ ----------
-    if (this.state !== 'attack' && this.state !== 'hit') {
+    if (this.state !== 'attack' && this.state !== 'hit' && this.state !== 'fish') {
       this.state = !onFloor ? 'jump' : vx !== 0 ? 'walk' : 'idle';
       this.playAnim(this.state);
     }
@@ -190,11 +205,11 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     this.scene.net?.sendSkill(sk, this);   // แจ้ง server → ผู้เล่นอื่นเห็น VFX
 
     // บัฟ / พุ่ง ทำงานทันที  ส่วนสกิลโจมตีรอเฟรมที่ 3 ของท่าโจมตี
-    if (sk.type === 'buff') { this.scene.combat.castBuff(this, sk); return; }
+    if (sk.type === 'buff') { this.state = 'attack'; this.playAnim('buff', true); this.scene.combat.castBuff(this, sk); return; }
     if (sk.type === 'dash') { this.scene.combat.castDash(this, sk); return; }
     this.pendingSkill = sk;
     this.state = 'attack';
-    this.playAnim('attack', true);
+    this.playAnim(skillAnim(sk), true);             // ท่าเฉพาะสกิล (ร่ายเวท/ง้างธนู/หมุนฟัน/เตะ/ทุ่ม)
   }
 
 
@@ -243,6 +258,7 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
 
   /** เปลี่ยนชุด/อาชีพ → สร้าง spritesheet ใหม่แล้วสลับ texture */
   refreshAppearance() {
+    this.aura.setTier(this.char.appearance.aura || 0);
     this.texKey = bakeCharacter(this.scene, this.char.appearance);
     this.setTexture(this.texKey, 'idle_0');
     this.fitBody();
@@ -253,7 +269,7 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
   netState() {
     return {
       x: Math.round(this.x), y: Math.round(this.y),
-      anim: this.state === 'dead' ? 'die' : this.state,
+      anim: this.state === 'dead' ? 'die' : this.state === 'attack' || this.state === 'fish' ? this.animName || this.state : this.state,
       flipX: this.flipX, hp: this.char.hp, maxHp: this.derived.maxHp, level: this.char.level,
     };
   }

@@ -36,6 +36,7 @@ const NPCS = [
   { id: 'shop',  key: 'npc_yai_tim',   x: NPC_X, nameTh: 'ยายติ๋ม', role: 'ร้านยา·ของใช้', color: '#82e0aa', tint: 0xd7bde2, flip: true },
   { id: 'quest', key: 'npc_lung_chai', x: 520,   nameTh: 'ผู้ใหญ่ชัย', role: 'เควส', color: '#f7dc6f', tint: 0xf0b27a },
   { id: 'smith', key: 'npc_lung_dam',  x: 846,   nameTh: 'ลุงดำ', role: 'ช่างตีเหล็ก', color: '#f5b041', tint: 0x7f8c8d, flip: true },
+  { id: 'tailor', key: 'npc_mae_choy', x: 380,   nameTh: 'แม่ช้อย', role: 'ร้านชุดแต่งตัว', color: '#f5b7b1', tint: 0xf5b7b1, flip: true },
   { id: 'cook',  key: 'npc_pa_sa',     x: -300,  nameTh: 'ป้าสา', role: 'ครัว·รับซื้อปลา', color: '#85c1e9', tint: 0xf5cba7, flip: true },
 ];
 const SPAWN_X = WORLD.spawnX;
@@ -336,6 +337,7 @@ export class GameScene extends Phaser.Scene {
       this.ui.openShop('mae_kha');
     } else if (spot.id === 'smith') this.ui.openShop('lung_dam');
     else if (spot.id === 'cook') this.ui.openShop('pa_sa');
+    else if (spot.id === 'tailor') this.ui.openShop('tailor');
     else if (spot.id === 'quest') this.village.openQuests();
     else if (spot.id === 'fish') this.village.startFishing();
     else if (spot.id === 'warp') this.world.useGate();

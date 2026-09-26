@@ -7,8 +7,8 @@ import { MONSTER_ANIMS, drawMonsterFrame } from './MonsterArt.js';
 import { MONSTERS } from '/shared/data/monsters.js';
 import { JOBS } from '/shared/data/classes.js';
 import { appearanceKey } from '/shared/data/appearance.js';
-import { baseKey, legacyBaseKey, heldInfo, recolorBase, drawPlayerFrame, frameSize, PLAYER_ANIMS } from './PlayerArt.js';
-import { buildRig, trimImage, bakeRigSheet, ANIM_SPEC } from './Rig.js';
+import { baseKey, legacyBaseKey, heldInfo, wearInfo, recolorBase, drawPlayerFrame, frameSize, PLAYER_ANIMS, PLAYER_PAD_TOP } from './PlayerArt.js';
+import { buildRig, trimImage, bakeRigSheet, ANIM_SPEC, BOSS_SPEC, bossFx } from './Rig.js';
 
 function makeCanvas(w, h) {
   const c = document.createElement('canvas');
@@ -27,22 +27,24 @@ function px(ctx, x, y, w, h, col) { ctx.fillStyle = col; ctx.fillRect(Math.round
 function bakeSheet(scene, key, fw, fh, animSpec, drawFrame) {
   if (scene.textures.exists(key)) return key;
   const total = Object.values(animSpec).reduce((s, a) => s + a.frames, 0);
-  const { c, ctx } = makeCanvas(fw * total, fh);
+  const perRow = Math.max(1, Math.min(total, Math.floor(4096 / fw)));          // ห่อเป็นหลายแถว (กัน texture กว้างเกิน GPU)
+  const { c, ctx } = makeCanvas(fw * perRow, fh * Math.ceil(total / perRow));
   const layout = [];
   let col = 0;
   for (const [anim, spec] of Object.entries(animSpec)) {
     for (let i = 0; i < spec.frames; i++) {
+      const x = (col % perRow) * fw, y = Math.floor(col / perRow) * fh;
       ctx.save();
-      ctx.translate(col * fw, 0);
+      ctx.translate(x, y);
       ctx.beginPath(); ctx.rect(0, 0, fw, fh); ctx.clip();
       drawFrame(ctx, anim, i);
       ctx.restore();
-      layout.push({ name: `${anim}_${i}`, x: col * fw });
+      layout.push({ name: `${anim}_${i}`, x, y });
       col++;
     }
   }
   const tex = scene.textures.addCanvas(key, c);
-  layout.forEach((f) => tex.add(f.name, 0, f.x, 0, fw, fh));
+  layout.forEach((f) => tex.add(f.name, 0, f.x, f.y, fw, fh));
 
   for (const [anim, spec] of Object.entries(animSpec)) {
     scene.anims.create({
@@ -76,7 +78,10 @@ export function bakeCharacter(scene, appearance) {
     const ik = `ico_it_${appearance.weapon}`;
     const held = legacy ? null : heldInfo(appearance, scene.textures.exists(ik) ? scene.textures.get(ik).getSourceImage() : null);
     const { FW: pw, FH: ph } = frameSize(base);
-    return bakeSheet(scene, key, pw, ph, PLAYER_ANIMS, (ctx, anim, i) => drawPlayerFrame(ctx, base, anim, i, weapon, pw, ph, held));
+    const wear = legacy ? null : wearInfo(appearance, (k) => (scene.textures.exists(k) ? scene.textures.get(k).getSourceImage() : null));
+    bakeSheet(scene, key, pw, ph, PLAYER_ANIMS, (ctx, anim, i) => drawPlayerFrame(ctx, base, anim, i, weapon, pw, ph, held, wear));
+    scene.textures.get(key).customData.padTop = PLAYER_PAD_TOP;          // เว้นที่ด้านบนเฟรม (ท่ากระโดด/ชูแขน)
+    return key;
   }
 
   // ▸ ไม่มีภาพ → วาดด้วยโค้ด (paper-doll)
@@ -276,6 +281,23 @@ function bakeEnvironment(scene) {
   px(ctx, 0, 0, 16, 8, '#8b5a2b'); px(ctx, 0, 0, 16, 2, '#b07a45'); px(ctx, 0, 7, 16, 1, '#5b3a1b'); px(ctx, 7, 2, 1, 5, '#6e4520');
   scene.textures.addCanvas('tile_plank', t.c);
 
+  // สะพานไม้ไผ่ (แพลตฟอร์มในแมพล่าผี): ลำไผ่ 2 ชั้น + เชือกมัด + ราวไม้ไผ่บาง ๆ ด้านหลัง
+  t = makeCanvas(24, 22); ctx = t.ctx;
+  px(ctx, 0, 0, 24, 22, 'rgba(0,0,0,0)');
+  px(ctx, 2, 1, 1, 12, '#8a6b3d'); px(ctx, 14, 1, 1, 12, '#8a6b3d');                 // เสาราวหลัง
+  px(ctx, 0, 3, 24, 1, '#a88652'); px(ctx, 0, 4, 24, 1, '#6f5330');                 // ราวบน
+  px(ctx, 0, 8, 24, 1, '#a88652'); px(ctx, 0, 9, 24, 1, '#6f5330');                 // ราวกลาง
+  px(ctx, 0, 13, 24, 3, '#d9b978'); px(ctx, 0, 16, 24, 1, '#b3924f'); px(ctx, 0, 17, 24, 2, '#8a6b3d'); px(ctx, 0, 19, 24, 1, '#5b4324'); // ลำไผ่ชั้นบน
+  for (const x of [5, 17]) { px(ctx, x, 13, 1, 7, '#6f5330'); px(ctx, x + 1, 13, 1, 7, '#e8d09a'); }  // ข้อไผ่
+  for (const x of [10, 22]) { px(ctx, x, 12, 2, 9, '#a04a2a'); px(ctx, x, 14, 2, 1, '#d97a4a'); }    // เชือกแดงมัด
+  px(ctx, 0, 20, 24, 2, '#3e2c15');                                                   // เงาใต้พื้น
+  scene.textures.addCanvas('tile_bamboo', t.c);
+
+  // เสาค้ำไม้ไผ่ (ต่อภาพแนวตั้ง)
+  t = makeCanvas(6, 16); ctx = t.ctx;
+  px(ctx, 0, 0, 6, 16, '#7a5a30'); px(ctx, 1, 0, 2, 16, '#a88652'); px(ctx, 0, 6, 6, 2, '#4d3518'); px(ctx, 0, 7, 6, 1, '#c9a76a');
+  scene.textures.addCanvas('tile_bamboo_post', t.c);
+
   // เรือนไทยใต้ถุนสูง
   t = makeCanvas(96, 84); ctx = t.ctx;
   for (const x of [10, 30, 62, 84]) px(ctx, x, 50, 4, 34, '#5b3a1b');        // เสาใต้ถุน
@@ -353,16 +375,17 @@ export function generateAll(scene) {
 // ------------------------------------------------------------
 export function bakeRigMonster(scene, key, srcImg, cfg) {
   const rig = buildRig(trimImage(srcImg), cfg);
-  const sheet = bakeRigSheet(rig, cfg.kind, cfg);
+  const SPEC = cfg.bossAnims ? { ...ANIM_SPEC, ...BOSS_SPEC } : ANIM_SPEC;       // เรดบอส: ท่าชาร์จ/ปล่อยสกิลเพิ่ม
+  const sheet = bakeRigSheet(rig, cfg.kind, cfg, SPEC, cfg.bossAnims ? (ctx, anim, i, pose, fx, fy) => bossFx(ctx, anim, i, pose, fx, fy, rig) : null);
   if (scene.textures.exists(key)) scene.textures.remove(key);
-  for (const anim of Object.keys(ANIM_SPEC)) if (scene.anims.exists(`${key}:${anim}`)) scene.anims.remove(`${key}:${anim}`);
+  for (const anim of Object.keys(SPEC)) if (scene.anims.exists(`${key}:${anim}`)) scene.anims.remove(`${key}:${anim}`);
   const tex = scene.textures.addCanvas(key, sheet.canvas);
-  sheet.frames.forEach((f) => tex.add(f.name, 0, f.x, 0, sheet.fw, sheet.fh));
-  for (const [anim, spec] of Object.entries(ANIM_SPEC)) {
+  sheet.frames.forEach((f) => tex.add(f.name, 0, f.x, f.y, sheet.fw, sheet.fh));
+  for (const [anim, spec] of Object.entries(SPEC)) {
     scene.anims.create({
       key: `${key}:${anim}`,
       frames: Array.from({ length: spec.frames }, (_, i) => ({ key, frame: `${anim}_${i}` })),
-      frameRate: cfg.kind === 'heavy' ? Math.round(spec.rate * 0.8) : spec.rate,
+      frameRate: cfg.kind === 'heavy' && !BOSS_SPEC[anim] ? Math.round(spec.rate * 0.8) : spec.rate,   // ท่าบอสตรงกับเวลาเตือนของ server
       repeat: spec.repeat,
     });
   }

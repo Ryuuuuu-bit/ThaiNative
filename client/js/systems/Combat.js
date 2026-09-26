@@ -227,7 +227,7 @@ export class Combat {
     const stats = player.combatStats();
     player.dashing = true;
     player.state = 'attack';
-    player.playAnim(sk.leap ? 'jump' : 'attack', true);
+    player.playAnim(sk.leap ? 'slam' : 'dash', true);
     player.body.setAllowGravity(false);
     player.setVelocity(0, 0);
 

@@ -47,6 +47,8 @@ function publicPlayer(p) {
 }
 
 const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
+/** ท่าที่ client ส่งมาได้ (ผู้เล่นอื่นเห็นท่าสกิล/ตกปลาด้วย) */
+const ANIMS = ['idle', 'walk', 'attack', 'hit', 'die', 'jump', 'cast', 'shoot', 'spin', 'kick', 'dash', 'buff', 'slam', 'fish_cast', 'fish_idle', 'fish_reel'];
 /** ตำแหน่งเริ่มตอน join: ต่อใหม่ระหว่างเล่น → ใช้ตำแหน่งเดิม (บีบให้อยู่ในแมพนั้น) */
 function startPos(d) {
   if (!Number.isFinite(d.x) || !Number.isFinite(d.y)) return {};
@@ -101,7 +103,7 @@ io.on('connection', (socket) => {
     p.x = clamp(p.x + clamp(nx - p.x, -maxStep, maxStep), map.minX, map.maxX);
     p.y += clamp(ny - p.y, -maxStep * 2, maxStep * 2);
 
-    p.anim = ['idle', 'walk', 'attack', 'hit', 'die', 'jump'].includes(s.anim) ? s.anim : 'idle';
+    p.anim = ANIMS.includes(s.anim) ? s.anim : 'idle';
     p.flipX = !!s.flipX;
     p.hp = clamp(Number(s.hp) || 0, 0, 99999);
     p.maxHp = clamp(Number(s.maxHp) || 1, 1, 99999);

@@ -318,8 +318,9 @@ export class Social {
 
   onBossAttack(a) {
     const s = this.scene, gy = WORLD.groundY, boss = s.boss;
-    boss?.windup();
+    boss?.windup(a.type);
     const near = Math.abs(this.player.x - a.x) < 500;
+    if (near) this.showBossWarn(a);
     if (near) s.sfx.play(a.type === 'roar' ? 'bossRoar' : 'bossWarn');
     const T = (o) => { this.telegraph(o); s.tweens.add({ targets: o, alpha: { from: 0.15, to: 0.5 }, duration: 220, yoyo: true, repeat: -1 }); return o; };
     if (a.type === 'slam') {
@@ -332,12 +333,30 @@ export class Social {
     } else if (a.type === 'rain') {
       for (const x of a.spots) T(s.add.ellipse(x, gy - 1, 44, 8, 0xe74c3c, 0.4).setDepth(6));
     }
-    if (near) this.ui.toast(`👹 ${RB.attacks[a.type].nameTh}!`, 'warn');
   }
+
+  /** แถบเตือนสกิลบอส: ชื่อท่า + วิธีหลบ + นับถอยหลังถึงดาเมจลง */
+  showBossWarn(a) {
+    const HINT = { slam: '⬅ ถอยออกจากด้านหน้าบอส', wave: '⬆ กระโดดข้ามคลื่น!', roar: '↔ ออกห่างจากบอส', rain: '⚠ หลบวงแดง!' };
+    const el = $('#boss-warn'), fill = $('#bw-fill'), edge = $('#boss-edge');
+    if (!el) return;
+    $('#bw-name').textContent = `👹 ${RB.attacks[a.type]?.nameTh || ''}${a.enraged ? ' (คลั่ง)' : ''}`;
+    $('#bw-hint').textContent = HINT[a.type] || '';
+    el.className = `boss-warn ${a.type}`;
+    fill.style.transition = 'none'; fill.style.transform = 'scaleX(1)';
+    void fill.offsetWidth;
+    fill.style.transition = `transform ${a.windup || 900}ms linear`; fill.style.transform = 'scaleX(0)';
+    edge.classList.add('on');
+    clearTimeout(this.warnT);
+    this.warnT = setTimeout(() => this.hideBossWarn(), (a.windup || 900) + 250);
+  }
+  hideBossWarn() { $('#boss-warn')?.classList.add('hidden'); $('#boss-edge')?.classList.remove('on'); }
 
   onBossImpact(a) {
     const s = this.scene, p = this.player, gy = WORLD.groundY;
     this.clearTelegraphs();
+    s.boss?.impact(a.type);
+    this.hideBossWarn();
     const onGround = p.body.blocked.down || p.body.touching.down;
     const dmgOf = (base) => { const d = p.combatStats(); return Math.max(1, Math.round(base * (a.enraged ? 1.25 : 1) * rand(0.9, 1.1) - d.def * 0.6)); };
     const hurt = (base, fromX) => p.alive && p.takeHit({ hit: true, crit: false, dmg: dmgOf(base) }, fromX);

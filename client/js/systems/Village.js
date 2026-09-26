@@ -8,7 +8,8 @@ import { MONSTERS } from '/shared/data/monsters.js';
 import { WORLD } from '/shared/constants.js';
 import { rollFish, RECIPES, BREWS, ENHANCE, QUESTS, QUEST_BY_ID } from '/shared/data/village.js';
 import { addItem, removeItem, count } from './Inventory.js';
-import { getDerived, choosePath } from './Character.js';
+import { getDerived, choosePath, syncAppearance } from './Character.js';
+import { AURA_TH, AURA_COLOR } from '../gfx/Aura.js';
 import { JOBS, JOB_IDS, PATH_LV } from '/shared/data/classes.js';
 import { SKILLS } from '/shared/data/skills.js';
 import { itemIcon } from './util.js';
@@ -51,7 +52,7 @@ export class Village {
     if (this.fish) return this.press();
     s.ui.closeAll();
     p.setVelocity(0, 0);
-    p.setFlipX(true);                                                    // หันหน้าลงแม่น้ำ (ซ้าย)
+    p.setFlipX(true); p.facing = -1;                                     // หันหน้าลงแม่น้ำ (ซ้าย)
     const rodX = p.x - 14, rodY = p.y - 26;
     const bobX = p.x - 58 - Math.random() * 30, bobY = WORLD.groundY + 12;
     const line = s.add.graphics().setDepth(12);
@@ -154,9 +155,10 @@ export class Village {
     }
     f.bob.setPosition(f.bobX, by);
     // สายเบ็ด (โค้ง)
-    const rx = p.x - 16, ry = p.y - 30;
-    f.line.clear().lineStyle(1, 0x5d4037, 1).lineBetween(p.x - 4, p.y - 18, rx, ry);          // คันเบ็ด
-    f.line.lineStyle(1, 0xecf0f1, 0.7).beginPath().moveTo(rx, ry);
+    // ปลายคันเบ็ด (คันเบ็ดวาดอยู่ในท่าตัวละครแล้ว) – ดึงเบ็ดคันจะยกสูงขึ้น
+    const reel = f.stage !== 'wait';
+    const rx = p.x - (reel ? 14 : 23), ry = p.y - (reel ? 42 : 37);
+    f.line.clear().lineStyle(1, 0xecf0f1, 0.75).beginPath().moveTo(rx, ry);
     const midX = (rx + f.bobX) / 2, midY = Math.max(ry, by) + 10;
     for (let i = 1; i <= 8; i++) {
       const t = i / 8, x = (1 - t) * (1 - t) * rx + 2 * (1 - t) * t * midX + t * t * f.bobX, y = (1 - t) * (1 - t) * ry + 2 * (1 - t) * t * midY + t * t * by;
@@ -212,35 +214,55 @@ export class Village {
   // ============================================================
   renderEnhance(el) {
     const c = this.char;
+    const guards = count(c, 'yant_guard');
     el.innerHTML = Object.keys(SLOT_TH).map((slot) => {
       const id = c.equipment[slot], lv = c.enhance[slot] || 0;
-      if (lv >= ENHANCE.max) return `<div class="item"><span class="ic">🔥</span><span>${SLOT_TH[slot]} <b>+${lv}</b> <span class="meta">สูงสุดแล้ว</span></span><span></span><span></span></div>`;
-      const cost = ENHANCE.cost(lv), ore = ENHANCE.ore(lv), rate = ENHANCE.rate(lv);
+      const tier = ENHANCE.auraTier(lv);
+      if (lv >= ENHANCE.max) return `<div class="item"><span class="ic">🌈</span><span>${SLOT_TH[slot]} <b class="enh t${tier}">+${lv}</b> <span class="meta">สูงสุดแล้ว · ออร่ารุ้ง</span></span><span></span><span></span></div>`;
+      const cost = ENHANCE.cost(lv), ore = ENHANCE.ore(lv), fang = ENHANCE.fang(lv), rate = ENHANCE.rate(lv);
       const next = Object.entries(ENHANCE.bonus[slot](lv + 1)).filter(([, v]) => v).map(([k, v]) => `${k.toUpperCase()}+${v}`).join(' ');
-      const can = id && c.gold >= cost && count(c, 'black_iron') >= ore;
+      const can = id && c.gold >= cost && count(c, 'black_iron') >= ore && count(c, 'yak_fang') >= fang;
+      const risk = lv < 10 ? 'พลาด: ขั้นไม่ลด' : lv < 15 ? '⚠️ พลาด: ลด 1 ขั้น' : '⚠️ พลาด: ลด 1 ขั้น (30% ลด 2)';
+      const nt = ENHANCE.auraTier(lv + 1);
       return `<div class="item"><span class="ic">${id ? itemIcon(id, ITEMS[id].icon) : '▫️'}</span>
-        <span>${SLOT_TH[slot]} <b>+${lv}</b> → +${lv + 1} <span class="meta">${id ? esc(ITEMS[id].nameTh) : 'ยังไม่ได้สวมใส่'}</span>
-          <div class="need">รวมเป็น ${next} · สำเร็จ ${Math.round(rate * 100)}%${ore ? ` · 🪨 แร่เหล็กไหล ${count(c, 'black_iron')}/${ore}` : ''}</div></span>
+        <span>${SLOT_TH[slot]} <b class="enh t${tier}">+${lv}</b> → <b class="enh t${nt}">+${lv + 1}</b> <span class="meta">${id ? esc(ITEMS[id].nameTh) : 'ยังไม่ได้สวมใส่'}</span>
+          <div class="need">รวมเป็น ${next} · สำเร็จ <b>${Math.round(rate * 100)}%</b> · ${risk}${ore ? ` · 🪨 แร่ ${count(c, 'black_iron')}/${ore}` : ''}${fang ? ` · 🐗 เขี้ยวพญายักษ์ ${count(c, 'yak_fang')}/${fang}` : ''}${nt > tier ? ` · ✨ ปลดออร่า${AURA_TH[nt]}` : ''}</div></span>
         <span class="price">฿${cost.toLocaleString()}</span><button data-enh="${slot}" ${can ? '' : 'disabled'}>ตี</button></div>`;
-    }).join('') + '<p class="hint">บวกติดกับช่องสวมใส่ (เปลี่ยนอาวุธค่าบวกยังอยู่) · ตีพลาดเสียเงินและแร่ แต่ขั้นไม่ลด</p>';
+    }).join('') + `<label class="guard-row"><input type="checkbox" id="enh-guard" ${this.useGuard && guards ? 'checked' : ''} ${guards ? '' : 'disabled'}> 🧧 ใช้ยันต์กันลดขั้น (มี ${guards}) – ใช้เฉพาะตอนตี +10 ขึ้นไป</label>
+      <p class="hint">บวกติดกับช่องสวมใส่ · +10 ขึ้นไปยากขึ้นมากและพลาดแล้วขั้นลด · ออร่ารอบตัว: +7 ฟ้า · +10 ม่วง · +13 ทอง · +16 เพลิง · +20 รุ้ง (ใช้ขั้นสูงสุดของอุปกรณ์)</p>`;
+    el.querySelector('#enh-guard')?.addEventListener('change', (e) => (this.useGuard = e.target.checked));
     el.querySelectorAll('[data-enh]').forEach((b) => (b.onclick = () => this.enhance(b.dataset.enh)));
   }
 
   enhance(slot) {
     const c = this.char, s = this.scene, lv = c.enhance[slot] || 0;
-    const cost = ENHANCE.cost(lv), ore = ENHANCE.ore(lv);
-    if (!c.equipment[slot] || lv >= ENHANCE.max || c.gold < cost || count(c, 'black_iron') < ore) return;
+    const cost = ENHANCE.cost(lv), ore = ENHANCE.ore(lv), fang = ENHANCE.fang(lv);
+    if (!c.equipment[slot] || lv >= ENHANCE.max || c.gold < cost || count(c, 'black_iron') < ore || count(c, 'yak_fang') < fang) return;
+    const guard = lv >= 10 && this.useGuard && count(c, 'yant_guard') > 0;
     c.gold -= cost;
     if (ore) removeItem(c, 'black_iron', ore);
+    if (fang) removeItem(c, 'yak_fang', fang);
+    if (guard) removeItem(c, 'yant_guard', 1);
     s.sfx.play('hit');
     const ok = Math.random() < ENHANCE.rate(lv);
+    let msg;
     if (ok) {
       c.enhance[slot] = lv + 1;
-      const d = getDerived(c); c.hp = Math.min(c.hp, d.maxHp);
       s.sfx.play('levelup');
-      s.combat.burst(s.player.x, s.player.y - 20, 0xf39c12, 16);
-    } else s.sfx.play('error');
-    this.ui.result({ ok, msg: ok ? `🔨 ตีบวกสำเร็จ! ${SLOT_TH[slot]} +${lv + 1}` : `💥 ตีพลาด… ${SLOT_TH[slot]} ยังคง +${lv}` });
+      s.combat.burst(s.player.x, s.player.y - 20, AURA_COLOR[ENHANCE.auraTier(lv + 1)] || 0xf39c12, 16 + lv);
+      if (lv + 1 >= 10) s.cameras.main.flash(250, 255, 230, 150);
+      msg = `🔨 ตีบวกสำเร็จ! ${SLOT_TH[slot]} +${lv + 1}`;
+      if (ENHANCE.auraTier(lv + 1) > ENHANCE.auraTier(lv)) { this.ui.banner(`✨ ปลดออร่า${AURA_TH[ENHANCE.auraTier(lv + 1)]}!`); }
+    } else {
+      const drop = guard ? 0 : ENHANCE.drop(lv);
+      c.enhance[slot] = Math.max(0, lv - drop);
+      s.sfx.play('error');
+      s.cameras.main.shake(180, 0.006);
+      msg = drop ? `💥 ตีพลาด! ${SLOT_TH[slot]} ลดเหลือ +${lv - drop}` : `💥 ตีพลาด… ${SLOT_TH[slot]} ยังคง +${lv}${guard ? ' (ยันต์กันลดขั้นช่วยไว้)' : ''}`;
+    }
+    const d = getDerived(c); c.hp = Math.min(c.hp, d.maxHp);
+    if (syncAppearance(c)) s.onAppearanceChanged();                        // ออร่าเปลี่ยน → คนอื่นเห็นด้วย
+    this.ui.result({ ok, msg });
   }
 
   // ============================================================

@@ -76,6 +76,7 @@ export class RaidBoss extends Phaser.Physics.Arcade.Sprite {
 
   defeated() {
     this.state = 'dead';
+    this.casting = false;
     this.hp = 0;
     this.body.enable = false;
     this.aura.setVisible(false);
@@ -84,10 +85,22 @@ export class RaidBoss extends Phaser.Physics.Arcade.Sprite {
     this.scene.tweens.add({ targets: this, alpha: 0, delay: 900, duration: 800, onComplete: () => this.setVisible(false) });
   }
 
-  /** เล่นท่าโจมตี (จาก raid:attack) */
-  windup() {
+  /** ท่าชาร์จสกิล (จาก raid:attack) – ค้างเฟรมสุดท้ายไว้จนกว่าดาเมจลง */
+  windup(type) {
     if (!this.alive) return;
+    this.off(Phaser.Animations.Events.ANIMATION_COMPLETE);
+    const k = `${this.key}:w_${type}`;
+    if (type && this.scene.anims.exists(k)) { this.play(k, true); this.casting = true; this.castUntil = this.scene.time.now + 2600; return; }
     this.playA('attack');
+  }
+
+  /** ท่าปล่อยสกิล (จาก raid:impact) */
+  impact(type) {
+    if (!this.alive) return;
+    this.casting = false;
+    const k = `${this.key}:x_${type}`;
+    if (!this.scene.anims.exists(k)) return;
+    this.play(k, true);
     this.once(Phaser.Animations.Events.ANIMATION_COMPLETE, () => this.alive && this.playA('walk'));
   }
 
@@ -96,7 +109,9 @@ export class RaidBoss extends Phaser.Physics.Arcade.Sprite {
     const step = (this.serverX - this.x) * 0.2;
     this.x += step;                                             // เลื่อนตาม server แบบนุ่มนวล
     // ท่ายืน/เดินตามการเคลื่อนที่จริง (ไม่ไถล)
-    const attacking = this.anims.currentAnim?.key.endsWith(':attack') && this.anims.isPlaying;
+    if (this.casting && this.scene.time.now > this.castUntil) this.casting = false;   // กันค้าง (ไม่ได้รับ impact)
+    const ck = this.anims.currentAnim?.key || '';
+    const attacking = this.casting || ((ck.endsWith(':attack') || ck.includes(':x_') || ck.includes(':w_')) && this.anims.isPlaying);
     if (!attacking) this.playA(Math.abs(step) > 0.15 ? 'walk' : 'idle');
     this.body.updateFromGameObject?.();
     const top = this.y - this.displayHeight;

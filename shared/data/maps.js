@@ -48,6 +48,20 @@ const village = {
   respawnX: WORLD.spawnX, arriveX: 940, minLv: 1, gates: [{ x: 990 }],
 };
 
+// เลเวลผีกระจายจาก Lv.1 (แมพ 1) ถึง Lv.28 (แมพ 20) → เล่นถึงเลเวลตัน 30 ได้ (บอสลาน Lv.30)
+// ปรับค่าพลัง/รางวัลตามอัตราส่วนเลเวลใหม่ต่อเลเวลเดิม (ทำครั้งเดียว ใช้ร่วม client/server)
+HUNT.forEach(([, mon], i) => {
+  const m = MONSTERS[mon];
+  if (!m || m._scaled) return;
+  const L0 = m.level, L = Math.round(1 + (i * 27) / (HUNT.length - 1)), k = L / L0;
+  Object.assign(m, {
+    level: L, _scaled: true,
+    hp: Math.round(m.hp * k ** 1.35), atk: Math.round(m.atk * k ** 1.15), def: Math.round(m.def * k),
+    acc: Math.round(m.acc + (L - L0) * 0.6), exp: Math.round(m.exp * k ** 1.55),
+    gold: m.gold.map((g) => Math.round(g * k ** 1.2)),
+  });
+});
+
 const hunts = HUNT.map(([region, mon, nameTh], i) => {
   const minX = HUNT_X0 + i * MAP_STEP, maxX = minX + MAP_W;
   const m = MONSTERS[mon];
@@ -62,7 +76,7 @@ const hunts = HUNT.map(([region, mon, nameTh], i) => {
 const lastX = HUNT_X0 + HUNT.length * MAP_STEP;
 const arena = {
   id: 'arena', no: 21, nameTh: 'ลานพญายักษ์', region: 'r5', boss: true, minX: lastX, maxX: lastX + 700,
-  minLv: 12, respawnX: lastX + 70, arriveX: lastX + 90, safeEndX: lastX + 120, gates: [{ x: lastX + 32 }],
+  minLv: 26, respawnX: lastX + 70, arriveX: lastX + 90, safeEndX: lastX + 120, gates: [{ x: lastX + 32 }],
 };
 
 export const MAP_LIST = [village, ...hunts, arena];

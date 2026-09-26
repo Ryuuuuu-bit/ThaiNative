@@ -4,7 +4,7 @@
 // ============================================================
 import { JOBS, JOB_IDS, PATH_LV, STAT_PLAN } from '/shared/data/classes.js';
 import { ITEMS, SHOPS, sellPrice, WTYPE_JOB } from '/shared/data/items.js';
-import { STAT_KEYS, STAT_INFO, expToNext } from '/shared/stats.js';
+import { STAT_KEYS, STAT_INFO, expToNext, MAX_LEVEL } from '/shared/stats.js';
 import { getDerived, allocateStat, pathName } from './Character.js';
 import * as Inv from './Inventory.js';
 import { SKILLS, SKILL_SLOTS, SKILL_BY_ID, MAX_SKILL_LV, skillStats, canLearn, skillCap } from '/shared/data/skills.js';
@@ -15,6 +15,7 @@ import { learnSkill, assignHotbar } from './Character.js';
 import { saveSettings, toggleFullscreen } from './Settings.js';
 import { PORTRAITS } from '../gfx/SpriteFactory.js';
 import { modsText } from '/shared/data/blessings.js';
+import { ENHANCE } from '/shared/data/village.js';
 import { itemIcon, skillIcon, uiIcon } from './util.js';
 import { bindAccountSettings } from './AuthScreen.js';
 
@@ -112,8 +113,9 @@ export class UI {
     $('#hud-mp').textContent = `MP ${Math.floor(c.mp)} / ${d.maxMp}`;
     $('#hud-hp-fill').style.width = `${(c.hp / d.maxHp) * 100}%`;
     $('#hud-mp-fill').style.width = `${(c.mp / d.maxMp) * 100}%`;
-    $('#hud-exp-fill').style.width = `${(c.exp / need) * 100}%`;
-    $('#hud-exp').textContent = `EXP ${c.exp} / ${need}  (${((c.exp / need) * 100).toFixed(1)}%)`;
+    const maxed = c.level >= MAX_LEVEL;
+    $('#hud-exp-fill').style.width = maxed ? '100%' : `${(c.exp / need) * 100}%`;
+    $('#hud-exp').textContent = maxed ? `EXP MAX · เลเวลตัน Lv.${MAX_LEVEL}` : `EXP ${c.exp} / ${need}  (${((c.exp / need) * 100).toFixed(1)}%)`;
     $('#hud-gold').textContent = c.gold.toLocaleString();
     const hp = Inv.count(c, 'hp_s') + Inv.count(c, 'hp_m'), mp = Inv.count(c, 'mp_s') + Inv.count(c, 'mp_m');
     $('#quick-hp .n').textContent = `x${hp}`; $('#quick-hp').classList.toggle('empty', !hp);
@@ -541,15 +543,19 @@ export class UI {
   renderInventory() {
     const c = this.char;
     $('#inv-equip').innerHTML = Object.entries(c.equipment).map(([slot, id]) => `
-      <div class="eq"><small>${SLOT_TH[slot]}</small>${id ? `${itemIcon(id, ITEMS[id].icon)} ${ITEMS[id].nameTh}${c.enhance?.[slot] ? ` <b class="enh">+${c.enhance[slot]}</b>` : ''} <button class="close" data-unequip="${slot}">✕</button>` : '—'}</div>`).join('');
+      <div class="eq"><small>${SLOT_TH[slot]}</small>${id ? `${itemIcon(id, ITEMS[id].icon)} ${ITEMS[id].nameTh}${c.enhance?.[slot] ? ` <b class="enh t${ENHANCE.auraTier(c.enhance[slot])}">+${c.enhance[slot]}</b>` : ''} <button class="close" data-unequip="${slot}">✕</button>` : '—'}</div>`).join('');
+    const COS_TH = { head: 'หมวก/มงกุฎ', face: 'หน้ากาก', back: 'ของหลัง', outfit: 'ชุดแต่งตัว' };
+    $('#inv-equip').innerHTML += `<div class="eq-cos">${Object.entries(COS_TH).map(([slot, th]) => { const id = c.costume?.[slot];
+      return `<div class="eq cos"><small>${th}</small>${id ? `${itemIcon(id, ITEMS[id].icon)} ${ITEMS[id].nameTh} <button class="close" data-uncos="${slot}">✕</button>` : '—'}</div>`; }).join('')}</div>`;
     $('#inv-equip').querySelectorAll('[data-unequip]').forEach((b) => (b.onclick = () => this.result(Inv.unequip(c, b.dataset.unequip))));
+    $('#inv-equip').querySelectorAll('[data-uncos]').forEach((b) => (b.onclick = () => this.result(Inv.takeOffCostume(c, b.dataset.uncos))));
 
     if (!c.inventory.length) { $('#inv-list').innerHTML = '<div class="empty">กระเป๋าว่างเปล่า</div>'; return; }
     // แท็บกรอง + เรียงลำดับ
-    const CAT = { all: ['ทั้งหมด', () => true], gear: ['อุปกรณ์', (t) => ['weapon', 'armor', 'accessory'].includes(t)],
+    const CAT = { all: ['ทั้งหมด', () => true], gear: ['อุปกรณ์', (t) => ['weapon', 'armor', 'accessory'].includes(t)], cos: ['ชุดแต่งตัว', (t) => t === 'costume'],
       use: ['ยา/อาหาร', (t) => ['consumable', 'food', 'reset', 'skin', 'offering'].includes(t)],
       mat: ['วัตถุดิบ', (t) => ['material', 'herb', 'fish'].includes(t)] };
-    const ORDER = ['weapon', 'armor', 'accessory', 'consumable', 'food', 'reset', 'skin', 'offering', 'herb', 'fish', 'material'];
+    const ORDER = ['weapon', 'armor', 'accessory', 'costume', 'consumable', 'food', 'reset', 'skin', 'offering', 'herb', 'fish', 'material'];
     const cat = this.invCat || 'all', sort = this.invSort || 'type';
     const list = c.inventory.filter((s) => CAT[cat][1](ITEMS[s.id].type)).sort((a, b) => {
       const A = ITEMS[a.id], B = ITEMS[b.id];
@@ -571,8 +577,8 @@ export class UI {
     };
     $('#inv-list').innerHTML = tabs + (list.length ? list.map((s) => {
       const it = ITEMS[s.id], lock = Inv.isLocked(c, s.id);
-      const action = { consumable: 'ใช้', food: 'กิน', offering: 'ถวาย', weapon: 'ถือ', armor: 'สวม', accessory: 'สวม', reset: 'ใช้', skin: c.path === it.job ? 'ใช้อยู่' : 'เปลี่ยนสาย' }[it.type];
-      const job = itemTag(it);
+      const action = { consumable: 'ใช้', food: 'กิน', offering: 'ถวาย', weapon: 'ถือ', armor: 'สวม', accessory: 'สวม', costume: 'แต่ง', reset: 'ใช้', skin: c.path === it.job ? 'ใช้อยู่' : 'เปลี่ยนสาย' }[it.type];
+      const job = itemTag(it) || (it.type === 'costume' ? ` · ชุดแต่งตัว${it.rare ? ' ✨หายาก' : ''}` : '');
       return `<div class="item inv"><span class="ic">${itemIcon(s.id, it.icon)}</span>
         <span>${esc(it.nameTh)} <span class="meta">x${s.qty}${job}</span>${diff(it)}</span>
         <button class="lock ${lock ? 'on' : ''}" data-lock="${s.id}" title="${lock ? 'ปลดล็อก' : 'ล็อก (กันขาย)'}">${lock ? '🔒' : '🔓'}</button>
