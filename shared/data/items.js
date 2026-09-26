@@ -10,18 +10,23 @@ export const ITEMS = {
   mp_s:  { nameTh: 'น้ำมะพร้าว (MP +30)',   type: 'consumable', icon: '🥥', price: 20,  effect: { mp: 30 } },
   mp_m:  { nameTh: 'ชาตะไคร้ (MP +90)',    type: 'consumable', icon: '🍵', price: 60,  effect: { mp: 90 } },
 
-  // ---------- อาวุธ (jobs = อาชีพที่ใส่ได้) ----------
-  wood_sword:  { nameTh: 'ดาบไม้ฝึก',        type: 'weapon', icon: '🗡️', price: 80,  jobs: ['swordman'], bonus: { atk: 6 } },
-  iron_dab:    { nameTh: 'ดาบเหล็กน้ำพี้',     type: 'weapon', icon: '⚔️', price: 320, jobs: ['swordman'], bonus: { atk: 18, crit: 0.03 } },
-  oak_staff:   { nameTh: 'ไม้เท้าไม้มะขาม',    type: 'weapon', icon: '🪄', price: 80,  jobs: ['mage'], bonus: { matk: 8, mp: 10 } },
-  yant_staff:  { nameTh: 'คทาลงยันต์',       type: 'weapon', icon: '🔮', price: 340, jobs: ['mage'], bonus: { matk: 22, mp: 30 } },
-  bamboo_bow:  { nameTh: 'ธนูไม้ไผ่',         type: 'weapon', icon: '🏹', price: 80,  jobs: ['archer'], bonus: { atk: 5, DEX: 2 } },
-  horn_bow:    { nameTh: 'ธนูเขาควาย',        type: 'weapon', icon: '🎯', price: 330, jobs: ['archer'], bonus: { atk: 15, DEX: 4 } },
-  hand_wrap:   { nameTh: 'ผ้าพันมือคาดเชือก',   type: 'weapon', icon: '🥊', price: 80,  jobs: ['boxer'], bonus: { atk: 5, STR: 1 } },
-  mongkol:     { nameTh: 'มงคลศักดิ์สิทธิ์',     type: 'weapon', icon: '🪢', price: 320, jobs: ['boxer'], bonus: { atk: 14, VIT: 3, crit: 0.02 } },
+  // ---------- อาวุธ (ใครก็ถือได้ · wtype = แนวต่อสู้/สกิลที่ใช้ได้ · แสดงในมือตัวละคร) ----------
+  wood_sword:  { nameTh: 'ดาบไม้ฝึก',        type: 'weapon', icon: '🗡️', price: 80,  sell: 10, wtype: 'sword', bonus: { atk: 6 } },
+  iron_dab:    { nameTh: 'ดาบเหล็กน้ำพี้',     type: 'weapon', icon: '⚔️', price: 320, wtype: 'sword', bonus: { atk: 18, crit: 0.03 } },
+  oak_staff:   { nameTh: 'ไม้เท้าไม้มะขาม',    type: 'weapon', icon: '🪄', price: 80,  sell: 10, wtype: 'staff', bonus: { matk: 8, mp: 10 } },
+  yant_staff:  { nameTh: 'คทาลงยันต์',       type: 'weapon', icon: '🔮', price: 340, wtype: 'staff', bonus: { matk: 22, mp: 30 } },
+  bamboo_bow:  { nameTh: 'ธนูไม้ไผ่',         type: 'weapon', icon: '🏹', price: 80,  sell: 10, wtype: 'bow', bonus: { atk: 5, DEX: 2 } },
+  horn_bow:    { nameTh: 'ธนูเขาควาย',        type: 'weapon', icon: '🎯', price: 330, wtype: 'bow', bonus: { atk: 15, DEX: 4 } },
+  hand_wrap:   { nameTh: 'ผ้าพันมือคาดเชือก',   type: 'weapon', icon: '🥊', price: 80,  wtype: 'wraps', bonus: { atk: 5, STR: 1 } },
+  mongkol:     { nameTh: 'มงคลศักดิ์สิทธิ์',     type: 'weapon', icon: '🪢', price: 320, wtype: 'wraps', bonus: { atk: 14, VIT: 3, crit: 0.02 } },
 
   // ---------- เกราะ / เครื่องประดับ ----------
-  yant_shirt:  { nameTh: 'เสื้อยันต์',         type: 'armor', icon: '👕', price: 150, bonus: { def: 5, hp: 30 } },
+  yant_shirt:  { nameTh: 'เสื้อยันต์',         type: 'armor', icon: '👕', price: 150, bonus: { def: 5, hp: 30 }, look: { top: '#f2efe6', bottom: '#5d4037' } },
+  // ชุดประจำสาย (ได้จากผู้ใหญ่ชัยเมื่อเลือกสายหลัก Lv.10) – look = สีชุดที่แสดงบนตัวละคร
+  armor_swordman: { nameTh: 'เกราะนักรบบางระจัน', type: 'armor', icon: '🛡️', sell: 60, path: 'swordman', bonus: { def: 9, hp: 70 }, look: { top: '#922b21', bottom: '#4a2511' } },
+  armor_mage:     { nameTh: 'ผ้ายันต์หมอผีเจ็ดป่าช้า', type: 'armor', icon: '🧥', sell: 60, path: 'mage', bonus: { def: 5, mp: 50, matk: 6 }, look: { top: '#1c1c1c', bottom: '#4a235a' } },
+  armor_archer:   { nameTh: 'ชุดพรานไพรลายพราง', type: 'armor', icon: '🦺', sell: 60, path: 'archer', bonus: { def: 6, hp: 40, DEX: 2 }, look: { top: '#3d6b35', bottom: '#5b4a2e' } },
+  armor_boxer:    { nameTh: 'กางเกงมวยผ้าประเจียด', type: 'armor', icon: '🩳', sell: 60, path: 'boxer', bonus: { def: 7, hp: 60, STR: 2 }, look: { top: '#c0392b', bottom: '#c0392b' } },
   takrut:      { nameTh: 'ตะกรุดโทน',        type: 'accessory', icon: '📿', price: 220, bonus: { def: 2, CRI: 4 } },
   prajiad:     { nameTh: 'ประเจียดแขน',       type: 'accessory', icon: '🎗️', price: 200, bonus: { STR: 2, DEX: 2 } },
   // เครื่องรางพระเครื่อง (ลุงดำ)
@@ -34,11 +39,12 @@ export const ITEMS = {
   yak_statue:    { nameTh: 'ท้าวเวสสุวรรณ',      type: 'accessory', icon: '👹', price: 750, bonus: { STR: 4, def: 2 } },
   acc_yant_gold: { nameTh: 'ยันต์ทองพญายักษ์',  type: 'accessory', icon: '🏵️', sell: 400, bonus: { STR: 4, INT: 4, DEX: 3, hp: 80, def: 4 } },
 
-  // ---------- Skin อาชีพ (ใบเปลี่ยนอาชีพ) ----------
-  skin_swordman: { nameTh: 'คัมภีร์เปลี่ยนอาชีพ: ขุนศึก',  type: 'skin', icon: '📜', price: 500, job: 'swordman' },
-  skin_mage:     { nameTh: 'คัมภีร์เปลี่ยนอาชีพ: จอมขมังเวทย์', type: 'skin', icon: '📜', price: 500, job: 'mage' },
-  skin_archer:   { nameTh: 'คัมภีร์เปลี่ยนอาชีพ: พรานป่า',  type: 'skin', icon: '📜', price: 500, job: 'archer' },
-  skin_boxer:    { nameTh: 'คัมภีร์เปลี่ยนอาชีพ: นักมวยคาดเชือก', type: 'skin', icon: '📜', price: 500, job: 'boxer' },
+  // ---------- ล้างแต้ม / เปลี่ยนสายหลัก ----------
+  reset_water:   { nameTh: 'น้ำมนต์ล้างแต้ม', type: 'reset', icon: '💧', price: 300, desc: 'คืนแต้มสถานะและแต้มสกิลทั้งหมดให้ลงใหม่' },
+  skin_swordman: { nameTh: 'คัมภีร์เปลี่ยนสายหลัก: ขุนศึก',  type: 'skin', icon: '📜', price: 800, job: 'swordman' },
+  skin_mage:     { nameTh: 'คัมภีร์เปลี่ยนสายหลัก: จอมขมังเวทย์', type: 'skin', icon: '📜', price: 800, job: 'mage' },
+  skin_archer:   { nameTh: 'คัมภีร์เปลี่ยนสายหลัก: พรานป่า',  type: 'skin', icon: '📜', price: 800, job: 'archer' },
+  skin_boxer:    { nameTh: 'คัมภีร์เปลี่ยนสายหลัก: นักมวยคาดเชือก', type: 'skin', icon: '📜', price: 800, job: 'boxer' },
 
   // ---------- ของดรอปจากผี (ขายได้อย่างเดียว) ----------
   glass_shard:  { nameTh: 'เศษถ้วยแก้วร้าว',  type: 'material', icon: '🥃', sell: 3 },
@@ -121,7 +127,7 @@ export const SHOPS = {
     nameTh: 'ยายติ๋ม ร้านยาและของใช้',
     greeting: 'มาจ้ะหลาน ยาดีของยาย ผีหลอกก็ไม่กลัว!',
     stock: ['hp_s', 'hp_m', 'mp_s', 'mp_m', 'garland', 'nam_daeng', 'khai_tom', 'hua_mu',
-      'skin_swordman', 'skin_mage', 'skin_archer', 'skin_boxer'],
+      'reset_water', 'skin_swordman', 'skin_mage', 'skin_archer', 'skin_boxer'],
     tabs: ['buy', 'sell', 'brew'],
   },
   lung_dam: {
@@ -141,4 +147,12 @@ export const SHOPS = {
 };
 
 export const STARTING_GOLD = 150;
-export const STARTING_ITEMS = [{ id: 'hp_s', qty: 3 }, { id: 'mp_s', qty: 2 }];
+export const STARTING_ITEMS = [{ id: 'hp_s', qty: 3 }, { id: 'mp_s', qty: 2 },
+  { id: 'wood_sword', qty: 1 }, { id: 'oak_staff', qty: 1 }, { id: 'bamboo_bow', qty: 1 }];   // อาวุธฝึกให้ลองทุกแนว
+
+/** แนวต่อสู้ตามชนิดอาวุธ → id สายใน classes.js */
+export const WTYPE_JOB = { sword: 'swordman', staff: 'mage', bow: 'archer', wraps: 'boxer' };
+/** อาวุธที่ถือ → แนวต่อสู้ (มือเปล่า = มวย) */
+export const weaponStyle = (weaponId) => WTYPE_JOB[ITEMS[weaponId]?.wtype] || 'boxer';
+/** อาวุธเริ่มต้นของแต่ละสาย (ใช้ตอนแปลงเซฟเก่า) */
+export const STARTER_WEAPON = { swordman: 'wood_sword', mage: 'oak_staff', archer: 'bamboo_bow', boxer: 'hand_wrap' };

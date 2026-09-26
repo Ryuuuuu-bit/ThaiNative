@@ -25,7 +25,7 @@ export function setupSocial(io, players) {
     return {
       id: party.id, leader: party.leader,
       members: [...party.members].map((id) => players.get(id)).filter(Boolean).map((p) => ({
-        id: p.id, name: p.name, level: p.level, job: p.appearance.job, hp: p.hp, maxHp: p.maxHp, x: Math.round(p.x),
+        id: p.id, name: p.name, level: p.level, job: p.appearance.path || 'villager', hp: p.hp, maxHp: p.maxHp, x: Math.round(p.x),
       })),
     };
   }

@@ -6,6 +6,7 @@ import { SKILL_BY_ID, skillStats } from '/shared/data/skills.js';
 import { ITEMS } from '/shared/data/items.js';
 import { WORLD } from '/shared/constants.js';
 import { getDerived, gainExp } from './Character.js';
+import { PATH_LV } from '/shared/data/classes.js';
 import { addItem } from './Inventory.js';
 import { makeText, rand } from './util.js';
 
@@ -379,6 +380,8 @@ export class Combat {
       this.popupText(this.player.x, this.player.y - 50, 'LEVEL UP!', '#f1c40f', 12);
       this.burst(this.player.x, this.player.y - 20, 0xf1c40f, 24);
       this.sfx.play('levelup');
+      if (!c.path && c.level >= PATH_LV && c.level - ups < PATH_LV)
+        this.scene.time.delayedCall(1800, () => this.scene.ui.banner(`🎖️ Lv.${PATH_LV}! ไปหาผู้ใหญ่ชัยที่หมู่บ้านเพื่อเลือกสายหลัก`));
     }
     return ups;
   }

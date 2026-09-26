@@ -2,12 +2,12 @@
 //  UI – จัดการ HUD และหน้าต่าง DOM (สถานะ, กระเป๋า, ร้านค้า, แชท)
 //  ใช้ HTML/CSS ซ้อนบน Canvas เพื่อให้ตัวหนังสือไทยคมชัด
 // ============================================================
-import { JOBS } from '/shared/data/classes.js';
-import { ITEMS, SHOPS, sellPrice } from '/shared/data/items.js';
+import { JOBS, JOB_IDS, PATH_LV } from '/shared/data/classes.js';
+import { ITEMS, SHOPS, sellPrice, WTYPE_JOB } from '/shared/data/items.js';
 import { STAT_KEYS, STAT_INFO, expToNext } from '/shared/stats.js';
-import { getDerived, allocateStat } from './Character.js';
+import { getDerived, allocateStat, pathName } from './Character.js';
 import * as Inv from './Inventory.js';
-import { SKILLS, SKILL_SLOTS, SKILL_BY_ID, MAX_SKILL_LV, skillStats, canLearn } from '/shared/data/skills.js';
+import { SKILLS, SKILL_SLOTS, SKILL_BY_ID, MAX_SKILL_LV, skillStats, canLearn, skillCap } from '/shared/data/skills.js';
 import { MONSTERS } from '/shared/data/monsters.js';
 import { WORLD } from '/shared/constants.js';
 import { MAPS, MAP_LIST, REGIONS, mapAt } from '/shared/data/maps.js';
@@ -21,6 +21,8 @@ import { bindAccountSettings } from './AuthScreen.js';
 const $ = (s) => document.querySelector(s);
 const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const SLOT_TH = { weapon: 'อาวุธ', armor: 'เสื้อ', accessory: 'เครื่องราง' };
+/** ป้ายแนวของอาวุธ / สายของชุด */
+const itemTag = (it) => it.wtype ? ` · แนว${JOBS[WTYPE_JOB[it.wtype]].nameTh}` : it.path ? ` · ชุดสาย${JOBS[it.path].nameTh}` : '';
 
 export class UI {
   /** @param {Phaser.Scene} scene GameScene */
@@ -90,13 +92,14 @@ export class UI {
   updateHud() {
     const c = this.char, d = getDerived(c);
     const need = expToNext(c.level);
-    const sig = [c.hp, c.mp, d.maxHp, d.maxMp, c.exp, c.level, c.gold, c.appearance.job, Inv.count(c, 'hp_s'), Inv.count(c, 'mp_s')].join('|');
+    const sig = [c.hp, c.mp, d.maxHp, d.maxMp, c.exp, c.level, c.gold, c.appearance.job, c.path, Inv.count(c, 'hp_s'), Inv.count(c, 'mp_s')].join('|');
     if (sig === this.hudCache) return;
     this.hudCache = sig;
 
     $('#hud-name').textContent = c.name;
     $('#hud-lv').textContent = c.level;
-    $('#hud-job').textContent = JOBS[c.appearance.job].nameTh;
+    $('#hud-job').textContent = `${pathName(c)} · ${JOBS[c.appearance.job].icon}`;
+    $('#hud-job').title = `สายหลัก: ${pathName(c)} · แนวต่อสู้ตอนนี้: ${JOBS[c.appearance.job].nameTh} (ตามอาวุธที่ถือ)`;
     $('#hud-hp').textContent = `HP ${Math.ceil(c.hp)} / ${d.maxHp}`;
     $('#hud-mp').textContent = `MP ${Math.floor(c.mp)} / ${d.maxMp}`;
     $('#hud-hp-fill').style.width = `${(c.hp / d.maxHp) * 100}%`;
@@ -244,9 +247,10 @@ export class UI {
       if (!id || !lv) return `<div class="skill empty" data-key="${key}"><span class="k">${key}</span><span class="ic">＋</span>
         <div class="tip">ช่อง ${key} ว่าง – กด K แล้วลากสกิลมาวาง</div></div>`;
       const s = skillStats(SKILL_BY_ID[id], lv);
-      return `<div class="skill" data-key="${key}" data-id="${id}"><span class="k">${key}</span><span class="ic">${skillIcon(id, s.icon)}</span><span class="mp">${s.mp}</span>
+      const off = SKILL_BY_ID[id].job !== c.appearance.job;
+      return `<div class="skill${off ? ' noweapon' : ''}" data-key="${key}" data-id="${id}"><span class="k">${key}</span><span class="ic">${skillIcon(id, s.icon)}</span><span class="mp">${s.mp}</span>
         <div class="cd"></div><div class="cdt"></div>
-        <div class="tip"><b>${s.nameTh}</b> Lv.${lv} (${key})<br>MP ${s.mp} · CD ${(s.cd / 1000).toFixed(1)}s${s.mult ? ` · ดาเมจ x${s.mult}` : ''}<br>${s.desc}</div></div>`;
+        <div class="tip"><b>${s.nameTh}</b> Lv.${lv} (${key})<br>MP ${s.mp} · CD ${(s.cd / 1000).toFixed(1)}s${s.mult ? ` · ดาเมจ x${s.mult}` : ''}<br>${s.desc}${off ? `<br><span style="color:#f5b041">ต้องถือ${JOBS[SKILL_BY_ID[id].job].weaponTh}</span>` : ''}</div></div>`;
     }).join('');
     this.skillEls = [...document.querySelectorAll('#skillbar .skill')];
     this.skillEls.forEach((el) => this.makeDropSlot(el, el.dataset.key));
@@ -291,21 +295,31 @@ export class UI {
   //  Skill Tree (K)
   // ============================================================
   renderSkillTree() {
-    const c = this.char, job = c.appearance.job;
-    $('#sk-job').textContent = JOBS[job].nameTh;
+    const c = this.char;
+    if (!this.skTab) this.skTab = c.path || c.appearance.job;
+    const job = this.skTab;
+    $('#sk-job').textContent = c.path ? `สายหลัก ${JOBS[c.path].pathTitle}` : `ชาวบ้าน (เลือกสายหลักตอน Lv.${PATH_LV})`;
     $('#sk-sp').textContent = c.sp;
+    let tabs = $('#sk-tabs');
+    if (!tabs) { tabs = document.createElement('div'); tabs.id = 'sk-tabs'; tabs.className = 'sk-tabs'; $('#sk-tree').before(tabs); }
+    tabs.innerHTML = JOB_IDS.map((j) => {
+      const learned = SKILLS[j].reduce((a, sk) => a + (c.skills[sk.id] || 0), 0);
+      return `<button data-sktab="${j}" class="${j === job ? 'active' : ''} ${c.path === j ? 'main' : ''}">${JOBS[j].icon} ${JOBS[j].nameTh}${c.path === j ? ' ★' : ''}${learned ? ` <small>${learned}</small>` : ''}</button>`;
+    }).join('') + `<span class="sk-note">${c.path === job ? 'สายหลัก: อัปได้ถึง Lv.5 + ท่าไม้ตาย ★' : c.path ? 'สายรอง: อัปได้ถึง Lv.2 ไม่มีท่าไม้ตาย' : `ก่อน Lv.${PATH_LV} ทุกสายอัปได้ถึง Lv.2`} · ใช้ได้เมื่อถือ${JOBS[job].weaponTh}${c.appearance.job === job ? ' ✔' : ''}</span>`;
+    tabs.querySelectorAll('[data-sktab]').forEach((b) => (b.onclick = () => { this.skTab = b.dataset.sktab; this.scene.sfx.play('click'); this.renderSkillTree(); }));
     $('#sk-tree').innerHTML = SKILLS[job].map((base) => {
       const lv = c.skills[base.id] || 0;
+      const cap = skillCap(c, { ...base, job });
       const cur = skillStats(base, Math.max(1, lv)), next = lv < MAX_SKILL_LV ? skillStats(base, lv + 1) : null;
       const chk = canLearn(c, base.id);
-      const locked = c.level < base.reqLv;
+      const locked = c.level < base.reqLv || cap === 0;
       const stat = (st) => `MP ${st.mp} · CD ${(st.cd / 1000).toFixed(1)}s${st.mult ? `<br>ดาเมจ x${st.mult}` : ''}${st.duration ? `<br>นาน ${(st.duration / 1000).toFixed(0)}s` : ''}`;
       const slotKey = SKILL_SLOTS.find((k) => c.hotbar[k] === base.id);
       return `<div class="sk-card ${base.ultimate ? 'ult' : ''} ${locked ? 'locked' : ''} ${lv ? '' : 'unlearned'}">
         <div class="sk-icon" draggable="${lv > 0}" data-id="${base.id}" title="ลากไปวางที่ Hotbar">${skillIcon(base.id, base.icon)}</div>
         <div class="sk-name">${base.nameTh}${base.ultimate ? ' ★' : ''}</div>
-        <div class="sk-pips">${Array.from({ length: MAX_SKILL_LV }, (_, i) => `<i class="${i < lv ? 'on' : ''}"></i>`).join('')}</div>
-        <div class="sk-lv">Lv.${lv} / ${MAX_SKILL_LV}</div>
+        <div class="sk-pips">${Array.from({ length: MAX_SKILL_LV }, (_, i) => `<i class="${i < lv ? 'on' : i >= cap ? 'cap' : ''}"></i>`).join('')}</div>
+        <div class="sk-lv">Lv.${lv} / ${cap}</div>
         <div class="sk-desc">${base.desc}</div>
         <div class="sk-stat">${lv ? stat(cur) : stat(skillStats(base, 1))}${next && lv ? `<br><span style="color:#58d68d">→ Lv.${lv + 1}: ${next.mult ? `x${next.mult}` : `MP ${next.mp}`}</span>` : ''}</div>
         <button class="sk-up" data-learn="${base.id}" ${chk.ok ? '' : 'disabled'}>${lv ? '+ อัปเลเวล' : '+ เรียน'}</button>
@@ -385,12 +399,12 @@ export class UI {
     if (text) el.textContent = text;
   }
 
-  toast(msg, kind = '') {
+  toast(msg, kind = '', ms = 2400) {
     const el = document.createElement('div');
     el.className = `toast ${kind}`;
     el.textContent = msg;
     $('#toasts').appendChild(el);
-    setTimeout(() => el.remove(), 2400);
+    setTimeout(() => el.remove(), ms);
   }
 
   chat({ name, text, party }) {
@@ -441,7 +455,9 @@ export class UI {
       ['ความแม่นยำ', `${d.accuracy}%`], ['โอกาสคริติคอล', pct(d.critRate)],
       ['ความแรงคริติคอล', `x${d.critDmg.toFixed(2)}`], ['ป้องกัน / หลบ', `${d.def} / ${d.eva}`],
     ];
-    $('#st-derived').innerHTML = rows.map(([k, v]) => `<div><span>${k}</span><b>${v}</b></div>`).join('');
+    $('#st-derived').innerHTML = rows.map(([k, v]) => `<div><span>${k}</span><b>${v}</b></div>`).join('')
+      + `<div class="path-line"><span>สายหลัก</span><b>${c.path ? `${JOBS[c.path].pathTitle} (${JOBS[c.path].pathTextTh})` : `ชาวบ้าน · ถึง Lv.${PATH_LV} ไปหาผู้ใหญ่ชัย`}</b></div>`
+      + `<div class="path-line"><span>แนวต่อสู้ (ตามอาวุธ)</span><b>${JOBS[c.appearance.job].icon} ${JOBS[c.appearance.job].nameTh}</b></div>`;
   }
 
   // ---------------- กระเป๋า ----------------
@@ -454,8 +470,8 @@ export class UI {
     if (!c.inventory.length) { $('#inv-list').innerHTML = '<div class="empty">กระเป๋าว่างเปล่า</div>'; return; }
     $('#inv-list').innerHTML = c.inventory.map((s) => {
       const it = ITEMS[s.id];
-      const action = { consumable: 'ใช้', food: 'กิน', offering: 'ถวาย', weapon: 'สวม', armor: 'สวม', accessory: 'สวม', skin: c.appearance.job === it.job ? 'ใช้อยู่' : 'เปลี่ยนอาชีพ' }[it.type];
-      const job = it.jobs ? ` · ${it.jobs.map((j) => JOBS[j].nameTh).join('/')}` : '';
+      const action = { consumable: 'ใช้', food: 'กิน', offering: 'ถวาย', weapon: 'ถือ', armor: 'สวม', accessory: 'สวม', reset: 'ใช้', skin: c.path === it.job ? 'ใช้อยู่' : 'เปลี่ยนสาย' }[it.type];
+      const job = itemTag(it);
       return `<div class="item"><span class="ic">${itemIcon(s.id, it.icon)}</span>
         <span>${esc(it.nameTh)} <span class="meta">x${s.qty}${job}</span></span>
         <span class="price">฿${sellPrice(s.id)}</span>
@@ -489,7 +505,7 @@ export class UI {
       html = shop.stock.map((id) => {
         const it = ITEMS[id];
         const owned = it.type === 'skin' && Inv.count(c, id);
-        const job = it.jobs ? `<span class="meta"> · ${it.jobs.map((j) => JOBS[j].nameTh).join('/')}</span>` : '';
+        const job = itemTag(it) ? `<span class="meta">${itemTag(it)}</span>` : it.desc ? `<span class="meta"> · ${esc(it.desc)}</span>` : '';
         const bonus = it.bonus ? `<span class="meta"> ${Object.entries(it.bonus).map(([k, v]) => `${k.toUpperCase()}+${k === 'crit' ? v * 100 + '%' : v}`).join(' ')}</span>` : '';
         const food = it.buff ? `<span class="meta"> ${esc(it.buff.textTh)}</span>` : '';
         return `<div class="item"><span class="ic">${itemIcon(id, it.icon)}</span><span>${esc(it.nameTh)}${job}${bonus}${food}</span>

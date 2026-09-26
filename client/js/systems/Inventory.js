@@ -5,7 +5,7 @@
 import { OFFERINGS } from '/shared/data/blessings.js';
 import { ITEMS, sellPrice } from '/shared/data/items.js';
 import { JOBS } from '/shared/data/classes.js';
-import { getDerived, resetSkills } from './Character.js';
+import { getDerived, resetSkills, resetStats, choosePath, syncAppearance } from './Character.js';
 
 const SLOT_OF = { weapon: 'weapon', armor: 'armor', accessory: 'accessory' };
 
@@ -41,15 +41,22 @@ export function useItem(c, id) {
     return { ok: true, msg: `ใช้ ${it.nameTh}` };
   }
 
-  if (it.type === 'skin') {                  // Skin อาชีพ: ถือไว้ถาวร เปลี่ยนไปมาได้
-    if (c.appearance.job === it.job) return { ok: false, msg: 'ใช้อาชีพนี้อยู่แล้ว' };
-    c.appearance = { ...c.appearance, job: it.job };
-    resetSkills(c); // สกิลเป็นของแต่ละอาชีพ → คืน SP ให้เรียนใหม่
-    const w = c.equipment.weapon;
-    if (w && !ITEMS[w].jobs.includes(it.job)) { c.equipment.weapon = null; addItem(c, w); }
+  if (it.type === 'skin') {                  // คัมภีร์เปลี่ยนสายหลัก (ต้องเลือกสายครั้งแรกกับผู้ใหญ่ชัยก่อน)
+    if (!c.path) return { ok: false, msg: 'ยังไม่มีสายหลัก — ถึง Lv.10 แล้วไปหาผู้ใหญ่ชัยเพื่อเลือกสายฟรี' };
+    const r = choosePath(c, it.job);
+    if (!r.ok) return r;
+    removeItem(c, id);
     const d = getDerived(c);
     c.hp = Math.min(c.hp, d.maxHp); c.mp = Math.min(c.mp, d.maxMp);
-    return { ok: true, msg: `เปลี่ยนอาชีพเป็น ${JOBS[it.job].nameTh}! (คืน SP ทั้งหมด กด K เพื่อเรียนสกิล)`, jobChanged: true };
+    return { ok: true, msg: `${r.msg} กด K เพื่อเรียนสกิลใหม่`, jobChanged: true };
+  }
+
+  if (it.type === 'reset') {                 // น้ำมนต์ล้างแต้ม
+    removeItem(c, id);
+    resetStats(c); resetSkills(c);
+    const d = getDerived(c);
+    c.hp = Math.min(c.hp, d.maxHp); c.mp = Math.min(c.mp, d.maxMp);
+    return { ok: true, msg: `ล้างแต้มแล้ว! ได้แต้มสถานะ ${c.statPoints} และ SP ${c.sp} (กด C / K เพื่อลงใหม่)` };
   }
 
   if (it.type === 'food') {                  // อาหารป้าสา: ฟื้นฟู + บัฟ (ได้ทีละจาน กินใหม่ = แทนที่)
@@ -89,12 +96,14 @@ export function makeOffering(c, key) {
 export function equip(c, id) {
   const it = ITEMS[id];
   const slot = SLOT_OF[it.type];
-  if (it.jobs && !it.jobs.includes(c.appearance.job))
-    return { ok: false, msg: `อาชีพ ${JOBS[c.appearance.job].nameTh} ใช้ไม่ได้` };
   removeItem(c, id);
   if (c.equipment[slot]) addItem(c, c.equipment[slot]);
   c.equipment[slot] = id;
-  return { ok: true, msg: `สวมใส่ ${it.nameTh}` };
+  const changed = syncAppearance(c);
+  const d = getDerived(c);
+  c.hp = Math.min(c.hp, d.maxHp); c.mp = Math.min(c.mp, d.maxMp);
+  const style = it.wtype ? ` · แนว${JOBS[c.appearance.job].nameTh}` : '';
+  return { ok: true, msg: `สวมใส่ ${it.nameTh}${style}`, jobChanged: changed };
 }
 
 export function unequip(c, slot) {
@@ -102,16 +111,17 @@ export function unequip(c, slot) {
   if (!id) return { ok: false };
   c.equipment[slot] = null;
   addItem(c, id);
+  const changed = syncAppearance(c);
   const d = getDerived(c);
   c.hp = Math.min(c.hp, d.maxHp); c.mp = Math.min(c.mp, d.maxMp);
-  return { ok: true, msg: `ถอด ${ITEMS[id].nameTh}` };
+  return { ok: true, msg: `ถอด ${ITEMS[id].nameTh}${slot === 'weapon' ? ' · มือเปล่า (แนวมวย)' : ''}`, jobChanged: changed };
 }
 
 // ---------------- NPC Shop ----------------
 export function buy(c, id, qty = 1) {
   const it = ITEMS[id];
   if (!it?.price) return { ok: false, msg: 'ร้านไม่ขายของนี้' };
-  if (it.type === 'skin' && count(c, id)) return { ok: false, msg: 'มี Skin นี้แล้ว' };
+  if (it.type === 'skin' && count(c, id)) return { ok: false, msg: 'มีคัมภีร์นี้แล้ว' };
   const cost = it.price * qty;
   if (c.gold < cost) return { ok: false, msg: 'เงินไม่พอ' };
   c.gold -= cost;
@@ -121,7 +131,7 @@ export function buy(c, id, qty = 1) {
 
 export function sell(c, id, qty = 1) {
   const it = ITEMS[id];
-  if (it?.type === 'skin') return { ok: false, msg: 'ขาย Skin อาชีพไม่ได้' };
+  if (it?.type === 'skin') return { ok: false, msg: 'ขายคัมภีร์ไม่ได้' };
   if (!removeItem(c, id, qty)) return { ok: false, msg: 'ไม่มีของพอขาย' };
   const gain = sellPrice(id) * qty;
   c.gold += gain;

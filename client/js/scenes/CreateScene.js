@@ -1,18 +1,27 @@
 // ============================================================
 //  CreateScene – หน้าสร้างตัวละคร
-//  เลือกเพศ / ชุด 10 / ทรงผม 10 / ใบหน้า 10 / อาชีพ 4 + ดูตัวอย่าง Animation
+//  เลือกเพศ / ชุด 10 / สีผม 10 / ใบหน้า 10 / อาวุธเริ่มต้น + ดูตัวอย่าง Animation
+//  ทุกคนเริ่มเป็น "ชาวบ้าน" แบบเดียวกัน · แนวต่อสู้มาจากอาวุธที่ถือ · เลือกสายหลักตอน Lv.10
 // ============================================================
-import { GENDERS, OUTFITS, HAIRSTYLES, FACES, DEFAULT_APPEARANCE } from '/shared/data/appearance.js';
-import { JOBS, JOB_IDS } from '/shared/data/classes.js';
+import { GENDERS, OUTFITS, HAIRSTYLES, FACES, DEFAULT_APPEARANCE, sanitizeAppearance } from '/shared/data/appearance.js';
+import { JOBS, PATH_LV } from '/shared/data/classes.js';
+import { ITEMS } from '/shared/data/items.js';
 import { bakeCharacter } from '../gfx/SpriteFactory.js';
-import { newCharacter, loadCharacter, saveCharacter, reviveCharacter } from '../systems/Character.js';
+import { newCharacter, loadCharacter, saveCharacter, reviveCharacter, pathName } from '../systems/Character.js';
+import * as Inv from '../systems/Inventory.js';
 import { account } from '../net/Account.js';
 import { sound } from '../systems/Sound.js';
 import { loadSettings } from '../systems/Settings.js';
 
 const $ = (s) => document.querySelector(s);
 const PARTS = { outfit: OUTFITS, hair: HAIRSTYLES, face: FACES };
-const JOB_ICON = { swordman: '⚔️', mage: '🔮', archer: '🏹', boxer: '🥊' };
+/** อาวุธเริ่มต้นให้เลือก (ได้ทั้ง 3 ชิ้นในกระเป๋า เปลี่ยนถือได้ตลอด) */
+const START_WEAPONS = [
+  { id: null, icon: '🥊', job: 'boxer' },
+  { id: 'wood_sword', icon: '⚔️', job: 'swordman' },
+  { id: 'oak_staff', icon: '🔮', job: 'mage' },
+  { id: 'bamboo_bow', icon: '🏹', job: 'archer' },
+];
 
 export class CreateScene extends Phaser.Scene {
   constructor() { super('create'); }
@@ -28,7 +37,7 @@ export class CreateScene extends Phaser.Scene {
     this.add.tileSprite(480, 420, 480, 120, 'bg_mid').setScale(2);
     this.add.ellipse(250, 438, 170, 26, 0x000000, 0.45);
 
-    this.preview = this.add.sprite(250, 440, bakeCharacter(this, this.a), 'idle_0').setOrigin(0.5, 1).setScale(5);
+    this.preview = this.add.sprite(250, 440, bakeCharacter(this, sanitizeAppearance(this.a)), 'idle_0').setOrigin(0.5, 1).setScale(5);
 
     this.bindDom();
     this.refresh();
@@ -51,22 +60,24 @@ export class CreateScene extends Phaser.Scene {
       row.querySelector('.next').onclick = () => { this.a[part] = (this.a[part] + 1) % n; this.refresh(); };
     });
 
-    // อาชีพ
-    $('#cc-jobs').innerHTML = JOB_IDS.map((id) => `<button class="job" data-job="${id}"><b>${JOB_ICON[id]}</b>${JOBS[id].nameTh}</button>`).join('');
-    $('#cc-jobs').querySelectorAll('.job').forEach((b) => (b.onclick = () => { this.a.job = b.dataset.job; this.refresh(); }));
+    // อาวุธเริ่มต้น (= แนวต่อสู้ตอนเริ่ม)
+    $('#cc-jobs').previousElementSibling.textContent = 'อาวุธเริ่มต้น (เปลี่ยนได้ตลอดในเกม)';
+    $('#cc-jobs').innerHTML = START_WEAPONS.map((w, i) => `<button class="job" data-w="${i}"><b>${w.icon}</b>${w.id ? ITEMS[w.id].nameTh : 'มือเปล่า'}</button>`).join('');
+    $('#cc-jobs').querySelectorAll('.job').forEach((b) => (b.onclick = () => { this.a.weapon = START_WEAPONS[b.dataset.w].id; this.refresh(); }));
 
     // ตัวอย่างท่าทาง
     document.querySelectorAll('.preview-anims button').forEach((b) => (b.onclick = () => { this.previewAnim = b.dataset.anim; this.refresh(); }));
 
     $('#cc-random').onclick = () => {
       const r = (n) => Math.floor(Math.random() * n);
-      this.a = { gender: GENDERS[r(2)].id, outfit: r(10), hair: r(10), face: r(10), job: JOB_IDS[r(4)] };
+      this.a = { gender: GENDERS[r(2)].id, outfit: r(10), hair: r(10), face: r(10), weapon: START_WEAPONS[r(4)].id };
       this.refresh();
     };
 
     $('#cc-start').onclick = () => {
       if (this.serverChar && !confirm(`บัญชีนี้มีตัวละคร “${this.serverChar.name}” (Lv.${this.serverChar.level}) อยู่แล้ว\nสร้างใหม่จะเขียนทับตัวเดิม ต้องการสร้างใหม่ไหม?`)) return;
       const char = newCharacter($('#cc-name').value, this.a);
+      if (this.a.weapon) Inv.equip(char, this.a.weapon);
       saveCharacter(char);
       this.startGame(char);
     };
@@ -77,7 +88,7 @@ export class CreateScene extends Phaser.Scene {
     if (saved) {
       btn.classList.remove('hidden');
       const from = this.serverChar ? '' : account.loggedIn ? ' · นำเข้าจากเซฟในเครื่อง' : '';
-      btn.textContent = `เล่นต่อ: ${saved.name} (Lv.${saved.level} ${JOBS[saved.appearance.job].nameTh})${from}`;
+      btn.textContent = `เล่นต่อ: ${saved.name} (Lv.${saved.level} ${pathName(saved)})${from}`;
       btn.onclick = () => { saveCharacter(saved); this.startGame(saved); };
       if (this.serverChar) { btn.classList.add('primary'); }
     } else btn.classList.add('hidden');
@@ -92,18 +103,18 @@ export class CreateScene extends Phaser.Scene {
       const part = row.dataset.part;
       row.querySelector('.val').textContent = `${a[part] + 1}. ${PARTS[part][a[part]].nameTh}`;
     });
-    document.querySelectorAll('#cc-jobs .job').forEach((b) => b.classList.toggle('active', b.dataset.job === a.job));
-    const job = JOBS[a.job];
-    const s = job.startStats;
-    $('#cc-job-desc').textContent = `${job.desc} · STR ${s.STR} DEX ${s.DEX} INT ${s.INT} CRI ${s.CRI} VIT ${s.VIT}`;
+    const wi = Math.max(0, START_WEAPONS.findIndex((w) => w.id === (a.weapon || null)));
+    document.querySelectorAll('#cc-jobs .job').forEach((b) => b.classList.toggle('active', +b.dataset.w === wi));
+    const job = JOBS[START_WEAPONS[wi].job];
+    $('#cc-job-desc').textContent = `แนว${job.nameTh}: ${job.desc} · ทุกคนเริ่มเป็นชาวบ้าน ได้อาวุธฝึกครบทุกแบบ ลองได้ทุกแนว แล้วเลือกสายหลักกับผู้ใหญ่ชัยตอน Lv.${PATH_LV}`;
     document.querySelectorAll('.preview-anims button').forEach((b) => b.classList.toggle('active', b.dataset.anim === this.previewAnim));
 
     // สร้าง spritesheet ตามรูปลักษณ์ใหม่ แล้วเล่นท่าที่เลือก
     // ภาพ PixelLab: ทรงผม/หน้าตามภาพต้นฉบับ → ซ่อนตัวเลือกใบหน้า
-    const pixellab = this.textures.exists(`pbase_${a.job}_${a.gender}`);
+    const pixellab = this.textures.exists(`pbase_villager_${a.gender}`);
     document.querySelector('.picker[data-part="face"]').classList.toggle('hidden', pixellab);
 
-    const key = bakeCharacter(this, a);
+    const key = bakeCharacter(this, sanitizeAppearance(a));
     this.preview.setTexture(key);
     const loopable = ['idle', 'walk'].includes(this.previewAnim);
     // ท่าที่ไม่วนซ้ำ (โจมตี/โดนตี/ตาย) ให้เล่นซ้ำโดยเว้นช่วง เพื่อดูตัวอย่าง

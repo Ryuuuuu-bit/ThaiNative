@@ -15,6 +15,8 @@
 //   stun   { ms }              ศัตรูขยับ/โจมตีไม่ได้
 //   poison { ticks, every, ratio } ดาเมจต่อเนื่อง ratio × ดาเมจครั้งแรก ต่อ tick
 // ============================================================
+import { SUB_CAP, PATH_LV } from './classes.js';
+
 export const SKILL_SLOTS = ['Q', 'W', 'E', 'R', 'T'];
 export const MAX_SKILL_LV = 5;
 export const SP_PER_LEVEL = 1;
@@ -118,12 +120,22 @@ export function reqCharLevel(skill, nextLv) {
   return skill.reqLv + (nextLv - 1) * 2;
 }
 
+/** เลเวลสกิลสูงสุดที่ตัวละครนี้อัปได้ (สายหลัก 5 / สายรองหรือยังไม่เลือกสาย 2 / ท่าไม้ตายสายรอง 0) */
+export function skillCap(char, skill) {
+  const main = char.path && skill.job === char.path;
+  if (main) return MAX_SKILL_LV;
+  return skill.ultimate ? 0 : SUB_CAP;
+}
+
 /** ตรวจว่าอัปสกิลได้ไหม → { ok, reason } */
 export function canLearn(char, skillId) {
   const s = SKILL_BY_ID[skillId];
-  if (!s || s.job !== char.appearance.job) return { ok: false, reason: 'ไม่ใช่สกิลของอาชีพนี้' };
+  if (!s) return { ok: false, reason: 'ไม่มีสกิลนี้' };
   const cur = char.skills?.[skillId] || 0;
+  const cap = skillCap(char, s);
   if (cur >= MAX_SKILL_LV) return { ok: false, reason: 'เลเวลสูงสุดแล้ว' };
+  if (cap === 0) return { ok: false, reason: 'ท่าไม้ตาย ★ เฉพาะสายหลัก' };
+  if (cur >= cap) return { ok: false, reason: char.path ? `สายรองอัปได้ถึง Lv.${cap}` : `เลือกสายหลักตอน Lv.${PATH_LV} เพื่ออัปต่อ` };
   if ((char.sp || 0) < 1) return { ok: false, reason: 'SP ไม่พอ' };
   const need = reqCharLevel(s, cur + 1);
   if (char.level < need) return { ok: false, reason: `ต้องการ Lv.${need}` };

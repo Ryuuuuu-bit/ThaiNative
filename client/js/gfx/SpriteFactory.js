@@ -7,7 +7,7 @@ import { MONSTER_ANIMS, drawMonsterFrame } from './MonsterArt.js';
 import { MONSTERS } from '/shared/data/monsters.js';
 import { JOBS } from '/shared/data/classes.js';
 import { appearanceKey } from '/shared/data/appearance.js';
-import { baseKey, recolorBase, drawPlayerFrame, frameSize, PLAYER_ANIMS } from './PlayerArt.js';
+import { baseKey, legacyBaseKey, heldInfo, recolorBase, drawPlayerFrame, frameSize, PLAYER_ANIMS } from './PlayerArt.js';
 import { buildRig, trimImage, bakeRigSheet, ANIM_SPEC } from './Rig.js';
 
 function makeCanvas(w, h) {
@@ -65,14 +65,18 @@ export function bakeCharacter(scene, appearance) {
   const key = appearanceKey(appearance);
   const weapon = JOBS[appearance.job].weapon;
 
-  // ▸ มีภาพ PixelLab ของอาชีพ/เพศนี้ → ย้อมสี + สร้างท่าทางจากภาพนั้น
-  const bk = baseKey(appearance);
+  // ▸ มีภาพ PixelLab "ชาวบ้าน" (หรือภาพอาชีพเก่า) → ย้อมสี + อาวุธในมือ + สร้างท่าทาง
+  const legacy = !scene.textures.exists(baseKey(appearance));
+  const bk = legacy ? legacyBaseKey(appearance) : baseKey(appearance);
   if (scene.textures.exists(bk)) {
     if (scene.textures.exists(key)) return key;
-    const base = recolorBase(scene.textures.get(bk).getSourceImage(), appearance);
+    const base = recolorBase(scene.textures.get(bk).getSourceImage(), appearance, legacy);
+    base._gender = appearance.gender;
     PORTRAITS.set(key, base);
+    const ik = `ico_it_${appearance.weapon}`;
+    const held = legacy ? null : heldInfo(appearance, scene.textures.exists(ik) ? scene.textures.get(ik).getSourceImage() : null);
     const { FW: pw, FH: ph } = frameSize(base);
-    return bakeSheet(scene, key, pw, ph, PLAYER_ANIMS, (ctx, anim, i) => drawPlayerFrame(ctx, base, anim, i, weapon, pw, ph));
+    return bakeSheet(scene, key, pw, ph, PLAYER_ANIMS, (ctx, anim, i) => drawPlayerFrame(ctx, base, anim, i, weapon, pw, ph, held));
   }
 
   // ▸ ไม่มีภาพ → วาดด้วยโค้ด (paper-doll)

@@ -1,17 +1,39 @@
 // ============================================================
-//  PlayerArt – ตัวละครผู้เล่นจากภาพ PixelLab (อาชีพ × เพศ = 8 ภาพ)
+//  PlayerArt – ตัวละครผู้เล่นจากภาพ PixelLab "ชาวบ้าน" แบบเดียว (ชาย/หญิง)
+//  ▸ อาวุธที่สวมวาดในมือ (ใช้ภาพไอคอนไอเทม) · ชุดเกราะเปลี่ยนสีเสื้อผ้า
 //  ▸ ย้อมสีชุด/ผมตามที่ผู้เล่นเลือก:
 //      ภาพต้นฉบับใช้ "ชุดสีบานเย็น (magenta)" และ "ผมสีฟ้า (cyan)" เป็นสีคีย์
 //      โค้ดจะหาพิกเซลสีคีย์แล้วแทนด้วยสีที่เลือก โดยคงแสงเงาเดิมไว้
 //  ▸ สร้างท่าทางจากภาพนิ่ง: idle / walk / attack / hit / die / jump
 // ============================================================
 import { OUTFITS, HAIRSTYLES } from '/shared/data/appearance.js';
+import { ITEMS } from '/shared/data/items.js';
 import { JOBS } from '/shared/data/classes.js';
 import { CHAR_ANIMS } from './CharacterArt.js';
 import { buildRig, drawRig, poseFor } from './Rig.js';
 
 export const PAD_X = 12, PAD_TOP = 6;
-export const baseKey = (a) => `pbase_${a.job}_${a.gender}`;
+export const baseKey = (a) => `pbase_villager_${a.gender}`;
+export const legacyBaseKey = (a) => `pbase_${a.job}_${a.gender}`;
+/** ตำแหน่งมือหน้า (สัดส่วนของภาพที่ตัดขอบแล้ว) */
+const HAND = { male: [0.84, 0.6], female: [0.88, 0.62] };
+/** จุดจับในภาพไอคอนอาวุธ 48px + ขนาดที่ถือ */
+const GRIP = {
+  wood_sword: { g: [9, 39], s: 0.52 }, iron_dab: { g: [23, 42], s: 0.55, r: 0.7 },
+  oak_staff: { g: [23, 30], s: 0.95, ox: 2 }, yant_staff: { g: [24, 30], s: 0.95, ox: 2 },
+  bamboo_bow: { g: [26, 24], s: 0.72, ox: 4, oy: -5 }, horn_bow: { g: [27, 24], s: 0.72, ox: 4, oy: -5 },
+};
+const WTYPE_GRIP = { sword: GRIP.wood_sword, staff: GRIP.oak_staff, bow: GRIP.bamboo_bow };
+/** มุมเหวี่ยงอาวุธระหว่างท่าโจมตี 6 เฟรม */
+const SWING = { sword: [-0.7, -1.0, 0.2, 0.9, 0.7, 0.2], staff: [-0.25, -0.4, 0.05, 0.4, 0.25, 0.05], bow: [0, 0, 0, 0, 0, 0] };
+
+/** ข้อมูลอาวุธในมือ (null = มือเปล่า/ผ้าพันมือ) */
+export function heldInfo(a, img) {
+  const it = ITEMS[a.weapon];
+  if (!img || !it || it.wtype === 'wraps') return null;
+  const gp = GRIP[a.weapon] || WTYPE_GRIP[it.wtype];
+  return { img, wtype: it.wtype, gx: gp.g[0], gy: gp.g[1], scale: gp.s, rot0: gp.r || 0, ox: gp.ox || 0, oy: gp.oy || 0 };
+}
 
 // ---------------- สี ----------------
 function hexToRgb(hex) { const n = parseInt(hex.slice(1), 16); return [(n >> 16) & 255, (n >> 8) & 255, n & 255]; }
@@ -34,7 +56,7 @@ const isCloth = (h, s, l) => s > 0.25 && l > 0.08 && l < 0.94 && h >= 262 && h <
 const isHair = (h, s, l) => s > 0.25 && l > 0.08 && l < 0.94 && h >= 160 && h <= 245;
 
 /** ย้อมสีภาพต้นฉบับตามรูปลักษณ์ → canvas ที่ตัดขอบโปร่งใสแล้ว */
-export function recolorBase(img, a) {
+export function recolorBase(img, a, legacy = false) {
   const c = document.createElement('canvas');
   c.width = img.width; c.height = img.height;
   const ctx = c.getContext('2d');
@@ -49,7 +71,7 @@ export function recolorBase(img, a) {
     hsl[i] = v;
     if (isCloth(...v)) cloth.push(i); else if (isHair(...v)) hair.push(i);
   }
-  const outfit = OUTFITS[a.outfit], hairCol = HAIRSTYLES[a.hair].color;
+  const outfit = ITEMS[a.armor]?.look || OUTFITS[a.outfit], hairCol = HAIRSTYLES[a.hair].color;
   const paint = (list, pickHex) => {
     if (!list.length) return;
     const meanL = list.reduce((s, i) => s + hsl[i][2], 0) / list.length;
@@ -63,7 +85,7 @@ export function recolorBase(img, a) {
   // เสื้อ (ครึ่งบนของบริเวณชุด) / กางเกง-ผ้าถุง (ครึ่งล่าง)  นักมวยใช้สีกางเกงอย่างเดียว
   const ys = cloth.map((i) => (i / 4 / c.width) | 0);
   const split = ys.length ? Math.min(...ys) + (Math.max(...ys) - Math.min(...ys)) * 0.5 : 0;
-  paint(cloth, (i) => (a.job !== 'boxer' && ((i / 4 / c.width) | 0) < split ? outfit.top : outfit.bottom));
+  paint(cloth, (i) => (!(legacy && a.job === 'boxer') && ((i / 4 / c.width) | 0) < split ? outfit.top : outfit.bottom));
   paint(hair, () => hairCol);
   ctx.putImageData(data, 0, 0);
 
@@ -200,7 +222,7 @@ const ATTACK_POSES = {
           { dx: 5, lean: 0.2, front: -0.4, back: 0.3 }, { dx: 1, lean: 0.05 }],
 };
 
-function playerRigFrame(ctx, base, anim, i, weapon, FW, FH) {
+function playerRigFrame(ctx, base, anim, i, weapon, FW, FH, held) {
   const cfg = PLAYER_RIG[weapon] || PLAYER_RIG.sword;
   base._rig ||= buildRig(base, cfg);
   const rig = base._rig, W = rig.W, H = rig.H;
@@ -221,6 +243,11 @@ function playerRigFrame(ctx, base, anim, i, weapon, FW, FH) {
     pose = i === 0 ? { dy: -2, sy: 1.05, sx: 0.96, front: -0.6, back: 0.5, frontLift: 3, backLift: 2, lean: 0.06 }
                    : { dy: -2, front: -0.3, back: 0.7, frontLift: 2, backLift: 3, lean: 0.1 };
   }
+  if (held) {
+    const hand = HAND[base._gender] || HAND.male;
+    const swing = anim === 'attack' ? (SWING[held.wtype]?.[i] || 0) : anim === 'walk' ? Math.sin((i / 8) * Math.PI * 2) * 0.12 : 0;
+    pose = { ...pose, held: { ...held, hx: W * hand[0] + held.ox, hy: H * hand[1] + held.oy, rot: held.rot0 + swing } };
+  }
   drawRig(ctx, rig, pose, footX, footY);
   const dx = pose.dx || 0;
   if (anim === 'attack') {
@@ -234,9 +261,9 @@ function playerRigFrame(ctx, base, anim, i, weapon, FW, FH) {
   if (anim !== 'jump') shadow(ctx, footX + dx, FH, W * 0.32);
 }
 
-export function drawPlayerFrame(ctx, base, anim, i, weapon, FW, FH) {
+export function drawPlayerFrame(ctx, base, anim, i, weapon, FW, FH, held = null) {
   ctx.imageSmoothingEnabled = false;
-  if (anim !== 'die') return playerRigFrame(ctx, base, anim, i, weapon, FW, FH);
+  if (anim !== 'die') return playerRigFrame(ctx, base, anim, i, weapon, FW, FH, held);
   const W = base.width, H = base.height;
   const bx = Math.round((FW - W) / 2), by = FH - 2 - H;
   const cx = FW / 2, cy = by + H * 0.45;

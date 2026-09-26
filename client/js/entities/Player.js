@@ -173,7 +173,12 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
       return;
     }
     const lv = this.char.skills?.[id] || 0;
-    if (!lv || SKILL_BY_ID[id]?.job !== this.char.appearance.job) return;
+    if (!lv) return;
+    const need = SKILL_BY_ID[id]?.job;
+    if (need !== this.char.appearance.job) {          // สกิลใช้ได้เฉพาะตอนถืออาวุธแนวเดียวกัน
+      if (time - (this.cooldowns[`_w${key}`] ?? -9999) > 1500) { ui.toast(`${SKILL_BY_ID[id].nameTh}: ต้องถือ${JOBS[need].weaponTh}`, 'warn'); sfx.play('error'); this.cooldowns[`_w${key}`] = time; }
+      return;
+    }
     const sk = skillStats(SKILL_BY_ID[id], lv);
     if (this.cooldownLeft(id, time) > 0) return;
     if (this.char.mp < sk.mp) { ui.toast('MP ไม่พอ!', 'warn'); sfx.play('error'); this.cooldowns[id] = time + 400; return; }

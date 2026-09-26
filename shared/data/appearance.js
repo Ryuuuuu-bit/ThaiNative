@@ -4,6 +4,7 @@
 //   โดยใส่ไฟล์ใน client/assets/ และแก้ SpriteFactory)
 // ============================================================
 import { JOB_IDS } from './classes.js';
+import { ITEMS, weaponStyle } from './items.js';
 
 export const GENDERS = [
   { id: 'male', nameTh: 'ชาย' },
@@ -52,21 +53,30 @@ export const FACES = [
   { nameTh: 'ประแป้งดินสอพอง', eyes: 'round', mouth: 'smile', brow: false, blush: false, mark: 'powder' },
 ];
 
-export const DEFAULT_APPEARANCE = { gender: 'male', outfit: 0, hair: 1, face: 0, job: 'swordman' };
+export const DEFAULT_APPEARANCE = { gender: 'male', outfit: 0, hair: 1, face: 0, job: 'boxer', weapon: null, armor: null, path: null };
 
 const idx = (v, n) => (Number.isInteger(v) && v >= 0 && v < n ? v : 0);
+const itemOf = (id, type) => (typeof id === 'string' && ITEMS[id]?.type === type ? id : null);
 
-/** ตรวจค่าที่ส่งมาจาก client ให้อยู่ในช่วงที่ถูกต้อง (ใช้ทั้ง client/server) */
+/**
+ * ตรวจค่าที่ส่งมาจาก client ให้อยู่ในช่วงที่ถูกต้อง (ใช้ทั้ง client/server)
+ *  weapon/armor = ไอเทมที่สวมอยู่ (แสดงบนตัว)  job = แนวต่อสู้ตามอาวุธ (คำนวณเสมอ ไม่เชื่อ client)
+ *  path = สายหลักที่เลือกตอน Lv.10 (null = ชาวบ้าน)
+ */
 export function sanitizeAppearance(a = {}) {
+  const weapon = itemOf(a.weapon, 'weapon');
   return {
     gender: a.gender === 'female' ? 'female' : 'male',
     outfit: idx(a.outfit, OUTFITS.length),
     hair: idx(a.hair, HAIRSTYLES.length),
     face: idx(a.face, FACES.length),
-    job: JOB_IDS.includes(a.job) ? a.job : 'swordman',
+    job: weaponStyle(weapon),
+    weapon,
+    armor: itemOf(a.armor, 'armor'),
+    path: JOB_IDS.includes(a.path) ? a.path : null,
   };
 }
 
 export function appearanceKey(a) {
-  return `chr_${a.gender[0]}${a.outfit}_${a.hair}_${a.face}_${a.job}`;
+  return `chr_${a.gender[0]}${a.outfit}_${a.hair}_${a.face}_${a.weapon || a.job}_${a.armor || 'x'}`;
 }

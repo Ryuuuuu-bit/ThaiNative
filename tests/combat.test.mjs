@@ -1,7 +1,9 @@
 // ทดสอบสูตรค่าพลัง/ดาเมจ:  node tests/combat.test.mjs
 import assert from 'node:assert/strict';
 import { computeDerived, rollDamage, hitChanceOf, expToNext } from '../shared/stats.js';
-import { JOBS } from '../shared/data/classes.js';
+import { JOBS, VILLAGER } from '../shared/data/classes.js';
+import { sanitizeAppearance } from '../shared/data/appearance.js';
+import { weaponStyle } from '../shared/data/items.js';
 import { MONSTERS } from '../shared/data/monsters.js';
 import { SKILLS } from '../shared/data/skills.js';
 
@@ -54,7 +56,7 @@ const v = Object.values(dps);
 assert.ok(Math.max(...v) / Math.min(...v) < 2.5, `DPS spread ok ${JSON.stringify(dps)}`);
 
 // 6) สกิล 20 แบบ: อาชีพละ 5, id ไม่ซ้ำ, สเกลตามเลเวล, เงื่อนไขการเรียน
-import { SKILL_BY_ID, skillStats, canLearn, MAX_SKILL_LV, reqCharLevel } from '../shared/data/skills.js';
+import { SKILL_BY_ID, skillStats, canLearn, MAX_SKILL_LV, reqCharLevel, skillCap } from '../shared/data/skills.js';
 assert.equal(Object.keys(SKILL_BY_ID).length, 20, '20 skills');
 for (const [job, list] of Object.entries(SKILLS)) {
   assert.equal(list.length, 5, `${job} has 5 skills`);
@@ -69,10 +71,36 @@ for (const [job, list] of Object.entries(SKILLS)) {
 const ch = { appearance: { job: 'mage' }, level: 1, sp: 1, skills: {} };
 assert.equal(canLearn(ch, 'mage_akom').ok, true, 'learn lv1 skill');
 assert.equal(canLearn(ch, 'mage_kalp').ok, false, 'ultimate locked at lv1');
-assert.equal(canLearn(ch, 'boxer_jab').ok, false, 'other job skill');
+assert.equal(canLearn(ch, 'boxer_jab').ok, true, 'villager can learn any path skill');
 assert.equal(canLearn({ ...ch, sp: 0 }, 'mage_akom').ok, false, 'no SP');
 assert.equal(canLearn({ ...ch, skills: { mage_akom: 1 } }, 'mage_akom').ok, false, 'lv2 needs char lv3');
 assert.equal(reqCharLevel(SKILL_BY_ID.mage_akom, 2), 3);
+
+// 6b) สายหลัก/สายรอง: ชาวบ้านอัปได้ถึง Lv.2 · สายหลักถึง 5 · ท่าไม้ตายเฉพาะสายหลัก
+{
+  const v = { path: null, level: 20, sp: 10, skills: { sword_twin: 2 } };
+  assert.equal(canLearn(v, 'sword_twin').ok, false, 'villager capped at 2');
+  assert.equal(canLearn(v, 'sword_pikat').ok, false, 'villager no ultimate');
+  const m = { ...v, path: 'swordman' };
+  assert.equal(canLearn(m, 'sword_twin').ok, true, 'main path to 5');
+  assert.equal(canLearn(m, 'sword_pikat').ok, true, 'main path ultimate');
+  assert.equal(canLearn({ ...m, skills: { arch_quick: 2 } }, 'arch_quick').ok, false, 'sub path capped');
+  assert.equal(canLearn(m, 'arch_rain').ok, false, 'sub path ultimate locked');
+  assert.equal(skillCap(m, SKILL_BY_ID.arch_quick), 2);
+}
+// 6c) แนวต่อสู้มาจากอาวุธ (server ไม่เชื่อ job จาก client)
+assert.equal(sanitizeAppearance({ job: 'mage' }).job, 'boxer', 'no weapon → fists');
+assert.equal(sanitizeAppearance({ job: 'boxer', weapon: 'yant_staff' }).job, 'mage');
+assert.equal(sanitizeAppearance({ weapon: 'hp_s' }).weapon, null, 'non-weapon rejected');
+assert.equal(sanitizeAppearance({ path: 'hacker' }).path, null);
+assert.equal(weaponStyle('horn_bow'), 'archer');
+// 6d) โบนัสสายหลักคูณค่าพลัง
+{
+  const b = computeDerived(base, VILLAGER, 10), w = computeDerived(base, VILLAGER, 10, JOBS.swordman.pathBonus);
+  assert.ok(w.maxHp > b.maxHp && w.def === b.def + 4, 'swordman path bonus');
+  const mg = computeDerived(base, VILLAGER, 10, JOBS.mage.pathBonus);
+  assert.ok(mg.matk > b.matk && mg.maxMp > b.maxMp, 'mage path bonus');
+}
 
 // 7) EXP เพิ่มขึ้นตามเลเวล
 assert.ok(expToNext(2) > expToNext(1));

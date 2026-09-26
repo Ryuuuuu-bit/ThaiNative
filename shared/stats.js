@@ -44,11 +44,12 @@ export function computeDerived(s, job, level, bonus = {}) {
   const S = (k) => (s[k] || 0) + (bonus[k] || 0);
   const STR = S('STR'), DEX = S('DEX'), INT = S('INT'), CRI = S('CRI'), VIT = S('VIT');
 
+  const M = (k) => 1 + (bonus[k] || 0);                                 // โบนัสสายหลัก (hpMul, mpMul, patkMul, matkMul)
   return {
-    maxHp: Math.round(job.baseHp + VIT * 12 + level * job.hpPerLevel + (bonus.hp || 0)),
-    maxMp: Math.round(job.baseMp + INT * 6 + level * 4 + (bonus.mp || 0)),
-    patk: Math.round(STR * 2 + level * 1.5 + (bonus.atk || 0)),        // STR
-    matk: Math.round(INT * 2.5 + level * 1.5 + (bonus.matk || 0)),     // INT
+    maxHp: Math.round((job.baseHp + VIT * 12 + level * job.hpPerLevel + (bonus.hp || 0)) * M('hpMul')),
+    maxMp: Math.round((job.baseMp + INT * 6 + level * 4 + (bonus.mp || 0)) * M('mpMul')),
+    patk: Math.round((STR * 2 + level * 1.5 + (bonus.atk || 0)) * M('patkMul')),   // STR
+    matk: Math.round((INT * 2.5 + level * 1.5 + (bonus.matk || 0)) * M('matkMul')), // INT
     accuracy: 85 + DEX * 1.0,                                           // DEX (%)
     critRate: clamp(0.05 + DEX * 0.004 + (job.critBonus || 0) + (bonus.crit || 0), 0, 0.75), // DEX
     critDmg: 1.5 + CRI * 0.02,                                          // CRI

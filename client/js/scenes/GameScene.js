@@ -13,7 +13,6 @@ import { RaidBoss } from '../entities/RaidBoss.js';
 import { Social } from '../systems/Social.js';
 import { Clock } from '../systems/Clock.js';
 import { Shrine } from '../systems/Shrine.js';
-import { Invasion } from '../systems/Invasion.js';
 import { Village, FISH_SPOT } from '../systems/Village.js';
 import { Forest } from '../systems/Forest.js';
 import { Combat } from '../systems/Combat.js';
@@ -75,7 +74,6 @@ export class GameScene extends Phaser.Scene {
     this.social = new Social(this);
     this.clock = new Clock(this);         // กลางวัน–กลางคืน
     this.shrine = new Shrine(this);       // เซียมซี + ศาลพระภูมิ
-    this.invasion = new Invasion(this);   // อีเวนต์ผีห่าบุก
     this.village = new Village(this);     // ตกปลา · เควส · ครัว · ตีบวก
     this.forest = new Forest(this);       // Map 2: ค่ายพราน · สมุนไพร · หีบสมบัติ · ค่าหัว
 
@@ -107,6 +105,16 @@ export class GameScene extends Phaser.Scene {
 
     this.ui.updateHud();
     this.ui.toast(`ยินดีต้อนรับ ${char.name} สู่หมู่บ้านบางผี!`);
+    if (char.migratedV2) {            // เซฟเก่า → ระบบสายหลักใหม่: แจ้งครั้งเดียว
+      delete char.migratedV2;
+      this.time.delayedCall(1200, () => {
+        this.ui.banner('ระบบใหม่: ตัวละครแบบเดียว + สายหลัก');
+        this.ui.toast('อาชีพเดิมกลายเป็นสายหลักแล้ว · คืนแต้มสถานะให้ลงใหม่ (กด C) · แนวต่อสู้เปลี่ยนตามอาวุธที่ถือ · แถมน้ำมนต์ล้างแต้ม 1 ขวด', '', 9000);
+      });
+      this.saveSoon();
+    } else if (!char.path && char.level === 1 && !Object.keys(char.skills).length) {
+      this.time.delayedCall(1500, () => this.ui.toast('กด K เรียนสกิลแรก · ในกระเป๋ามีอาวุธฝึกครบ ลองถือแต่ละแบบดู (I)', '', 7000));
+    }
   }
 
   // ------------------------------------------------------------
@@ -290,7 +298,6 @@ export class GameScene extends Phaser.Scene {
     if (!spot) return;
     this.sfx.play('click');
     if (spot.id === 'shop') {
-      if (this.invasion.shopClosed) return this.ui.toast(this.invasion.active ? 'ยายติ๋มหนีไปหลบผีห่าอยู่!' : `ยายติ๋มยังไม่กล้ากลับมา (อีก ${this.invasion.shopClosedMin} นาที)`, 'warn');
       this.ui.openShop('mae_kha');
     } else if (spot.id === 'smith') this.ui.openShop('lung_dam');
     else if (spot.id === 'cook') this.ui.openShop('pa_sa');
@@ -370,11 +377,10 @@ export class GameScene extends Phaser.Scene {
       .on('init', ({ players, serverTime, dayMs }) => { players.forEach(addRemote); this.ui.setOnline(true, this.remotes.size); if (serverTime) this.clock?.sync(serverTime, dayMs); })
       .on('joined', (p) => { addRemote(p); this.ui.chat({ name: '📢 ระบบ', text: `${p.name} เข้าสู่โลก` }); this.ui.setOnline(true, this.remotes.size); })
       .on('left', (id) => { this.remotes.get(id)?.destroy(); this.remotes.delete(id); this.ui.setOnline(true, this.remotes.size); })
-      .on('snapshot', ({ t, players, boss, event }) => {
+      .on('snapshot', ({ t, players, boss }) => {
         players.forEach((p) => this.remotes.get(p.id)?.pushState(p));
         this.boss.setServer(boss);
         if (t) this.clock?.sync(t);
-        if (event) this.invasion?.apply(event);
       })
       .on('appearance', ({ id, appearance }) => this.remotes.get(id)?.setAppearance(appearance))
       .on('chat', (m) => this.ui.chat(m))
@@ -436,7 +442,6 @@ export class GameScene extends Phaser.Scene {
     this.footsteps(time);
 
     this.clock.tick();
-    this.invasion.update();
     this.village.update(time, this.game.loop.delta / 1000);
     this.forest.update(time);
     this.animateWater(time);
@@ -452,7 +457,6 @@ export class GameScene extends Phaser.Scene {
     const night = this.clock.light < 0.35;
     this.sfx.music(
       mp.boss && this.boss.alive ? 'boss'
-        : mp.id === 'village' && this.invasion.active ? 'boss'
         : mp.id === 'village' ? (night ? 'townNight' : 'town')
         : REGIONS[mp.region]?.music || 'wild');
   }

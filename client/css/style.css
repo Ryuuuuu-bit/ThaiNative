@@ -382,13 +382,6 @@ kbd { display: inline-block; min-width: 1.6em; text-align: center; padding: 0 .3
 .shrine-h { margin: .6em 0 .2em; color: var(--gold-soft); font-weight: 500; font-size: .9em; }
 .shrine-active div { font-size: .82em; padding: .15em 0; } .shrine-active small { color: #82e0aa; }
 
-.event-bar { position: absolute; top: 2%; left: 50%; transform: translateX(-50%); width: 22em; max-width: 40%; text-align: center; z-index: 2;
-  background: linear-gradient(rgba(60,14,6,.94), rgba(30,6,4,.94)); border: 2px solid #e67e22; border-radius: 8px; padding: .25em .6em .35em; box-shadow: 0 0 16px rgba(230,126,34,.6); }
-.event-bar .ev-name { display: flex; justify-content: center; gap: .6em; font-size: .85em; color: #fad7a0; }
-.event-bar .ev-name span { color: #f5b041; }
-.event-bar small { font-size: .65em; color: #f5cba7; }
-.bar.shrine i { background: linear-gradient(90deg, #b9770e, #f4d03f); }
-.boss-bar:not(.hidden) ~ .event-bar, .event-bar.lower { top: 11%; }
 .buff.bless { background: #1d4d33; border-color: #82e0aa; }
 
 /* ---------- หมู่บ้าน: ตกปลา / เควส / ตีบวก ---------- */
@@ -467,3 +460,22 @@ kbd { display: inline-block; min-width: 1.6em; text-align: center; padding: 0 .3
 .acc-group .set-row { gap: .5em; }
 #settings-panel { max-height: 92%; overflow-y: auto; }
 .cc-account { margin: .2em 0 0; text-align: center; }
+
+/* ---------- ระบบสาย/แนวต่อสู้ ---------- */
+.skill.noweapon { filter: grayscale(1) brightness(.6); border-color: #7f6a3a; }
+.skill.noweapon::after { content: '⛔'; position: absolute; right: 2px; bottom: 1px; font-size: .7em; }
+.sk-tabs { display: flex; flex-wrap: wrap; gap: .35em; align-items: center; margin: .2em 0 .5em; }
+.sk-tabs button { background: #1d1229; color: #e8dcc0; border: 1px solid rgba(212,175,55,.35); border-radius: 8px; padding: .3em .7em; cursor: pointer; font: inherit; }
+.sk-tabs button.active { background: #3b2350; border-color: var(--gold); color: #fff; }
+.sk-tabs button.main { box-shadow: 0 0 6px rgba(244,208,63,.45); }
+.sk-tabs button small { color: #58d68d; }
+.sk-tabs .sk-note { font-size: .82em; color: #c9b98f; margin-left: .3em; }
+.sk-pips i.cap { background: #1a1020; outline: 1px dashed #3a2a4a; }
+.derived .path-line { grid-column: 1 / -1; }
+.path-choose { display: grid; grid-template-columns: repeat(4, 1fr); gap: .5em; }
+.path-card { font-size: .88em; background: #140b1d; border: 1px solid rgba(212,175,55,.45); border-radius: 10px; padding: .6em; text-align: center; display: flex; flex-direction: column; gap: .35em; }
+.path-card .ic { font-size: 2em; }
+.path-card b { color: var(--gold); }
+.path-card .meta { font-size: .85em; color: #c9b98f; }
+.path-card button { margin-top: auto; }
+@media (max-width: 760px) { .path-choose { grid-template-columns: repeat(2, 1fr); } }

@@ -262,7 +262,9 @@
     "mage_female": "assets/players/mage_female.png",
     "mage_male": "assets/players/mage_male.png",
     "swordman_female": "assets/players/swordman_female.png",
-    "swordman_male": "assets/players/swordman_male.png"
+    "swordman_male": "assets/players/swordman_male.png",
+    "villager_male": "assets/players/villager_male.png",
+    "villager_female": "assets/players/villager_female.png"
   },
   "icons": {
     "it_acc_yant_gold": "assets/icons/it_acc_yant_gold.png",

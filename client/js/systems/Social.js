@@ -217,7 +217,7 @@ export class Social {
     const leader = this.party?.leader === me;
     $('#soc-party-info').textContent = this.party ? `(${this.party.members.length}/4)` : '';
     $('#soc-party').innerHTML = this.party
-      ? this.party.members.map((m) => `<div class="soc-row"><span>${m.id === this.party.leader ? '👑' : '•'} ${esc(m.name)} <small>Lv.${m.level} ${JOBS[m.job]?.nameTh ?? ''}</small></span>
+      ? this.party.members.map((m) => `<div class="soc-row"><span>${m.id === this.party.leader ? '👑' : '•'} ${esc(m.name)} <small>Lv.${m.level} ${JOBS[m.job]?.nameTh ?? 'ชาวบ้าน'}</small></span>
           ${m.id === me ? '<button class="btn ghost sm" data-act="leave">ออกจากปาร์ตี้</button>' : leader ? `<button class="btn ghost sm" data-act="kick" data-id="${m.id}">เชิญออก</button>` : ''}</div>`).join('')
       : '<p class="empty">ยังไม่มีปาร์ตี้ – เชิญผู้เล่นจากรายชื่อด้านล่าง</p>';
     const list = [...this.scene.remotes.values()];

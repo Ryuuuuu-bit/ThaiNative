@@ -75,6 +75,16 @@ export function buildRig(src, opts = {}) {
   };
 }
 
+/** อาวุธในมือ: held = { img, gx, gy (จุดจับในภาพอาวุธ), hx, hy (มือในภาพตัวละคร), scale, rot } */
+function drawHeld(ctx, h) {
+  ctx.save();
+  ctx.translate(h.hx, h.hy);
+  ctx.rotate(h.rot || 0);
+  ctx.scale(h.scale, h.scale);
+  ctx.drawImage(h.img, -h.gx, -h.gy);
+  ctx.restore();
+}
+
 /** วาดภาพแบบพลิ้ว (คลื่น) จากแถว from ลงไป */
 function drawWavy(ctx, img, x, y, t, amp, from = 0.5, freq = 0.35) {
   const H = img.height, start = Math.floor(H * from);
@@ -135,6 +145,7 @@ export function drawRig(ctx, rig, pose, footX, footY) {
       L.save();
       L.translate(W / 2, rig.hipY); L.rotate(p.lean); L.scale(1, p.torsoSy ?? 1); L.translate(-W / 2, -rig.hipY);
       L.drawImage(rig.torso, 0, rig.torsoY);
+      if (p.held) drawHeld(L, p.held);
       L.translate(W / 2, rig.neckY); L.rotate(p.head); L.translate(-W / 2, -rig.neckY);
       L.drawImage(rig.head, 0, (p.headDy || 0));
       L.restore();
