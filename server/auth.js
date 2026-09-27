@@ -114,8 +114,20 @@ export function setupAuth(app, hooks = {}) {
     if (await req.store.getCharacter(req.account.id, slot)) return res.status(409).json({ error: 'ช่องนี้มีตัวละครอยู่แล้ว' });
     const c = newCharacter(name, appearance);
     if (typeof weapon === 'string') runAction(c, 'equip', { id: weapon });
-    await req.store.saveCharacter(req.account.id, slot, c);
-    res.json({ character: c, slot });
+    // ชื่อห้ามซ้ำ: ซ้ำ → ต่อท้ายเลข #001, #002, …
+    const base = c.name;
+    for (let attempt = 0; ; attempt++) {
+      const taken = new Set(await req.store.namesLike(base));
+      if (taken.has(base.toLowerCase())) {
+        let n = 1;
+        while (n < 1000 && taken.has(`${base}#${String(n).padStart(3, '0')}`.toLowerCase())) n++;
+        if (n >= 1000) return res.status(409).json({ error: 'ชื่อนี้มีคนใช้เยอะเกินไป ลองชื่ออื่น' });
+        c.name = `${base}#${String(n).padStart(3, '0')}`;
+      } else c.name = base;
+      try { await req.store.saveCharacter(req.account.id, slot, c); break; }
+      catch (e) { if (e.code !== '23505' || attempt >= 3) throw e; }          // มีคนเอาชื่อนี้ไปพร้อมกัน → ลองเลขถัดไป
+    }
+    res.json({ character: c, slot, renamed: c.name !== base });
   }));
 
   // ลบตัวละคร: ต้องพิมพ์ชื่อตัวละครยืนยัน
@@ -156,7 +168,7 @@ export function setupAuth(app, hooks = {}) {
       const clean = rows.map((r) => {
         const enh = r.enhance || {}, eq = r.equipment || {};
         const best = Math.max(0, ...Object.entries(enh).filter(([slot]) => eq[slot]).map(([, v]) => +v || 0));
-        return { name: String(r.name).slice(0, 16), level: Math.min(30, +r.level || 1), path: typeof r.path === 'string' ? r.path : null, enh: Math.min(20, best) };
+        return { name: String(r.name).slice(0, 21), level: Math.min(30, +r.level || 1), path: typeof r.path === 'string' ? r.path : null, enh: Math.min(20, best) };
       });
       lbCache = {
         level: clean.slice(0, 20),

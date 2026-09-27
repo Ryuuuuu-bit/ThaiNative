@@ -66,6 +66,9 @@ class PgStore {
           ALTER TABLE characters ADD PRIMARY KEY (account_id, slot);
         END IF;
       END $$;`);
+    // ชื่อตัวละครห้ามซ้ำ (ไม่สนตัวพิมพ์เล็ก/ใหญ่) · ถ้ามีข้อมูลเก่าที่ซ้ำอยู่แล้วจะสร้าง index ไม่ได้ → ข้าม (ยังกันซ้ำตอนสร้างตัวใหม่)
+    try { await this.pool.query("CREATE UNIQUE INDEX IF NOT EXISTS characters_name_lower ON characters (lower(data->>'name'))"); }
+    catch (e) { console.error('[store] unique name index:', e.message); }
     // ล้างข้อมูลผู้เล่นทั้งหมด (ครั้งเดียวต่อค่า): ตั้ง env RESET_ALL_DATA=<รหัสใหม่> แล้ว deploy
     const reset = String(process.env.RESET_ALL_DATA || '').trim();
     if (reset) {
@@ -132,6 +135,13 @@ class PgStore {
       `INSERT INTO characters (account_id, slot, data, updated_at) VALUES ($1, $2, $3, now())
        ON CONFLICT (account_id, slot) DO UPDATE SET data = EXCLUDED.data, updated_at = now()`, [accountId, slotOf(slot), data]);
   }
+  /** ชื่อ (ตัวเล็ก) ที่ขึ้นต้นด้วยชื่อนี้: ตรงตัว หรือ ชื่อ#เลข */
+  async namesLike(base) {
+    const esc = base.toLowerCase().replace(/[\\%_]/g, (m) => '\\' + m);
+    const { rows } = await this.pool.query(
+      "SELECT lower(data->>'name') AS n FROM characters WHERE lower(data->>'name') = $1 OR lower(data->>'name') LIKE $2 ESCAPE '\\'", [base.toLowerCase(), `${esc}#%`]);
+    return rows.map((r) => r.n);
+  }
   async deleteCharacter(accountId, slot) {
     await this.pool.query('DELETE FROM characters WHERE account_id = $1 AND slot = $2', [accountId, slotOf(slot)]);
   }
@@ -171,6 +181,7 @@ class MemoryStore {
   async getCharacter(id, slot = 0) { return this.chars.get(`${id}:${slotOf(slot)}`) || null; }
   async saveCharacter(id, slot, data) { this.chars.set(`${id}:${slotOf(slot)}`, data); }
   async deleteCharacter(id, slot) { this.chars.delete(`${id}:${slotOf(slot)}`); }
+  async namesLike(base) { const b = base.toLowerCase(); return [...this.chars.values()].map((c) => String(c.name).toLowerCase()).filter((n) => n === b || n.startsWith(`${b}#`)); }
   async topCharacters(limit = 300) {
     return [...this.chars.values()].sort((a, b) => (b.level || 0) - (a.level || 0) || (b.exp || 0) - (a.exp || 0)).slice(0, limit)
       .map((d) => ({ name: d.name, level: d.level, exp: d.exp, enhance: d.enhance, path: d.path, equipment: d.equipment }));

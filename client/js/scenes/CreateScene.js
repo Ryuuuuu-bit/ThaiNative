@@ -78,6 +78,7 @@ export class CreateScene extends Phaser.Scene {
     cv.onpointerup = cv.onpointercancel = () => { dragX = null; };
 
     $('#cc-name').onkeydown = (e) => { e.stopPropagation(); if (e.key === 'Enter') $('#cc-start').click(); };
+    $('#cc-name').oninput = (e) => { const v = e.target.value; if (v.includes('#')) e.target.value = v.replace(/#/g, ''); };
 
     $('#cc-random').onclick = () => {
       const r = (n) => Math.floor(Math.random() * n);
@@ -95,9 +96,10 @@ export class CreateScene extends Phaser.Scene {
       if (online) {                       // บัญชีออนไลน์: server สร้างให้ (กันแก้ค่าเริ่มต้น)
         btn.disabled = true;
         try {
-          await account.createCharacter(this.slot, name, this.a, this.a.weapon || null);
+          const made = await account.createCharacter(this.slot, name, this.a, this.a.weapon || null);
           await account.refresh();
-          return this.scene.start('lobby', { select: this.slot, created: true });
+          const renamed = made?.name && made.name !== name.replace(/[<>#]/g, '').trim().slice(0, 16) ? made.name : null;
+          return this.scene.start('lobby', { select: this.slot, created: true, renamed });
         } catch (e) { alert(e.message || 'สร้างตัวละครไม่สำเร็จ'); btn.disabled = false; return; }
       }
       const char = newCharacter(name, this.a);

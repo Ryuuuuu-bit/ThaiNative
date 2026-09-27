@@ -40,7 +40,7 @@ function fixHotbar(c, hb) {
 export function newCharacter(name, appearance = {}) {
   const c = {
     v: SAVE_VERSION,
-    name: String(name || '').replace(/[<>]/g, '').trim().slice(0, 16) || 'ผู้กล้า',
+    name: String(name || '').replace(/[<>#]/g, '').trim().slice(0, 16) || 'ผู้กล้า',   // # สงวนไว้สำหรับเลขกันชื่อซ้ำ (เช่น Ryuu#001)
     appearance: sanitizeAppearance({ ...appearance, weapon: null, armor: null, path: null }),   // ชุดกำหนดตามเพศ (ชาย ม่อฮ่อม · หญิง เรือนต้น)
     path: null,
     level: 1, exp: 0, statPoints: 0,
@@ -267,7 +267,7 @@ export function choosePath(c, path) {
 /** แปลงเซฟเก่า/ซ่อมโครงสร้าง → ตัวละครที่ใช้ได้ */
 export function migrate(c) {
   if (!c || typeof c !== 'object') return null;
-  c.name = String(c.name || '').replace(/[<>]/g, '').trim().slice(0, 16) || 'ผู้กล้า';
+  c.name = String(c.name || '').replace(/[<>]/g, '').trim().slice(0, 21) || 'ผู้กล้า';
   c.appearance = sanitizeAppearance(c.appearance || {});
   c.level = Number.isFinite(+c.level) ? Math.max(1, Math.min(MAX_LEVEL, Math.floor(+c.level))) : 1;
   c.exp = Number.isFinite(+c.exp) ? Math.max(0, Math.floor(+c.exp)) : 0;

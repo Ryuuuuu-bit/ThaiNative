@@ -933,6 +933,11 @@ canvas.px { image-rendering: pixelated; image-rendering: crisp-edges; }
 .lb-sub { font-size: .78em; color: var(--muted); }
 @keyframes born { 0% { box-shadow: 0 0 0 0 rgba(255,220,130,.9); } 100% { box-shadow: 0 0 0 1.5em rgba(255,220,130,0); } }
 .lb-card.born { animation: born .8s ease-out 2; }
+.lb-toast { position: absolute; left: 50%; top: 18px; transform: translateX(-50%); z-index: 30; max-width: min(92vw, 520px);
+  padding: 10px 18px; border-radius: 10px; background: rgba(40, 24, 8, .94); border: 1px solid #d4a017; color: #fbe9c0;
+  font-size: 14px; text-align: center; box-shadow: 0 6px 20px rgba(0,0,0,.45); transition: opacity .5s, transform .5s; }
+.lb-toast b { color: #ffd76a; }
+.lb-toast.out { opacity: 0; transform: translate(-50%, -8px); }
 .lb-bottom { width: min(100%, 44em); display: flex; gap: 1em; align-items: stretch; }
 .lb-info { flex: 1; padding: .8em 1.5em; min-height: 7.4em; display: flex; flex-direction: column; gap: .4em; font-size: .9em; }
 .lb-i-head { display: flex; align-items: center; gap: .5em; }
@@ -1082,3 +1087,4 @@ body.td-mode #chat-log { max-height: 6.5em; }
 .cc-gcard.active { color: #fff3c4; border-color: var(--gold); background: linear-gradient(180deg, rgba(110,40,30,.7), rgba(30,12,20,.92)); box-shadow: 0 0 14px rgba(255,200,90,.35); }
 .cc-outfit-note { margin: .1em 0 .2em; font-size: .78em; color: var(--muted); text-align: center; }
 .cc-outfit-note b { color: var(--gold-soft); }
+.cc-hint { display: block; font-size: 11px; opacity: .65; margin-top: 3px; font-weight: normal; }

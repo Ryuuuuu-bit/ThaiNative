@@ -44,6 +44,7 @@ export class LobbyScene extends Phaser.Scene {
     this.bindDom();
     this.render();
     if (data.created) { sound.play('levelup'); this.flashCard(this.sel); }
+    if (data.renamed) this.toast(`ชื่อนี้มีผู้ใช้แล้ว — ตัวละครของคุณได้ชื่อ <b>${esc(data.renamed)}</b>`);
   }
 
   loadList() {
@@ -146,6 +147,15 @@ export class LobbyScene extends Phaser.Scene {
       <div class="lb-i-stats">${STAT_KEYS.map((k) => `<span><small>${k}</small>${c.stats?.[k] ?? 0}</span>`).join('')}</div>`;
   }
 
+  toast(html) {
+    const t = document.createElement('div');
+    t.className = 'lb-toast';
+    t.innerHTML = html;
+    $('#lobby-screen').appendChild(t);
+    setTimeout(() => t.classList.add('out'), 4200);
+    setTimeout(() => t.remove(), 4800);
+  }
+
   flashCard(i) {
     const el = document.querySelector(`.lb-card[data-i="${i}"]`);
     if (el) { el.classList.add('born'); setTimeout(() => el.classList.remove('born'), 1600); }
@@ -188,6 +198,7 @@ export class LobbyScene extends Phaser.Scene {
     clearHeroViews();
     $('#lobby-screen').classList.add('hidden');
     $('#lb-del-box').classList.add('hidden');
+    document.querySelectorAll('.lb-toast').forEach((t) => t.remove());
     if (this.onKey) document.removeEventListener('keydown', this.onKey);
     if (this.onClick) $('#lobby-screen').removeEventListener('click', this.onClick);
     this.onKey = this.onClick = null;

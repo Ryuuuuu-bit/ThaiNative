@@ -310,7 +310,7 @@ io.on('connection', (socket) => {
     if (!msg) return;
     const wm = msg.match(/^\/w\s+(\S+)\s+(.+)$/i);                              // /w ชื่อ ข้อความ = กระซิบ
     if (wm) {
-      const t = [...players.values()].find((q) => q.name === wm[1]);
+      const t = [...players.values()].find((q) => String(q.name).toLowerCase() === wm[1].toLowerCase());
       if (!t) return socket.emit('chat', { id: null, name: '📢 ระบบ', text: `ไม่พบผู้เล่นชื่อ "${wm[1]}" ที่ออนไลน์อยู่` });
       io.to(t.id).emit('chat', { id: p.id, name: `[กระซิบจาก ${p.name}]`, text: wm[2], whisper: true, from: p.name });
       if (t.id !== p.id) socket.emit('chat', { id: p.id, name: `[กระซิบถึง ${t.name}]`, text: wm[2], whisper: true });
