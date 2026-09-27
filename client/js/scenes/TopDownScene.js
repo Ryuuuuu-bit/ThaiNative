@@ -37,7 +37,8 @@ const OUTFIT_IDS = ['mohom', 'ruenton', 'jongkraben', 'rajpatan', 'chaona', 'sil
 const ACTION_ANIM = { swordman: 'slash', archer: 'shoot', mage: 'cast', boxer: 'attack' };
 const SPEED = 92;
 /** ระบบ Auto: หาผีเองในรัศมีนี้รอบตัว (px ≈ 10 ช่อง) */
-const AUTO_RADIUS = 160;                                   // ความเร็วเดิน (px/วิ) – ตรงกับ server/td.js
+const AUTO_MARGIN = 24;                                    // Auto: ตีผีทุกตัวที่อยู่ในหน้าจอ (ขอบจอเผื่อไว้นิดหน่อย)
+const AUTO_GIVEUP = 6000;                                  // ไล่เป้า Auto นานเกินนี้โดยไม่ได้ตี (ทางตัน) → ข้ามไปตัวอื่นชั่วคราว                                   // ความเร็วเดิน (px/วิ) – ตรงกับ server/td.js
 const SPAWN = TD_SPAWN;
 const HP_POTS = ['hp_s', 'hp_m', 'pot_aloe', 'pot_turmeric'];
 const MP_POTS = ['mp_s', 'mp_m', 'pot_anchan'];
@@ -360,21 +361,98 @@ export class TopDownScene extends Phaser.Scene {
   setTarget(m, auto = false) {
     if (!m.alive) return;
     this.player.target = m; this.player.path = [];
+    if (!auto) this.player.autoTarget = null;                  // เลือกเองด้วยมือ → ไม่ยอมแพ้ไล่เป้าอัตโนมัติ
     this.ui.setTarget({ def: { ...m.def, hp: m.maxHp }, get hp() { return m.hp; }, get alive() { return m.alive; } });
     if (!auto) this.sfx.play('target');
   }
 
-  /** Auto: ผีที่ใกล้ที่สุดในรัศมีรอบตัว (นอกเมืองเท่านั้น) */
-  autoPick() {
+  /** Auto: ผีที่ใกล้ที่สุดที่อยู่ในหน้าจอ (นอกเมืองเท่านั้น) · กรองตามชนิดผีที่เลือกไว้ (ว่าง = ตีทุกตัว) */
+  autoPick(time = 0) {
     const p = this.player;
     if (this.inTown()) return null;
-    let best = null, bd = AUTO_RADIUS;
+    const v = this.cameras.main.worldView;
+    const only = this.autoFilter();
+    let best = null, bd = Infinity;
     for (const m of this.mobs) {
-      if (!m.alive || m.visible === false) continue;
+      if (!m.alive || m.visible === false || (m.autoSkip || 0) > time) continue;
+      if (only && !only.has(m.spawn.id)) continue;
+      if (m.x < v.x - AUTO_MARGIN || m.x > v.right + AUTO_MARGIN || m.y < v.y - AUTO_MARGIN || m.y > v.bottom + AUTO_MARGIN) continue;
       const d = dist(p, m);
       if (d < bd) { bd = d; best = m; }
     }
     return best;
+  }
+
+  /** ชุดชนิดผีที่ Auto จะตี (null = ตีทุกตัว) */
+  autoFilter() {
+    const list = this.settings.autoMobs;
+    return Array.isArray(list) && list.length ? new Set(list) : null;
+  }
+
+  /** ชนิดผีในแผนที่นี้ (สำหรับเมนูเลือกเป้า Auto) */
+  mobKinds() {
+    const kinds = new Map();
+    for (const m of this.mobs) {
+      const id = m.spawn.id, k = kinds.get(id) || { id, def: m.def, n: 0, alive: 0 };
+      k.n++; if (m.alive) k.alive++;
+      kinds.set(id, k);
+    }
+    return [...kinds.values()].sort((a, b) => a.def.level - b.def.level);
+  }
+
+  /** เมนูเลือกเป้า Auto (ปุ่ม ▾ ข้างปุ่ม AUTO หรือ Shift+A) */
+  toggleAutoMenu(open = $('#auto-menu')?.classList.contains('hidden')) {
+    const box = $('#auto-menu');
+    if (!box) return;
+    box.classList.toggle('hidden', !open);
+    if (open) this.renderAutoMenu();
+  }
+
+  renderAutoMenu() {
+    const box = $('#auto-menu');
+    if (!box || box.classList.contains('hidden')) return;
+    const only = this.autoFilter();
+    const kinds = this.mobKinds();
+    box.innerHTML = `
+      <div class="am-head"><b>🎯 เป้าหมาย Auto</b><small>ระยะ: ทั้งหน้าจอ</small></div>
+      <label class="am-all"><input type="checkbox" data-all ${only ? '' : 'checked'}> ตีทุกตัว</label>
+      <div class="am-list">${kinds.length ? kinds.map((k) => `
+        <label class="${only && !only.has(k.id) ? 'off' : ''}" data-cnt="${k.alive}/${k.n}">
+          <input type="checkbox" data-id="${k.id}" ${!only || only.has(k.id) ? 'checked' : ''}>
+          <span class="am-lv">Lv.${k.def.level}</span><span class="am-n">${k.def.nameTh}${k.def.elite ? ' 👑' : ''}${k.def.nightOnly ? ' 🌙' : ''}</span>
+        </label>`).join('') : '<div class="am-empty">แผนที่นี้ไม่มีผี</div>'}</div>
+      <div class="am-foot">ติ๊กเฉพาะชนิดที่อยากตี · ไม่ติ๊กเลย = ตีทุกตัว</div>`;
+    box.querySelector('[data-all]').onchange = (e) => {
+      this.settings.autoMobs = e.target.checked ? [] : kinds.map((k) => k.id);
+      saveSettings(this.settings); this.renderAutoMenu(); this.autoRetarget();
+    };
+    box.querySelectorAll('[data-id]').forEach((cb) => (cb.onchange = () => {
+      let ids = [...box.querySelectorAll('[data-id]:checked')].map((x) => x.dataset.id);
+      if (ids.length === kinds.length) ids = [];               // ติ๊กครบทุกชนิด = ตีทุกตัว
+      this.settings.autoMobs = ids;
+      saveSettings(this.settings); this.renderAutoMenu(); this.autoRetarget();
+    }));
+    this.updateAutoBadge();
+  }
+
+  /** เป้า Auto ปัจจุบันไม่อยู่ในรายการที่เลือกแล้ว → ปล่อยเป้า ให้ Auto หาใหม่ */
+  autoRetarget() {
+    const p = this.player, m = p?.target, only = this.autoFilter();
+    if (m && p.autoTarget === m && only && !only.has(m.spawn.id)) { p.target = null; p.autoTarget = null; this.ui.setTarget?.(null); }
+  }
+
+  /** อัปเดตจำนวนผีที่เหลือในเมนู Auto แบบเบาๆ (ไม่วาดใหม่ทั้งเมนู) */
+  refreshAutoMenuCounts() {
+    const box = $('#auto-menu');
+    if (!box || box.classList.contains('hidden')) return;
+    for (const k of this.mobKinds()) { const el = box.querySelector(`[data-id="${k.id}"]`)?.parentElement; if (el) el.dataset.cnt = `${k.alive}/${k.n}`; }
+  }
+
+  updateAutoBadge() {
+    const bt = $('#auto-skill'); if (!bt) return;
+    const only = this.autoFilter();
+    bt.classList.toggle('filtered', !!only);
+    bt.title = `Auto (A) – ตีผี${only ? `ที่เลือก ${only.size} ชนิด` : 'ทุกตัว'}ในหน้าจอ + ร่ายสกิลในแถบ 1–0 อัตโนมัติ · เลือกเป้า: ปุ่ม ▾ / Shift+A`;
   }
 
   setMobVisible(m, on) {
@@ -602,7 +680,8 @@ export class TopDownScene extends Phaser.Scene {
   toggleAutoSkill(on = !this.settings.autoSkill) {
     this.settings.autoSkill = on; saveSettings(this.settings);
     $('#auto-skill')?.classList.toggle('on', on);
-    this.ui.toast(on ? '⚡ Auto: เปิด — ตีผีรอบตัวเอง + ร่ายสกิลในแถบ 1–0 อัตโนมัติ (เดิน/คลิกพื้นเพื่อพักชั่วคราว)' : 'Auto: ปิด', on ? 'ok' : '', 2200);
+    const only = this.autoFilter();
+    this.ui.toast(on ? `⚡ Auto: เปิด — ตีผี${only ? `ที่เลือก ${only.size} ชนิด` : 'ทุกตัว'}ในหน้าจอ + ร่ายสกิลในแถบ 1–0 (เดิน/คลิกพื้นเพื่อพักชั่วคราว)` : 'Auto: ปิด', on ? 'ok' : '', 2200);
   }
 
   // ------------------------------------------------------------
@@ -707,8 +786,13 @@ export class TopDownScene extends Phaser.Scene {
     });
     for (const k of SKILL_SLOTS) kb.on(`keydown-${SLOT_KEYNAME[k]}`, () => this.useSlot(k));   // Hotbar 1–0 (สกิล/ไอเทม)
     kb.on('keydown-B', () => this.recall());
-    kb.on('keydown-A', () => { if (!this.ui.anyOpen?.()) this.toggleAutoSkill(); });
-    { const bt = $('#auto-skill'); if (bt) { bt.classList.toggle('on', !!this.settings.autoSkill); bt.onclick = () => this.toggleAutoSkill(); } }
+    kb.on('keydown-A', (e) => { if (this.ui.anyOpen?.()) return; if (e.shiftKey) this.toggleAutoMenu(); else this.toggleAutoSkill(); });
+    { const bt = $('#auto-skill'); if (bt) { bt.classList.toggle('on', !!this.settings.autoSkill); bt.onclick = () => this.toggleAutoSkill(); bt.oncontextmenu = (e) => { e.preventDefault(); this.toggleAutoMenu(); }; } }
+    { const cf = $('#auto-cfg'); if (cf) cf.onclick = (e) => { e.stopPropagation(); this.toggleAutoMenu(); }; }
+    this.onAutoMenuOutside = (e) => { const box = $('#auto-menu'); if (box && !box.classList.contains('hidden') && !e.target.closest('#auto-menu, #auto-cfg, #auto-skill')) box.classList.add('hidden'); };
+    document.addEventListener('pointerdown', this.onAutoMenuOutside);
+    this.events.once('shutdown', () => { document.removeEventListener('pointerdown', this.onAutoMenuOutside); $('#auto-menu')?.classList.add('hidden'); });
+    this.updateAutoBadge();
     kb.on('keydown-I', () => this.ui.toggle('inv-panel'));
     kb.on('keydown-C', () => this.ui.toggle('stats-panel'));
     kb.on('keydown-K', () => this.ui.toggle('skill-panel'));
@@ -806,14 +890,16 @@ export class TopDownScene extends Phaser.Scene {
         if (!m.alive) p.target = null;
         else {
           const dd = dist(p, m), range = this.attackRange();
-          if (dd > range) { if (!p.path.length || time > (p.nextPath || 0)) { p.nextPath = time + 400; p.path = this.findPath(p.x, p.y - 2, m.x, m.y); } }
-          else { p.path = []; if (time >= p.nextAtk && p.st !== 'attack') this.playerAttack(m, time); }
+          if (dd > range) {
+            if (p.autoTarget === m && time - (p.autoSince || time) > AUTO_GIVEUP) { m.autoSkip = time + 8000; p.target = null; p.autoTarget = null; p.path = []; }   // ไปไม่ถึง → ข้ามชั่วคราว
+            else if (!p.path.length || time > (p.nextPath || 0)) { p.nextPath = time + 400; p.path = this.findPath(p.x, p.y - 2, m.x, m.y); }
+          } else { p.path = []; p.autoSince = time; if (time >= p.nextAtk && p.st !== 'attack') this.playerAttack(m, time); }
         }
       } else if (this.settings.autoSkill && !p.path.length && !this.recalling && time > (p.nextAuto || 0)) {
-        // Auto: ไม่มีเป้า/ไม่ได้สั่งเดิน → ล็อกผีที่ใกล้ที่สุดในรัศมีรอบตัวแล้วตีเอง
+        // Auto: ไม่มีเป้า/ไม่ได้สั่งเดิน → ล็อกผีที่ใกล้ที่สุดในหน้าจอ (ตามชนิดที่เลือก) แล้วเดินไปตีเอง
         p.nextAuto = time + 300;
-        const m = this.autoPick();
-        if (m) this.setTarget(m, true);
+        const m = this.autoPick(time);
+        if (m) { this.setTarget(m, true); p.autoTarget = m; p.autoSince = time; }
       }
       if (!vx && !vy && p.path.length) {
         // ทางลัด: ถ้ามองเห็นจุดถัดไปตรง ๆ ข้ามจุดกลางทาง → เดินเป็นเส้นตรง ไม่ซิกแซกตามช่องตาราง
@@ -832,13 +918,7 @@ export class TopDownScene extends Phaser.Scene {
     } else p.setVelocity(0, 0);
     p.setDepth(p.y);
     this.nameTag.setPosition(p.x, p.y - p.displayHeight - 3);
-    // วงรัศมี Auto (จางๆ ใต้เท้า)
-    if (!this.autoRing) {
-      this.autoRing = this.add.graphics().setDepth(1);
-      this.autoRing.lineStyle(1, 0xffd35c, 0.35).strokeEllipse(0, 0, AUTO_RADIUS * 2, AUTO_RADIUS * 2);
-      this.autoRing.fillStyle(0xffd35c, 0.04).fillEllipse(0, 0, AUTO_RADIUS * 2, AUTO_RADIUS * 2);
-    }
-    this.autoRing.setPosition(p.x, p.y).setVisible(!!this.settings.autoSkill && p.alive && !this.inTown());
+    if (time > (this.nextAutoMenu || 0)) { this.nextAutoMenu = time + 1000; this.refreshAutoMenuCounts(); }
     for (const sh of this.shadows) sh.img.setPosition(sh.obj.x, sh.obj.y + 1).setVisible(sh.obj.visible && sh.obj.alpha > 0.2);
     for (const m of this.mobs) { if (this.econ.server) this.updateMobOnline(m, dt); else this.updateMobLocal(m, time); this.drawMob(m); }
     this.remotes.forEach((r) => r.update(dt));

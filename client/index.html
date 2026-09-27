@@ -34,7 +34,7 @@
       <div class="td-target" id="td-target"></div>
       <div class="td-toast hidden" id="td-toast"></div>
       <button class="td-act hidden" id="td-act"></button>
-      <div class="td-bottom"><span class="t-hint">👆 แตะพื้น = เดิน · แตะผี / ปุ่ม ⚔️ = ตี · แตะช่องสกิล = ร่าย · ⚡ = ออโต้ (ตีเอง) · จอยซ้าย = เดิน</span><span class="k-hint">🖱️ คลิกพื้น = เดิน · คลิกผี = โจมตี · คลิก NPC = ร้าน/เควส · ลูกศร เดิน · 1–0 Hotbar (สกิล/ไอเทม) · A ออโต้ (ตีผีรอบตัว) · B ยันต์คืนถิ่น · I กระเป๋า · C สถานะ · K สกิล · J เควส · คลิกขวาที่ผี = ตี</span></div>
+      <div class="td-bottom"><span class="t-hint">👆 แตะพื้น = เดิน · แตะผี / ปุ่ม ⚔️ = ตี · แตะช่องสกิล = ร่าย · ⚡ = ออโต้ (ตีเอง) · จอยซ้าย = เดิน</span><span class="k-hint">🖱️ คลิกพื้น = เดิน · คลิกผี = โจมตี · คลิก NPC = ร้าน/เควส · ลูกศร เดิน · 1–0 Hotbar (สกิล/ไอเทม) · A ออโต้ (ตีผีทั้งจอ · Shift+A เลือกผี) · B ยันต์คืนถิ่น · I กระเป๋า · C สถานะ · K สกิล · J เควส · คลิกขวาที่ผี = ตี</span></div>
     </div>
     <div id="game"></div>
 
@@ -192,7 +192,11 @@
         <div class="actionbar">
           <div class="slots">
             <div id="skillbar"></div>
-            <button class="slot auto-skill" id="auto-skill" title="Auto (A) – ตีผีรอบตัวเอง + ร่ายสกิลในแถบ 1–0 อัตโนมัติ"><span class="k">A</span><span class="ic">⚡</span><span class="lbl">AUTO</span></button>
+            <div class="auto-wrap">
+              <button class="slot auto-skill" id="auto-skill" title="Auto (A) – ตีผีในหน้าจอ + ร่ายสกิลในแถบ 1–0 อัตโนมัติ"><span class="k">A</span><span class="ic">⚡</span><span class="lbl">AUTO</span></button>
+              <button class="auto-cfg" id="auto-cfg" title="เลือกผีที่จะให้ Auto ตี (Shift+A)">▾</button>
+              <div id="auto-menu" class="auto-menu hidden"></div>
+            </div>
           </div>
         </div>
         <div class="expbar"><i id="hud-exp-fill"></i><span id="hud-exp"></span></div>
