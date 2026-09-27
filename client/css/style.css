@@ -1072,7 +1072,7 @@ body.td-mode #td-hud .td-zone { top: 42.1% !important; right: 1.2%; width: 16.67
 
 body.td-mode:not(.touch) #chat { width: 19em; font-size: .72em; }
 body.td-mode #chat-log { max-height: 6.5em; }
-#skill-panel .sk-tree { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+#skill-panel .sk-tree { grid-template-columns: repeat(6, minmax(0, 1fr)); }
 #skill-panel .sk-assign { display: flex; flex-wrap: wrap; justify-content: center; gap: 2px; }
 #skill-panel .sk-assign button { min-width: 1.5em; padding: 0 .2em; font-size: .75em; }
 #skill-panel .sk-card { font-size: .88em; }

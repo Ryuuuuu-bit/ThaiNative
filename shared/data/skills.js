@@ -1,5 +1,5 @@
 // ============================================================
-//  ระบบสกิล 20 แบบ (4 อาชีพ × 5 สกิล) + Skill Tree
+//  ระบบสกิล 24 แบบ (4 อาชีพ × 6 สกิล · สกิลที่ 6 = สกิลปาร์ตี้) + Skill Tree
 //  ▸ เรียน/อัปเลเวลสกิลด้วย Skill Point (SP) ได้ 1 SP ต่อเลเวลตัวละคร
 //  ▸ สกิลละ 5 เลเวล: ตัวคูณดาเมจ +15%/เลเวล, คูลดาวน์ -4%/เลเวล, MP +10%/เลเวล
 //  ▸ ติดตั้งลง Hotbar Q W E R T (ลาก-วาง หรือคลิกเลือก)
@@ -11,6 +11,7 @@
 //   aoe        วงรอบจุด    { radius, offset, hits, interval, fx }
 //   strike     ฟ้าผ่าเป้าที่ใกล้สุด { range }
 //   buff       บัฟตัวเอง    { buff:{atkMul,critAdd,def}, duration, heal }
+//   party      บัฟ/ฮีลทั้งปาร์ตี้ในรัศมี { radius, buff, duration, heal, mpHeal } (เล่นคนเดียวก็ได้ผลกับตัวเอง)
 //  effect (ติดกับศัตรูที่โดน):
 //   stun   { ms }              ศัตรูขยับ/โจมตีไม่ได้
 //   poison { ticks, every, ratio } ดาเมจต่อเนื่อง ratio × ดาเมจครั้งแรก ต่อ tick
@@ -36,7 +37,7 @@ export const SKILLS = {
       desc: 'ยิงลูกไฟอาคม 2 ลูก' },
     { id: 'mage_yant', nameTh: 'ยันต์ตรึงวิญญาณ', icon: '📜', reqLv: 2, type: 'projectile', kind: 'magic',
       mp: 10, cd: 6000, mult: 0.9, proj: 'yant', speed: 220, range: 220, pierce: true, effect: { stun: { ms: 1800 } }, sfx: 'buff',
-      desc: 'ยันต์ทะลุทุกตัว ตรึงศัตรูนิ่ง 1.8 วิ' },
+      desc: 'ปายันต์ทอง 3 แผ่นวนเข้าเป้า โซ่วิญญาณล็อกศัตรูนิ่ง 1.8 วิ (ทะลุทุกตัว)' },
     { id: 'mage_shield', nameTh: 'เกราะยันต์เก้ายอด', icon: '🛡️', reqLv: 4, type: 'buff',
       mp: 15, cd: 16000, buff: { def: 20 }, duration: 8000, heal: 0.2, sfx: 'buff',
       desc: 'ฟื้น HP 20% ป้องกัน +20 นาน 8 วิ' },
@@ -46,6 +47,9 @@ export const SKILLS = {
     { id: 'mage_kalp', nameTh: 'เพลิงกัลป์ปราบผี', icon: '☄️', reqLv: 8, type: 'aoe', kind: 'magic', ultimate: true,
       mp: 35, cd: 22000, mult: 2.2, radius: 110, offset: 110, hits: 4, interval: 240, fx: 'meteor', sfx: 'meteor',
       desc: 'ไฟกัลป์ถล่มด้านหน้า 4 ระลอก' },
+    { id: 'mage_holy', nameTh: 'น้ำมนต์ธาราทิพย์', icon: '🪷', reqLv: 10, type: 'party', party: true,
+      mp: 30, cd: 24000, radius: 220, buff: { def: 12 }, duration: 10000, heal: 0.25, mpHeal: 0.15, sfx: 'buff',
+      desc: '[ปาร์ตี้] บัวทิพย์บานกลางวง ฟื้น HP 25% + MP 15% ทั้งปาร์ตี้ · ป้องกัน +12 นาน 10 วิ' },
   ],
   // ---------------- นักมวยคาดเชือก ----------------
   boxer: [
@@ -64,6 +68,9 @@ export const SKILLS = {
     { id: 'boxer_ngouy', nameTh: 'หักงวงไอยรา', icon: '🐘', reqLv: 8, type: 'dash', kind: 'physical', ultimate: true,
       mp: 25, cd: 18000, mult: 4.0, distance: 80, leap: true, effect: { stun: { ms: 1500 } }, sfx: 'dash',
       desc: 'กระโดดทุ่มศอกลงกลางหัว แรงมาก + มึนงง' },
+    { id: 'boxer_drum', nameTh: 'กลองมังคละปลุกใจ', icon: '🥁', reqLv: 10, type: 'party', party: true,
+      mp: 24, cd: 26000, radius: 220, buff: { def: 18, atkMul: 0.1 }, duration: 12000, heal: 0.15, sfx: 'buff',
+      desc: '[ปาร์ตี้] ตีกลองศึก 3 จังหวะ ฟื้น HP 15% · ป้องกัน +18 โจมตี +10% ทั้งปาร์ตี้ 12 วิ' },
   ],
   // ---------------- ขุนศึก (ดาบคู่) ----------------
   swordman: [
@@ -82,6 +89,9 @@ export const SKILLS = {
     { id: 'sword_pikat', nameTh: 'เพลงดาบพิฆาต', icon: '🔥', reqLv: 8, type: 'aoe', kind: 'physical', ultimate: true,
       mp: 28, cd: 20000, mult: 1.3, radius: 62, offset: 10, hits: 6, interval: 150, sfx: 'storm',
       desc: 'ร่ายเพลงดาบรอบตัว 6 ครั้ง' },
+    { id: 'sword_banner', nameTh: 'ธงชัยเฉลิมพล', icon: '🚩', reqLv: 10, type: 'party', party: true,
+      mp: 26, cd: 28000, radius: 220, buff: { atkMul: 0.22, def: 8 }, duration: 12000, heal: 0.08, sfx: 'buff',
+      desc: '[ปาร์ตี้] ปักธงครุฑนำทัพ โจมตี +22% ป้องกัน +8 ทั้งปาร์ตี้ 12 วิ' },
   ],
   // ---------------- พรานป่า ----------------
   archer: [
@@ -100,6 +110,9 @@ export const SKILLS = {
     { id: 'arch_rain', nameTh: 'ห่าฝนธนู', icon: '🌧️', reqLv: 8, type: 'aoe', kind: 'physical', ultimate: true,
       mp: 26, cd: 18000, mult: 1.25, radius: 90, offset: 110, hits: 5, interval: 200, fx: 'arrowRain', sfx: 'arrowRain',
       desc: 'ธนูตกเป็นห่าฝน 5 ระลอก' },
+    { id: 'arch_garuda', nameTh: 'ลมใต้ปีกครุฑ', icon: '🪶', reqLv: 10, type: 'party', party: true,
+      mp: 24, cd: 26000, radius: 220, buff: { critAdd: 0.15, atkMul: 0.1 }, duration: 12000, heal: 0.08, sfx: 'buff',
+      desc: '[ปาร์ตี้] ปีกครุฑโอบปาร์ตี้ คริ +15% โจมตี +10% ทั้งปาร์ตี้ 12 วิ' },
   ],
 };
 

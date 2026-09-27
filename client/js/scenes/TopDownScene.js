@@ -311,7 +311,7 @@ export class TopDownScene extends Phaser.Scene {
       spr.on('pointerover', () => { this.hovered = spr; document.body.dataset.cursor = 'talk'; });
       spr.on('pointerout', () => { if (this.hovered === spr) this.hovered = null; delete document.body.dataset.cursor; });
       if (n.id === 'quest') {                                                              // เครื่องหมาย ! ทองลอยเหนือป้ายชื่อ
-        const y0 = n.y - spr.height - 30;
+        const y0 = n.y - spr.displayHeight - 30;
         const g = this.add.graphics().setDepth(n.y + 3);
         g.fillStyle(0x5a1611, 1).fillCircle(0, 0, 6).lineStyle(1.5, 0xf4d03f).strokeCircle(0, 0, 6);
         const t = makeText(this, 0, 1, '!', { fontSize: '9px', color: '#ffe082' }).setOrigin(0.5);
@@ -324,7 +324,7 @@ export class TopDownScene extends Phaser.Scene {
 
   /** ป้ายชื่อ NPC: กรอบรักดำขอบทอง · บรรทัดบน = หน้าที่ (ไอคอน) · บรรทัดล่าง = ชื่อ */
   npcPlate(n, spr) {
-    const top = n.y - spr.height - 2;
+    const top = n.y - spr.displayHeight - 2;
     const role = makeText(this, 0, 0, `${NPC_ICON[n.id] || '💬'} ${n.role}`, { fontSize: '6px', color: '#f7dc6f' }).setOrigin(0.5, 1);
     const name = makeText(this, 0, 0, n.nameTh, { fontSize: '7px', color: n.color || '#ffffff' }).setOrigin(0.5, 1);
     const w = Math.max(role.width, name.width) / 1 + 8, h = role.height + name.height - 2;
@@ -804,6 +804,7 @@ export class TopDownScene extends Phaser.Scene {
       .on('td:matk', ({ mid }) => { const m = this.mobs[mid]; if (m?.alive) playDir(m, 'attack', m.dir, true); })
       .on('td:aoe', (a) => this.bossAoe(a))
       .on('td:title', ({ id, title }) => this.remotes.get(id)?.setTitle(title))
+      .on('td:pbuff', (d) => this.skills?.partyReceive(d))
       .on('td:fx', ({ id, kind, big }) => { const r = this.remotes.get(id); if (r && r.visible !== false) this.vfx.potion(r, kind, big); })
       .on('td:reward', (r) => this.showReward({ ...r, x: this.mobs[r.mid]?.x, y: this.mobs[r.mid]?.y }))
       .on('td:respawn', (d) => this.onRespawn(d))
@@ -1058,6 +1059,16 @@ export class TopDownScene extends Phaser.Scene {
     if (time > (this.tagAt || 0)) { this.tagAt = time + 500; this.refreshNameTag(); }
     this.life?.update(time, dt);
     this.autoPotion(time);
+    // NPC หันมามองเมื่อเราเดินเข้าใกล้ (มีภาพ 8 ทิศ) · ห่างออกไปแล้วหันกลับหน้าตรง
+    if (time > (this.npcLookAt || 0)) {
+      this.npcLookAt = time + 250;
+      for (const n of this.npcs || []) {
+        const sp = n.spr; if (!sp?.d8id) continue;
+        const dx = p.x - sp.x, dy = p.y - sp.y, near = dx * dx + dy * dy < 95 * 95;
+        const want = near ? dirFromVector(dx, dy, sp.dir || 'south') : 'south';
+        if (want !== sp.dir) playDir(sp, 'idle', want);
+      }
+    }
     // ส่งตำแหน่ง ~10 ครั้ง/วิ
     if (this.net?.online && time - (this.sentAt || 0) > 100) {
       const st = { x: Math.round(p.x), y: Math.round(p.y), dir: p.dir, anim: p.alive ? (p.st === 'walk' ? 'walk' : p.st === 'attack' ? 'attack' : 'idle') : 'die' };

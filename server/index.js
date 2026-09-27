@@ -294,6 +294,18 @@ io.on('connection', (socket) => {
       p.buffs = (p.buffs || []).filter((b) => b.until > now && b.sk !== base.id);
       p.buffs.push({ buff: sk.buff, until: now + sk.duration, sk: base.id });
       if (sk.heal) healPlayer(p, p.maxHp * sk.heal);
+    } else if (sk.type === 'party') {                                   // สกิลปาร์ตี้: ตัวเอง + เพื่อนร่วมปาร์ตี้ในรัศมี
+      const party = social.partyOf(p);
+      const list = [p, ...(party ? [...party.members].filter((id) => id !== p.id).map((id) => players.get(id)).filter(Boolean) : [])];
+      for (const m of list) {
+        if (m.dead || (m.world || 'td') !== (p.world || 'td')) continue;
+        const mx = td ? m.tx : m.x, my = td ? m.ty : m.y;
+        if (m !== p && Math.hypot(mx - x, my - y) > (sk.radius || 220) + 40) continue;
+        m.buffs = (m.buffs || []).filter((b) => b.until > now && b.sk !== base.id);
+        m.buffs.push({ buff: sk.buff, until: now + sk.duration, sk: base.id });
+        if (sk.heal) healPlayer(m, m.maxHp * sk.heal);
+        if (m !== p) io.to(m.id).emit('td:pbuff', { from: p.name, fromId: p.id, skillId: base.id, lv: clamp(lv, 1, MAX_SKILL_LV) });
+      }
     } else if (sk.type === 'dash') p.invulnUntil = Math.max(p.invulnUntil || 0, now + 320);
     (td ? socket.to('td') : socket.broadcast).emit('skill:cast', {
       id: p.id, skillId: base.id, lv: clamp(lv, 1, MAX_SKILL_LV),
