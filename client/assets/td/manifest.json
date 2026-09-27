@@ -95,10 +95,14 @@
   "mob_krasue": {
    "anims": [
     "idle",
+    "attack",
+    "die",
     "walk"
    ],
    "frames": {
     "idle": 4,
+    "attack": 6,
+    "die": 7,
     "walk": 6
    },
    "frame": 72,
@@ -107,10 +111,14 @@
   "mob_phi_dip": {
    "anims": [
     "idle",
+    "attack",
+    "die",
     "walk"
    ],
    "frames": {
     "idle": 4,
+    "attack": 6,
+    "die": 7,
     "walk": 6
    },
    "frame": 72,
@@ -131,10 +139,14 @@
   "mob_pret": {
    "anims": [
     "idle",
+    "attack",
+    "die",
     "walk"
    ],
    "frames": {
     "idle": 4,
+    "attack": 6,
+    "die": 7,
     "walk": 6
    },
    "frame": 72,
@@ -143,10 +155,14 @@
   "mob_phi_jang_nang": {
    "anims": [
     "idle",
+    "attack",
+    "die",
     "walk"
    ],
    "frames": {
     "idle": 4,
+    "attack": 6,
+    "die": 7,
     "walk": 6
    },
    "frame": 72,
@@ -155,10 +171,14 @@
   "mob_saming": {
    "anims": [
     "idle",
+    "attack",
+    "die",
     "walk"
    ],
    "frames": {
     "idle": 4,
+    "attack": 6,
+    "die": 7,
     "walk": 6
    },
    "frame": 72,
@@ -167,10 +187,14 @@
   "mob_phi_ha": {
    "anims": [
     "idle",
+    "attack",
+    "die",
     "walk"
    ],
    "frames": {
     "idle": 4,
+    "attack": 6,
+    "die": 7,
     "walk": 6
    },
    "frame": 72,
@@ -179,10 +203,14 @@
   "mob_tai_hong": {
    "anims": [
     "idle",
+    "attack",
+    "die",
     "walk"
    ],
    "frames": {
     "idle": 4,
+    "attack": 6,
+    "die": 7,
     "walk": 6
    },
    "frame": 72,
@@ -191,10 +219,14 @@
   "mob_phi_lang_kluang": {
    "anims": [
     "idle",
+    "attack",
+    "die",
     "walk"
    ],
    "frames": {
     "idle": 4,
+    "attack": 6,
+    "die": 7,
     "walk": 6
    },
    "frame": 72,
