@@ -1,0 +1,4 @@
+All sounds in this folder are CC0 (public domain):
+- Kenney (kenney.nl): RPG Audio, Impact Sounds, Interface Sounds
+- OpenGameArt: 80 CC0 RPG SFX & 100 CC0 SFX & 100 CC0 SFX #2 (rubberduck), RPG Sound Pack (artisticdude), Ghost Monster Voice Moaning & Growling (qubodup)
+Trimmed, normalized and converted to mono MP3 for ThaiNative.

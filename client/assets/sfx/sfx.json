@@ -1,0 +1,162 @@
+{
+ "step_grass": {
+  "n": 5,
+  "mode": "replace",
+  "vol": 0.45
+ },
+ "step_wood": {
+  "n": 5,
+  "mode": "replace",
+  "vol": 0.45
+ },
+ "step_stone": {
+  "n": 5,
+  "mode": "replace",
+  "vol": 0.45
+ },
+ "step_sand": {
+  "n": 5,
+  "mode": "replace",
+  "vol": 0.4
+ },
+ "hit": {
+  "n": 5,
+  "mode": "replace",
+  "vol": 0.8
+ },
+ "crit": {
+  "n": 5,
+  "mode": "layer",
+  "vol": 0.9
+ },
+ "punch": {
+  "n": 5,
+  "mode": "replace",
+  "vol": 0.8
+ },
+ "kick": {
+  "n": 5,
+  "mode": "replace",
+  "vol": 0.9
+ },
+ "hurt": {
+  "n": 5,
+  "mode": "layer",
+  "vol": 0.7
+ },
+ "swing": {
+  "n": 3,
+  "mode": "replace",
+  "vol": 0.7
+ },
+ "swingLight": {
+  "n": 3,
+  "mode": "replace",
+  "vol": 0.55
+ },
+ "slash": {
+  "n": 5,
+  "mode": "replace",
+  "vol": 0.8
+ },
+ "fireball": {
+  "n": 7,
+  "mode": "layer",
+  "vol": 0.7
+ },
+ "skBoom": {
+  "n": 4,
+  "mode": "layer",
+  "vol": 0.9
+ },
+ "meteor": {
+  "n": 1,
+  "mode": "layer",
+  "vol": 0.9
+ },
+ "thunder": {
+  "n": 1,
+  "mode": "layer",
+  "vol": 1.0
+ },
+ "skThunder": {
+  "n": 1,
+  "mode": "layer",
+  "vol": 1.0
+ },
+ "skSlam": {
+  "n": 5,
+  "mode": "layer",
+  "vol": 0.9
+ },
+ "ghostDie": {
+  "n": 8,
+  "mode": "replace",
+  "vol": 0.75
+ },
+ "ghost": {
+  "n": 5,
+  "mode": "replace",
+  "vol": 0.5
+ },
+ "enemySwing": {
+  "n": 3,
+  "mode": "replace",
+  "vol": 0.5
+ },
+ "bossRoar": {
+  "n": 3,
+  "mode": "replace",
+  "vol": 1.0
+ },
+ "coin": {
+  "n": 4,
+  "mode": "replace",
+  "vol": 0.7
+ },
+ "buy": {
+  "n": 2,
+  "mode": "replace",
+  "vol": 0.7
+ },
+ "potion": {
+  "n": 3,
+  "mode": "replace",
+  "vol": 0.7
+ },
+ "click": {
+  "n": 5,
+  "mode": "replace",
+  "vol": 0.6
+ },
+ "open": {
+  "n": 4,
+  "mode": "replace",
+  "vol": 0.6
+ },
+ "close": {
+  "n": 4,
+  "mode": "replace",
+  "vol": 0.6
+ },
+ "error": {
+  "n": 4,
+  "mode": "replace",
+  "vol": 0.6
+ },
+ "target": {
+  "n": 4,
+  "mode": "replace",
+  "vol": 0.5
+ },
+ "templeBell": {
+  "n": 2,
+  "mode": "replace",
+  "vol": 0.8
+ },
+ "land": {
+  "n": 3,
+  "mode": "replace",
+  "vol": 0.5
+ }
+}

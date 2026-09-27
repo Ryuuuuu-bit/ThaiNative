@@ -296,6 +296,7 @@ export class Sound {
     this.verbSfx = ctx.createGain(); this.verbSfx.gain.value = 0.12;
     this.musicBus.connect(this.master); this.musicBus.connect(this.verbMusic).connect(this.verb);
     this.sfxBus.connect(this.master); this.sfxBus.connect(this.verbSfx).connect(this.verb);
+    this.loadSamples();
     this.verb.connect(this.master);
     // ช่องซ้าย-ขวาของแต่ละเครื่อง (วงปี่พาทย์นั่งเรียงหน้ากระดาน)
     this.pan = {};
@@ -431,8 +432,39 @@ export class Sound {
   // ------------------------------------------------------------
   //  เสียงเอฟเฟกต์
   // ------------------------------------------------------------
+  /** โหลดเสียงจริง (CC0) จาก assets/sfx/sfx.json · เล่นสุ่มรูปแบบ · ไม่มีไฟล์ก็ใช้เสียงสังเคราะห์ */
+  loadSamples() {
+    if (this.samples || !this.ctx || this.offline) return;
+    this.samples = {};
+    fetch('/assets/sfx/sfx.json').then((r) => (r.ok ? r.json() : {})).then((man) => {
+      for (const [name, m] of Object.entries(man)) {
+        const ent = (this.samples[name] = { ...m, bufs: [] });
+        for (let i = 0; i < m.n; i++) {
+          fetch(`/assets/sfx/${name}_${i}.mp3`).then((r) => r.arrayBuffer()).then((ab) => this.ctx.decodeAudioData(ab))
+            .then((b) => ent.bufs.push(b)).catch(() => {});
+        }
+      }
+    }).catch(() => {});
+  }
+
+  /** เล่นเสียงจริง → คืน true ถ้าไม่ต้องใช้เสียงสังเคราะห์ต่อ */
+  playSample(name) {
+    const ent = this.samples?.[name];
+    if (!ent?.bufs.length) return false;
+    const ctx = this.ctx, src = ctx.createBufferSource(), g = ctx.createGain();
+    let i = Math.floor(Math.random() * ent.bufs.length);
+    if (ent.bufs.length > 1 && i === ent.last) i = (i + 1) % ent.bufs.length;   // ไม่ซ้ำตัวเดิมติดกัน
+    ent.last = i;
+    src.buffer = ent.bufs[i];
+    src.playbackRate.value = 0.94 + Math.random() * 0.12;
+    g.gain.value = ent.vol ?? 0.8;
+    src.connect(g).connect(this.sfxBus); src.start();
+    return ent.mode !== 'layer';
+  }
+
   play(name) {
     if (!this.ctx || this.muted || this.cfg?.sfxOn === false) return;
+    if (this.playSample(name)) return;
     const T = (...a) => this.tone(...a), N = (...a) => this.noise(...a);
     const R = (n, d = 0, v = 0.12) => this.ranat(midi(n), d, v);
     switch (name) {
