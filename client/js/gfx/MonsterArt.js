@@ -198,6 +198,7 @@ const DRAW = {
   },
 };
 
+export const hasMonsterArt = (id) => typeof DRAW[id] === 'function';
 export function drawMonsterFrame(ctx, id, P, w, h, anim, i) {
   DRAW[id](ctx, P, w, h, anim, i);
 }

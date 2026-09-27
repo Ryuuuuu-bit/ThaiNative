@@ -72,7 +72,7 @@ function setLook(sprite, d8) {
   sprite._d8 = d8;
   if (sprite.baseScale == null) sprite.baseScale = sprite.scaleX || 1;
   const meta = d8 ? sprite.scene.d8meta?.[sprite.d8id] : null;
-  const sc = d8 ? (meta?.scale || 2 / 3) : sprite.baseScale;
+  const sc = d8 ? (meta?.scale || 2 / 3) * (sprite.scaleMul || 1) : sprite.baseScale;
   sprite.setScale(sc);
   if (sprite.body && sprite.bodyFoot) {
     const [w, h] = sprite.bodyFoot, fw = sprite.frame.realWidth, fh = sprite.frame.realHeight;

@@ -60,10 +60,10 @@ export const MONSTERS = {
     drops: [{ item: 'film_reel', chance: 0.4 }, { item: 'mp_m', chance: 0.1 }],
   },
   phi_phrai: {
-    nameTh: 'ผีพราย', nameEn: 'Phi Phrai', level: 7, nightOnly: true,
+    nameTh: 'ผีพราย', nameEn: 'Phi Phrai', level: 17,
     desc: 'ผีน้ำสาวผมยาว ลอยขึ้นจากบึง ตัวเปียกชื้นสีฟ้าซีด',
-    hp: 150, atk: 21, def: 4, eva: 12, acc: 95, speed: 55, behavior: 'flyer',
-    attackRange: 22, attackCooldown: 1100, exp: 50, gold: [16, 30],
+    hp: 600, atk: 54, def: 9, eva: 18, acc: 108, speed: 55, behavior: 'flyer',
+    attackRange: 22, attackCooldown: 1100, exp: 255, gold: [65, 125],
     frame: { w: 24, h: 40 }, zone: [2480, 3080],
     palette: { main: '#aed6f1', dark: '#1b4f72', glow: '#d6eaf8' },
     drops: [{ item: 'water_lily', chance: 0.4 }, { item: 'hp_m', chance: 0.15 }],
@@ -106,11 +106,11 @@ export const MONSTERS = {
     drops: [{ item: 'rice_basket', chance: 0.45 }, { item: 'hp_m', chance: 0.15 }],
   },
   khamot: {
-    nameTh: 'ผีโขมด', nameEn: 'Khamot (Will-o\'-wisp)', level: 11,
+    nameTh: 'ผีโขมด', nameEn: 'Khamot (Will-o\'-wisp)', level: 15,
     desc: 'ดวงไฟผีลอยวูบวาบกลางบึง ล่อคนหลงทาง ว่องไวหลบเก่ง',
-    hp: 220, atk: 28, def: 3, eva: 26, acc: 105, speed: 80, behavior: 'flyer',
-    attackRange: 18, attackCooldown: 900, exp: 115, gold: [30, 60],
-    frame: { w: 24, h: 24 }, zone: [3650, 4300], nightOnly: true,
+    hp: 420, atk: 44, def: 5, eva: 28, acc: 108, speed: 80, behavior: 'flyer',
+    attackRange: 18, attackCooldown: 900, exp: 190, gold: [50, 100],
+    frame: { w: 24, h: 24 }, zone: [3650, 4300],
     drops: [{ item: 'wisp_ember', chance: 0.5 }, { item: 'mp_m', chance: 0.15 }],
   },
   phi_dip: {
@@ -122,10 +122,10 @@ export const MONSTERS = {
     drops: [{ item: 'grave_soil', chance: 0.5 }, { item: 'hp_m', chance: 0.2 }],
   },
   nang_takhian: {
-    nameTh: 'นางตะเคียน', nameEn: 'Nang Takhian', level: 12,
+    nameTh: 'นางตะเคียน', nameEn: 'Nang Takhian', level: 16,
     desc: 'วิญญาณหญิงสิงต้นตะเคียน สวมเกราะไม้ ยิงหนามไม้จากระยะไกล',
-    hp: 360, atk: 34, def: 8, eva: 8, acc: 100, speed: 35, behavior: 'ranged',
-    attackRange: 160, attackCooldown: 1600, exp: 145, gold: [40, 85],
+    hp: 560, atk: 50, def: 11, eva: 8, acc: 100, speed: 35, behavior: 'ranged',
+    attackRange: 160, attackCooldown: 1600, exp: 230, gold: [60, 115],
     frame: { w: 28, h: 44 }, zone: [3800, 4500], projectile: 'miasma',
     drops: [{ item: 'takhian_wood', chance: 0.45 }, { item: 'mp_m', chance: 0.2 }],
   },
@@ -162,21 +162,75 @@ export const MONSTERS = {
     drops: [{ item: 'rib_bone', chance: 0.45 }, { item: 'mp_m', chance: 0.2 }],
   },
   phi_chamot: {
-    nameTh: 'ผีจะมอด', nameEn: 'Phi Chamot', level: 15,
+    nameTh: 'ผีจะมอด', nameEn: 'Phi Chamot', level: 18,
     desc: 'วิญญาณสัตว์เลื้อยคลานแห่งพงไพร คลานหมอบในความมืดแล้วจู่โจม',
-    hp: 480, atk: 46, def: 9, eva: 14, acc: 105, speed: 80, behavior: 'walker',
-    attackRange: 26, attackCooldown: 900, exp: 200, gold: [55, 110],
+    hp: 700, atk: 58, def: 12, eva: 14, acc: 105, speed: 80, behavior: 'walker',
+    attackRange: 26, attackCooldown: 900, exp: 290, gold: [70, 135],
     frame: { w: 44, h: 26 }, zone: [4300, 4900],
     drops: [{ item: 'chamot_scale', chance: 0.45 }, { item: 'hp_m', chance: 0.25 }],
   },
   pret_asura: {
-    nameTh: 'เปรตอสุรกาย', nameEn: 'Pret Asura', level: 18, elite: true, count: 1,
-    desc: 'จอมเปรตยักษ์ตาแดงเขาดำ เจ้าแห่งป่าช้า (มินิบอส)',
-    hp: 1600, atk: 60, def: 15, eva: 4, acc: 110, speed: 30, behavior: 'walker',
-    attackRange: 40, attackCooldown: 1700, exp: 650, gold: [150, 300],
+    nameTh: 'เปรตอสุรกาย', nameEn: 'Pret Asura', level: 17, boss: true, count: 1, scale: 1.7, respawnMs: 1200000,
+    desc: 'จอมเปรตยักษ์ตาแดงเขาดำ เจ้าแห่งป่าช้าวัดร้าง (บอสประจำโซน)',
+    hp: 14000, atk: 62, def: 16, eva: 4, acc: 115, speed: 34, behavior: 'walker',
+    attackRange: 44, attackCooldown: 1600, exp: 3500, gold: [800, 1500],
+    aoe: { cd: 7000, r: 90, mult: 1.4, nameTh: 'ไฟนรกภูมิ' },
     frame: { w: 40, h: 80 }, zone: [4600, 4900],
-    drops: [{ item: 'asura_horn', chance: 0.6 }, { item: 'hp_m', chance: 0.5 }, { item: 'takrut', chance: 0.1 }],
+    drops: [{ item: 'asura_horn', chance: 0.6 }, { item: 'hp_m', chance: 0.5 }, { item: 'takrut', chance: 0.5 }, { item: 'yant_guard', chance: 0.3 }],
+  },
+  // ---------------- บอสประจำโซน (เกิดทุก 20 นาที · ประกาศทั้งเซิร์ฟ · ทุกคนที่ช่วยตี ≥5% ได้รางวัล) ----------------
+  mae_nak: {
+    nameTh: 'แม่นาคพระโขนง', nameEn: 'Mae Nak', level: 8, boss: true, count: 1, scale: 1.6, respawnMs: 1200000,
+    desc: 'ผีแม่ลูกอ่อนผู้รอคอยสามี แขนยืดยาวเก็บมะนาวใต้ถุนเรือน บอสทุ่งนาบางปะอิน',
+    hp: 3500, atk: 30, def: 6, eva: 6, acc: 100, speed: 45, behavior: 'walker',
+    attackRange: 40, attackCooldown: 1400, exp: 600, gold: [300, 600],
+    aoe: { cd: 7500, r: 75, mult: 1.3, nameTh: 'แขนยาวแม่นาค' },
+    frame: { w: 30, h: 48 },
+    palette: { main: '#d6eaf8', dark: '#1b2631', glow: '#85c1e9' },
+    drops: [{ item: 'banana_leaf', chance: 1 }, { item: 'hp_m', chance: 1 }, { item: 'amulet_somdej', chance: 0.25 }],
+  },
+  pu_som: {
+    nameTh: 'ปู่โสมเฝ้าทรัพย์', nameEn: 'Pu Som', level: 13, boss: true, count: 1, scale: 1.6, respawnMs: 1200000,
+    desc: 'วิญญาณผู้เฝ้าขุมทรัพย์ใต้กอไผ่ ใครล่วงล้ำจะถูกคำสาป แต่ใครชนะจะได้ทองติดมือ',
+    hp: 8000, atk: 45, def: 12, eva: 6, acc: 108, speed: 36, behavior: 'walker',
+    attackRange: 40, attackCooldown: 1500, exp: 1800, gold: [1500, 3000],
+    aoe: { cd: 7000, r: 80, mult: 1.35, nameTh: 'คำสาปขุมทรัพย์' },
+    frame: { w: 32, h: 46 },
+    palette: { main: '#f7dc6f', dark: '#7e5109', glow: '#fcf3cf' },
+    drops: [{ item: 'saming_fang', chance: 1 }, { item: 'hp_m', chance: 1 }, { item: 'kuman_statue', chance: 0.2 }, { item: 'yant_guard', chance: 0.2 }],
+  },
+  chalawan: {
+    nameTh: 'พญาชาละวัน', nameEn: 'Chalawan', level: 21, boss: true, count: 1, scale: 1.8, respawnMs: 1200000,
+    desc: 'พญาจระเข้เจ้าแห่งบึงผีพราย สวมมงกุฎทอง ถือตรีศูล ฟาดหางทีเดียวน้ำกระจาย',
+    hp: 24000, atk: 78, def: 20, eva: 6, acc: 120, speed: 38, behavior: 'walker',
+    attackRange: 46, attackCooldown: 1500, exp: 6000, gold: [1200, 2400],
+    aoe: { cd: 6500, r: 100, mult: 1.5, nameTh: 'ฟาดหางพญาจระเข้' },
+    frame: { w: 40, h: 56 },
+    palette: { main: '#52be80', dark: '#145a32', glow: '#f7dc6f' },
+    drops: [{ item: 'chamot_scale', chance: 1 }, { item: 'hp_m', chance: 1 }, { item: 'naga_statue', chance: 0.25 }, { item: 'yant_guard', chance: 0.4 }],
   },
 };
 
 export const MONSTER_IDS = Object.keys(MONSTERS);
+
+// ------------------------------------------------------------
+//  เลเวลในโลกอยุธยา (top-down) ตามโซน → ปรับค่าพลัง/รางวัลตามอัตราส่วนเลเวล (ครั้งเดียว · ใช้ร่วม client/server)
+//  ทุ่งนา Lv.1–8 · ป่าไผ่ Lv.7–15 · ป่าช้าวัดร้าง Lv.14–23 · บึงผีพราย Lv.21–30  (ตั้ง _scaled กัน maps.js ของโลกเดิมปรับซ้ำ)
+// ------------------------------------------------------------
+export const TD_LEVELS = {
+  phi_tuay_kaew: 1, kuman_thong: 2, krasue: 4, nang_tani: 5, mae_nak: 8,
+  phi_pob: 7, phi_jang_nang: 8, pret: 10, saming: 12, pu_som: 15,
+  phi_ha: 14, phi_dip: 16, tai_hong: 18, phi_lang_kluang: 20, pret_asura: 23,
+  khamot: 21, nang_takhian: 23, phi_phrai: 25, phi_chamot: 27, chalawan: 30,
+};
+for (const [id, L] of Object.entries(TD_LEVELS)) {
+  const m = MONSTERS[id];
+  if (!m || m._scaled) continue;
+  const L0 = m.level, k = L / L0;
+  Object.assign(m, {
+    level: L, _scaled: true,
+    hp: Math.round(m.hp * k ** 1.35), atk: Math.round(m.atk * k ** 1.15), def: Math.round(m.def * k),
+    acc: Math.round(m.acc + (L - L0) * 0.6), exp: Math.round(m.exp * k ** 1.55),
+    gold: m.gold.map((g) => Math.round(g * k ** 1.2)),
+  });
+}

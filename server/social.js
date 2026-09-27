@@ -178,7 +178,7 @@ export function setupSocial(io, players, H = {}) {
       if (!p || q.left <= 0) boss.poison = null;
     }
     if (!boss.alive) {
-      if (now >= boss.respawnAt && players.size) spawnBoss();
+      if (now >= boss.respawnAt && [...players.values()].some((q) => q.world !== 'td')) spawnBoss();   // โลกเดิมเท่านั้น (โลก top-down มีบอสประจำโซนของตัวเอง)
       return;
     }
     const fighters = [...players.values()].filter(inArena);

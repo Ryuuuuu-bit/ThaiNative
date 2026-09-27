@@ -366,7 +366,8 @@ export class TdMinimap {
     g.fillStyle = 'rgba(10,6,20,0.15)'; g.fillRect(0, 0, W, H);
     const dot = (x, y, c, r = 2) => { g.fillStyle = c; g.fillRect(Math.round(x * scale - ox - r / 2), Math.round(y * scale - oy - r / 2), r, r); };
     for (const n of s.npcs || []) dot(n.x, n.y, '#ffd35c', 3);
-    for (const m of s.mobs || []) if (m.alive) dot(m.x, m.y, '#ff5a5a', 2);
+    for (const m of s.mobs || []) if (m.alive && !m.def?.boss) dot(m.x, m.y, '#ff5a5a', 2);
+    for (const m of s.mobs || []) if (m.alive && m.def?.boss) { dot(m.x, m.y, '#000', 7); dot(m.x, m.y, time % 800 < 400 ? '#ff2d2d' : '#ffd76a', 5); }   // บอส (กะพริบ)
     s.remotes?.forEach((r) => dot(r.x, r.y, '#6ec8ff', 3));
     dot(p.x, p.y, '#ffffff', 4); dot(p.x, p.y, '#2ecc71', 2);
   }

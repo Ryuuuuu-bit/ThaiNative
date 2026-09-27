@@ -3,38 +3,42 @@
 //  ▸ ข้อมูลล้วน (ไม่มี canvas) → server ใช้ตารางชน/จุดเกิดผี/ตำแหน่ง NPC ชุดเดียวกับ client
 // ============================================================
 export const TILE = 16;
-export const MAP_W = 120, MAP_H = 140;
+/** ผังเดิม (เกาะเมือง + ทุ่งนา) 120×140 ไทล์ วางที่ OX · ซ้าย = ป่าไผ่ · ขวา = ป่าช้าวัดร้าง · ล่าง = บึงผีพราย */
+export const OX = 56;
+const LW = 120, LH = 140;
+export const MAP_W = OX + LW + 56, MAP_H = LH + 60;          // 232 × 200
 
 // ดัชนีไทล์
 export const T = { GRASS: 0, GRASS2: 1, GRASS3: 2, ROAD: 3, BRICK: 4, SAND: 5, WATER: 6, WATER2: 7, WALL: 8, PADDY: 9, STONE: 10, TALL: 11, WOOD: 12, WALLTOP: 13 };
 export const SOLID = new Set([T.WATER, T.WATER2, T.WALL, T.WALLTOP]);
 
 // ---- ผังเกาะเมือง (แบบเมือง RO: เกาะแปดเหลี่ยม คูน้ำรอบ ประตู 3 ทิศ ถนนแผ่จากลานน้ำพุกลางเมือง) ----
-export const CENTER = { x: 60, y: 50 };
+const LC = { x: 60, y: 50 };                                  // ศูนย์กลางเมือง (พิกัดท้องถิ่นของผังเดิม)
+export const CENTER = { x: LC.x + OX, y: LC.y };
 const ISLE = { rx: 44, ry: 40, d: 68 }, MOAT = { rx: 50, ry: 46, d: 78 };
 /** ไทล์ (tx,ty) อยู่บนเกาะเมืองไหม */
-export const isIsland = (tx, ty) => { const dx = Math.abs(tx - CENTER.x), dy = Math.abs(ty - CENTER.y); return dx <= ISLE.rx && dy <= ISLE.ry && dx + dy <= ISLE.d; };
-const isMoat = (tx, ty) => { const dx = Math.abs(tx - CENTER.x), dy = Math.abs(ty - CENTER.y); return !isIsland(tx, ty) && dx <= MOAT.rx && dy <= MOAT.ry && dx + dy <= MOAT.d; };
+const isIslandL = (tx, ty) => { const dx = Math.abs(tx - LC.x), dy = Math.abs(ty - LC.y); return dx <= ISLE.rx && dy <= ISLE.ry && dx + dy <= ISLE.d; };
+const isMoatL = (tx, ty) => { const dx = Math.abs(tx - LC.x), dy = Math.abs(ty - LC.y); return !isIslandL(tx, ty) && dx <= MOAT.rx && dy <= MOAT.ry && dx + dy <= MOAT.d; };
+export const isIsland = (tx, ty) => isIslandL(tx - OX, ty);
 /** พิกัดพิกเซลอยู่ในเขตเมือง (Safe Zone) ไหม – ใช้ร่วม client/server */
 export const inTownXY = (x, y) => isIsland(Math.floor(x / TILE), Math.floor(y / TILE));
-export const SPAWN = { x: 60 * TILE, y: 58 * TILE };
+export const SPAWN = { x: (60 + OX) * TILE, y: 58 * TILE };
 /** จุดเก็บเกี่ยวในทุ่งนอกเมือง (ช่องตาราง) · รวงข้าวในนา + สมุนไพรริมทุ่ง */
 export const HERB_SPOTS = [
   [14, 106, 'rice_sheaf'], [24, 112, 'rice_sheaf'], [36, 107, 'rice_sheaf'], [30, 118, 'rice_sheaf'],
   [82, 108, 'rice_sheaf'], [94, 114, 'rice_sheaf'], [104, 111, 'rice_sheaf'], [100, 119, 'rice_sheaf'],
   [48, 126, 'herb_aloe'], [64, 130, 'herb_aloe'], [18, 124, 'herb_lemongrass'], [74, 124, 'herb_lemongrass'],
   [90, 126, 'herb_aloe'], [67, 114, 'herb_lemongrass'],
-].map(([x, y, item], i) => ({ i, x: x * TILE + 8, y: y * TILE + 8, item }));
-export const GATES = { south: { x0: 58, x1: 61 }, west: { y0: 48, y1: 51 }, east: { y0: 48, y1: 51 } };
+].map(([x, y, item], i) => ({ i, x: (x + OX) * TILE + 8, y: y * TILE + 8, item }));
+export const GATES = { south: { x0: 58 + OX, x1: 61 + OX }, west: { y0: 48, y1: 51 }, east: { y0: 48, y1: 51 } };
 
 let seed = 1234;
 const rnd = () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
 
-/**
- * ผังเมือง: คืน { ground: number[][], solid: boolean[][], props: [...], npcs: [...], spawns: [...] }
- */
-export function buildLayout() {
-  seed = 1234;
+/** ผังเมืองเดิม (พิกัดท้องถิ่น LW×LH) → { ground, props, npcs, spawns } */
+function buildTown() {
+  const MAP_W = LW, MAP_H = LH;                                  // (ชื่อเดิมในฟังก์ชันนี้ = ขนาดผังท้องถิ่น)
+  const isIsland = isIslandL, isMoat = isMoatL;
   const ground = Array.from({ length: MAP_H }, () => new Array(MAP_W).fill(T.GRASS));
   const inMap = (x, y) => x >= 0 && y >= 0 && x < MAP_W && y < MAP_H;
   const set = (x, y, t) => { if (inMap(x, y)) ground[y][x] = t; };
@@ -57,7 +61,7 @@ export function buildLayout() {
   const wallBand = (x, y) => isIsland(x, y) && [[-2, 0], [2, 0], [0, -2], [0, 2], [-1, -1], [1, 1], [-1, 1], [1, -1], [-1, 0], [1, 0], [0, -1], [0, 1]].some(([dx, dy]) => !isIsland(x + dx, y + dy));
   for (let y = 0; y < MAP_H; y++) for (let x = 0; x < MAP_W; x++) if (wallBand(x, y)) set(x, y, wallBand(x, y + 1) ? T.WALLTOP : T.WALL);
   // ---- ถนนหลวงปูหิน: เหนือ–ใต้ / ตะวันตก–ตะวันออก + ถนนทแยงจากลานกลางเมือง ----
-  const C = CENTER;
+  const C = LC;
   rect(58, 30, 61, 91, T.STONE); rect(14, 48, 106, 51, T.STONE);
   line(C.x, C.y, 36, 32, 3, T.STONE); line(C.x, C.y, 82, 32, 3, T.STONE); line(C.x, C.y, 32, 80, 3, T.STONE); line(C.x, C.y, 88, 80, 3, T.STONE);
   disc(C.x - 0.5, C.y - 0.5, 9.5, T.STONE); disc(C.x - 0.5, C.y - 0.5, 10.5, T.BRICK, 9.5);   // ลานน้ำพุ + ขอบอิฐ
@@ -221,8 +225,6 @@ export function buildLayout() {
   P('env/b_sala2', 67, 99, { foot: [5, 2], scale: 0.85, label: 'ท่าน้ำ', glow: [-30, 50, 0xffe1a0, 0.6] });
   for (const [x, y, f] of [[40, 94, 0], [80, 94, 1], [14, 60, 0], [106, 40, 1], [30, 8, 0], [90, 8, 1], [50, 93, 1], [72, 95, 0], [12, 30, 1], [108, 64, 0]]) P(x % 20 < 10 ? 'env/p_boat' : 'env/p_rowboat', x, y, { foot: [0, 0], depth: 1, flip: !!f, scale: 1.1, alt: 'boat', altScale: 1 });
   small('p_torch', 56, 98, { glow: TORCH }); small('p_torch', 63, 98, { glow: TORCH });
-  P('env/b_gatescene', 4, 47, { foot: [0, 0], scale: 0.85, label: 'ทางไปเพนียดคล้องช้าง (เร็ว ๆ นี้)' });
-  P('env/b_gatescene2', 115, 47, { foot: [0, 0], scale: 0.85, flip: true, label: 'ทางไปค่ายบางระจัน (เร็ว ๆ นี้)' });
   for (let i = 0; i < 70; i++) {                                                    // ป่าไม้รอบนอกคูเมือง
     const x = Math.floor(rnd() * MAP_W), y = Math.floor(rnd() * 100);
     if (isIsland(x, y) || isMoat(x, y) || isMoat(x, y + 1) || !isGrass(get(x, y))) continue;
@@ -265,6 +267,166 @@ export function buildLayout() {
   [[40, 108], [50, 114], [70, 110], [78, 116], [56, 122]].forEach(([x, y]) => S('phi_tuay_kaew', x, y));
   [[22, 128], [32, 133], [44, 126], [26, 118]].forEach(([x, y]) => S('kuman_thong', x, y));
   [[86, 128], [98, 132], [104, 122]].forEach(([x, y]) => S('nang_tani', x, y, 3));
+
+  return { ground, props, npcs, spawns };
+}
+
+// ============================================================
+//  โซนล่าผีรอบเมือง (พิกัดไทล์ทั้งแผนที่)
+// ============================================================
+/** โซน: ชื่อ + ช่วงเลเวล (ใช้แสดงป้ายตอนเดินเข้า / มินิแมป) */
+export const ZONES = {
+  town:      { nameTh: 'เกาะเมืองอยุธยา', sub: 'Safe Zone', color: '#f7dc6f' },
+  outskirts: { nameTh: 'ชานกรุงศรีฯ', sub: 'ริมคูเมือง', color: '#a9dfbf' },
+  field:     { nameTh: 'ทุ่งนาบางปะอิน', sub: 'Lv.1–8 · บอส แม่นาคพระโขนง', color: '#abebc6' },
+  bamboo:    { nameTh: 'ป่าไผ่ปู่โสม', sub: 'Lv.7–15 · บอส ปู่โสมเฝ้าทรัพย์', color: '#82e0aa' },
+  graveyard: { nameTh: 'ป่าช้าวัดร้าง', sub: 'Lv.14–23 · บอส เปรตอสุรกาย', color: '#bb8fce' },
+  swamp:     { nameTh: 'บึงผีพราย', sub: 'Lv.21–30 · บอส พญาชาละวัน', color: '#85c1e9' },
+};
+/** โซนของไทล์ (tx,ty) */
+export function zoneAtTile(tx, ty) {
+  if (isIsland(tx, ty)) return 'town';
+  if (ty >= LH + 5) return 'swamp';
+  if (tx < OX) return 'bamboo';
+  if (tx >= OX + LW) return 'graveyard';
+  return ty >= 92 ? 'field' : 'outskirts';
+}
+export const zoneAt = (x, y) => zoneAtTile(Math.floor(x / TILE), Math.floor(y / TILE));
+
+/** ผังทั้งแผนที่: { ground, solid, props, npcs, spawns } */
+export function buildLayout() {
+  seed = 1234;
+  const town = buildTown();
+  const ground = Array.from({ length: MAP_H }, () => new Array(MAP_W).fill(T.GRASS));
+  for (let y = 0; y < MAP_H; y++) for (let x = 0; x < MAP_W; x++) { const r = rnd(); ground[y][x] = r < 0.08 ? T.GRASS2 : r < 0.18 ? T.GRASS3 : T.GRASS; }
+  for (let y = 0; y < LH; y++) for (let x = 0; x < LW; x++) ground[y][x + OX] = town.ground[y][x];
+  const shift = (o) => ({ ...o, x: o.x + OX * TILE });
+  const props = town.props.map(shift), npcs = town.npcs.map(shift), spawns = town.spawns.map(shift);
+
+  const inMap = (x, y) => x >= 0 && y >= 0 && x < MAP_W && y < MAP_H;
+  const set = (x, y, t) => { if (inMap(x, y)) ground[y][x] = t; };
+  const get = (x, y) => (inMap(x, y) ? ground[y][x] : null);
+  const rect = (x0, y0, x1, y1, t) => { for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) set(x, y, t); };
+  const disc = (cx, cy, r, t) => { for (let y = Math.floor(cy - r); y <= cy + r; y++) for (let x = Math.floor(cx - r); x <= cx + r; x++) if (Math.hypot(x - cx, y - cy) <= r) set(x, y, t); };
+  const path = (pts, w, t) => { for (let i = 1; i < pts.length; i++) { const [x0, y0] = pts[i - 1], [x1, y1] = pts[i]; const n = Math.ceil(Math.hypot(x1 - x0, y1 - y0) * 2); for (let k = 0; k <= n; k++) { const x = x0 + (x1 - x0) * k / n, y = y0 + (y1 - y0) * k / n; rect(Math.round(x - w / 2), Math.round(y - w / 2), Math.round(x - w / 2) + w - 1, Math.round(y - w / 2) + w - 1, t); } } };
+  const isGrass = (t) => t === T.GRASS || t === T.GRASS2 || t === T.GRASS3 || t === T.TALL;
+  const P = (key, tx, ty, opt = {}) => props.push({ key, x: tx * TILE, y: ty * TILE, ...opt });
+  const small = (key, tx, ty, opt = {}) => P(`env/${key}`, tx, ty, { foot: [1, 1], ...opt, scale: 0.6 * (opt.scale || 1) });
+  const deco = (key, tx, ty, opt = {}) => small(key, tx, ty, { ...opt, foot: [0, 0] });
+  const TORCH = [-22, 46, 0xff9a3c, 1.1];
+  const TREE_K = { tamarind: 0.8, palm: 0.72, golden: 0.72, bamboo: 0.62, pink: 1.9 };
+  const tree = (tx, ty, kind, sc = 1) => P(`env/t_${kind}`, tx, ty, { foot: [1, 1], alt: 'td_tree', scale: sc * TREE_K[kind], altScale: 1.4 * sc, flip: rnd() < 0.5 });
+  // พื้นที่ห้ามวางของ (ทาง/ลาน/จุดเกิดผี)
+  const occ = Array.from({ length: MAP_H }, () => new Array(MAP_W).fill(false));
+  const reserve = (x0, y0, x1, y1) => { for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) if (inMap(x, y)) occ[y][x] = true; };
+  const reserveDisc = (cx, cy, r) => reserve(cx - r, cy - r, cx + r, cy + r);
+  const free = (x, y, r = 1) => { for (let yy = y - r; yy <= y; yy++) for (let xx = x - r; xx <= x + r; xx++) if (!inMap(xx, yy) || occ[yy][xx] || !isGrass(ground[yy][xx])) return false; return true; };
+  for (let y = 0; y < LH; y++) for (let x = OX; x < OX + LW; x++) occ[y][x] = true;               // ผังเดิมจัดไว้แล้ว
+  const S = (id, tx, ty, r = 4, n = 1) => { for (let i = 0; i < n; i++) spawns.push({ id, x: tx * TILE, y: ty * TILE, r: r * TILE }); reserveDisc(tx, ty, Math.min(r, 5)); };
+  const clearing = (cx, cy, r, t = T.GRASS2) => { disc(cx, cy, r, t); reserveDisc(cx, cy, r + 1); };
+  const BOSS = (id, tx, ty) => { spawns.push({ id, x: tx * TILE, y: ty * TILE, r: 2 * TILE, boss: true }); reserveDisc(tx, ty, 6); };
+
+  // ---------- ผีกลางคืนในทุ่งนา: กระสือ ----------
+  for (const [x, y] of [[20, 131], [46, 131], [100, 131]]) S('krasue', x + OX, y, 3);
+  // ---------- บอสทุ่งนา: แม่นาคพระโขนง (ลานใต้ต้นตะเคียนหลังวัดร้าง) ----------
+  BOSS('mae_nak', 86 + OX, 129);
+  small('p_spirit', 81 + OX, 127, { label: 'ศาลแม่นาค', glow: [-20, 40, 0x85c1e9, 0.8] });
+
+  // ================= ป่าไผ่ปู่โสม (ตะวันตก) =================
+  for (let y = 0; y < LH + 5; y++) for (let x = 0; x < OX; x++) { const r = rnd(); ground[y][x] = r < 0.35 ? T.GRASS3 : r < 0.5 ? T.TALL : T.GRASS; }
+  const bPath = [[OX + 7, 49.5], [44, 49.5], [30, 56], [28, 80], [32, 100], [26, 122], [28, 150]];
+  path(bPath, 3, T.ROAD); for (const [x, y] of bPath) reserveDisc(Math.round(x), Math.round(y), 2);
+  for (let i = 1; i < bPath.length; i++) { const [x0, y0] = bPath[i - 1], [x1, y1] = bPath[i]; for (let k = 0; k <= 30; k++) reserveDisc(Math.round(x0 + (x1 - x0) * k / 30), Math.round(y0 + (y1 - y0) * k / 30), 2); }
+  clearing(44, 38, 6); S('phi_pob', 44, 38, 4, 4);
+  clearing(14, 26, 6); path([[14, 26], [28, 44]], 2, T.SAND); S('phi_jang_nang', 14, 26, 4, 3);
+  clearing(44, 86, 6); path([[30, 84], [44, 86]], 2, T.SAND); S('pret', 44, 86, 4, 3);
+  clearing(14, 102, 6); path([[14, 102], [30, 100]], 2, T.SAND); S('saming', 14, 102, 4, 3);
+  // ลานศาลปู่โสม (บอส)
+  disc(14, 132, 8, T.GRASS2); disc(14, 132, 5, T.BRICK); path([[14, 132], [26, 124]], 2, T.SAND); reserveDisc(14, 132, 9);
+  BOSS('pu_som', 14, 131);
+  P('env/p_spirit', 14, 126, { foot: [2, 1], scale: 1.2, label: 'ศาลปู่โสม', glow: [-20, 50, 0xffd27a, 1] });
+  for (const [x, y] of [[8, 128], [20, 128], [8, 137], [20, 137]]) small('p_torch', x, y, { glow: TORCH });
+  for (const [x, y] of [[10, 134], [18, 134], [12, 138]]) small('p_jar', x, y); small('p_chest', 16, 138, { scale: 1.2 });
+  // ป่าไผ่หนาทึบ
+  for (let y = 1; y < LH + 4; y += 2) for (let x = 1; x < OX - 1; x += 2) {
+    const tx = x + Math.floor(rnd() * 2), ty = y + Math.floor(rnd() * 2);
+    if (!free(tx, ty) || rnd() > 0.62) continue;
+    const r = rnd();
+    if (r < 0.78) tree(tx, ty, 'bamboo', 0.9 + rnd() * 0.3); else if (r < 0.9) deco(rnd() < 0.5 ? 'p_bamboo' : 'p_bamboo2', tx, ty); else tree(tx, ty, 'tamarind', 1);
+    reserve(tx - 1, ty - 1, tx + 1, ty);
+  }
+  P('env/p_arch', OX + 2, 51, { foot: [0, 0], scale: 1.4, label: 'ป่าไผ่ปู่โสม →' });
+
+  // ================= ป่าช้าวัดร้าง (ตะวันออก) =================
+  const GX = OX + LW;
+  for (let y = 0; y < LH + 5; y++) for (let x = GX; x < MAP_W; x++) { const r = rnd(); ground[y][x] = r < 0.12 ? T.STONE : r < 0.4 ? T.GRASS3 : r < 0.5 ? T.TALL : T.GRASS2; }
+  const gPath = [[GX - 1, 49.5], [200, 49.5], [206, 70], [202, 96], [208, 120], [204, 150]];
+  path(gPath, 3, T.STONE);
+  for (let i = 1; i < gPath.length; i++) { const [x0, y0] = gPath[i - 1], [x1, y1] = gPath[i]; for (let k = 0; k <= 30; k++) reserveDisc(Math.round(x0 + (x1 - x0) * k / 30), Math.round(y0 + (y1 - y0) * k / 30), 2); }
+  clearing(196, 26, 6, T.STONE); path([[196, 26], [200, 48]], 2, T.STONE); S('phi_ha', 196, 26, 4, 3);
+  clearing(222, 66, 6, T.BRICK); path([[206, 68], [222, 66]], 2, T.STONE); S('phi_dip', 222, 66, 4, 4);
+  clearing(188, 96, 6, T.STONE); path([[188, 96], [202, 96]], 2, T.STONE); S('tai_hong', 188, 96, 4, 3);
+  clearing(222, 114, 6, T.BRICK); path([[208, 118], [222, 114]], 2, T.STONE); S('phi_lang_kluang', 222, 114, 4, 3);
+  // วัดร้างใหญ่ (บอส เปรตอสุรกาย)
+  disc(214, 134, 9, T.BRICK); path([[204, 128], [214, 134]], 3, T.STONE); reserveDisc(214, 134, 10);
+  BOSS('pret_asura', 214, 135);
+  P('env/m_prangbig_l', 214, 128, { foot: [6, 3], scale: 1.3, alt: 'env/m_prangbig', label: 'วัดร้างเปรตอสุรกาย', glow: [-70, 110, 0xbb8fce, 0.9] });
+  for (const [x, y] of [[206, 130], [222, 130], [206, 140], [222, 140]]) small('p_torch2', x, y, { glow: [-22, 46, 0xb266ff, 1.1] });
+  for (const [x, y] of [[208, 136], [220, 136]]) small('p_buddhahead', x, y, { scale: 1.3 });
+  // ซากวัด/เจดีย์/หลุมศพกระจาย
+  const RUINS = [['env/b_chediruin', [6, 2]], ['env/m_mondop', [6, 3]], ['env/b_prang_l', [2, 2]], ['env/m_chedi_l', [3, 2]]];
+  for (const [x, y] of [[186, 10], [214, 16], [226, 40], [186, 60], [214, 84], [184, 120], [226, 96]]) {
+    if (!free(x, y, 3)) continue; const [k, f] = RUINS[Math.floor(rnd() * RUINS.length)];
+    P(k, x, y, { foot: f, scale: 0.9, flip: rnd() < 0.5, alt: 'td_ruin' }); reserve(x - 3, y - 3, x + 3, y);
+  }
+  for (let y = 2; y < LH + 4; y += 3) for (let x = GX + 1; x < MAP_W - 1; x += 3) {
+    const tx = x + Math.floor(rnd() * 2), ty = y + Math.floor(rnd() * 2);
+    if (!free(tx, ty) || rnd() > 0.55) continue;
+    const r = rnd();
+    if (r < 0.28) tree(tx, ty, 'tamarind', 0.9 + rnd() * 0.3);
+    else if (r < 0.55) small(rnd() < 0.5 ? 'p_ruin' : 'p_ruin2', tx, ty, { scale: 1.2, alt: 'td_ruin' });
+    else if (r < 0.7) small('p_stonelantern', tx, ty, { glow: [-10, 18, 0xb266ff, 0.4] });
+    else if (r < 0.82) small(rnd() < 0.5 ? 'p_buddhahead' : 'p_buddhahead2', tx, ty);
+    else if (r < 0.9) small('p_buddha2', tx, ty);
+    else deco('p_candle', tx, ty, { glow: [-6, 14, 0xffc46b, 0.5] });
+    reserve(tx - 1, ty - 1, tx + 1, ty);
+  }
+  P('env/p_arch', GX - 3, 51, { foot: [0, 0], scale: 1.4, flip: true, label: '← ป่าช้าวัดร้าง' });
+
+  // ================= บึงผีพราย (ใต้สุด) =================
+  const SY = LH + 5;
+  for (let y = LH; y < MAP_H; y++) for (let x = 0; x < MAP_W; x++) {
+    if (y < SY && x >= OX && x < GX) continue;                                  // รอยต่อทุ่งนา
+    const r = rnd(); ground[y][x] = r < 0.3 ? T.TALL : r < 0.55 ? T.GRASS3 : T.GRASS;
+  }
+  path(bPath.slice(-2), 3, T.ROAD); path(gPath.slice(-2), 3, T.STONE);            // ต่อทางจากป่าไผ่/ป่าช้าลงบึง (ถมหญ้าทับไปแล้ว)
+  // บ่อ/บึงน้ำ (ชน) + ตลิ่งทราย
+  const ponds = [[40, 176, 7], [74, 150, 5], [130, 166, 6], [176, 176, 7], [220, 160, 5], [110, 196, 9], [18, 192, 6], [150, 194, 5], [200, 197, 6], [96, 170, 4]];
+  for (const [cx, cy, r] of ponds) { disc(cx, cy, r + 1.5, T.SAND); disc(cx, cy, r, T.WATER); }
+  for (let y = SY; y < MAP_H; y++) for (let x = 0; x < MAP_W; x++) if (ground[y][x] === T.WATER && rnd() < 0.5) ground[y][x] = T.WATER2;
+  // ทางเดินไม้ข้ามบึง: ถนนใต้จากทุ่งนา + ทางขวางเชื่อมป่าไผ่/ป่าช้า
+  const sPath = [[OX + 59.5, 134], [OX + 59.5, 158], [OX + 60, 184]];
+  path(sPath, 3, T.WOOD); path([[28, 150], [28, 168], [210, 168], [204, 150]], 3, T.WOOD);
+  for (const pts of [sPath, [[28, 150], [28, 168], [210, 168], [204, 150]]]) for (let i = 1; i < pts.length; i++) { const [x0, y0] = pts[i - 1], [x1, y1] = pts[i]; for (let k = 0; k <= 60; k++) reserveDisc(Math.round(x0 + (x1 - x0) * k / 60), Math.round(y0 + (y1 - y0) * k / 60), 2); }
+  clearing(58, 184, 6, T.SAND); path([[58, 168], [58, 184]], 2, T.WOOD); S('khamot', 58, 184, 4, 3);
+  clearing(92, 156, 5); path([[92, 156], [92, 168]], 2, T.WOOD); S('nang_takhian', 92, 156, 4, 3);
+  clearing(160, 184, 6, T.SAND); path([[160, 168], [160, 184]], 2, T.WOOD); S('phi_phrai', 160, 184, 4, 3);
+  clearing(196, 184, 6); path([[196, 168], [196, 184]], 2, T.WOOD); S('phi_chamot', 196, 184, 4, 3);
+  // ลานพญาชาละวัน (ริมบึงใหญ่)
+  disc(OX + 60, 186, 7, T.SAND); reserveDisc(OX + 60, 186, 8);
+  BOSS('chalawan', OX + 60, 187);
+  P('env/p_spirit', OX + 54, 181, { foot: [2, 1], scale: 1.1, label: 'ศาลพญาชาละวัน', glow: [-20, 50, 0x85c1e9, 1] });
+  for (const [x, y] of [[OX + 53, 184], [OX + 67, 184], [OX + 53, 191], [OX + 67, 191]]) small('p_torch', x, y, { glow: TORCH });
+  // บัว/เรือ/ต้นไม้ริมบึง
+  for (const [cx, cy, r] of ponds) for (let i = 0; i < r; i++) { const a = rnd() * 6.28, d = rnd() * (r - 1); deco(rnd() < 0.5 ? 'p_lotus' : 'p_lotus2', Math.round(cx + Math.cos(a) * d), Math.round(cy + Math.sin(a) * d), { depth: 1 }); }
+  for (let y = SY; y < MAP_H - 1; y += 3) for (let x = 1; x < MAP_W - 1; x += 3) {
+    const tx = x + Math.floor(rnd() * 2), ty = y + Math.floor(rnd() * 2);
+    if (!free(tx, ty) || rnd() > 0.45) continue;
+    const r = rnd();
+    if (r < 0.45) tree(tx, ty, rnd() < 0.6 ? 'tamarind' : 'palm', 0.9 + rnd() * 0.3); else if (r < 0.75) deco(rnd() < 0.5 ? 'p_shrub' : 'p_shrub2', tx, ty); else deco('p_plants', tx, ty);
+    reserve(tx - 1, ty - 1, tx + 1, ty);
+  }
+  P('env/p_arch', OX + 59, SY - 1, { foot: [0, 0], scale: 1.4, label: '↓ บึงผีพราย' });
 
   // ---- ตารางชน ----
   const solid = ground.map((row) => row.map((t) => SOLID.has(t)));

@@ -22,7 +22,7 @@ import { Econ } from '../net/Econ.js';
 import { Network } from '../net/Network.js';
 import { account } from '../net/Account.js';
 import { count } from '../systems/Inventory.js';
-import { TILE, MAP_W, MAP_H, T, SPAWN as TD_SPAWN, inTownXY, isIsland, bakeTileset, bakeProps, buildLayout } from '../topdown/AyutthayaMap.js';
+import { TILE, MAP_W, MAP_H, T, SPAWN as TD_SPAWN, inTownXY, isIsland, bakeTileset, bakeProps, buildLayout, OX, ZONES, zoneAt } from '../topdown/AyutthayaMap.js';
 import { dirFromVector, stableDir, playDir, registerDir8, texKey } from '../topdown/Dir8.js';
 import { TdSkills } from '../topdown/TdSkills.js';
 import { SKILL_SLOTS, SLOT_KEYNAME, isItemSlot, slotItemId } from '/shared/data/skills.js';
@@ -243,8 +243,10 @@ export class TopDownScene extends Phaser.Scene {
       if (p.label) makeText(this, p.x, p.y - img.displayHeight - 3, p.label, { fontSize: '6px', color: '#f7dc6f' }).setOrigin(0.5, 1).setDepth(p.y + 1);
       if (p.warp) this.warpGate = { x: p.x, y: p.y };
     }
-    const zoneLabel = (tx, ty, text) => makeText(this, tx * TILE, ty * TILE, text, { fontSize: '8px', color: '#ffe9a6' }).setOrigin(0.5).setDepth(9000).setAlpha(0.85);
+    const zoneLabel = (tx, ty, text) => makeText(this, (tx + OX) * TILE, ty * TILE, text, { fontSize: '8px', color: '#ffe9a6' }).setOrigin(0.5).setDepth(9000).setAlpha(0.85);
     zoneLabel(86, 16, '✦ วัดพระศรีสรรเพชญ์ ✦'); zoneLabel(33, 14, '✦ วัดไชยวัฒนาราม ✦'); zoneLabel(60, 42, '⛲ ลานเมือง'); zoneLabel(60, 84, '⚔ ประตูเมืองใต้'); zoneLabel(60, 106, '🌾 ทุ่งนาบางปะอิน'); zoneLabel(60, 62, '🧺 ตลาดหัวรอ'); zoneLabel(30, 50, '🥊 สำนักดาบ·มวย'); zoneLabel(92, 50, '🔨 ย่านช่างน้ำพี้');
+    const bigLabel = (x, y, text, color) => makeText(this, x * TILE, y * TILE, text, { fontSize: '10px', color }).setOrigin(0.5).setDepth(9000).setAlpha(0.8);
+    bigLabel(28, 60, '🎋 ป่าไผ่ปู่โสม', '#b9f6ca'); bigLabel(204, 58, '🪦 ป่าช้าวัดร้าง', '#e8daef'); bigLabel(OX + 60, 150, '🪷 บึงผีพราย', '#d6eaf8');
   }
 
   /** เงาวงรีใต้เท้า */
@@ -260,6 +262,8 @@ export class TopDownScene extends Phaser.Scene {
   buildPlayer(char) {
     const key = bakeCharacter(this, char.appearance);
     const okPos = (q) => q && Number.isFinite(q.x) && !this.solid?.[Math.floor((q.y - 2) / TILE)]?.[Math.floor(q.x / TILE)] && q.y < MAP_H * TILE;
+    if (char.tdPos && (char.tdMapV || 1) < 2) char.tdPos = { x: char.tdPos.x + OX * TILE, y: char.tdPos.y };   // เซฟก่อนขยายแผนที่
+    char.tdMapV = 2;
     const pos = okPos(char.tdPos) ? char.tdPos : SPAWN;
     const p = this.physics.add.sprite(pos.x, pos.y, key, 'idle_0').setOrigin(0.5, 1).setDepth(pos.y);
     p.body.setSize(12, 8).setOffset((p.width - 12) / 2, p.height - 8); p.bodyFoot = [12, 8];
@@ -343,13 +347,14 @@ export class TopDownScene extends Phaser.Scene {
     const def = MONSTERS[s.id], key = `mon_${def.art || s.id}`;
     const m = this.physics.add.sprite(s.x, s.y, this.textures.exists(key) ? key : 'npc_maekha', 'walk_0').setOrigin(0.5, 1);
     this.monsters.add(m);
-    const scale = def.scale || 1; m.setScale(scale);
+    const scale = def.scale || 1; m.setScale(scale); m.scaleMul = def.boss ? def.scale || 1.6 : 1;
     m.body.setSize(14 / scale, 8 / scale).setOffset((m.width - 14 / scale) / 2, m.height - 8 / scale); m.bodyFoot = [14, 8];
     Object.assign(m, { mid, def, spawn: s, hp: def.hp, maxHp: def.hp, alive: true, mode: 'wander', nextThink: 0, nextAtk: 0, dir: 'south', sx: s.x, sy: s.y });
     m.legacyKey = m.texture.key; m.d8id = `mob_${s.id}`; playDir(m, 'walk', 'south');
     this.addShadow(m, Math.max(14, m.displayWidth * 0.7));
-    m.label = makeText(this, m.x, m.y, `Lv.${def.level} ${def.nameTh}`, { fontSize: '6px', color: '#f5b7b1' }).setOrigin(0.5, 1);
-    m.hpBg = this.add.rectangle(0, 0, 22, 3, 0x000000, 0.7); m.hpBar = this.add.rectangle(0, 0, 22, 3, 0xe74c3c).setOrigin(0, 0.5);
+    m.label = makeText(this, m.x, m.y, `${def.boss ? '👑 ' : ''}Lv.${def.level} ${def.nameTh}`, { fontSize: def.boss ? '8px' : '6px', color: def.boss ? '#ffd76a' : '#f5b7b1' }).setOrigin(0.5, 1);
+    m.barW = def.boss ? 48 : 22;
+    m.hpBg = this.add.rectangle(0, 0, m.barW, def.boss ? 5 : 3, 0x000000, 0.7); m.hpBar = this.add.rectangle(0, 0, m.barW, def.boss ? 5 : 3, def.boss ? 0xc0392b : 0xe74c3c).setOrigin(0, 0.5);
     m.setInteractive({ useHandCursor: true });
     m.on('pointerdown', (ptr) => { ptr.event.stopPropagation(); this.setTarget(m); });
     m.on('pointerover', () => { this.hovered = m; document.body.dataset.cursor = 'attack'; });
@@ -419,7 +424,7 @@ export class TopDownScene extends Phaser.Scene {
       <div class="am-list">${kinds.length ? kinds.map((k) => `
         <label class="${only && !only.has(k.id) ? 'off' : ''}" data-cnt="${k.alive}/${k.n}">
           <input type="checkbox" data-id="${k.id}" ${!only || only.has(k.id) ? 'checked' : ''}>
-          <span class="am-lv">Lv.${k.def.level}</span><span class="am-n">${k.def.nameTh}${k.def.elite ? ' 👑' : ''}${k.def.nightOnly ? ' 🌙' : ''}</span>
+          <span class="am-lv">Lv.${k.def.level}</span><span class="am-n">${k.def.nameTh}${k.def.elite || k.def.boss ? ' 👑' : ''}${k.def.nightOnly ? ' 🌙' : ''}</span>
         </label>`).join('') : '<div class="am-empty">แผนที่นี้ไม่มีผี</div>'}</div>
       <div class="am-foot">ติ๊กเฉพาะชนิดที่อยากตี · ไม่ติ๊กเลย = ตีทุกตัว</div>`;
     box.querySelector('[data-all]').onchange = (e) => {
@@ -460,11 +465,27 @@ export class TopDownScene extends Phaser.Scene {
     if (on) m.setAlpha(1).clearTint().setInteractive({ useHandCursor: true }); else m.disableInteractive();
   }
 
+  /** บอสใช้ท่าวงกว้าง: วงแดงขยายเตือนก่อน แล้วระเบิด */
+  bossAoe({ mid, x, y, r, ms = 1000, name }) {
+    const m = this.mobs[mid];
+    if (m?.alive) playDir(m, 'attack', m.dir, true);
+    const edge = this.add.ellipse(x, y, r * 2, r * 1.3).setStrokeStyle(2, 0xff5b4f, 0.9).setDepth(2);
+    const ring = this.add.ellipse(x, y, r * 2, r * 1.3, 0xff3b30, 0.22).setDepth(2).setScale(0.05);
+    this.tweens.add({ targets: ring, scale: 1, duration: ms * 0.9, ease: 'Cubic.Out' });
+    const warn = name && dist(this.player, { x, y }) < r + 120 ? makeText(this, x, y - (m?.displayHeight || 40) - 18, `⚠ ${name}`, { fontSize: '8px', color: '#ff8a80' }).setOrigin(0.5).setDepth(99990) : null;
+    this.time.delayedCall(ms, () => {
+      ring.destroy(); edge.destroy(); warn?.destroy();
+      const boom = this.add.ellipse(x, y, r * 2, r * 1.3, 0xff6b3d, 0.45).setDepth(2);
+      this.tweens.add({ targets: boom, alpha: 0, scale: 1.12, duration: 380, onComplete: () => boom.destroy() });
+      if (dist(this.player, { x, y }) < r + 60) { this.cameras.main.shake(180, 0.006); this.sfx.play('skBoom'); }
+    });
+  }
+
   drawMob(m) {
     const h = m.displayHeight;
     m.label.setPosition(m.x, m.y - h - 6).setDepth(m.y + 1);
     m.hpBg.setPosition(m.x, m.y - h - 3).setDepth(m.y + 1);
-    m.hpBar.setPosition(m.x - 11, m.y - h - 3).setDepth(m.y + 1).width = 22 * Math.max(0, m.hp / m.maxHp);
+    m.hpBar.setPosition(m.x - m.barW / 2, m.y - h - 3).setDepth(m.y + 1).width = m.barW * Math.max(0, m.hp / m.maxHp);
     m.setDepth(m.y);
   }
 
@@ -714,6 +735,7 @@ export class TopDownScene extends Phaser.Scene {
       .on('td:dmg', (d) => this.onMobDamage(this.mobs[d.mid], d))
       .on('td:die', ({ mid }) => this.onMobDie(this.mobs[mid]))
       .on('td:matk', ({ mid }) => { const m = this.mobs[mid]; if (m?.alive) playDir(m, 'attack', m.dir, true); })
+      .on('td:aoe', (a) => this.bossAoe(a))
       .on('td:reward', (r) => this.showReward({ ...r, x: this.mobs[r.mid]?.x, y: this.mobs[r.mid]?.y }))
       .on('td:respawn', (d) => this.onRespawn(d))
       .on('td:correct', ({ x, y }) => { if (dist(this.player, { x, y }) > 24) { this.player.setPosition(x, y); this.player.path = []; } });
@@ -944,12 +966,17 @@ export class TopDownScene extends Phaser.Scene {
       const t = this.layout.ground[Math.floor(p.y / TILE)]?.[Math.floor(p.x / TILE)];
       this.sfx.play(t === T.WOOD ? 'step_wood' : t === T.BRICK || t === T.STONE ? 'step_stone' : t === T.SAND || t === T.ROAD ? 'step_sand' : 'step_grass');
     }
-    if (zone !== this.zone) {
-      this.zone = zone;
-      this.ui.setZone(zone === 'town' ? 'กรุงศรีอยุธยา' : 'ทุ่งนาบางปะอิน', true);
-      $('#td-zone').textContent = zone === 'town' ? '🏯 เกาะเมือง (Safe Zone)' : '🌾 หุ่นไล่กาผีสิง · กุมารทอง · นางตานี';
+    const area = zoneAt(p.x, p.y);
+    if (area !== this.area) {
+      const was = this.area; this.area = area;
+      const Z = ZONES[area] || ZONES.outskirts;
+      if (was !== undefined && !(area === 'outskirts' && was === 'town') && !(area === 'town' && was === 'outskirts')) this.ui.banner(Z.nameTh, Z.sub);
+      $('#zone-name').textContent = area === 'town' ? 'กรุงศรีอยุธยา' : Z.nameTh;
+      const ICON = { town: '🏯', outskirts: '🌳', field: '🌾', bamboo: '🎋', graveyard: '🪦', swamp: '🪷' };
+      $('#td-zone').textContent = `${ICON[area] || ''} ${area === 'town' ? 'เกาะเมือง (Safe Zone)' : `${Z.nameTh} · ${Z.sub.split(' · ')[0]}`}`;
     }
-    this.sfx.setMood({ lowHp: p.alive && p.char.hp / p.derived.maxHp < 0.25, boss: 0 });
+    if (zone !== this.zone) this.zone = zone;
+    this.sfx.setMood({ lowHp: p.alive && p.char.hp / p.derived.maxHp < 0.25, boss: this.mobs.some((m) => m.def.boss && m.alive && dist(m, p) < 320) ? 1 : 0 });
     this.ui.updateHud();
     this.ui.updateSkillBar(time);
     this.ui.updateFrame(time);

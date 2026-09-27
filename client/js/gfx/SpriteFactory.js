@@ -3,7 +3,7 @@
 //  (ไม่ต้องมีไฟล์ภาพ – เปลี่ยนเป็นภาพจริงจาก PixelLab ทีหลังได้)
 // ============================================================
 import { FW, FH, CHAR_ANIMS, getPose, drawCharacter } from './CharacterArt.js';
-import { MONSTER_ANIMS, drawMonsterFrame } from './MonsterArt.js';
+import { MONSTER_ANIMS, drawMonsterFrame, hasMonsterArt } from './MonsterArt.js';
 import { MONSTERS } from '/shared/data/monsters.js';
 import { JOBS } from '/shared/data/classes.js';
 import { appearanceKey } from '/shared/data/appearance.js';
@@ -376,7 +376,7 @@ export function generateAll(scene) {
   bakeEnvironment(scene);
   bakeProjectiles(scene);
   bakeNpc(scene);
-  Object.keys(MONSTERS).filter((id) => !MONSTERS[id].art).forEach((id) => bakeMonster(scene, id));
+  Object.keys(MONSTERS).filter((id) => !MONSTERS[id].art && hasMonsterArt(id)).forEach((id) => bakeMonster(scene, id));   // บอสใหม่ใช้ภาพ 8 ทิศเท่านั้น
 }
 
 // ------------------------------------------------------------

@@ -6,7 +6,7 @@
 // ============================================================
 import { MONSTERS } from './monsters.js';
 
-/** อัตราดรอปการ์ด: ผีทั่วไป 0.5% · ผีหัวหน้า (elite) 5% · บอส 20% */
+/** อัตราดรอปการ์ด: ผีทั่วไป 0.5% · ผีหัวหน้า (elite) 5% · บอสประจำโซน 20% (ต่อผู้ช่วยตีแต่ละคน) */
 export const CARD_DROP = { normal: 0.005, elite: 0.05, boss: 0.2 };
 
 export const CARD_SLOT_TH = { weapon: 'อาวุธ', armor: 'เสื้อ', accessory: 'เครื่องประดับ' };
@@ -39,6 +39,9 @@ const DEFS = {
   phi_lang_kluang: { slot: 'accessory', bonus: {}, econ: { drop: 10 },        flavor: 'ของหล่นจากหลังกลวง' },
   phi_chamot:      { slot: 'armor',     bonus: { hp: 80, def: 4 },            flavor: 'เกล็ดจะมอดหนาแน่น' },
   pret_asura:      { slot: 'weapon',    bonus: { STR: 4, patkMul: 0.1, matkMul: 0.1 }, flavor: 'พลังอสุรกายแห่งนรกภูมิ' },
+  mae_nak:         { slot: 'accessory', bonus: { VIT: 3, hpMul: 0.06 },      flavor: 'รอคอยไม่มีวันสิ้นสุด' },
+  pu_som:          { slot: 'accessory', bonus: { CRI: 2 }, econ: { gold: 15, drop: 5 }, flavor: 'ทองท่วมตัวแต่ไม่เคยได้ใช้' },
+  chalawan:        { slot: 'armor',     bonus: { def: 10, hpMul: 0.12 },     flavor: 'เกล็ดพญาจระเข้แกร่งดั่งเหล็ก' },
 };
 
 /** รายการการ์ดทั้งหมด (เรียงตามเลเวลผี) */
@@ -46,7 +49,7 @@ export const CARDS = Object.entries(DEFS)
   .filter(([mon]) => MONSTERS[mon])
   .map(([mon, d]) => {
     const m = MONSTERS[mon];
-    return { id: `card_${mon}`, mon, level: m.level, elite: !!m.elite, nameTh: `การ์ด${m.nameTh}`, monTh: m.nameTh, slot: d.slot, bonus: d.bonus || {}, econ: d.econ || {}, flavor: d.flavor, palette: m.palette || null };
+    return { id: `card_${mon}`, mon, level: m.level, elite: !!(m.elite || m.boss), boss: !!m.boss, nameTh: `การ์ด${m.nameTh}`, monTh: m.nameTh, slot: d.slot, bonus: d.bonus || {}, econ: d.econ || {}, flavor: d.flavor, palette: m.palette || null };
   })
   .sort((a, b) => a.level - b.level);
 export const CARD_BY_ID = Object.fromEntries(CARDS.map((c) => [c.id, c]));
@@ -65,7 +68,7 @@ export function cardText(c) {
 
 /** ไอเทมการ์ด (รวมเข้า ITEMS) */
 export const CARD_ITEMS = Object.fromEntries(CARDS.map((c) => [c.id, {
-  nameTh: c.nameTh, type: 'card', icon: '🃏', cardSlot: c.slot, sell: c.elite ? 800 : 40 + c.level * 20, rare: true,
+  nameTh: c.nameTh, type: 'card', icon: '🃏', cardSlot: c.slot, sell: c.boss ? 1500 : c.elite ? 800 : 40 + c.level * 20, rare: true,
   desc: `${CARD_SLOT_TH[c.slot]} · ${cardText(c)}`,
 }]));
 
@@ -85,6 +88,7 @@ export const BOOK_TIERS = [
   { n: 10, bonus: { STR: 1, DEX: 1, INT: 1, CRI: 1, VIT: 1 }, text: 'สถานะทุกตัว +1' },
   { n: 15, econ: { exp: 5 }, text: 'EXP +5%' },
   { n: 20, bonus: { STR: 2, DEX: 2, INT: 2, CRI: 2, VIT: 2, crit: 0.02 }, text: 'สถานะทุกตัว +2 · คริติคอล +2%' },
+  { n: 23, bonus: { patkMul: 0.05, matkMul: 0.05 }, text: 'ครบทุกใบ: ATK/MATK +5%' },
 ];
 export const bookCount = (c) => Object.keys(c?.cardBook || {}).filter((id) => CARD_BY_ID[id]).length;
 
