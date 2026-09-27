@@ -72,10 +72,6 @@ export class CreateScene extends Phaser.Scene {
       this.refresh();
     };
 
-    // New Version (อยุธยา top-down) เป็นค่าเริ่มต้น · ?mode=classic หรือปุ่ม "แบบเดิม" = โลกด้านข้างชุดเก่า
-    this.mode = new URLSearchParams(location.search).get('mode') === 'classic' ? 'classic' : 'ayutthaya';
-    // ปุ่ม Classic: มีตัวละครอยู่แล้ว → เล่นต่อในโลกเดิม · ยังไม่มี → สร้างแล้วเข้าโลกเดิม
-    $('#cc-ayutthaya').onclick = () => { this.mode = 'classic'; const c = $('#cc-continue'); (c.classList.contains('hidden') ? $('#cc-start') : c).click(); };
     $('#cc-start').onclick = async () => {
       if (this.serverChar && !confirm(`บัญชีนี้มีตัวละคร “${this.serverChar.name}” (Lv.${this.serverChar.level}) อยู่แล้ว\nสร้างใหม่จะเขียนทับตัวเดิม ต้องการสร้างใหม่ไหม?`)) return;
       if (account.loggedIn && !account.offline) {                       // บัญชีออนไลน์: server สร้างให้ (กันแก้ค่าเริ่มต้น)
@@ -128,10 +124,9 @@ export class CreateScene extends Phaser.Scene {
     this.preview.play({ key: `${key}:${this.previewAnim}`, repeat: -1, repeatDelay: loopable ? 0 : 600 });
   }
 
-  startGame(char, mode = this.mode) {
+  startGame(char) {
     $('#create-screen').classList.add('hidden');
     titleScreen.stop();
-    // ค่าเริ่มต้น = New Version อยุธยา (top-down) · classic = โลกด้านข้างเดิม
-    this.scene.start(mode === 'classic' ? 'game' : 'ayutthaya', { char });
+    this.scene.start('ayutthaya', { char });   // เกมมีโลกเดียว: กรุงศรีอยุธยา (top-down)
   }
 }

@@ -74,7 +74,6 @@ export class TopDownScene extends Phaser.Scene {
     this.buildMonsters();
     this.buildInput();
     $('#td-hud').classList.remove('hidden');
-    $('#td-exit').onclick = () => this.exitToClassic();
 
     const cam = this.cameras.main;
     cam.setBounds(0, 0, MAP_W * TILE, MAP_H * TILE).setZoom(1.5).startFollow(this.player, true, 0.12, 0.12).setRoundPixels(true);
@@ -609,7 +608,6 @@ export class TopDownScene extends Phaser.Scene {
         p.dir = dirFromVector(vx, vy, p.dir); p.st = 'walk'; this.playerAnim('walk');
       } else { p.setVelocity(0, 0); p.st = 'idle'; this.playerAnim('idle'); }
       if (!this.econ.server && this.inTown() && p.char.hp < p.derived.maxHp) p.char.hp = Math.min(p.derived.maxHp, p.char.hp + p.derived.maxHp * 0.04 * dt);
-      if (this.warpGate && dist(p, this.warpGate) < 22) this.exitToClassic();
     } else p.setVelocity(0, 0);
     p.setDepth(p.y);
     this.nameTag.setPosition(p.x, p.y - p.displayHeight - 3);
@@ -634,9 +632,4 @@ export class TopDownScene extends Phaser.Scene {
     this.ui.updateFrame(time);
   }
 
-  exitToClassic() {
-    if (this.exiting) return; this.exiting = true;
-    this.saveSoon();
-    this.cameras.main.fadeOut(300, 10, 30, 30, (_c, t) => { if (t >= 1) { const u = new URL(location.href); u.searchParams.set('mode', 'classic'); location.href = u.toString(); } });
-  }
 }
