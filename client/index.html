@@ -110,14 +110,12 @@
         </div>
         <div class="create-panel panel thai-frame">
           <label class="field">ชื่อตัวละคร <input id="cc-name" maxlength="16" placeholder="เช่น ขุนแผน · ไอ้ขวัญ" /></label>
-          <div class="row">
-            <span class="label">เพศ</span>
-            <div class="seg" id="cc-gender">
-              <button data-v="male">♂ ชาย</button><button data-v="female">♀ หญิง</button>
-            </div>
+          <div class="label">เลือกเพศ</div>
+          <div class="cc-genders" id="cc-genders">
+            <button class="cc-gcard" data-v="male"><canvas class="px"></canvas><b>♂ ชาย</b></button>
+            <button class="cc-gcard" data-v="female"><canvas class="px"></canvas><b>♀ หญิง</b></button>
           </div>
-          <div class="label">ชุดแต่งกาย <small id="cc-outfit-name" class="cc-outfit-name"></small></div>
-          <div class="cc-outfits" id="cc-outfits"></div>
+          <p class="cc-outfit-note">🧵 ทุกคนเริ่มด้วย <b>ชุดลายขิดอีสาน</b> · ชุดอื่นเปลี่ยนได้ที่ร้านแม่ช้อยในกรุงศรีฯ</p>
           <div class="label">อาวุธเริ่มต้น <small>(ได้ครบทุกแบบในกระเป๋า เปลี่ยนถือได้ตลอด)</small></div>
           <div class="jobs" id="cc-jobs"></div>
           <div class="job-desc" id="cc-job-desc"></div>

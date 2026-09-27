@@ -1071,3 +1071,14 @@ body.td-mode #chat-log { max-height: 6.5em; }
 #skill-panel .sk-assign { display: flex; flex-wrap: wrap; justify-content: center; gap: 2px; }
 #skill-panel .sk-assign button { min-width: 1.5em; padding: 0 .2em; font-size: .75em; }
 #skill-panel .sk-card { font-size: .88em; }
+
+/* สร้างตัวละคร: การ์ดเลือกเพศ (ชุดลายขิดอีสาน) */
+.cc-genders { display: grid; grid-template-columns: 1fr 1fr; gap: .6em; }
+.cc-gcard { display: flex; flex-direction: column; align-items: center; gap: .1em; padding: .3em .3em .5em; border-radius: 12px; cursor: pointer; font: inherit;
+  color: var(--muted); background: linear-gradient(180deg, rgba(43,26,61,.7), rgba(18,10,27,.9)); border: 2px solid rgba(212,175,55,.25); transition: transform .12s, border-color .12s; }
+.cc-gcard canvas { width: 6.5em; height: 6.5em; }
+.cc-gcard b { font-size: 1.05em; font-weight: 600; }
+.cc-gcard:hover { border-color: rgba(232,199,102,.6); transform: translateY(-2px); }
+.cc-gcard.active { color: #fff3c4; border-color: var(--gold); background: linear-gradient(180deg, rgba(110,40,30,.7), rgba(30,12,20,.92)); box-shadow: 0 0 14px rgba(255,200,90,.35); }
+.cc-outfit-note { margin: .1em 0 .2em; font-size: .78em; color: var(--muted); text-align: center; }
+.cc-outfit-note b { color: var(--gold-soft); }

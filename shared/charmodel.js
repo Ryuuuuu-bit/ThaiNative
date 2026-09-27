@@ -5,7 +5,7 @@
 import { ENHANCE } from './data/village.js';
 import { JOBS, VILLAGER, PATH_LV, SUB_CAP } from './data/classes.js';
 import { ITEMS, STARTING_GOLD, STARTING_ITEMS, STARTER_WEAPON } from './data/items.js';
-import { sanitizeAppearance } from './data/appearance.js';
+import { sanitizeAppearance, START_OUTFIT } from './data/appearance.js';
 import { expToNext, POINTS_PER_LEVEL, STAT_KEYS, MAX_LEVEL } from './stats.js';
 import { getDerived } from './character.js';
 import { SKILL_SLOTS, OLD_SKILL_SLOTS, SP_PER_LEVEL, START_SP, SKILL_BY_ID, canLearn, isItemSlot, slotItemId, skillCap } from './data/skills.js';
@@ -41,7 +41,7 @@ export function newCharacter(name, appearance = {}) {
   const c = {
     v: SAVE_VERSION,
     name: String(name || '').replace(/[<>]/g, '').trim().slice(0, 16) || 'ผู้กล้า',
-    appearance: sanitizeAppearance({ ...appearance, weapon: null, armor: null, path: null }),
+    appearance: sanitizeAppearance({ ...appearance, outfit: START_OUTFIT, weapon: null, armor: null, path: null }),   // ทุกคนเริ่มด้วยชุดลายขิดอีสาน
     path: null,
     level: 1, exp: 0, statPoints: 0,
     stats: { ...VILLAGER.startStats },

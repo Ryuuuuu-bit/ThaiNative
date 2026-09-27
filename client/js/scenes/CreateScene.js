@@ -1,9 +1,9 @@
 // ============================================================
 //  CreateScene – หน้าสร้างตัวละคร (ลงช่องที่เลือกจาก Lobby)
 //  ▸ ตัวอย่างเป็นภาพแบบเดียวกับในเกม (top-down 8 ทิศ) หมุนดูรอบตัวได้ (ปุ่ม ⟲ ⟳ / ลากที่ตัวละคร)
-//  ▸ เลือกเพศ / ชุด 10 แบบ (ภาพย่อ) / อาวุธเริ่มต้น · ทุกคนเริ่มเป็นชาวบ้าน · เลือกสายหลักตอน Lv.10
+//  ▸ ทุกคนเริ่มด้วยชุดลายขิดอีสาน · เลือกเพศ (การ์ดชาย/หญิง) + อาวุธเริ่มต้น · เปลี่ยนชุดภายหลังที่ร้านแม่ช้อย
 // ============================================================
-import { GENDERS, OUTFITS, HAIRSTYLES, DEFAULT_APPEARANCE } from '/shared/data/appearance.js';
+import { GENDERS, HAIRSTYLES, DEFAULT_APPEARANCE, START_OUTFIT } from '/shared/data/appearance.js';
 import { JOBS } from '/shared/data/classes.js';
 import { ITEMS } from '/shared/data/items.js';
 import { newCharacter, saveCharacter } from '../systems/Character.js';
@@ -12,7 +12,7 @@ import { account } from '../net/Account.js';
 import { sound } from '../systems/Sound.js';
 import { titleScreen } from '../systems/TitleScreen.js';
 import { loadSettings } from '../systems/Settings.js';
-import { HeroView, loadHeroMeta, clearHeroViews, hasHero } from '../systems/HeroPreview.js';
+import { HeroView, loadHeroMeta, clearHeroViews } from '../systems/HeroPreview.js';
 
 const $ = (s) => document.querySelector(s);
 /** อาวุธเริ่มต้นให้เลือก (ได้ทั้งหมดในกระเป๋า เปลี่ยนถือได้ตลอด) */
@@ -41,7 +41,7 @@ export class CreateScene extends Phaser.Scene {
 
     this.preview = new HeroView($('#cc-preview'), this, { scale: 4 });
     this.bindDom();
-    this.buildOutfits();
+    this.buildGenders();
     this.refresh();
     setTimeout(() => $('#cc-name').focus(), 60);
   }
@@ -56,7 +56,7 @@ export class CreateScene extends Phaser.Scene {
     $('#cc-start').disabled = false;
     $('#cc-name').value = '';
 
-    $('#cc-gender').querySelectorAll('button').forEach((b) => (b.onclick = () => { if (this.a.gender === b.dataset.v) return; this.a.gender = b.dataset.v; this.buildOutfits(); this.refresh(); }));
+    $('#cc-genders').querySelectorAll('.cc-gcard').forEach((b) => (b.onclick = () => { if (this.a.gender === b.dataset.v) return; this.a.gender = b.dataset.v; this.anim = 'walk'; this.refresh(); }));
 
     $('#cc-jobs').innerHTML = START_WEAPONS.map((w, i) => `<button class="job" data-w="${i}"><b>${w.icon}</b>${w.id ? ITEMS[w.id].nameTh : 'มือเปล่า'}</button>`).join('');
     $('#cc-jobs').querySelectorAll('.job').forEach((b) => (b.onclick = () => { this.a.weapon = START_WEAPONS[b.dataset.w].id; this.anim = 'attack'; this.refresh(); }));
@@ -82,9 +82,8 @@ export class CreateScene extends Phaser.Scene {
     $('#cc-random').onclick = () => {
       const r = (n) => Math.floor(Math.random() * n);
       const gender = GENDERS[r(2)].id;
-      this.a = { ...this.a, gender, outfit: r(OUTFITS.length), hair: r(HAIRSTYLES.length), weapon: START_WEAPONS[r(4)].id };
+      this.a = { ...this.a, gender, outfit: START_OUTFIT, hair: r(HAIRSTYLES.length), weapon: START_WEAPONS[r(4)].id };
       if (!$('#cc-name').value.trim()) $('#cc-name').value = NAMES[gender][r(NAMES[gender].length)];
-      this.buildOutfits();
       this.refresh();
     };
     $('#cc-back').onclick = () => this.scene.start('lobby', { select: this.slot });
@@ -111,24 +110,17 @@ export class CreateScene extends Phaser.Scene {
     scr.addEventListener('click', this.onClick);
   }
 
-  /** ภาพย่อชุดทั้ง 10 แบบของเพศที่เลือก */
-  buildOutfits() {
-    (this.thumbs || []).forEach((v) => v.destroy());
-    const box = $('#cc-outfits');
-    box.innerHTML = OUTFITS.map((o, i) => `<button class="cc-outfit" data-i="${i}" title="${o.nameTh}"><canvas class="px"></canvas><span>${o.nameTh}</span></button>`).join('');
-    this.thumbs = [...box.querySelectorAll('.cc-outfit')].map((b) => {
-      const i = +b.dataset.i;
-      b.onclick = () => { this.a.outfit = i; this.refresh(); };
-      b.classList.toggle('soon', !hasHero({ ...this.a, outfit: i }));
-      return new HeroView(b.querySelector('canvas'), this, { scale: 1, shadow: false }).set({ ...this.a, outfit: i, weapon: null }, 'idle', 'south');
-    });
+  /** การ์ดเลือกเพศ (ชุดลายขิดอีสาน) */
+  buildGenders() {
+    this.gviews = [...document.querySelectorAll('#cc-genders .cc-gcard')].map((b) =>
+      new HeroView(b.querySelector('canvas'), this, { scale: 2, shadow: true }).set({ ...this.a, gender: b.dataset.v, outfit: START_OUTFIT, weapon: null }, 'idle', 'south'));
   }
 
   refresh() {
     const a = this.a;
-    document.querySelectorAll('#cc-gender button').forEach((b) => b.classList.toggle('active', b.dataset.v === a.gender));
-    document.querySelectorAll('.cc-outfit').forEach((b) => b.classList.toggle('active', +b.dataset.i === a.outfit));
-    $('#cc-outfit-name').textContent = `· ${OUTFITS[a.outfit].nameTh}${hasHero(a) ? '' : ' (ภาพชุดนี้กำลังวาด ใช้ภาพชั่วคราว)'}`;
+    a.outfit = START_OUTFIT;
+    document.querySelectorAll('#cc-genders .cc-gcard').forEach((b) => b.classList.toggle('active', b.dataset.v === a.gender));
+    (this.gviews || []).forEach((v, i) => { const g = ['male', 'female'][i]; v.set({ ...a, gender: g, weapon: null }, g === a.gender ? 'walk' : 'idle', 'south'); v.spin = g === a.gender ? 800 : 0; });
     const wi = Math.max(0, START_WEAPONS.findIndex((w) => w.id === (a.weapon || null)));
     document.querySelectorAll('#cc-jobs .job').forEach((b) => b.classList.toggle('active', +b.dataset.w === wi));
     const job = JOBS[START_WEAPONS[wi].job];
@@ -139,7 +131,7 @@ export class CreateScene extends Phaser.Scene {
 
   teardown() {
     clearHeroViews();
-    this.thumbs = [];
+    this.gviews = [];
     $('#create-screen').classList.add('hidden');
     if (this.onClick) $('#create-screen').removeEventListener('click', this.onClick);
     this.onClick = null;

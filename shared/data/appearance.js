@@ -54,7 +54,9 @@ export const FACES = [
   { nameTh: 'ประแป้งดินสอพอง', eyes: 'round', mouth: 'smile', brow: false, blush: false, mark: 'powder' },
 ];
 
-export const DEFAULT_APPEARANCE = { gender: 'male', outfit: 0, hair: 1, face: 0, job: 'boxer', weapon: null, armor: null, path: null };
+/** ชุดเริ่มต้นของทุกคน: ชุดลายขิดอีสาน (เปลี่ยนชุดได้ที่ร้านแม่ช้อยในเมือง) */
+export const START_OUTFIT = 8;
+export const DEFAULT_APPEARANCE = { gender: 'male', outfit: START_OUTFIT, hair: 1, face: 0, job: 'boxer', weapon: null, armor: null, path: null };
 
 const idx = (v, n) => (Number.isInteger(v) && v >= 0 && v < n ? v : 0);
 const itemOf = (id, type) => (typeof id === 'string' && ITEMS[id]?.type === type ? id : null);
