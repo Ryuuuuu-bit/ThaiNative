@@ -2,6 +2,7 @@
 //  Character model – ข้อมูลตัวละคร (ใช้ร่วม client/server)
 //  ▸ server เป็นเจ้าของข้อมูลจริงตอนออนไลน์ · client ใช้ตอนเล่นออฟไลน์
 // ============================================================
+import { baseItemId } from './data/affixes.js';
 import { ENHANCE } from './data/village.js';
 import { JOBS, VILLAGER, PATH_LV, SUB_CAP } from './data/classes.js';
 import { ITEMS, STARTING_GOLD, STARTING_ITEMS, STARTER_WEAPON } from './data/items.js';
@@ -66,7 +67,7 @@ export function syncAppearance(c) {
   const before = JSON.stringify(c.appearance), oldStyle = c.appearance?.job;
   const e = c.enhance || {};
   const top = Math.max(0, ...Object.entries(e).filter(([slot]) => c.equipment[slot]).map(([, v]) => v || 0));
-  c.appearance = sanitizeAppearance({ ...c.appearance, weapon: c.equipment.weapon, armor: c.equipment.armor, path: c.path, aura: ENHANCE.auraTier(top), costume: c.costume,
+  c.appearance = sanitizeAppearance({ ...c.appearance, weapon: baseItemId(c.equipment.weapon), armor: baseItemId(c.equipment.armor), path: c.path, aura: ENHANCE.auraTier(top), costume: c.costume,
     wenh: c.equipment.weapon ? e.weapon || 0 : 0, aenh: c.equipment.armor ? e.armor || 0 : 0, title: c.title || null });
   if (oldStyle && oldStyle !== c.appearance.job) swapHotbar(c, oldStyle, c.appearance.job);
   return before !== JSON.stringify(c.appearance);

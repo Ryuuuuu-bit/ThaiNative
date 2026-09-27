@@ -11,6 +11,7 @@ import { rollDamage } from '../shared/stats.js';
 import { combatDerived, attackSpec, blessingsOf, attackGate } from '../shared/character.js';
 import { dayPhase, dayIndex, moonOf, nightMods, isNight } from '../shared/data/world.js';
 import { rollGearDrop } from '../shared/data/gear.js';
+import { rollAffixes, affixId } from '../shared/data/affixes.js';
 import { rollCard, CARD_BY_ID } from '../shared/data/cards.js';
 import { grantKill, refillFlasks } from '../shared/economy.js';
 import { FLASK_SLOTS } from '../shared/data/slots.js';
@@ -164,8 +165,14 @@ export function setupTD(io, players, opts = {}) {
         out.gold = Math.round(rand(d.gold[0], d.gold[1]) * tm.gold * bl.goldMul);
         out.items = (d.drops || []).filter((dr) => Math.random() < dr.chance * bl.dropMul).map((dr) => ({ id: dr.item, qty: 1 }));
         if (m.boss) out.boss = true;
-        const gear = m.boss ? rollGearDrop(d.level + 6, bl.dropMul * 25) : rollGearDrop(d.level, bl.dropMul);
-        if (gear) out.items.push({ id: gear, qty: 1, rare: true });
+        const grade = m.boss ? 'boss' : d.elite ? 'elite' : 'normal';
+        let gear = m.boss ? rollGearDrop(d.level + 6, bl.dropMul * 25) : rollGearDrop(d.level, bl.dropMul * (d.elite ? 3 : 1));
+        if (gear) {
+          gear = affixId(gear, rollAffixes(ITEMS[gear], d.level, grade));               // ค่าสุ่มแบบ PoE (0–3 บรรทัด)
+          const n = ITEMS[gear]?.affixN || 0;
+          out.items.push({ id: gear, qty: 1, rare: true, affixN: n });
+          if (n >= 3) io.emit('chat', { id: null, name: '✨ ของหายาก', text: `${p.name} ได้รับ ${ITEMS[gear].nameTh} (ค่าสุ่ม 3 บรรทัด)!` });
+        }
         const card = rollCard(m.id, bl.dropMul);                                   // การ์ดผี (0.5% · หัวหน้า 5%)
         if (card) {
           out.items.push({ id: card, qty: 1, rare: true, card: true });

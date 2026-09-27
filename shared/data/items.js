@@ -5,8 +5,10 @@
 // ============================================================
 import { GEAR, gearShopStock } from './gear.js';
 import { CARD_ITEMS } from './cards.js';
+import { parseAffixId, makeVariant } from './affixes.js';
+export { baseItemId } from './affixes.js';
 
-export const ITEMS = {
+const ITEMS_BASE = {
   // ---------- ยาฟื้นฟู ----------
   hp_s:  { nameTh: 'ยาหม่องแดง (HP +60)',   type: 'consumable', icon: '🧴', price: 25,  effect: { hp: 60 } },
   hp_m:  { nameTh: 'ยาดมสมุนไพร (HP +180)', type: 'consumable', icon: '🌿', price: 70,  effect: { hp: 180 } },
@@ -158,6 +160,19 @@ export const ITEMS = {
   khai_tom:  { nameTh: 'ไข่ต้ม',           type: 'offering', icon: '🥚', price: 35 },
   hua_mu:    { nameTh: 'หัวหมูบวงสรวง',    type: 'offering', icon: '🐷', price: 400 },
 };
+
+/** ไอเทมทั้งหมด + ไอเทมมีค่าสุ่ม (รหัส base@affix สร้างให้อัตโนมัติ · เก็บแคช) */
+const VARIANTS = new Map();
+export const ITEMS = new Proxy(ITEMS_BASE, {
+  get(t, k) {
+    if (typeof k !== 'string' || k in t || !k.includes('@')) return t[k];
+    if (VARIANTS.has(k)) return VARIANTS.get(k);
+    const p = parseAffixId(k);
+    const v = p && t[p.base] ? makeVariant(t[p.base], p.list) : null;
+    if (VARIANTS.size < 20000) VARIANTS.set(k, v || undefined);
+    return v || undefined;
+  },
+});
 
 // ขวดยา (แบบ PoE): ใส่ช่องขวดยา 2 ช่อง · ดื่มได้หลายครั้ง · ฆ่าผีแล้วเติมกลับ (4 ตัว = 1 ครั้ง · บอส = เต็ม) · กลับเมือง/ฟื้น = เต็ม
 //  flask = { kind: 'hp'|'mp', heal, max }  (เข็มขัด flaskPct = ฟื้นเพิ่ม %)

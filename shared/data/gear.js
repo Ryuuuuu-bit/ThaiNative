@@ -4,6 +4,7 @@
 //  ▸ ชิ้นตำนาน (leg) ดรอปจากพญายักษ์ทมิฬเท่านั้น
 //  ▸ lv = เลเวลขั้นต่ำที่สวมได้ · job = อาชีพที่ออกแบบมาให้ (ใครก็ใส่ได้ ค่าพลังเหมาะกับอาชีพนั้น)
 // ============================================================
+import { baseItemId } from './affixes.js';
 import { GEAR_ART } from './gear_art.js';
 
 export const GEAR_TIERS = [1, 2, 4, 6, 8, 10, 12, 14, 16, 18, 20, 22, 24, 26, 28, 30];
@@ -157,8 +158,9 @@ const GEAR_ORDER = ['weapon', 'helm', 'armor', 'gloves', 'boots', 'belt', 'acces
 
 /** ดรอปอุปกรณ์ขั้นสูงจากผี: เลือกชิ้น drop ที่เลเวลใกล้ผี (−4 … +2) โอกาส 1.2% ต่อตัว (× ตัวคูณดรอป) */
 export function rollGearDrop(monLevel, dropMul = 1, rnd = Math.random) {
-  if (rnd() > 0.012 * dropMul) return null;
-  const pool = GEAR_IDS.filter((id) => GEAR[id].drop && GEAR[id].lv >= monLevel - 4 && GEAR[id].lv <= monLevel + 2);
+  if (rnd() > 0.02 * dropMul) return null;                       // 2% ต่อตัว (ของมีค่าสุ่มจาก affixes.js)
+  // ผีดรอปได้ทั้งของร้าน (มักมีค่าสุ่มติดมา) และของดรอปล้วน · ไม่รวมของตำนาน
+  const pool = GEAR_IDS.filter((id) => !GEAR[id].legend && GEAR[id].lv >= monLevel - 4 && GEAR[id].lv <= monLevel + 2);
   return pool.length ? pool[F(rnd() * pool.length)] : null;
 }
 
@@ -180,7 +182,7 @@ export const SET_TEXT = { 2: '2 ชิ้น', 3: '3 ชิ้น', 4: '4 ชิ
 export function setInfo(equipment = {}) {
   const by = {};
   for (const slot of ['weapon', 'helm', 'armor', 'gloves', 'boots', 'belt', 'accessory', 'accessory2']) {
-    const it = GEAR[equipment[slot]];
+    const it = GEAR[baseItemId(equipment[slot])];   // ของมีค่าสุ่ม (base@...) นับเป็นชิ้นเดียวกับของฐาน
     if (!it?.job) continue;
     (by[it.job] ||= []).push(it.lv);
   }

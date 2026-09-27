@@ -296,6 +296,9 @@ export function bakeTdFx(scene) {
   mk('td_bubble', 10, 10, (g) => { g.strokeStyle = 'rgba(255,255,255,.95)'; g.lineWidth = 1.5; g.beginPath(); g.arc(5, 5, 3.6, 0, Math.PI * 2); g.stroke(); g.fillStyle = 'rgba(255,255,255,.8)'; g.fillRect(3, 3, 2, 2); });
   mk('td_ring', 64, 32, (g) => { g.save(); g.scale(1, 0.5); const r = g.createRadialGradient(32, 32, 6, 32, 32, 31); r.addColorStop(0, 'rgba(255,255,255,0)'); r.addColorStop(0.6, 'rgba(255,255,255,.2)');
     r.addColorStop(0.86, 'rgba(255,255,255,1)'); r.addColorStop(1, 'rgba(255,255,255,0)'); g.fillStyle = r; g.beginPath(); g.arc(32, 32, 31, 0, Math.PI * 2); g.fill(); g.restore(); });
+  // ของดรอป: อัญมณีขาว (ย้อมสีตามความหายาก)
+  mk('td_gem', 16, 16, (g) => { const r = g.createRadialGradient(8, 8, 0, 8, 8, 8); r.addColorStop(0, '#ffffff'); r.addColorStop(0.35, 'rgba(255,255,255,.95)'); r.addColorStop(1, 'rgba(255,255,255,0)'); g.fillStyle = r; g.fillRect(0, 0, 16, 16);
+    g.fillStyle = '#ffffff'; g.beginPath(); g.moveTo(8, 3); g.lineTo(12, 8); g.lineTo(8, 13); g.lineTo(4, 8); g.closePath(); g.fill(); });
   // วิญญาณ (ดวงไฟผีลอยขึ้นตอนตาย)
   mk('td_soul', 12, 16, (g) => { const r = g.createRadialGradient(6, 10, 0, 6, 10, 6); r.addColorStop(0, '#ffffff'); r.addColorStop(0.5, '#b8f0ff'); r.addColorStop(1, 'rgba(120,200,255,0)'); g.fillStyle = r; g.beginPath(); g.moveTo(6, 0); g.quadraticCurveTo(12, 10, 6, 16); g.quadraticCurveTo(0, 10, 6, 0); g.fill(); });
 }

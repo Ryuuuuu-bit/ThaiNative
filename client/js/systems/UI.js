@@ -34,7 +34,11 @@ const $ = (s) => document.querySelector(s);
 const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 import { SLOT_TH, GEAR_TYPES, TYPE_TH, FLASK_SLOTS } from '/shared/data/slots.js';
 /** ระดับความหายากของอุปกรณ์ (สี): 1 ธรรมดา · 2 ดี · 3 หายาก · 4 มหากาพย์ · 5 ตำนาน */
-export const rarityOf = (it) => (!it ? 0 : it.legend ? 5 : GEAR_TYPES.includes(it.type) ? ((it.lv || 1) >= 28 ? 4 : (it.lv || 1) >= 20 ? 3 : (it.lv || 1) >= 10 ? 2 : 1) : it.type === 'costume' && it.rare ? 4 : 0);
+const baseRarity = (it) => (!it ? 0 : it.legend ? 5 : GEAR_TYPES.includes(it.type) ? ((it.lv || 1) >= 28 ? 4 : (it.lv || 1) >= 20 ? 3 : (it.lv || 1) >= 10 ? 2 : 1) : it.type === 'costume' && it.rare ? 4 : 0);
+/** ความหายาก: ของมีค่าสุ่ม 1 บรรทัด = ฟ้า (3) · 2+ บรรทัด = ม่วง (4) · ตำนาน = ทอง (5) */
+export const rarityOf = (it) => Math.max(baseRarity(it), it?.affixN ? (it.affixN >= 2 ? 4 : 3) : 0);
+/** บรรทัดค่าสุ่มของไอเทม (สีฟ้า/ม่วงตามจำนวน) */
+export const affixHtml = (it) => (it?.affixes?.length ? `<div class="affixes a${Math.min(3, it.affixN)}">${it.affixes.map((a) => `<span>◆ ${a.text}</span>`).join('')}</div>` : '');
 const rcls = (it) => { const r = rarityOf(it); return r ? ` r${r}` : ''; };
 const rname = (it, name) => { const r = rarityOf(it); return r ? `<span class="rn${r}">${name}</span>` : name; };
 /** ป้ายแนวของอาวุธ / สายของชุด */
@@ -562,6 +566,7 @@ export class UI {
 
   /** แผนที่โลก: การ์ด 5 ภาค × 4 แมพ + หมู่บ้าน + ลานบอส (ไฮไลต์แมพปัจจุบัน / จำนวนเพื่อนในแต่ละแมพ) */
   updateMap() {
+    if (this.scene.worldMap) return;                          // โลกอยุธยา: แผนที่ใหม่ (TdWorldMap) วาดเอง
     const s = this.scene, cur = s.map?.id, lv = s.player.char.level;
     const friends = {};
     s.remotes.forEach((r) => { const id = mapAt(r.x).id; friends[id] = (friends[id] || 0) + 1; });
@@ -614,11 +619,12 @@ export class UI {
   }
 
   /** บันทึกของที่ได้ (มุมซ้ายล่าง เหนือแชท) – เก็บ 6 บรรทัดล่าสุด จางหายเอง */
-  loot(text) {
+  loot(text, rar = 0) {
     const box = $('#loot-log');
     if (!box) return;
     const el = document.createElement('div');
     el.textContent = text;
+    if (rar) el.className = `lr${rar}`;
     box.appendChild(el);
     while (box.children.length > 6) box.firstChild.remove();
     setTimeout(() => el.classList.add('fade'), 5000);
@@ -769,7 +775,7 @@ export class UI {
       if (!it) return `<div class="eqs eqs-${slot} empty" title="${SLOT_TH[slot]} (ว่าง)"><span class="ph">${EMPTY_IC[slot]}</span><small>${SLOT_TH[slot]}</small></div>`;
       const enh = c.enhance?.[slot], cards = (c.cards?.[slot] || []).filter((x) => CARD_BY_ID[x]);
       const ch = FLASK_SLOTS.includes(slot) && it.flask ? `<span class="fl-ch">${Math.floor(c.flaskCh?.[slot] || 0)}/${it.flask.max}</span>` : '';
-      return `<div class="eqs eqs-${slot}${rcls(it)}" title="${esc(it.nameTh)} · คลิกเพื่อถอด" data-unequip="${slot}">
+      return `<div class="eqs eqs-${slot}${rcls(it)}" title="${esc(it.nameTh)}${it.affixes ? '\n' + it.affixes.map((a) => '◆ ' + a.text).join('\n') : ''}\nคลิกเพื่อถอด" data-unequip="${slot}">
         <span class="ico">${itemIcon(id, it.icon)}</span>${enh ? `<b class="enh t${ENHANCE.auraTier(enh)}">+${enh}</b>` : ''}${ch}
         ${cards.length ? `<span class="eqs-cards">${cards.map((x) => `<i title="${esc(CARD_BY_ID[x].nameTh)}"></i>`).join('')}</span>` : ''}
         <small>${esc(it.nameTh)}</small></div>`;
@@ -820,7 +826,7 @@ export class UI {
       const job = itemTag(it) || (it.type === 'costume' ? ` · ชุดแต่งตัว${it.rare ? ' ✨หายาก' : ''}` : '');
       const hb = hotbarItemOk(s.id);
       return `<div class="item inv${rcls(it)}"${hb ? ` draggable="true" data-hbitem="${s.id}" title="ลากไปวางที่ Hotbar (1–0)"` : ''}><span class="ic">${itemIcon(s.id, it.icon)}</span>
-        <span>${rname(it, esc(it.nameTh))} <span class="meta">x${s.qty}${job}</span>${diff(it)}</span>
+        <span>${rname(it, esc(it.nameTh))} <span class="meta">x${s.qty}${job}</span>${affixHtml(it)}${diff(it)}</span>
         <button class="lock ${lock ? 'on' : ''}" data-lock="${s.id}" title="${lock ? 'ปลดล็อก' : 'ล็อก (กันขาย)'}">${lock ? '🔒' : '🔓'}</button>
         <span class="price">฿${sellPrice(s.id)}</span>
         <span class="inv-acts">${hb ? `<button class="hb-add" data-hbadd="${s.id}" title="ใส่ Hotbar ช่องว่างแรก">⌨</button>` : ''}${action ? `<button data-use="${s.id}" ${action === 'ใช้อยู่' ? 'disabled' : ''}>${action}</button>` : ''}</span></div>`;

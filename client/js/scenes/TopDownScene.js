@@ -15,7 +15,7 @@ import { makeText } from '../systems/util.js';
 import { sound } from '../systems/Sound.js';
 import { loadSettings, saveSettings } from '../systems/Settings.js';
 import { saveCharacter } from '../systems/Character.js';
-import { UI } from '../systems/UI.js';
+import { UI, rarityOf } from '../systems/UI.js';
 import { Village } from '../systems/Village.js';
 import { TdLife } from '../topdown/TdLife.js';
 import { Econ } from '../net/Econ.js';
@@ -29,6 +29,7 @@ import { GEAR_TYPES, FLASK_SLOTS } from '/shared/data/slots.js';
 import { SKILL_SLOTS, SLOT_KEYNAME, isItemSlot, slotItemId } from '/shared/data/skills.js';
 import { WeaponOverlay } from '../topdown/WeaponOverlay.js';
 import { TdSocial } from '../topdown/TdSocial.js';
+import { TdWorldMap } from '../topdown/TdWorldMap.js';
 import { TITLE_BY_ID } from '/shared/data/titles.js';
 import { TouchControls } from '../topdown/TouchControls.js';
 import { ALL_ASSETS } from '/shared/data/td_assets.js';
@@ -147,7 +148,8 @@ export class TopDownScene extends Phaser.Scene {
   buildAdapters() {
     const s = this;
     this.map = { id: 'ayutthaya', no: 0, nameTh: 'กรุงศรีอยุธยา', minX: 0, maxX: MAP_W * TILE, gates: [], region: 'r1', get safe() { return s.inTown(); } };
-    this.world = { toggleMap: () => this.ui.toast('แผนที่โลกเวอร์ชันใหม่กำลังสร้าง — ตอนนี้มีเมืองอยุธยา + ทุ่งนาบางปะอิน', '', 3000) };
+    this.worldMap = new TdWorldMap(this);
+    this.world = { toggleMap: () => this.worldMap.toggle() };
     this.combat = {
       levelUpFx: (ups) => {
         const p = this.player;
@@ -594,8 +596,27 @@ export class TopDownScene extends Phaser.Scene {
     if (!d.hit) { popupNumber(this, m.x, m.y - m.displayHeight, 'MISS', 'miss'); if (mine) this.sfx.play('miss'); return; }
     popupNumber(this, m.x, m.y - m.displayHeight - 4, d.crit ? `${d.dmg}!` : `${d.dmg}`, d.crit ? 'crit' : 'normal');
     hitSpark(this, m.x, m.y - m.displayHeight * 0.5, { crit: d.crit, dir: m.x >= this.player.x ? 1 : -1 });
-    squash(this, m, d.crit ? 0.25 : 0.15, 90); m.setTint(d.crit ? 0xffd35c : 0xffffff); this.time.delayedCall(90, () => m.clearTint());
-    if (mine) this.sfx.play(d.crit ? 'crit' : 'hit');
+    squash(this, m, d.crit ? 0.25 : 0.15, 90); m.setTintFill(d.crit ? 0xffd35c : 0xffffff); this.time.delayedCall(60, () => { m.clearTint(); m.setTint(d.crit ? 0xffe9a6 : 0xffd0d0); }); this.time.delayedCall(140, () => m.clearTint());
+    if (mine) {
+      this.sfx.play(d.crit ? 'crit' : 'hit');
+      this.hitFeel(m, d);
+    }
+  }
+
+  /** ความหนักมือ: ผีกระเด็นถอย · คริ = จอสั่น · ตีบอส = หยุดภาพเสี้ยววิ (hit-stop) */
+  hitFeel(m, d) {
+    const p = this.player, a = Math.atan2(m.y - p.y, m.x - p.x);
+    if (!m.def?.boss) {                                           // ถอยตามทิศที่โดนตี (ตำแหน่งจริงจาก server จะดึงกลับเองนุ่ม ๆ)
+      const k = d.crit ? 9 : 5; m.x += Math.cos(a) * k; m.y += Math.sin(a) * k * 0.6;
+    }
+    const cam = this.cameras.main;
+    if (d.crit) cam.shake(m.def?.boss ? 130 : 90, m.def?.boss ? 0.005 : 0.0035);
+    if (m.def?.boss || d.crit) {
+      const ms = m.def?.boss ? (d.crit ? 90 : 55) : 45;
+      const list = [m, p].filter((o) => o.anims?.isPlaying);
+      list.forEach((o) => o.anims.pause());
+      this.time.delayedCall(ms, () => list.forEach((o) => o.anims?.resume()));
+    }
   }
 
   onMobDie(m) {
@@ -630,7 +651,9 @@ export class TopDownScene extends Phaser.Scene {
     const y = (r.y ?? this.player.y) - 30;
     popupNumber(this, r.x ?? this.player.x, y, `+${r.exp} EXP${r.gold ? ` ฿${r.gold}` : ''}`, r.night ? 'night' : 'exp');
     if (r.gold) this.sfx.play('coin');
-    for (const it of r.items || []) this.ui.loot?.(`${it.card ? '🃏 ' : it.rare ? '✨ ' : ''}ได้ ${ITEMS[it.id]?.nameTh || it.id} x${it.qty || 1}`);
+    for (const it of r.items || []) this.ui.loot?.(`${it.card ? '🃏 ' : it.rare ? '✨ ' : ''}ได้ ${ITEMS[it.id]?.nameTh || it.id} x${it.qty || 1}`, it.card ? 5 : rarityOf(ITEMS[it.id]));
+    const top = (r.items || []).filter((it) => !it.card).map((it) => ITEMS[it.id]).filter((it) => it?.affixN).sort((a, b) => b.affixN - a.affixN)[0];
+    if (top) { this.sfx.play(top.affixN >= 2 ? 'victory' : 'buff'); this.ui.toast(`${top.affixN >= 2 ? '💜' : '💙'} ได้ของมีค่าสุ่ม: ${top.nameTh}`, 'ok', 2600); }   // ของดีเด้งแจ้งทันที (ไม่มีของกองพื้น)
     const card = (r.items || []).find((it) => it.card);
     if (card) this.ui.cards.showGet(card.id, r.cardNew);
     if (r.quests?.length || r.titles?.length) this.ui.result({ ok: true, quests: r.quests, titles: r.titles });
