@@ -72,6 +72,8 @@ export class CreateScene extends Phaser.Scene {
       this.refresh();
     };
 
+    this.mode = new URLSearchParams(location.search).get('mode') || null;
+    $('#cc-ayutthaya').onclick = () => { this.mode = 'ayutthaya'; $('#cc-start').click(); };
     $('#cc-start').onclick = async () => {
       if (this.serverChar && !confirm(`บัญชีนี้มีตัวละคร “${this.serverChar.name}” (Lv.${this.serverChar.level}) อยู่แล้ว\nสร้างใหม่จะเขียนทับตัวเดิม ต้องการสร้างใหม่ไหม?`)) return;
       if (account.loggedIn && !account.offline) {                       // บัญชีออนไลน์: server สร้างให้ (กันแก้ค่าเริ่มต้น)
@@ -124,9 +126,10 @@ export class CreateScene extends Phaser.Scene {
     this.preview.play({ key: `${key}:${this.previewAnim}`, repeat: -1, repeatDelay: loopable ? 0 : 600 });
   }
 
-  startGame(char) {
+  startGame(char, mode = this.mode) {
     $('#create-screen').classList.add('hidden');
     titleScreen.stop();
-    this.scene.start('game', { char });
+    // โหมดทดลอง top-down "อยุธยา": ปุ่ม 🏯 หรือ ?mode=ayutthaya (เล่นออฟไลน์ ไม่บันทึก)
+    this.scene.start(mode === 'ayutthaya' ? 'ayutthaya' : 'game', { char });
   }
 }
