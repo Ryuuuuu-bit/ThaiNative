@@ -24,6 +24,7 @@ import { count } from '../systems/Inventory.js';
 import { TILE, MAP_W, MAP_H, T, SPAWN as TD_SPAWN, inTownXY, isIsland, bakeTileset, bakeProps, buildLayout } from '../topdown/AyutthayaMap.js';
 import { dirFromVector, playDir, registerDir8, texKey } from '../topdown/Dir8.js';
 import { TdSkills } from '../topdown/TdSkills.js';
+import { SKILL_SLOTS, SLOT_KEYNAME, isItemSlot, slotItemId } from '/shared/data/skills.js';
 import { WeaponOverlay } from '../topdown/WeaponOverlay.js';
 import { TouchControls } from '../topdown/TouchControls.js';
 import { ALL_ASSETS } from '/shared/data/td_assets.js';
@@ -533,6 +534,22 @@ export class TopDownScene extends Phaser.Scene {
     this.quickUse(hp ? HP_POTS : MP_POTS, true);
   }
 
+  /** กดช่อง Hotbar: ไอเทม → ใช้/สวม/ร่ายยันต์ · สกิล → ร่าย */
+  useSlot(key) {
+    const v = this.player.char.hotbar?.[key];
+    if (!isItemSlot(v)) return this.skills.cast(key);
+    if (this.ui.anyOpen?.() || !this.player.alive) return;
+    const id = slotItemId(v), it = ITEMS[id], c = this.player.char;
+    if (['weapon', 'armor', 'accessory'].includes(it.type)) {
+      if (Object.values(c.equipment || {}).includes(id)) return this.ui.toast(`${it.nameTh} ใส่อยู่แล้ว`, '', 1200);
+      if (count(c, id) <= 0) return this.ui.toast(`ไม่มี ${it.nameTh} ในกระเป๋า`, 'warn');
+      return this.econ.act('equip', { id }).then((r) => { this.ui.result(r); if (r.ok) this.sfx.play('equip'); });
+    }
+    if (count(c, id) <= 0) return this.ui.toast(`${it.nameTh} หมดแล้ว`, 'warn');
+    if (it.type === 'home') return this.recall();
+    this.quickUse([id]);
+  }
+
   /** เปิด/ปิด Auto Skill (ปุ่ม A หรือปุ่ม AUTO ข้างแถบสกิล) */
   toggleAutoSkill(on = !this.settings.autoSkill) {
     this.settings.autoSkill = on; saveSettings(this.settings);
@@ -632,11 +649,9 @@ export class TopDownScene extends Phaser.Scene {
       this.clickMark(w.x, w.y);
     });
     // แตะ/คลิกช่องสกิลในแถบล่าง = ร่ายสกิล (มือถือไม่มีคีย์บอร์ด)
-    $('#skillbar')?.addEventListener('click', (e) => { const k = e.target.closest('.skill')?.dataset.key; if (k) this.skills.cast(k); });
+    $('#skillbar')?.addEventListener('click', (e) => { const k = e.target.closest('.skill')?.dataset.key; if (k) this.useSlot(k); });
     kb.on('keydown-F', () => { const n = this.nearestNpc(60); if (n) this.talk(n); });
-    for (const k of ['Q', 'W', 'E', 'R', 'T']) kb.on(`keydown-${k}`, () => this.skills.cast(k));
-    kb.on('keydown-ONE', () => this.quickUse(HP_POTS));
-    kb.on('keydown-TWO', () => this.quickUse(MP_POTS));
+    for (const k of SKILL_SLOTS) kb.on(`keydown-${SLOT_KEYNAME[k]}`, () => this.useSlot(k));   // Hotbar 1–0 (สกิล/ไอเทม)
     kb.on('keydown-B', () => this.recall());
     kb.on('keydown-A', () => { if (!this.ui.anyOpen?.()) this.toggleAutoSkill(); });
     { const bt = $('#auto-skill'); if (bt) { bt.classList.toggle('on', !!this.settings.autoSkill); bt.onclick = () => this.toggleAutoSkill(); } }
@@ -648,8 +663,6 @@ export class TopDownScene extends Phaser.Scene {
     kb.on('keydown-M', () => this.world.toggleMap());
     kb.on('keydown-ENTER', () => this.ui.focusChat());
     kb.on('keydown-ESC', () => (this.ui.anyOpen() ? this.ui.closeAll() : this.ui.toggle('settings-panel', true)));
-    $('#quick-hp').onclick = () => this.quickUse(HP_POTS);
-    $('#quick-mp').onclick = () => this.quickUse(MP_POTS);
   }
 
   clickMark(x, y) {

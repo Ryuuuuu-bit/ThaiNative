@@ -441,7 +441,7 @@ function learn(c, { id, max }) {
   return OK(max ? `${SKILL_BY_ID[id].nameTh} +${n} เลเวล (Lv.${c.skills[id]})` : r.msg, { n });
 }
 function hotbar(c, { key, id }) {
-  return assignHotbar(c, key, id || null) ? OK('') : NO('ต้องเรียนสกิลก่อนจึงติดตั้งได้');
+  return assignHotbar(c, key, id || null) ? OK('') : NO(String(id || '').startsWith('it:') ? 'ไอเทมนี้ใส่ Hotbar ไม่ได้ (ได้เฉพาะยา/อาหาร/ยันต์/อุปกรณ์สวมใส่)' : 'ต้องเรียนสกิลก่อนจึงติดตั้งได้');
 }
 
 // ------------------------------------------------------------

@@ -3,7 +3,7 @@
 //  ▸ ใช้ข้อมูลสกิลชุดเดิม (shared/data/skills.js) · ดาเมจยังคิดที่ server (td:hit + sk)
 //  ▸ ทุกสกิลมีลายเซ็นภาพของตัวเอง: ฟ้าผ่า/อุกกาบาต/ห่าฝนธนู/พายุดาบ/ช้างศึกกระแทก ฯลฯ
 // ============================================================
-import { SKILL_BY_ID, skillStats } from '/shared/data/skills.js';
+import { SKILL_BY_ID, skillStats, SKILL_SLOTS, isItemSlot } from '/shared/data/skills.js';
 import { JOBS } from '/shared/data/classes.js';
 import { popupNumber, yantCircle } from '../gfx/Fx.js';
 import { dirFromVector } from './Dir8.js';
@@ -254,7 +254,7 @@ export class TdSkills {
   /** สกิลช่อง key ร่ายได้ทันทีไหม (เงียบ ไม่แจ้งเตือน) → { id, sk } | null */
   ready(key, time) {
     const p = this.s.player, c = p.char, id = c.hotbar?.[key];
-    if (!id) return null;
+    if (!id || isItemSlot(id)) return null;
     const lv = c.skills?.[id] || 0, base = SKILL_BY_ID[id];
     if (!lv || !base || base.job !== c.appearance.job) return null;
     const sk = skillStats(base, lv);
@@ -262,14 +262,14 @@ export class TdSkills {
     return { id, sk };
   }
 
-  /** เรียกทุกเฟรม: ถ้าเปิด Auto Skill และกำลังตีเป้า → ร่ายสกิลแรกที่พร้อม (บัฟเมื่อหมดฤทธิ์ · สกิลโจมตีเมื่อเป้าอยู่ในระยะ) */
+  /** เรียกทุกเฟรม: ถ้าเปิด Auto Skill และกำลังตีเป้า → ร่ายสกิลแรกที่พร้อม (ช่อง 1→0 ข้ามไอเทม) (บัฟเมื่อหมดฤทธิ์ · สกิลโจมตีเมื่อเป้าอยู่ในระยะ) */
   autoTick(time) {
     const s = this.s, p = s.player;
     if (!s.settings?.autoSkill || !p.alive || s.recalling || s.ui.anyOpen?.() || time < (this.autoAt || 0)) return;
     const t = p.target;
     if (!t?.alive || dist(t, p) > 260) return;
     this.autoAt = time + 250;
-    for (const key of ['Q', 'W', 'E', 'R', 'T']) {
+    for (const key of SKILL_SLOTS) {
       const r = this.ready(key, time);
       if (!r) continue;
       if (r.sk.type === 'buff') { if ((p.buffs || []).some((b) => b.sk === r.id && b.until > time)) continue; }
@@ -285,8 +285,9 @@ export class TdSkills {
     const s = this.s, p = s.player, c = p.char, ui = s.ui;
     if (!p.alive || s.ui.anyOpen?.()) return;
     const id = c.hotbar?.[key];
+    if (isItemSlot(id)) return s.useSlot?.(key);
     if (!id) {
-      if (time - (p.cooldowns[`_${key}`] ?? -9999) > 1500) { ui.toast(`ช่อง ${key} ว่าง – กด K เพื่อเรียน/ติดตั้งสกิล`, 'warn'); p.cooldowns[`_${key}`] = time; }
+      if (time - (p.cooldowns[`_${key}`] ?? -9999) > 1500) { ui.toast(`ช่อง ${key} ว่าง – ลากสกิล (K) หรือไอเทม (I) มาวาง`, 'warn'); p.cooldowns[`_${key}`] = time; }
       return;
     }
     const lv = c.skills?.[id] || 0, base = SKILL_BY_ID[id];

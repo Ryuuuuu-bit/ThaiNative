@@ -8,11 +8,32 @@ import { ITEMS, STARTING_GOLD, STARTING_ITEMS, STARTER_WEAPON } from './data/ite
 import { sanitizeAppearance } from './data/appearance.js';
 import { expToNext, POINTS_PER_LEVEL, STAT_KEYS, MAX_LEVEL } from './stats.js';
 import { getDerived } from './character.js';
-import { SKILL_SLOTS, SP_PER_LEVEL, START_SP, SKILL_BY_ID, canLearn } from './data/skills.js';
+import { SKILL_SLOTS, OLD_SKILL_SLOTS, SP_PER_LEVEL, START_SP, SKILL_BY_ID, canLearn, isItemSlot, slotItemId } from './data/skills.js';
 
 export const SAVE_VERSION = 2;          // v2 = ตัวละครแบบเดียว + สายหลัก + แนวต่อสู้ตามอาวุธ
 
-export function emptyHotbar() { return Object.fromEntries(SKILL_SLOTS.map((k) => [k, null])); }
+export function emptyHotbar() { return { ...Object.fromEntries(SKILL_SLOTS.map((k) => [k, null])), 1: 'it:hp_s', 2: 'it:mp_s' }; }
+/** ไอเทมที่ใส่ Hotbar ได้: ยา/อาหาร/ยันต์คืนถิ่น (กด = ใช้) · อาวุธ/เกราะ/เครื่องประดับ (กด = สวม) */
+export const HOTBAR_ITEM_TYPES = new Set(['consumable', 'food', 'home', 'weapon', 'armor', 'accessory']);
+export const hotbarItemOk = (id) => !!ITEMS[id] && HOTBAR_ITEM_TYPES.has(ITEMS[id].type);
+const SKILL_FILL_ORDER = ['3', '4', '5', '6', '7', '8', '9', '0', '1', '2'];
+/** แปลง/ซ่อม hotbar: เซฟเก่า Q W E R T → ช่อง 3–7 (ช่อง 1/2 = ยา HP/MP) · ตัดสกิลที่ยังไม่เรียน/ไอเทมที่ไม่มีแล้ว */
+function fixHotbar(c, hb) {
+  if (!hb || typeof hb !== 'object') hb = null;
+  let out;
+  if (hb && OLD_SKILL_SLOTS.some((k) => k in hb)) {
+    out = emptyHotbar();
+    OLD_SKILL_SLOTS.forEach((k, i) => { out[String(i + 3)] = hb[k] || null; });
+  } else out = { ...Object.fromEntries(SKILL_SLOTS.map((k) => [k, null])), ...(hb || emptyHotbar()) };
+  for (const k of Object.keys(out)) if (!SKILL_SLOTS.includes(k)) delete out[k];
+  for (const k of SKILL_SLOTS) {
+    const v = out[k];
+    if (v == null) { out[k] = null; continue; }
+    if (isItemSlot(v)) { if (!hotbarItemOk(slotItemId(v))) out[k] = null; }
+    else if (typeof v !== 'string' || !SKILL_BY_ID[v] || !(c.skills?.[v] > 0)) out[k] = null;
+  }
+  return out;
+}
 
 export function newCharacter(name, appearance = {}) {
   const c = {
@@ -52,12 +73,12 @@ function swapHotbar(c, from, to) {
   if (c.hotbar) c.hotbars[from] = { ...c.hotbar };
   let hb = c.hotbars[to];
   if (!hb) {
-    hb = emptyHotbar();
+    // แถบใหม่ของแนวนี้: ไอเทมตามแถบเดิม + สกิลที่เรียนแล้วของแนวนี้ในช่องที่ว่าง
+    hb = Object.fromEntries(SKILL_SLOTS.map((k) => [k, isItemSlot(c.hotbar?.[k]) ? c.hotbar[k] : null]));
     const learned = Object.keys(c.skills || {}).filter((id) => SKILL_BY_ID[id]?.job === to && c.skills[id] > 0);
-    SKILL_SLOTS.forEach((k, i) => { hb[k] = learned[i] || null; });
+    for (const id of learned) { const free = SKILL_FILL_ORDER.find((k) => !hb[k]); if (free) hb[free] = id; }
   }
-  for (const k of SKILL_SLOTS) if (hb[k] && !(c.skills?.[hb[k]] > 0)) hb[k] = null;
-  c.hotbar = { ...emptyHotbar(), ...hb };
+  c.hotbar = fixHotbar(c, hb);
 }
 
 export const styleOf = (c) => c.appearance.job;
@@ -98,15 +119,17 @@ export function learnSkill(c, id) {
   const job = SKILL_BY_ID[id].job;
   const hb = job === c.appearance.job ? c.hotbar : c.hotbars?.[job];
   if (c.skills[id] === 1 && hb && !Object.values(hb).includes(id)) {
-    const free = SKILL_SLOTS.find((k) => !hb[k]);
+    const free = SKILL_FILL_ORDER.find((k) => !hb[k]);
     if (free) hb[free] = id;
   }
   return { ok: true, msg: `${SKILL_BY_ID[id].nameTh} Lv.${c.skills[id]}` };
 }
 
 export function assignHotbar(c, key, id) {
+  key = String(key);
   if (!SKILL_SLOTS.includes(key)) return false;
-  if (id && !(c.skills[id] > 0)) return false;
+  if (id && isItemSlot(id)) { if (!hotbarItemOk(slotItemId(id))) return false; }
+  else if (id && !(c.skills[id] > 0)) return false;
   const from = id ? SKILL_SLOTS.find((k) => c.hotbar[k] === id) : null;
   const old = c.hotbar[key];
   c.hotbar[key] = id;
@@ -116,7 +139,7 @@ export function assignHotbar(c, key, id) {
 
 export function resetSkills(c) {
   c.skills = {};
-  c.hotbar = emptyHotbar();
+  c.hotbar = fixHotbar(c, c.hotbar);          // เหลือเฉพาะไอเทม
   c.hotbars = {};
   c.sp = totalSp(c);
 }
@@ -139,7 +162,7 @@ export function choosePath(c, path) {
       const cap = s.ultimate ? 0 : SUB_CAP;
       if (lv > cap) { c.sp += lv - cap; if (cap) c.skills[id] = cap; else delete c.skills[id]; }
     }
-    for (const k of SKILL_SLOTS) if (c.hotbar[k] && !c.skills[c.hotbar[k]]) c.hotbar[k] = null;
+    c.hotbar = fixHotbar(c, c.hotbar);
   }
   syncAppearance(c);
   return { ok: true, msg: first ? `เลือกสายหลัก: ${JOBS[path].pathTitle}!` : `เปลี่ยนสายหลักเป็น ${JOBS[path].nameTh} (คืน SP ทั้งหมด)` };
@@ -156,8 +179,8 @@ export function migrate(c) {
   if (!c.stats || typeof c.stats !== 'object') c.stats = { ...VILLAGER.startStats };
   for (const k of STAT_KEYS) c.stats[k] = Number.isFinite(+c.stats[k]) ? Math.max(0, Math.floor(+c.stats[k])) : VILLAGER.startStats[k];
   if (!c.skills || typeof c.skills !== 'object') c.skills = {};
-  if (!c.hotbar) c.hotbar = emptyHotbar();
-  for (const k of SKILL_SLOTS) if (!(k in c.hotbar)) c.hotbar[k] = null;
+  c.hotbar = fixHotbar(c, c.hotbar);
+  if (c.hotbars && typeof c.hotbars === 'object') for (const j of Object.keys(c.hotbars)) c.hotbars[j] = fixHotbar(c, c.hotbars[j]);
   if (!c.equipment) c.equipment = { weapon: null, armor: null, accessory: null, accessory2: null };
   if (!('accessory2' in c.equipment)) c.equipment.accessory2 = null;
   if (!Array.isArray(c.inventory)) c.inventory = [];

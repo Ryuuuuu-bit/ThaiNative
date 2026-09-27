@@ -17,7 +17,12 @@
 // ============================================================
 import { SUB_CAP, PATH_LV } from './classes.js';
 
-export const SKILL_SLOTS = ['Q', 'W', 'E', 'R', 'T'];
+// Hotbar 10 ช่อง (ปุ่มตัวเลขแถวบน 1–0) · ใส่ได้ทั้งสกิล (id สกิล) และไอเทม ('it:<id ไอเทม>')
+export const SKILL_SLOTS = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '0'];
+export const OLD_SKILL_SLOTS = ['Q', 'W', 'E', 'R', 'T'];          // เซฟเก่า → ย้ายไปช่อง 3–7
+export const SLOT_KEYNAME = { 1: 'ONE', 2: 'TWO', 3: 'THREE', 4: 'FOUR', 5: 'FIVE', 6: 'SIX', 7: 'SEVEN', 8: 'EIGHT', 9: 'NINE', 0: 'ZERO' };
+export const isItemSlot = (v) => typeof v === 'string' && v.startsWith('it:');
+export const slotItemId = (v) => (isItemSlot(v) ? v.slice(3) : null);
 export const MAX_SKILL_LV = 5;
 export const SP_PER_LEVEL = 1;
 export const START_SP = 1;

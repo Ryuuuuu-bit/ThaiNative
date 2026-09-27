@@ -848,3 +848,17 @@ body.touch #skillbar .skill, body.touch .slot.pot { touch-action: manipulation; 
   body.touch .t-rotate > div { font-size: 64px; animation: t-rot 1.6s ease-in-out infinite; }
   @keyframes t-rot { 0%, 30% { transform: rotate(0); } 60%, 100% { transform: rotate(90deg); } }
 }
+
+/* Hotbar 10 ช่อง: ช่องไอเทม */
+#skillbar .skill { width: 2.75em; height: 2.75em; }
+.skill.item-slot { background: linear-gradient(180deg, rgba(58,48,30,.95), rgba(24,18,10,.95)); border-color: #c9a45c; }
+.skill.item-slot .n { position: absolute; bottom: 1px; right: 4px; font-size: .62em; font-weight: 700; color: #fff3c4; text-shadow: 0 1px 2px #000; }
+.skill.item-slot.empty-item .ic { filter: grayscale(1) brightness(.55); }
+.skill.item-slot.worn { border-color: #58d68d; }
+.skill.item-slot.worn .n { color: #58d68d; }
+.skill.empty .ic { opacity: .35; }
+.skill[draggable="true"] { cursor: grab; }
+.item.inv[draggable="true"] { cursor: grab; }
+.inv-acts { display: flex; gap: .25em; justify-content: flex-end; }
+.inv-acts .hb-add { min-width: 2em; padding: 0 .35em; }
+body.touch #skillbar .skill { width: 2.45em; height: 2.45em; }

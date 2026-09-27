@@ -11,7 +11,8 @@ import { setInfo, SET_TEXT } from '/shared/data/gear.js';
 import { TITLES, TITLE_BY_ID } from '/shared/data/titles.js';
 import { DYE_PRICE } from '/shared/economy.js';
 import { OUTFITS, HAIRSTYLES } from '/shared/data/appearance.js';
-import { SKILLS, SKILL_SLOTS, SKILL_BY_ID, MAX_SKILL_LV, skillStats, canLearn, skillCap } from '/shared/data/skills.js';
+import { SKILLS, SKILL_SLOTS, SKILL_BY_ID, MAX_SKILL_LV, skillStats, canLearn, skillCap, isItemSlot, slotItemId } from '/shared/data/skills.js';
+import { hotbarItemOk } from '/shared/charmodel.js';
 import { MONSTERS } from '/shared/data/monsters.js';
 import { WORLD } from '/shared/constants.js';
 import { MAPS, MAP_LIST, REGIONS, mapAt } from '/shared/data/maps.js';
@@ -150,8 +151,9 @@ export class UI {
     $('#hud-exp').textContent = maxed ? `EXP MAX · เลเวลตัน Lv.${MAX_LEVEL}` : `EXP ${c.exp} / ${need}  (${((c.exp / need) * 100).toFixed(1)}%)`;
     $('#hud-gold').textContent = c.gold.toLocaleString();
     const hp = Inv.count(c, 'hp_s') + Inv.count(c, 'hp_m'), mp = Inv.count(c, 'mp_s') + Inv.count(c, 'mp_m');
-    $('#quick-hp .n').textContent = `x${hp}`; $('#quick-hp').classList.toggle('empty', !hp);
-    $('#quick-mp .n').textContent = `x${mp}`; $('#quick-mp').classList.toggle('empty', !mp);
+    const qh = $('#quick-hp'), qm = $('#quick-mp');       // (แถบเก่า – ถ้ามี)
+    if (qh) { qh.querySelector('.n').textContent = `x${hp}`; qh.classList.toggle('empty', !hp); }
+    if (qm) { qm.querySelector('.n').textContent = `x${mp}`; qm.classList.toggle('empty', !mp); }
     this.drawPortrait();
   }
 
@@ -234,8 +236,8 @@ export class UI {
 
   /** ปุ่ม HUD ใช้ไอคอนภาพ (ถ้ามี) */
   applyUiIcons() {
-    $('#quick-hp .ic').innerHTML = itemIcon('hp_s', '🧴');
-    $('#quick-mp .ic').innerHTML = itemIcon('mp_s', '🥥');
+    if ($('#quick-hp')) $('#quick-hp .ic').innerHTML = itemIcon('hp_s', '🧴');
+    if ($('#quick-mp')) $('#quick-mp .ic').innerHTML = itemIcon('mp_s', '🥥');
     const gold = document.querySelector('.pf .gold');
     if (gold && uiIcon('gold') && !gold.querySelector('.px-ico')) gold.innerHTML = `${uiIcon('gold')} <b id="hud-gold">${$('#hud-gold').textContent}</b>`;
     // ปุ่มเมนูขวาบน: ไอคอนชุดเดียวกัน (PixelLab ui_menu_*)
@@ -286,27 +288,42 @@ export class UI {
 
   setMuted() { /* ย้ายไปอยู่ในหน้าตั้งค่า */ }
 
-  // ---------------- แถบสกิล QWER ----------------
   // ============================================================
-  //  Hotbar (Q W E R T) – รับการลากสกิลมาวาง / คลิกขวาเพื่อถอด
+  //  Hotbar 10 ช่อง (ปุ่ม 1–0) – ใส่ได้ทั้งสกิลและไอเทม
+  //  ▸ ลากสกิลจากหน้าต่าง K / ลากไอเทมจากกระเป๋า I มาวาง · ลากช่องสลับกันได้ · คลิกขวาเพื่อถอด
   // ============================================================
-  hotbarSig() { const c = this.char; return JSON.stringify([c.appearance.job, c.hotbar, c.skills]); }
+  hotbarSig() {
+    const c = this.char;
+    const counts = SKILL_SLOTS.map((k) => (isItemSlot(c.hotbar[k]) ? Inv.count(c, slotItemId(c.hotbar[k])) : 0));
+    return JSON.stringify([c.appearance.job, c.hotbar, c.skills, counts, c.equipment]);
+  }
 
   buildSkillBar() {
     const c = this.char;
     this.skillSig = this.hotbarSig();
     $('#skillbar').innerHTML = SKILL_SLOTS.map((key) => {
-      const id = c.hotbar[key], lv = c.skills[id] || 0;
+      const v = c.hotbar[key];
+      if (isItemSlot(v)) {
+        const id = slotItemId(v), it = ITEMS[id], n = Inv.count(c, id);
+        const worn = Object.values(c.equipment || {}).includes(id);
+        const verb = { weapon: 'ถือ', armor: 'สวม', accessory: 'สวม', home: 'ร่ายยันต์', food: 'กิน' }[it.type] || 'ใช้';
+        return `<div class="skill item-slot${n || worn ? '' : ' empty-item'}${worn ? ' worn' : ''}" data-key="${key}" data-item="${id}" draggable="true"><span class="k">${key}</span><span class="ic">${itemIcon(id, it.icon)}</span><span class="n">${worn ? '✔' : n}</span>
+          <div class="tip"><b>${esc(it.nameTh)}</b> (${key})<br>กด ${key} = ${verb}${worn ? ' · ใส่อยู่' : ` · เหลือ ${n}`}<br><small>คลิกขวาเพื่อถอดออกจากช่อง</small></div></div>`;
+      }
+      const id = v, lv = c.skills[id] || 0;
       if (!id || !lv) return `<div class="skill empty" data-key="${key}"><span class="k">${key}</span><span class="ic">＋</span>
-        <div class="tip">ช่อง ${key} ว่าง – กด K แล้วลากสกิลมาวาง</div></div>`;
-      const s = skillStats(SKILL_BY_ID[id], lv);
+        <div class="tip">ช่อง ${key} ว่าง – ลากสกิล (K) หรือไอเทม (I) มาวาง</div></div>`;
+      const st = skillStats(SKILL_BY_ID[id], lv);
       const off = SKILL_BY_ID[id].job !== c.appearance.job;
-      return `<div class="skill${off ? ' noweapon' : ''}" data-key="${key}" data-id="${id}"><span class="k">${key}</span><span class="ic">${skillIcon(id, s.icon)}</span><span class="mp">${s.mp}</span>
+      return `<div class="skill${off ? ' noweapon' : ''}" data-key="${key}" data-id="${id}" draggable="true"><span class="k">${key}</span><span class="ic">${skillIcon(id, st.icon)}</span><span class="mp">${st.mp}</span>
         <div class="cd"></div><div class="cdt"></div>
-        <div class="tip"><b>${s.nameTh}</b> Lv.${lv} (${key})<br>MP ${s.mp} · CD ${(s.cd / 1000).toFixed(1)}s${s.mult ? ` · ดาเมจ x${s.mult}` : ''}<br>${s.desc}${off ? `<br><span style="color:#f5b041">ต้องถือ${JOBS[SKILL_BY_ID[id].job].weaponTh}</span>` : ''}</div></div>`;
+        <div class="tip"><b>${st.nameTh}</b> Lv.${lv} (${key})<br>MP ${st.mp} · CD ${(st.cd / 1000).toFixed(1)}s${st.mult ? ` · ดาเมจ x${st.mult}` : ''}<br>${st.desc}${off ? `<br><span style="color:#f5b041">ต้องถือ${JOBS[SKILL_BY_ID[id].job].weaponTh}</span>` : ''}</div></div>`;
     }).join('');
     this.skillEls = [...document.querySelectorAll('#skillbar .skill')];
-    this.skillEls.forEach((el) => this.makeDropSlot(el, el.dataset.key));
+    this.skillEls.forEach((el) => {
+      this.makeDropSlot(el, el.dataset.key);
+      el.addEventListener('dragstart', (e) => { const v = this.char.hotbar[el.dataset.key]; if (!v) return e.preventDefault(); e.dataTransfer.setData('text/slot', v); e.dataTransfer.effectAllowed = 'move'; });
+    });
   }
 
   updateSkillBar(time) {
@@ -315,33 +332,46 @@ export class UI {
     this.skillEls.forEach((el) => {
       const id = el.dataset.id;
       if (!id) return;
-      const s = skillStats(SKILL_BY_ID[id], c.skills[id]);
+      const st = skillStats(SKILL_BY_ID[id], c.skills[id]);
       const left = p.cooldownLeft(id, time);
-      el.querySelector('.cd').style.height = left ? `${(left / s.cd) * 100}%` : '0';
+      el.querySelector('.cd').style.height = left ? `${(left / st.cd) * 100}%` : '0';
       el.querySelector('.cdt').textContent = left ? (left / 1000).toFixed(left < 1000 ? 1 : 0) : '';
       if (el.dataset.cd === '1' && !left) { el.classList.remove('ready'); void el.offsetWidth; el.classList.add('ready'); }
       el.dataset.cd = left ? '1' : '0';
-      el.classList.toggle('nomp', c.mp < s.mp);
+      el.classList.toggle('nomp', c.mp < st.mp);
     });
   }
 
-  /** ทำให้ element เป็นช่องรับการลากวางสกิล */
+  /** ทำให้ element เป็นช่องรับการลากวาง (สกิล / ไอเทม / ช่องอื่นของ Hotbar) */
   makeDropSlot(el, key) {
     el.addEventListener('dragover', (e) => { e.preventDefault(); el.classList.add('drop-over'); });
     el.addEventListener('dragleave', () => el.classList.remove('drop-over'));
     el.addEventListener('drop', (e) => {
       e.preventDefault(); el.classList.remove('drop-over');
-      const id = e.dataTransfer.getData('text/skill');
-      if (id) this.assign(key, id);
+      const sk = e.dataTransfer.getData('text/skill'), it = e.dataTransfer.getData('text/item'), sl = e.dataTransfer.getData('text/slot');
+      if (sk) this.assign(key, sk);
+      else if (it) this.assign(key, `it:${it}`);
+      else if (sl) this.assign(key, sl);
     });
     el.addEventListener('contextmenu', (e) => { e.preventDefault(); if (this.char.hotbar[key]) this.assign(key, null); });
+  }
+
+  /** ใส่ไอเทมลงช่องว่างช่องแรกของ Hotbar (ปุ่มในกระเป๋า – ใช้บนมือถือแทนการลาก) */
+  assignFirstFree(itemId) {
+    const c = this.char, v = `it:${itemId}`;
+    const cur = SKILL_SLOTS.find((k) => c.hotbar[k] === v);
+    if (cur) return this.toast(`${ITEMS[itemId].nameTh} อยู่ที่ช่อง ${cur} แล้ว`);
+    const free = SKILL_SLOTS.find((k) => !c.hotbar[k]);
+    if (!free) return this.toast('Hotbar เต็ม – คลิกขวาที่ช่องเพื่อถอดก่อน', 'warn');
+    this.assign(free, v);
   }
 
   assign(key, id) {
     this.scene.econ.act('hotbar', { key, id }).then((r) => {
       if (!r.ok) return this.toast(r.msg || 'ต้องเรียนสกิลก่อนจึงติดตั้งได้', 'warn');
       this.scene.sfx.play('click');
-      this.toast(id ? `ติดตั้ง ${SKILL_BY_ID[id].nameTh} ที่ช่อง ${key}` : `ถอดสกิลออกจากช่อง ${key}`);
+      const name = !id ? '' : isItemSlot(id) ? ITEMS[slotItemId(id)]?.nameTh : SKILL_BY_ID[id]?.nameTh;
+      this.toast(id ? `ใส่ ${name} ที่ช่อง ${key}` : `ถอดออกจากช่อง ${key}`);
       this.refreshPanels(); this.scene.saveSoon();
     });
   }
@@ -397,8 +427,8 @@ export class UI {
 
     // Hotbar ในหน้าต่างสกิล (ช่องรับวาง)
     $('#sk-hotbar').innerHTML = SKILL_SLOTS.map((k) => {
-      const id = c.hotbar[k];
-      return `<div class="hb-slot ${id ? 'filled' : ''}" data-key="${k}" title="คลิกขวาเพื่อถอด"><span class="k">${k}</span>${id ? skillIcon(id, SKILL_BY_ID[id].icon) : ''}</div>`;
+      const id = c.hotbar[k], ic = !id ? '' : isItemSlot(id) ? itemIcon(slotItemId(id), ITEMS[slotItemId(id)].icon) : skillIcon(id, SKILL_BY_ID[id].icon);
+      return `<div class="hb-slot ${id ? 'filled' : ''}" data-key="${k}" title="คลิกขวาเพื่อถอด"><span class="k">${k}</span>${ic}</div>`;
     }).join('');
     $('#sk-hotbar').querySelectorAll('.hb-slot').forEach((el) => this.makeDropSlot(el, el.dataset.key));
   }
@@ -628,11 +658,12 @@ export class UI {
       const it = ITEMS[s.id], lock = Inv.isLocked(c, s.id);
       const action = { home: 'ใช้', consumable: 'ใช้', food: 'กิน', offering: 'ถวาย', weapon: 'ถือ', armor: 'สวม', accessory: 'สวม', costume: 'แต่ง', reset: 'ใช้', skin: c.path === it.job ? 'ใช้อยู่' : 'เปลี่ยนสาย' }[it.type];
       const job = itemTag(it) || (it.type === 'costume' ? ` · ชุดแต่งตัว${it.rare ? ' ✨หายาก' : ''}` : '');
-      return `<div class="item inv${rcls(it)}"><span class="ic">${itemIcon(s.id, it.icon)}</span>
+      const hb = hotbarItemOk(s.id);
+      return `<div class="item inv${rcls(it)}"${hb ? ` draggable="true" data-hbitem="${s.id}" title="ลากไปวางที่ Hotbar (1–0)"` : ''}><span class="ic">${itemIcon(s.id, it.icon)}</span>
         <span>${rname(it, esc(it.nameTh))} <span class="meta">x${s.qty}${job}</span>${diff(it)}</span>
         <button class="lock ${lock ? 'on' : ''}" data-lock="${s.id}" title="${lock ? 'ปลดล็อก' : 'ล็อก (กันขาย)'}">${lock ? '🔒' : '🔓'}</button>
         <span class="price">฿${sellPrice(s.id)}</span>
-        ${action ? `<button data-use="${s.id}" ${action === 'ใช้อยู่' ? 'disabled' : ''}>${action}</button>` : '<span></span>'}</div>`;
+        <span class="inv-acts">${hb ? `<button class="hb-add" data-hbadd="${s.id}" title="ใส่ Hotbar ช่องว่างแรก">⌨</button>` : ''}${action ? `<button data-use="${s.id}" ${action === 'ใช้อยู่' ? 'disabled' : ''}>${action}</button>` : ''}</span></div>`;
     }).join('') : '<div class="empty">ไม่มีของในหมวดนี้</div>');
     $('#inv-sort').value = sort;
     $('#inv-sort').onchange = (e) => { this.invSort = e.target.value; this.renderInventory(); };
@@ -644,6 +675,8 @@ export class UI {
       });
     }));
     $('#inv-list').querySelectorAll('[data-use]').forEach((b) => (b.onclick = () => this.result(this.scene.econ.act('use', { id: b.dataset.use }))));
+    $('#inv-list').querySelectorAll('[data-hbadd]').forEach((b) => (b.onclick = () => this.assignFirstFree(b.dataset.hbadd)));
+    $('#inv-list').querySelectorAll('[data-hbitem]').forEach((el) => el.addEventListener('dragstart', (e) => { e.dataTransfer.setData('text/item', el.dataset.hbitem); e.dataTransfer.effectAllowed = 'copy'; }));
   }
 
   // ---------------- ร้านค้า NPC ----------------

@@ -4,7 +4,7 @@
 // ============================================================
 import express from 'express';
 import { createStore, hashPassword, verifyPassword } from './store.js';
-import { newCharacter, migrate } from '../shared/charmodel.js';
+import { newCharacter, migrate, hotbarItemOk } from '../shared/charmodel.js';
 import { runAction } from '../shared/economy.js';
 
 const USER_RE = /^[A-Za-z0-9_฀-๿]{3,20}$/;       // อังกฤษ/ตัวเลข/_/ไทย 3–20 ตัว
@@ -117,7 +117,7 @@ export function setupAuth(app, hooks = {}) {
     const cur = migrate(await req.store.getCharacter(req.account.id));
     if (!cur) return res.status(404).json({ error: 'ยังไม่มีตัวละคร' });
     const hb = data.hotbar && typeof data.hotbar === 'object' ? data.hotbar : null;
-    if (hb) for (const k of Object.keys(cur.hotbar)) if (hb[k] === null || (typeof hb[k] === 'string' && cur.skills[hb[k]] > 0)) cur.hotbar[k] = hb[k];
+    if (hb) for (const k of Object.keys(cur.hotbar)) if (hb[k] === null || (typeof hb[k] === 'string' && (cur.skills[hb[k]] > 0 || (hb[k].startsWith('it:') && hotbarItemOk(hb[k].slice(3)))))) cur.hotbar[k] = hb[k];
     await req.store.saveCharacter(req.account.id, cur);
     res.json({ ok: true });
   }));

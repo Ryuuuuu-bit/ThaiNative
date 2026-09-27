@@ -29,7 +29,7 @@ import * as Inv from '../systems/Inventory.js';
 import { makeText } from '../systems/util.js';
 import { ITEMS } from '/shared/data/items.js';
 import { sound } from '../systems/Sound.js';
-import { SKILL_SLOTS } from '/shared/data/skills.js';
+import { SKILL_SLOTS, SLOT_KEYNAME, isItemSlot } from '/shared/data/skills.js';
 import { loadSettings } from '../systems/Settings.js';
 
 const HP_POTS = ['hp_s', 'hp_m', 'pot_aloe', 'pot_turmeric'];   // ปุ่ม 1 / กินอัตโนมัติ (เล็ก→ใหญ่)
@@ -251,7 +251,7 @@ export class GameScene extends Phaser.Scene {
   //            F / ↓ คุย NPC | C สถานะ | I กระเป๋า | 1 2 ยา | M เปิด/ปิดเสียง | Enter แชท
   setupInput() {
     const kb = this.input.keyboard;
-    this.keys = kb.addKeys('LEFT,RIGHT,UP,DOWN,SPACE,Q,W,E,R,T,F,C,I,H,J,K,M,P,B,ONE,TWO,ENTER,ESC,TAB');
+    this.keys = kb.addKeys('LEFT,RIGHT,UP,DOWN,SPACE,F,C,I,H,J,K,M,P,B,ONE,TWO,THREE,FOUR,FIVE,SIX,SEVEN,EIGHT,NINE,ZERO,ENTER,ESC,TAB');
     kb.addCapture('TAB');
     kb.on('keydown-TAB', () => !this.ui.typing && this.cycleWeapon());      // สลับอาวุธ (ดาบ→ไม้เท้า→ธนู→มือเปล่า)
 
@@ -286,7 +286,7 @@ export class GameScene extends Phaser.Scene {
       right: k.RIGHT.isDown,
       jump,
       attack: k.SPACE.isDown,                         // กดค้างเพื่อตีต่อเนื่อง
-      skill: SKILL_SLOTS.find((key) => k[key].isDown) || null,   // Hotbar Q W E R T
+      skill: SKILL_SLOTS.find((key) => k[SLOT_KEYNAME[key]]?.isDown && !isItemSlot(this.player.char.hotbar?.[key])) || null,   // Hotbar 1–0
     };
   }
 
