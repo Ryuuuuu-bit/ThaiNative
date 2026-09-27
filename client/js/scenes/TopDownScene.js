@@ -21,7 +21,7 @@ import { Econ } from '../net/Econ.js';
 import { Network } from '../net/Network.js';
 import { account } from '../net/Account.js';
 import { count } from '../systems/Inventory.js';
-import { TILE, MAP_W, MAP_H, T, RIVER, TOWN, GATE, bakeTileset, bakeProps, buildLayout } from '../topdown/AyutthayaMap.js';
+import { TILE, MAP_W, MAP_H, T, SPAWN as TD_SPAWN, inTownXY, isIsland, bakeTileset, bakeProps, buildLayout } from '../topdown/AyutthayaMap.js';
 import { dirFromVector, playDir, registerDir8, texKey } from '../topdown/Dir8.js';
 import { TdSkills } from '../topdown/TdSkills.js';
 import { WeaponOverlay } from '../topdown/WeaponOverlay.js';
@@ -32,7 +32,7 @@ import { bakeGround, makeWater, TdAtmosphere, bakeTdFx, TdVfx, TdMinimap } from 
 const $ = (s) => document.querySelector(s);
 const OUTFIT_IDS = ['mohom', 'ruenton', 'jongkraben', 'rajpatan', 'chaona', 'silk', 'warrior', 'hunter', 'isan', 'mahadlek'];
 const SPEED = 92;                                   // ความเร็วเดิน (px/วิ) – ตรงกับ server/td.js
-const SPAWN = { x: 60 * TILE, y: 57 * TILE };
+const SPAWN = TD_SPAWN;
 const HP_POTS = ['hp_s', 'hp_m', 'pot_aloe', 'pot_turmeric'];
 const MP_POTS = ['mp_s', 'mp_m', 'pot_anchan'];
 /** NPC → หน้าต่างบริการ (ชุดเดียวกับโลกเดิม) */
@@ -143,7 +143,7 @@ export class TopDownScene extends Phaser.Scene {
     this.nearNpc = (id) => this.npcs?.some((n) => n.id === id && dist(n, this.player) < 60);
   }
 
-  inTown() { return !!this.player && this.player.y < (RIVER.y0 - 1) * TILE; }
+  inTown() { return !!this.player && inTownXY(this.player.x, this.player.y); }
 
   // ------------------------------------------------------------
   //  แมพ
@@ -152,7 +152,7 @@ export class TopDownScene extends Phaser.Scene {
     const { ground, solid } = this.layout;
     const g = bakeGround(this, ground);            // พื้นทั้งแมพ (ขอบนุ่ม + ของตกแต่งเล็ก)
     this.groundMini = g.mini;
-    this.water = makeWater(this);
+    this.water = makeWater(this, this.layout.ground);
     this.solid = solid;
     this.blocks = this.physics.add.staticGroup();
     for (let y = 0; y < MAP_H; y++) {
@@ -166,16 +166,24 @@ export class TopDownScene extends Phaser.Scene {
         x = x1 + 1;
       }
     }
-    // ใบเสมาเรียงบนกำแพงเมือง (ตกแต่ง ไม่ชนกัน)
-    { const { x0, y0, x1, y1 } = TOWN, sema = (x, y) => this.add.image(x, y, 'td_sema').setOrigin(0.5, 1).setDepth(y);
-      for (let x = x0; x <= x1; x++) { sema(x * TILE + 8, (y0 + 1) * TILE + 2); if (x < GATE.x0 || x > GATE.x1) sema(x * TILE + 8, y1 * TILE + 2); }
-      for (let y = y0 + 2; y < y1 - 1; y++) { sema(x0 * TILE + 16, (y + 1) * TILE); sema(x1 * TILE, (y + 1) * TILE); } }
-    // สะพานไม้ทับแม่น้ำ (วาดเหนือชั้นน้ำ)
-    const bx0 = 57 * TILE, by0 = (RIVER.y0 - 1) * TILE, bw = 6 * TILE, bh = (RIVER.y1 - RIVER.y0 + 3) * TILE;
-    this.add.tileSprite(bx0, by0, bw, bh, 'td_tiles', T.WOOD).setOrigin(0).setDepth(0.3);
-    this.add.rectangle(bx0 - 1, by0, 3, bh, 0x4a2c12).setOrigin(0).setDepth(0.31);
-    this.add.rectangle(bx0 + bw - 2, by0, 3, bh, 0x4a2c12).setOrigin(0).setDepth(0.31);
-    this.add.rectangle(bx0, by0 + bh, bw, 4, 0x000000, 0.25).setOrigin(0).setDepth(0.3);
+    // ใบเสมาเรียงบนกำแพงเมือง: บนขอบหน้ากำแพงทุกช่วง + ด้านนอกของกำแพงข้าง (ตกแต่ง ไม่ชนกัน)
+    const gt = (x, y) => ground[y]?.[x], isW = (t) => t === T.WALL || t === T.WALLTOP;
+    const sema = (x, y) => this.add.image(x, y, 'td_sema').setOrigin(0.5, 1).setDepth(y);
+    for (let y = 0; y < MAP_H; y++) for (let x = 0; x < MAP_W; x++) {
+      const t = gt(x, y); if (!isW(t)) continue;
+      if (t === T.WALL) sema(x * TILE + 8, y * TILE + 2);
+      else if (!isIsland(x - 1, y) || !isIsland(x + 1, y)) sema(x * TILE + 8, (y + 1) * TILE);
+    }
+    // ราวสะพาน: ขอบไม้กระดานที่ติดน้ำ
+    const isWater = (t) => t === T.WATER || t === T.WATER2;
+    for (let y = 0; y < MAP_H; y++) for (let x = 0; x < MAP_W; x++) {
+      if (gt(x, y) !== T.WOOD) continue;
+      const X = x * TILE, Y = y * TILE;
+      if (isWater(gt(x - 1, y))) this.add.rectangle(X - 1, Y, 3, TILE, 0x4a2c12).setOrigin(0).setDepth(0.31);
+      if (isWater(gt(x + 1, y))) this.add.rectangle(X + TILE - 2, Y, 3, TILE, 0x4a2c12).setOrigin(0).setDepth(0.31);
+      if (isWater(gt(x, y - 1))) this.add.rectangle(X, Y - 1, TILE, 3, 0x4a2c12).setOrigin(0).setDepth(0.31);
+      if (isWater(gt(x, y + 1))) { this.add.rectangle(X, Y + TILE - 2, TILE, 3, 0x4a2c12).setOrigin(0).setDepth(0.31); this.add.rectangle(X, Y + TILE + 1, TILE, 4, 0x000000, 0.25).setOrigin(0).setDepth(0.3); }
+    }
   }
 
 
@@ -196,7 +204,7 @@ export class TopDownScene extends Phaser.Scene {
       if (p.warp) this.warpGate = { x: p.x, y: p.y };
     }
     const zoneLabel = (tx, ty, text) => makeText(this, tx * TILE, ty * TILE, text, { fontSize: '8px', color: '#ffe9a6' }).setOrigin(0.5).setDepth(9000).setAlpha(0.85);
-    zoneLabel(60, 12, '✦ วัดพระศรีสรรเพชญ์ ✦'); zoneLabel(60, 60, '⚔ ประตูเมืองใต้'); zoneLabel(60, 76, '🌾 ทุ่งนาบางปะอิน'); zoneLabel(30, 46, '🧺 ตลาดหัวรอ'); zoneLabel(40, 63, '⛵ ท่าน้ำวัดพนัญเชิง');
+    zoneLabel(86, 16, '✦ วัดพระศรีสรรเพชญ์ ✦'); zoneLabel(33, 14, '✦ วัดไชยวัฒนาราม ✦'); zoneLabel(60, 42, '⛲ ลานเมือง'); zoneLabel(60, 84, '⚔ ประตูเมืองใต้'); zoneLabel(60, 106, '🌾 ทุ่งนาบางปะอิน'); zoneLabel(60, 62, '🧺 ตลาดหัวรอ'); zoneLabel(30, 50, '🥊 สำนักดาบ·มวย'); zoneLabel(92, 50, '🔨 ย่านช่างน้ำพี้');
   }
 
   /** เงาวงรีใต้เท้า */
@@ -211,7 +219,8 @@ export class TopDownScene extends Phaser.Scene {
   // ------------------------------------------------------------
   buildPlayer(char) {
     const key = bakeCharacter(this, char.appearance);
-    const pos = char.tdPos && Number.isFinite(char.tdPos.x) ? char.tdPos : SPAWN;
+    const okPos = (q) => q && Number.isFinite(q.x) && !this.solid?.[Math.floor((q.y - 2) / TILE)]?.[Math.floor(q.x / TILE)] && q.y < MAP_H * TILE;
+    const pos = okPos(char.tdPos) ? char.tdPos : SPAWN;
     const p = this.physics.add.sprite(pos.x, pos.y, key, 'idle_0').setOrigin(0.5, 1).setDepth(pos.y);
     p.body.setSize(12, 8).setOffset((p.width - 12) / 2, p.height - 8); p.bodyFoot = [12, 8];
     Object.assign(p, { char, texKey: key, legacyKey: key, d8id: heroId(char.appearance), dir: 'south', facing: 1, st: 'idle', path: [], target: null, nextAtk: 0, buffs: [], dead: false });

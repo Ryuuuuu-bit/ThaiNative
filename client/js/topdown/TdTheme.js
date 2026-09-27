@@ -5,7 +5,10 @@
 //  ▸ TdVfx: วงเป้าหมาย, รอยฟัน, กระสุน, ฝุ่นเท้า, วิญญาณลอยตอนผีตาย, ไฮไลต์ตอนชี้
 //  ▸ TdMinimap: มินิแมพ 2 มิติ (ภาพพื้น + จุดผู้เล่น/ผี/NPC)
 // ============================================================
-import { TILE, MAP_W, MAP_H, T, RIVER } from '/shared/td/ayutthaya.js';
+import { TILE, MAP_W, MAP_H, T } from '/shared/td/ayutthaya.js';
+
+/** รายการไทล์น้ำทั้งแมพ [[x,y],...] */
+export const waterTiles = (ground) => { const out = []; for (let y = 0; y < ground.length; y++) for (let x = 0; x < ground[y].length; x++) if (ground[y][x] === T.WATER || ground[y][x] === T.WATER2) out.push([x, y]); return out; };
 import { dayPhase, daylight } from '/shared/data/world.js';
 
 let seed = 99;
@@ -92,9 +95,10 @@ export function bakeGround(scene, ground) {
     }
   }
   // 5) บัวในแม่น้ำ
-  for (let i = 0; i < 26; i++) {
-    const x = 4 + Math.floor(rnd() * (MAP_W - 8)), y = RIVER.y0 + Math.floor(rnd() * (RIVER.y1 - RIVER.y0 + 1));
-    if (x >= 55 && x <= 64) continue;
+  const wt = waterTiles(ground);
+  for (let i = 0; i < 60 && wt.length; i++) {
+    const [x, y] = wt[Math.floor(rnd() * wt.length)];
+    if (at(x, y - 1) === T.WOOD || at(x, y + 1) === T.WOOD || at(x - 1, y) === T.WOOD || at(x + 1, y) === T.WOOD) continue;
     const X = x * TILE + rnd() * 8, Y = y * TILE + rnd() * 8;
     px(X, Y, 6, 4, '#2f8a4a'); px(X + 1, Y, 4, 1, '#56b86c'); px(X + 3, Y + 1, 1, 2, '#1f6a3a');
     if (rnd() < 0.4) { px(X + 2, Y - 2, 3, 2, '#f7a8c8'); px(X + 3, Y - 3, 1, 1, '#ffe0ee'); }
@@ -116,7 +120,7 @@ export function bakeGround(scene, ground) {
 }
 
 /** ชั้นน้ำเคลื่อนไหว (ลายคลื่นเลื่อน) */
-export function makeWater(scene) {
+export function makeWater(scene, ground) {
   if (!scene.textures.exists('td_water')) {
     const c = document.createElement('canvas'); c.width = 64; c.height = 32; const g = c.getContext('2d');
     g.fillStyle = '#3f7fb5'; g.fillRect(0, 0, 64, 32);
@@ -125,10 +129,24 @@ export function makeWater(scene) {
     for (let i = 0; i < 7; i++) { g.fillStyle = 'rgba(190,230,255,0.7)'; g.fillRect(Math.floor(rnd() * 60), Math.floor(rnd() * 32), 4 + Math.floor(rnd() * 5), 1); }
     scene.textures.addCanvas('td_water', c);
   }
-  const y0 = RIVER.y0 * TILE, h = (RIVER.y1 - RIVER.y0 + 1) * TILE, W = MAP_W * TILE;
-  const a = scene.add.tileSprite(0, y0, W, h, 'td_water').setOrigin(0).setDepth(0.2);
-  const b = scene.add.tileSprite(0, y0, W, h, 'td_water').setOrigin(0).setDepth(0.21).setAlpha(0.35).setBlendMode(Phaser.BlendModes.ADD);
-  return { update(t) { a.tilePositionX = t * 0.008; b.tilePositionX = -t * 0.013; b.tilePositionY = Math.sin(t / 900) * 3; } };
+  // แบ่งไทล์น้ำเป็นสี่เหลี่ยมใหญ่ (แถวต่อแถว แล้วรวมแถวที่ช่วงเดียวกัน) → tileSprite 2 ชั้นต่อก้อน
+  const isW = (x, y) => ground[y]?.[x] === T.WATER || ground[y]?.[x] === T.WATER2;
+  const open = new Map(), rects = [];
+  for (let y = 0; y <= ground.length; y++) {
+    const runs = [];
+    if (y < ground.length) for (let x = 0; x < ground[y].length; x++) { if (!isW(x, y)) continue; let x1 = x; while (isW(x1 + 1, y)) x1++; runs.push(`${x},${x1}`); x = x1; }
+    const keep = new Set(runs);
+    for (const [k, r] of open) if (!keep.has(k)) { rects.push(r); open.delete(k); }
+    for (const k of runs) if (open.has(k)) open.get(k).y1 = y; else { const [x0, x1] = k.split(',').map(Number); open.set(k, { x0, x1, y0: y, y1: y }); }
+  }
+  const layers = [];
+  for (const r of rects) {
+    const X = r.x0 * TILE, Y = r.y0 * TILE, W = (r.x1 - r.x0 + 1) * TILE, H = (r.y1 - r.y0 + 1) * TILE;
+    const a = scene.add.tileSprite(X, Y, W, H, 'td_water').setOrigin(0).setDepth(0.2).setTilePosition(X, Y);
+    const b = scene.add.tileSprite(X, Y, W, H, 'td_water').setOrigin(0).setDepth(0.21).setAlpha(0.35).setBlendMode(Phaser.BlendModes.ADD);
+    layers.push([a, b, X, Y]);
+  }
+  return { update(t) { for (const [a, b, X, Y] of layers) { a.tilePositionX = X + t * 0.008; a.tilePositionY = Y; b.tilePositionX = X - t * 0.013; b.tilePositionY = Y + Math.sin(t / 900) * 3; } } };
 }
 
 // ------------------------------------------------------------
@@ -138,6 +156,7 @@ export class TdAtmosphere {
   constructor(scene, layout, dayMs = 20 * 60 * 1000) {
     this.s = scene; this.dayMs = dayMs; this.offset = 0;
     const s = scene, cam = s.cameras.main;
+    this.wt = waterTiles(layout.ground);
     // ม่านสีกลางคืน (อยู่เหนือโลก ใต้ UI) – ใช้ MULTIPLY ให้สีมืดลงแบบยังเห็นรายละเอียด
     this.night = s.add.rectangle(0, 0, 4000, 4000, 0x3a3f9a, 1).setScrollFactor(0).setDepth(50000).setBlendMode(Phaser.BlendModes.MULTIPLY).setAlpha(0);
     this.dusk = s.add.rectangle(0, 0, 4000, 4000, 0xff9a4a, 1).setScrollFactor(0).setDepth(50001).setBlendMode(Phaser.BlendModes.ADD).setAlpha(0);
@@ -169,7 +188,7 @@ export class TdAtmosphere {
     for (let i = 0; i < 5; i++) this.clouds.push(s.add.image(Math.random() * MAP_W * TILE, Math.random() * MAP_H * TILE, 'fx_glow').setTint(0x000000).setAlpha(0.1).setDisplaySize(260 + Math.random() * 200, 140 + Math.random() * 80).setDepth(49980));
     // ประกายน้ำ + ปลากระโดด
     this.sparkle = s.add.particles(0, 0, 'fx_spark', {
-      x: { min: 0, max: MAP_W * TILE }, y: { min: RIVER.y0 * TILE, max: (RIVER.y1 + 1) * TILE }, lifespan: 700, scale: { start: 0.2, end: 0 }, alpha: { start: 0.9, end: 0 },
+      emitZone: { type: 'random', source: { getRandomPoint: (v) => { const [x, y] = this.wt[Math.floor(Math.random() * this.wt.length)] || [0, 0]; v.x = x * TILE + Math.random() * TILE; v.y = y * TILE + Math.random() * TILE; return v; } } }, lifespan: 700, scale: { start: 0.2, end: 0 }, alpha: { start: 0.9, end: 0 },
       tint: 0xe8f8ff, frequency: 45, blendMode: 'ADD',
     }).setDepth(0.25);
     this.nextFish = 0;
@@ -198,8 +217,10 @@ export class TdAtmosphere {
     // ปลากระโดดเป็นระยะ (เฉพาะใกล้กล้อง)
     if (time > this.nextFish) {
       this.nextFish = time + 2500 + Math.random() * 4000;
-      const fx = cx + (Math.random() - 0.5) * 500, fy = (RIVER.y0 + 1 + Math.random() * 4) * TILE;
-      if (Math.abs(fy - cy) < 300) {
+      const near = this.wt.filter(([x, y]) => Math.abs(x * TILE - cx) < 260 && Math.abs(y * TILE - cy) < 200);
+      const pick = near[Math.floor(Math.random() * near.length)];
+      const fx = pick ? pick[0] * TILE + 8 : 0, fy = pick ? pick[1] * TILE + 8 : 0;
+      if (pick) {
         const fish = s.add.rectangle(fx, fy, 5, 2, 0xc0d8e8).setDepth(0.3);
         s.tweens.add({ targets: fish, y: fy - 10, x: fx + 10, angle: 180, duration: 260, yoyo: true, onComplete: () => { fish.destroy(); splash(s, fx + 10, fy); } });
       }

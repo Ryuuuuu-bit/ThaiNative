@@ -165,6 +165,26 @@
   "env/p_well2",
   "env/b_prang_l",
   "env/m_prangbig_l",
-  "env/m_chedi_l"
+  "env/m_chedi_l",
+  "env/p_tent_red",
+  "env/p_flowercart",
+  "env/p_tent_purple",
+  "env/p_silk",
+  "env/p_banner",
+  "env/p_rice",
+  "env/p_tent_blue",
+  "env/p_baskets",
+  "env/p_fishrack",
+  "env/p_tent_yellow",
+  "env/p_teatable",
+  "env/p_fruit",
+  "env/p_pottery",
+  "env/p_lanternpole",
+  "env/p_sign",
+  "env/p_tent_green",
+  "env/b_fountain",
+  "env/t_pink",
+  "env/b_gatescene",
+  "env/b_gatescene2"
  ]
 }

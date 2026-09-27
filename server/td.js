@@ -13,9 +13,9 @@ import { dayPhase, dayIndex, moonOf, nightMods, isNight } from '../shared/data/w
 import { rollGearDrop } from '../shared/data/gear.js';
 import { grantKill } from '../shared/economy.js';
 import { NPC_BY_ID } from '../shared/data/npcs.js';
-import { buildLayout, TILE, MAP_W, MAP_H, RIVER } from '../shared/td/ayutthaya.js';
+import { buildLayout, TILE, MAP_W, MAP_H, SPAWN, inTownXY } from '../shared/td/ayutthaya.js';
 
-export const TD_SPAWN = { x: 60 * TILE, y: 57 * TILE };
+export const TD_SPAWN = { ...SPAWN };
 const SPEED = 92;                   // ความเร็วเดินผู้เล่น (ตรงกับ client)
 const AGGRO = 110, LEASH = 260, RESPAWN_MS = 9000, STRIKE_MS = 260;
 const NPC_R = 56;                   // ระยะคุยกับ NPC
@@ -31,7 +31,7 @@ export function setupTD(io, players, opts = {}) {
     const tx = Math.floor(x / TILE), ty = Math.floor(y / TILE);
     return tx < 0 || ty < 0 || tx >= MAP_W || ty >= MAP_H || L.solid[ty][tx];
   };
-  const inTown = (y) => y < (RIVER.y0 - 1) * TILE;
+  const inTown = (x, y) => inTownXY(x, y);
 
   // ---------------- ผี ----------------
   const mobs = L.spawns.map((s, i) => spawn({ mid: i, id: s.id, d: MONSTERS[s.id], s }));
@@ -72,7 +72,7 @@ export function setupTD(io, players, opts = {}) {
       }
       // หาเป้า: ผู้เล่นที่ใกล้สุด (ไม่ไล่เข้าเขตเมือง)
       let best = null, bd = AGGRO;
-      for (const p of here) { if (p.dead || inTown(p.ty)) continue; const dd = dist(m, { x: p.tx, y: p.ty }); if (dd < bd) { bd = dd; best = p; } }
+      for (const p of here) { if (p.dead || inTown(p.tx, p.ty)) continue; const dd = dist(m, { x: p.tx, y: p.ty }); if (dd < bd) { bd = dd; best = p; } }
       const home = Math.hypot(m.x - m.s.x, m.y - m.s.y);
       if (best && home < LEASH) { m.st = 'chase'; m.target = best.id; }
       else if (m.st === 'chase') { m.st = 'wander'; m.target = null; m.wx = m.s.x; m.wy = m.s.y; }
@@ -207,7 +207,7 @@ export function setupTD(io, players, opts = {}) {
 
   return {
     tick, econX,
-    inTown: (p) => inTown(p.ty),
+    inTown: (p) => inTown(p.tx, p.ty),
     onConnection(socket) {
       socket.on('td:enter', () => { const p = players.get(socket.id); if (p) enter(socket, p); });
       socket.on('td:move', (s) => onMove(socket, s));
