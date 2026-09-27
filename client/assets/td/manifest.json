@@ -36,13 +36,19 @@
    "anims": [
     "idle",
     "attack",
+    "shoot",
+    "slash",
     "die",
+    "cast",
     "walk"
    ],
    "frames": {
     "idle": 4,
     "attack": 6,
+    "shoot": 7,
+    "slash": 7,
     "die": 7,
+    "cast": 6,
     "walk": 6
    },
    "frame": 72,
@@ -52,13 +58,19 @@
    "anims": [
     "idle",
     "attack",
+    "shoot",
+    "slash",
     "die",
+    "cast",
     "walk"
    ],
    "frames": {
     "idle": 4,
     "attack": 6,
+    "shoot": 7,
+    "slash": 7,
     "die": 7,
+    "cast": 6,
     "walk": 6
    },
    "frame": 72,
