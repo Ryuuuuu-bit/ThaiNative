@@ -6,6 +6,7 @@
 // ============================================================
 import { MONSTERS } from '../shared/data/monsters.js';
 import { JOBS } from '../shared/data/classes.js';
+import { SKILL_BY_ID } from '../shared/data/skills.js';
 import { rollDamage } from '../shared/stats.js';
 import { combatDerived, attackSpec, blessingsOf, attackGate } from '../shared/character.js';
 import { dayPhase, dayIndex, moonOf, nightMods, isNight } from '../shared/data/world.js';
@@ -103,7 +104,8 @@ export function setupTD(io, players, opts = {}) {
     const now = Date.now();
     const job = p.appearance?.job, atk = JOBS[job]?.attack;
     const sk = typeof d.sk === 'string' ? d.sk : null;
-    const range = (atk?.range || 30) + 30;
+    const skb = sk ? SKILL_BY_ID[sk] : null;            // สกิลระยะไกล/วงกว้าง/พุ่ง → เอื้อมได้ไกลกว่าตีปกติ
+    const range = Math.max(atk?.range || 30, skb ? (skb.range || 0) + (skb.distance || 0) + (skb.offset ? 240 : 0) + (skb.radius || 0) : 0) + 30;
     if (dist(m, { x: p.tx, y: p.ty }) > range) return;
     const gate = attackGate(p, sk, !!d.combo, now);
     if (!gate) return;

@@ -272,8 +272,8 @@ io.on('connection', (socket) => {
     if (base.job !== p.appearance.job) return;
     const lv = p.save.skills?.[base.id] || 0;
     if (!lv || now - p.lastSkill < 150) return;
-    const x = Number(d.x) || 0, y = Number(d.y) || 0;
-    if (Math.abs(x - p.x) > 120 || Math.abs(y - p.y) > 120) return;
+    const x = Number(d.x) || 0, y = Number(d.y) || 0, td = p.world === 'td';
+    if (Math.abs(x - (td ? p.tx : p.x)) > 120 || Math.abs(y - (td ? p.ty : p.y)) > 120) return;
     const sk = skillStats(base, lv);
     p.skillAt ||= {};
     if (now - (p.skillAt[base.id] || 0) < sk.cd * 0.8) return;         // คูลดาวน์ (server)
@@ -284,7 +284,7 @@ io.on('connection', (socket) => {
       p.buffs.push({ buff: sk.buff, until: now + sk.duration, sk: base.id });
       if (sk.heal) healPlayer(p, p.maxHp * sk.heal);
     } else if (sk.type === 'dash') p.invulnUntil = Math.max(p.invulnUntil || 0, now + 320);
-    socket.broadcast.emit('skill:cast', {
+    (td ? socket.to('td') : socket.broadcast).emit('skill:cast', {
       id: p.id, skillId: base.id, lv: clamp(lv, 1, MAX_SKILL_LV),
       x: Math.round(x), y: Math.round(y), dir: d.dir === -1 ? -1 : 1,
       tx: Number.isFinite(d.tx) ? Math.round(d.tx) : null, ty: Number.isFinite(d.ty) ? Math.round(d.ty) : null,

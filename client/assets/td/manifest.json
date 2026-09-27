@@ -1,1 +1,37 @@
-{ "sprites": {}, "images": [] }
+{
+ "sprites": {
+  "mob_kuman_thong": {
+   "anims": [
+    "idle",
+    "walk"
+   ],
+   "frame": 72,
+   "scale": 0.5
+  },
+  "mob_nang_tani": {
+   "anims": [
+    "idle",
+    "walk"
+   ],
+   "frame": 72,
+   "scale": 0.667
+  },
+  "hero_male_mohom": {
+   "anims": [
+    "idle",
+    "walk"
+   ],
+   "frame": 72,
+   "scale": 0.667
+  },
+  "hero_female_ruenton": {
+   "anims": [
+    "idle",
+    "walk"
+   ],
+   "frame": 72,
+   "scale": 0.667
+  }
+ },
+ "images": []
+}

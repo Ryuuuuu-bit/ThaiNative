@@ -54,16 +54,42 @@ export const hasDir8 = (scene, id, anim = 'idle') => scene.anims.exists(animKey(
  *  - มีภาพ 8 ทิศ → ใช้ `td:<id>:<anim>:<dir>`
  *  - ไม่มี → ใช้ `${legacyKey}:${anim}` + พลิกซ้าย/ขวาตามทิศ
  */
+/** ท่าที่ยังไม่มีภาพ 8 ทิศ → ยืมท่าที่มี (ไม่สลับกลับไปใช้สไปรต์เก่ากลางคัน) */
+const BORROW = { attack: 'walk', cast: 'idle', hit: 'idle', run: 'walk' };
+
+/** ปรับขนาด/กล่องชนเมื่อสลับระหว่างภาพ 8 ทิศ ↔ สไปรต์เดิม */
+function setLook(sprite, d8) {
+  if (sprite._d8 === d8) return;
+  sprite._d8 = d8;
+  if (sprite.baseScale == null) sprite.baseScale = sprite.scaleX || 1;
+  const meta = d8 ? sprite.scene.d8meta?.[sprite.d8id] : null;
+  const sc = d8 ? (meta?.scale || 2 / 3) : sprite.baseScale;
+  sprite.setScale(sc);
+  if (sprite.body && sprite.bodyFoot) {
+    const [w, h] = sprite.bodyFoot, fw = sprite.frame.realWidth, fh = sprite.frame.realHeight;
+    const pad = d8 ? Math.round((meta?.frame || 72) * 0.08) : 0;            // เท้าอยู่เหนือขอบล่างเฟรมเล็กน้อย
+    sprite.body.setSize(w / sc, h / sc).setOffset((fw - w / sc) / 2, fh - h / sc - pad);
+  }
+}
+
 export function playDir(sprite, anim, dir, restart = false) {
   const scene = sprite.scene;
   sprite.dir = dir;
-  if (sprite.d8id && hasDir8(scene, sprite.d8id, anim)) {
-    const k = animKey(sprite.d8id, anim, dir);
+  if (sprite.d8id && hasDir8(scene, sprite.d8id, 'idle')) {
+    const use = hasDir8(scene, sprite.d8id, anim) ? anim : BORROW[anim];
+    if (!use || !hasDir8(scene, sprite.d8id, use)) return false;              // เช่น die → ให้ผู้เรียกทำเอฟเฟกต์แทน
+    const k = animKey(sprite.d8id, use, dir);
     sprite.setFlipX(false);
     if (sprite.anims.currentAnim?.key !== k || restart) sprite.play(k, !restart);
+    setLook(sprite, true);
+    if (use !== anim && anim === 'attack') {                                    // พุ่งไปข้างหน้าเล็กน้อยแทนท่าฟัน
+      scene.tweens.add({ targets: sprite, scaleY: sprite.scaleY * 0.92, yoyo: true, duration: 90 });
+      scene.time.delayedCall(260, () => sprite.emit('animationcomplete', { key: `${k}:attack` }));
+    }
     return true;
   }
   if (!sprite.legacyKey) return false;
+  setLook(sprite, false);
   const k = `${sprite.legacyKey}:${anim}`;
   if (!scene.anims.exists(k)) return false;
   if (dir.includes('east')) sprite.setFlipX(false); else if (dir.includes('west')) sprite.setFlipX(true);

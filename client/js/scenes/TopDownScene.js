@@ -23,7 +23,9 @@ import { account } from '../net/Account.js';
 import { count } from '../systems/Inventory.js';
 import { TILE, MAP_W, MAP_H, T, RIVER, bakeTileset, bakeProps, buildLayout } from '../topdown/AyutthayaMap.js';
 import { dirFromVector, playDir, registerDir8, texKey } from '../topdown/Dir8.js';
+import { TdSkills } from '../topdown/TdSkills.js';
 import { ALL_ASSETS } from '/shared/data/td_assets.js';
+import { bakeGround, makeWater, TdAtmosphere, bakeTdFx, TdVfx, TdMinimap } from '../topdown/TdTheme.js';
 
 const $ = (s) => document.querySelector(s);
 const OUTFIT_IDS = ['mohom', 'ruenton', 'jongkraben', 'rajpatan', 'chaona', 'silk', 'warrior', 'hunter', 'isan', 'mahadlek'];
@@ -47,7 +49,12 @@ export class TopDownScene extends Phaser.Scene {
   preload() {
     this.load.json('td_manifest', '/assets/td/manifest.json');
     this.load.once('filecomplete-json-td_manifest', (_k, _t, data) => {
-      for (const [id, anims] of Object.entries(data?.sprites || {})) for (const anim of anims) this.load.image(texKey(id, anim), `/assets/td/${id}/${anim}.png`);
+      this.d8meta = {};
+      for (const [id, ent] of Object.entries(data?.sprites || {})) {
+        const meta = Array.isArray(ent) ? { anims: ent } : ent;
+        this.d8meta[id] = meta;
+        for (const anim of meta.anims) this.load.image(texKey(id, anim), `/assets/td/${id}/${anim}.png`);
+      }
       for (const id of data?.images || []) this.load.image(id, `/assets/td/${id}.png`);
     });
     this.load.on('loaderror', () => {});
@@ -58,7 +65,9 @@ export class TopDownScene extends Phaser.Scene {
     this.td = true;
     this.sfx = sound; this.settings = { ...loadSettings(), minimap: false }; this.sfx.applySettings(this.settings);
     this.physics.world.gravity.y = 0;
-    bakeFx(this); bakeTileset(this); bakeProps(this);
+    bakeFx(this); bakeTileset(this); bakeProps(this); bakeTdFx(this);
+    // เอฟเฟกต์บนพื้น (ยันต์) อยู่ชั้นพื้น · เอฟเฟกต์ลอย (ตัวเลข/ประกาย) อยู่เหนือทุกอย่าง
+    this.fxDepth = (d) => (d < 20 ? 0.9 : 100000 + d);
     this.layout = buildLayout();
     this.remotes = new Map();
     this.shadows = [];
@@ -77,7 +86,10 @@ export class TopDownScene extends Phaser.Scene {
 
     const cam = this.cameras.main;
     cam.setBounds(0, 0, MAP_W * TILE, MAP_H * TILE).setZoom(1.5).startFollow(this.player, true, 0.12, 0.12).setRoundPixels(true);
-    this.time.addEvent({ delay: 550, loop: true, callback: () => this.animateWater() });
+    this.atmo = new TdAtmosphere(this, this.layout);
+    this.vfx = new TdVfx(this);
+    this.skills = new TdSkills(this);
+    this.minimap = new TdMinimap(this.groundMini);
     this.zone = null;
     this.ui.updateHud();
     this.setupNetwork();
@@ -122,10 +134,10 @@ export class TopDownScene extends Phaser.Scene {
   // ------------------------------------------------------------
   buildMap() {
     const { ground, solid } = this.layout;
-    const tmap = this.make.tilemap({ data: ground, tileWidth: TILE, tileHeight: TILE });
-    const tiles = tmap.addTilesetImage('td_tiles', 'td_tiles', TILE, TILE, 0, 0);
-    this.groundLayer = tmap.createLayer(0, tiles, 0, 0).setDepth(0);
-    this.tmap = tmap; this.solid = solid;
+    const g = bakeGround(this, ground);            // พื้นทั้งแมพ (ขอบนุ่ม + ของตกแต่งเล็ก)
+    this.groundMini = g.mini;
+    this.water = makeWater(this);
+    this.solid = solid;
     this.blocks = this.physics.add.staticGroup();
     for (let y = 0; y < MAP_H; y++) {
       let x = 0;
@@ -138,12 +150,15 @@ export class TopDownScene extends Phaser.Scene {
         x = x1 + 1;
       }
     }
-    this.add.rectangle(MAP_W * TILE / 2, (RIVER.y0 - 0.5) * TILE, MAP_W * TILE, TILE, 0x000000, 0.12).setDepth(0.5);
+    // สะพานไม้ทับแม่น้ำ (วาดเหนือชั้นน้ำ)
+    const bx0 = 57 * TILE, by0 = (RIVER.y0 - 1) * TILE, bw = 6 * TILE, bh = (RIVER.y1 - RIVER.y0 + 3) * TILE;
+    this.add.tileSprite(bx0, by0, bw, bh, 'td_tiles', T.WOOD).setOrigin(0).setDepth(0.3);
+    this.add.rectangle(bx0 - 1, by0, 3, bh, 0x4a2c12).setOrigin(0).setDepth(0.31);
+    this.add.rectangle(bx0 + bw - 2, by0, 3, bh, 0x4a2c12).setOrigin(0).setDepth(0.31);
+    this.add.rectangle(bx0, by0 + bh, bw, 4, 0x000000, 0.25).setOrigin(0).setDepth(0.3);
   }
 
-  animateWater() {
-    this.groundLayer.forEachTile((t) => { if (t.index === T.WATER) t.index = T.WATER2; else if (t.index === T.WATER2) t.index = T.WATER; });
-  }
+
 
   buildProps() {
     for (const p of this.layout.props) {
@@ -173,7 +188,7 @@ export class TopDownScene extends Phaser.Scene {
     const key = bakeCharacter(this, char.appearance);
     const pos = char.tdPos && Number.isFinite(char.tdPos.x) ? char.tdPos : SPAWN;
     const p = this.physics.add.sprite(pos.x, pos.y, key, 'idle_0').setOrigin(0.5, 1).setDepth(pos.y);
-    p.body.setSize(12, 8).setOffset((p.width - 12) / 2, p.height - 8);
+    p.body.setSize(12, 8).setOffset((p.width - 12) / 2, p.height - 8); p.bodyFoot = [12, 8];
     Object.assign(p, { char, texKey: key, legacyKey: key, d8id: heroId(char.appearance), dir: 'south', facing: 1, st: 'idle', path: [], target: null, nextAtk: 0, buffs: [], dead: false });
     Object.defineProperty(p, 'alive', { get() { return !this.dead; } });
     Object.defineProperty(p, 'derived', { get() { return getDerived(this.char); } });
@@ -202,6 +217,12 @@ export class TopDownScene extends Phaser.Scene {
       makeText(this, n.x, n.y - spr.height - 13, `[${n.role}]`, { fontSize: '6px', color: '#ecf0f1' }).setOrigin(0.5, 1).setDepth(n.y + 1);
       spr.setInteractive({ useHandCursor: true });
       spr.on('pointerdown', (ptr) => { ptr.event.stopPropagation(); this.talk(n); });
+      spr.on('pointerover', () => { this.hovered = spr; document.body.dataset.cursor = 'talk'; });
+      spr.on('pointerout', () => { if (this.hovered === spr) this.hovered = null; delete document.body.dataset.cursor; });
+      if (n.id === 'quest') {                                                              // เครื่องหมาย ! ลอยเหนือหัวคนให้เควส
+        const q = makeText(this, n.x, n.y - spr.height - 26, '❗', { fontSize: '10px' }).setOrigin(0.5, 1).setDepth(n.y + 2);
+        this.tweens.add({ targets: q, y: q.y - 4, duration: 600, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
+      }
       return { ...n, icon: NPC_ICON[n.id], spr, line: 0 };
     });
   }
@@ -210,7 +231,7 @@ export class TopDownScene extends Phaser.Scene {
     const p = this.player;
     if (dist(p, n) > 52) { this.moveTo(n.x, n.y + 14); this.pendingTalk = n; return; }
     this.pendingTalk = null;
-    this.sfx.play('click');
+    this.sfx.play('npc');
     if (n.id === 'quest') return this.village.openQuests();
     if (NPC_OPEN[n.id]) return this.ui.openShop(NPC_OPEN[n.id]);
     this.ui.toast(`💬 ${n.nameTh}: “${n.lines[n.line++ % n.lines.length]}”`, '', 4500);
@@ -230,7 +251,7 @@ export class TopDownScene extends Phaser.Scene {
     const m = this.physics.add.sprite(s.x, s.y, this.textures.exists(key) ? key : 'npc_maekha', 'walk_0').setOrigin(0.5, 1);
     this.monsters.add(m);
     const scale = def.scale || 1; m.setScale(scale);
-    m.body.setSize(14 / scale, 8 / scale).setOffset((m.width - 14 / scale) / 2, m.height - 8 / scale);
+    m.body.setSize(14 / scale, 8 / scale).setOffset((m.width - 14 / scale) / 2, m.height - 8 / scale); m.bodyFoot = [14, 8];
     Object.assign(m, { mid, def, spawn: s, hp: def.hp, maxHp: def.hp, alive: true, mode: 'wander', nextThink: 0, nextAtk: 0, dir: 'south', sx: s.x, sy: s.y });
     m.legacyKey = m.texture.key; m.d8id = `mob_${s.id}`; playDir(m, 'walk', 'south');
     this.addShadow(m, Math.max(14, m.displayWidth * 0.7));
@@ -238,6 +259,8 @@ export class TopDownScene extends Phaser.Scene {
     m.hpBg = this.add.rectangle(0, 0, 22, 3, 0x000000, 0.7); m.hpBar = this.add.rectangle(0, 0, 22, 3, 0xe74c3c).setOrigin(0, 0.5);
     m.setInteractive({ useHandCursor: true });
     m.on('pointerdown', (ptr) => { ptr.event.stopPropagation(); this.setTarget(m); });
+    m.on('pointerover', () => { this.hovered = m; document.body.dataset.cursor = 'attack'; });
+    m.on('pointerout', () => { if (this.hovered === m) this.hovered = null; delete document.body.dataset.cursor; });
     if (!this.econ.server) m.setPosition(s.x + rand(-s.r, s.r), s.y + rand(-s.r, s.r));
     return m;
   }
@@ -246,7 +269,7 @@ export class TopDownScene extends Phaser.Scene {
     if (!m.alive) return;
     this.player.target = m; this.player.path = [];
     this.ui.setTarget({ def: { ...m.def, hp: m.maxHp }, get hp() { return m.hp; }, get alive() { return m.alive; } });
-    this.sfx.play('click');
+    this.sfx.play('target');
   }
 
   setMobVisible(m, on) {
@@ -324,7 +347,8 @@ export class TopDownScene extends Phaser.Scene {
     p.dir = dirFromVector(m.x - p.x, m.y - p.y, p.dir);
     if (!(ranged && this.playerAnim('cast', true))) this.playerAnim('attack', true);
     this.sfx.play(ranged ? 'arrow' : 'swing');
-    if (ranged) this.shootFx(p, m);
+    if (ranged) this.vfx.shoot(p, m, JOBS[p.char.appearance.job]?.attack?.kind === 'magic' ? 'magic' : 'arrow');
+    else this.time.delayedCall(120, () => m.alive && this.vfx.slash(p, m, false));
     if (this.econ.server) { this.time.delayedCall(ranged ? 120 : 160, () => m.alive && this.net.send('td:hit', { mid: m.mid })); return; }
     this.time.delayedCall(180, () => {
       if (!m.alive || !p.alive) return;
@@ -360,7 +384,8 @@ export class TopDownScene extends Phaser.Scene {
     m.alive = false; m.hp = 0; m.setVelocity(0, 0); m.disableInteractive();
     if (this.player.target === m) this.player.target = null;
     if (!playDir(m, 'die', m.dir, true)) m.setTint(0x777777);
-    this.sfx.play('ghostDie');
+    this.vfx?.soul(m);
+    this.sfx.play('ghostDie'); this.time.delayedCall(150, () => this.sfx.play('soul'));
     this.tweens.add({ targets: m, alpha: 0, duration: 900, delay: 300, onComplete: () => { if (!m.alive) this.setMobVisible(m, false); } });
     if (!this.econ.server) this.time.delayedCall(9000, () => this.respawnLocal(m));
   }
@@ -436,7 +461,7 @@ export class TopDownScene extends Phaser.Scene {
     const net = (this.net = new Network());
     if (!this.econ.server) { this.ui.setOnline(false, 0); this.ui.toast('โหมดออฟไลน์: เซฟในเครื่อง', '', 4000); return; }
     net.on('status', (on) => { this.ui.setOnline(on, this.remotes.size); if (!on) { this.remotes.forEach((r) => r.destroy()); this.remotes.clear(); } })
-      .on('init', ({ admin }) => { if (account.account) account.account.admin = !!admin; net.send('td:enter'); })
+      .on('init', ({ admin, serverTime, dayMs }) => { if (account.account) account.account.admin = !!admin; this.atmo?.sync(serverTime, dayMs); net.send('td:enter'); })
       .on('char:load', (s) => this.econ.apply(s))
       .on('char:sync', (s) => this.econ.apply(s))
       .on('rejected', ({ msg }) => this.ui.toast(msg || 'เข้าเกมไม่สำเร็จ', 'warn', 6000))
@@ -452,6 +477,7 @@ export class TopDownScene extends Phaser.Scene {
       })
       .on('td:joined', (q) => { this.addRemote(q); this.ui.chat({ name: '📢 ระบบ', text: `${q.name} เข้าสู่กรุงศรีอยุธยา` }); this.ui.setOnline(true, this.remotes.size); })
       .on('td:left', (id) => this.removeRemote(id))
+      .on('skill', (d) => { const r = this.remotes.get(d.id); if (r) this.skills.remote(d, r); })
       .on('td:state', (s) => this.applyState(s))
       .on('td:dmg', (d) => this.onMobDamage(this.mobs[d.mid], d))
       .on('td:die', ({ mid }) => this.onMobDie(this.mobs[mid]))
@@ -504,7 +530,7 @@ export class TopDownScene extends Phaser.Scene {
   // ------------------------------------------------------------
   buildInput() {
     const kb = this.input.keyboard;
-    this.keys = kb.addKeys('W,A,S,D,UP,LEFT,DOWN,RIGHT', false);
+    this.keys = kb.addKeys('UP,LEFT,DOWN,RIGHT', false);
     this.input.on('pointerdown', (ptr) => {
       if (ptr.rightButtonDown()) return;
       const w = this.cameras.main.getWorldPoint(ptr.x, ptr.y);
@@ -513,6 +539,7 @@ export class TopDownScene extends Phaser.Scene {
       this.clickMark(w.x, w.y);
     });
     kb.on('keydown-F', () => { const n = this.nearestNpc(60); if (n) this.talk(n); });
+    for (const k of ['Q', 'W', 'E', 'R', 'T']) kb.on(`keydown-${k}`, () => this.skills.cast(k));
     kb.on('keydown-ONE', () => this.quickUse(HP_POTS));
     kb.on('keydown-TWO', () => this.quickUse(MP_POTS));
     kb.on('keydown-I', () => this.ui.toggle('inv-panel'));
@@ -584,8 +611,8 @@ export class TopDownScene extends Phaser.Scene {
     const p = this.player, k = this.keys, dt = delta / 1000;
     const typing = this.ui.typing;
     if (p.alive) {
-      let vx = typing ? 0 : (k.D.isDown || k.RIGHT.isDown) - (k.A.isDown || k.LEFT.isDown);
-      let vy = typing ? 0 : (k.S.isDown || k.DOWN.isDown) - (k.W.isDown || k.UP.isDown);
+      let vx = typing ? 0 : k.RIGHT.isDown - k.LEFT.isDown;
+      let vy = typing ? 0 : k.DOWN.isDown - k.UP.isDown;
       if (vx || vy) { p.path = []; p.target = null; this.pendingTalk = null; }
       else if (p.target) {
         const m = p.target;
@@ -620,9 +647,16 @@ export class TopDownScene extends Phaser.Scene {
       const sig = JSON.stringify(st);
       if (sig !== this.sentSig || time - this.sentAt > 1000) { this.sentAt = time; this.sentSig = sig; this.net.send('td:move', st); }
     }
-    const zone = this.inTown() ? 'town' : 'field';
+    const zone = this.inTown() ? 'town' : 'field', night = this.atmo.light < 0.35;
+    this.sfx.music(night ? 'ayt_night' : zone === 'town' ? 'ayutthaya' : 'ayt_field');
+    // เสียงเท้าตามชนิดพื้น
+    if (p.st === 'walk' && time > (this.stepAt || 0)) {
+      this.stepAt = time + 290;
+      const t = this.layout.ground[Math.floor(p.y / TILE)]?.[Math.floor(p.x / TILE)];
+      this.sfx.play(t === T.WOOD ? 'step_wood' : t === T.BRICK || t === T.STONE ? 'step_stone' : t === T.SAND || t === T.ROAD ? 'step_sand' : 'step_grass');
+    }
     if (zone !== this.zone) {
-      this.zone = zone; this.sfx.music(zone === 'town' ? 'town' : 'field');
+      this.zone = zone;
       this.ui.setZone(zone === 'town' ? 'กรุงศรีอยุธยา' : 'ทุ่งนาบางปะอิน', true);
       $('#td-zone').textContent = zone === 'town' ? '🏯 เกาะเมือง (Safe Zone)' : '🌾 ผีถ้วยแก้ว · กุมารทอง · นางตานี';
     }
@@ -630,6 +664,10 @@ export class TopDownScene extends Phaser.Scene {
     this.ui.updateHud();
     this.ui.updateSkillBar(time);
     this.ui.updateFrame(time);
+    this.atmo.update(time, p, this.inTown());
+    this.water.update(time);
+    this.vfx.update(time, p, p.target, this.hovered);
+    this.minimap.update(time, this);
   }
 
 }

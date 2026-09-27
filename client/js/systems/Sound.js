@@ -198,6 +198,47 @@ const TRACKS = {
     drums: { klong: 'x..x..x.x..x..x.', thon: '..x...x...x.x.xx', chap: 'x.......x.......', ching: '.x.x.x.x.x.x.x.x' },
     amb: 'boss',
   },
+  // ---- New Version (อยุธยา) ----
+  // กรุงศรีอยุธยา: สง่างามแบบวังหลวง – ฆ้องวงใหญ่เดินทำนองหลัก ระนาดเอกเก็บแทรก ปี่ในทอดเสียง กลองทัดเน้นต้นห้อง
+  ayutthaya: {
+    bpm: 92,
+    layers: [
+      { inst: 'khong', vol: 0.1, notes: [60, _, 64, _, 67, _, 69, _, 72, _, 69, _, 67, _, 64, _, 62, _, 64, _, 67, _, 64, _, 62, _, 60, _, 57, _, 60, _,
+                                        64, _, 67, _, 69, _, 72, _, 74, _, 72, _, 69, _, 67, _, 69, _, 67, _, 64, _, 62, _, 64, _, 60, _, _, _, _, _] },
+      { inst: 'ranat', vol: 0.11, notes: [_, _, 84, 81, 79, _, 81, 84, _, _, 86, 84, 81, _, 79, 81, _, _, 79, 76, 74, _, 76, 79, 81, 79, 76, 74, 72, _, _, _,
+                                          _, _, 84, 86, 88, _, 86, 84, 81, _, 84, 81, 79, _, 76, 79, 81, _, 79, 76, 74, _, 72, 74, 76, 74, 72, _, _, _, _, _] },
+      { inst: 'pi', vol: 0.06, notes: [_, _, _, _, _, _, _, _, 76, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, 74, _, _, _, _, _, _, _,
+                                       _, _, _, _, _, _, _, _, 79, _, _, _, 81, _, _, _, _, _, _, _, _, _, _, _, 72, _, _, _, _, _, _, _] },
+      { inst: 'pad', vol: 0.035, notes: [48, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, 45, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _,
+                                         52, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, 43, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _] },
+      { inst: 'bass', vol: 0.16, notes: [36, _, _, _, 43, _, _, _, 36, _, _, _, 45, _, _, _, 38, _, _, _, 43, _, _, _, 36, _, _, _, 33, _, _, _] },
+    ],
+    drums: { klong: 'x...............x.......x.......', ching: '..x...x...x...x.', chap: '......x.......x.', thon: '....x.......x.x.' },
+    amb: 'ayt_town',
+  },
+  // ทุ่งนาบางปะอิน: ผ่อนคลาย ปี่นำทำนองชนบท ระนาดทุ้มเดินเบส โทนเบา ๆ
+  ayt_field: {
+    bpm: 104,
+    layers: [
+      { inst: 'pi', vol: 0.085, notes: [67, _, 69, 72, 74, _, 72, 69, 67, _, 64, _, 67, _, _, _, 69, _, 72, 74, 76, _, 74, 72, 69, _, 67, _, 69, _, _, _,
+                                        76, _, 74, 72, 74, _, 76, 79, 76, _, 74, _, 72, _, _, _, 69, _, 67, 64, 67, _, 69, 72, 69, _, 67, _, _, _, _, _] },
+      { inst: 'ranat', vol: 0.07, notes: [55, _, 60, _, 62, _, 64, _, 60, _, 62, _, 64, _, 67, _, 57, _, 60, _, 64, _, 67, _, 64, _, 62, _, 60, _, 62, _] },
+      { inst: 'bass', vol: 0.14, notes: [43, _, _, _, 48, _, _, _, 45, _, _, _, 43, _, 48, _] },
+    ],
+    drums: { thon: 'x.....x.x.......', ching: '....x.......x...', chap: '..............x.' },
+    amb: 'paddy',
+  },
+  // อยุธยายามค่ำ: ระนาดทุ้มช้า ๆ ฆ้องห่าง จิ้งหรีด+กบ
+  ayt_night: {
+    bpm: 70,
+    layers: [
+      { inst: 'ranat', vol: 0.1, notes: [64, _, 67, _, 69, _, _, _, 67, _, 64, _, 62, _, _, _, 60, _, 62, _, 64, _, 67, _, 64, _, _, _, _, _, _, _] },
+      { inst: 'khong', vol: 0.055, notes: [48, _, _, _, _, _, _, _, 55, _, _, _, _, _, _, _, 52, _, _, _, _, _, _, _, 45, _, _, _, _, _, _, _] },
+      { inst: 'pad', vol: 0.03, notes: [45, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, 48, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _] },
+    ],
+    drums: { ching: '........x.......' },
+    amb: 'ayt_night',
+  },
   // เช้าตรู่ (05:00–08:00 ในหมู่บ้าน) – ฆ้องวงไล่โน้ตช้า ๆ ปี่ทอดยาว นกร้อง ไม่มีกลอง
   dawn: {
     bpm: 84,
@@ -409,6 +450,15 @@ export class Sound {
       case 'punch':      N(0.06, { type: 'lowpass', freq: 900, vol: 0.45 }); T(150, 0.08, { type: 'sine', to: 60, vol: 0.4 }); break;
       case 'kick':       T(130, 0.15, { type: 'sine', to: 40, vol: 0.5 }); N(0.08, { type: 'lowpass', freq: 1500, vol: 0.35 }); break;
       case 'thunder':    N(0.8, { type: 'lowpass', freq: 3000, to: 150, vol: 0.6 }); T(60, 0.5, { type: 'sawtooth', vol: 0.15 }); this.klong(0.02, 0.5); break;
+      // ---- ชั้นเสียงสกิลอลังการ (v4) ----
+      case 'skThunder':  N(0.05, { type: 'highpass', freq: 3000, vol: 0.5 }); N(1.6, { type: 'lowpass', freq: 1200, to: 60, vol: 0.55, delay: 0.04 }); T(45, 1.2, { type: 'sine', to: 28, vol: 0.35, delay: 0.05 }); this.klong(0.1, 0.5); break;
+      case 'skWhistle':  T(1800, 0.45, { type: 'sine', to: 300, vol: 0.07 }); N(0.45, { type: 'bandpass', freq: 2500, to: 600, q: 3, vol: 0.12 }); break;
+      case 'skBoom':     T(80, 0.6, { type: 'sine', to: 30, vol: 0.55 }); N(0.9, { type: 'lowpass', freq: 1400, to: 90, vol: 0.5 }); this.klong(0.02, 0.45); break;
+      case 'skWhirl':    for (let i = 0; i < 4; i++) N(0.16, { type: 'bandpass', freq: 900 + i * 350, to: 3200, q: 2, vol: 0.22, delay: i * 0.09 }); T(300, 0.5, { type: 'sawtooth', to: 900, vol: 0.03, lp: 1500 }); break;
+      case 'skRain':     for (let i = 0; i < 8; i++) N(0.05, { type: 'highpass', freq: 2500 + Math.random() * 1500, vol: 0.12, delay: i * 0.035 + Math.random() * 0.02 }); break;
+      case 'skSlam':     T(60, 0.7, { type: 'sine', to: 24, vol: 0.6 }); N(0.6, { type: 'lowpass', freq: 700, to: 60, vol: 0.6 }); N(0.3, { type: 'bandpass', freq: 1800, q: 1, vol: 0.12, delay: 0.05 }); this.klong(0, 0.55); break;
+      case 'skRise':     [0, 4, 7, 12].forEach((n, i) => R(72 + n, i * 0.07, 0.1)); T(400, 0.8, { type: 'sine', to: 1200, vol: 0.04 }); break;
+      case 'skFlash':    N(0.25, { type: 'highpass', freq: 4000, vol: 0.18 }); T(2400, 0.3, { type: 'sine', to: 900, vol: 0.05 }); break;
       case 'meteor':     T(420, 0.35, { type: 'sawtooth', to: 60, vol: 0.12 }); N(0.6, { type: 'lowpass', freq: 1500, to: 100, vol: 0.5, delay: 0.2 }); this.klong(0.25, 0.5); break;
       case 'buff':       [72, 76, 79, 84].forEach((n, i) => R(n, i * 0.07, 0.11)); this.ching(0.28, 0.05); break;
       // ---- โดน/พลาด/ตาย ----
@@ -430,6 +480,14 @@ export class Sound {
       case 'open':       R(79, 0, 0.07); R(84, 0.06, 0.07); break;
       case 'close':      R(84, 0, 0.06); R(79, 0.06, 0.06); break;
       case 'step':       N(0.04, { type: 'lowpass', freq: 500, vol: 0.06 }); break;
+      // เสียงเท้าตามพื้น (New Version)
+      case 'step_grass': N(0.05, { type: 'bandpass', freq: 2600, q: 0.8, vol: 0.035 }); N(0.03, { type: 'lowpass', freq: 400, vol: 0.03, delay: 0.01 }); break;
+      case 'step_stone': T(420 + Math.random() * 80, 0.03, { type: 'triangle', vol: 0.035, curve: 'lin' }); N(0.025, { type: 'highpass', freq: 3000, vol: 0.03 }); break;
+      case 'step_wood':  T(180 + Math.random() * 30, 0.06, { type: 'sine', to: 140, vol: 0.09 }); N(0.03, { type: 'bandpass', freq: 900, q: 2, vol: 0.04 }); break;
+      case 'step_sand':  N(0.07, { type: 'bandpass', freq: 1500, to: 900, q: 0.6, vol: 0.03 }); break;
+      case 'npc':        R(79, 0, 0.08); R(84, 0.07, 0.08); this.ching(0.12, 0.03); break;
+      case 'target':     T(1320, 0.05, { type: 'triangle', vol: 0.05 }); T(1760, 0.06, { type: 'triangle', vol: 0.04, delay: 0.04 }); break;
+      case 'soul':       T(midi(76), 0.6, { type: 'sine', to: midi(88), vol: 0.05, attack: 0.05, vibrato: 10 }); this.ching(0.1, 0.02, this.sfxBus, true); break;
       case 'land':       N(0.08, { type: 'lowpass', freq: 400, vol: 0.18 }); T(90, 0.08, { type: 'sine', to: 50, vol: 0.12 }); break;
       case 'invite':     [79, 84, 88].forEach((n, i) => R(n, i * 0.09, 0.09)); this.khong(midi(72), 0, 0.07); break;
       case 'party':      R(76, 0, 0.08); R(81, 0.07, 0.08); break;
@@ -496,7 +554,16 @@ export class Sound {
   /** เสียงบรรยากาศ: นก/จิ้งหรีด (หมู่บ้าน), ลม/นกฮูก (ป่า), ฟ้าร้อง (เรด) */
   ambience(kind, delay, bus) {
     const r = Math.random();
-    if (kind === 'dawn') {                      // เช้าตรู่: นกร้องถี่ + ไก่ขันไกล ๆ นาน ๆ ที
+    if (kind === 'ayt_town') {                 // ตลาด/วัด: นกกระจิบ, เสียงคนพูดคุยไกล ๆ (ฟอร์แมนต์), ระฆังวัดนาน ๆ ครั้ง, น้ำไหลเบา ๆ
+      if (r < 0.04) { const f = 2600 + Math.random() * 1200; for (let k = 0; k < 2; k++) this.tone(f + k * 200, 0.05, { type: 'sine', to: f + 500, vol: 0.016, delay: delay + k * 0.08, bus }); }
+      else if (r < 0.09) this.tone(160 + Math.random() * 90, 0.25 + Math.random() * 0.3, { type: 'sawtooth', vol: 0.006, delay, bus, bp: 700 + Math.random() * 500, q: 3, vibrato: 6, vibRate: 4, attack: 0.05 });
+      else if (r < 0.093) { this.khong(midi(64), delay, 0.05, bus); this.khong(midi(76), delay + 0.02, 0.02, bus); }
+      else if (r < 0.13) this.noise(0.5, { type: 'lowpass', freq: 600, to: 400, vol: 0.012, delay, bus });
+    } else if (kind === 'ayt_night') {         // จิ้งหรีด + กบ + ลม
+      if (r < 0.16) this.tone(4300 + Math.random() * 300, 0.04, { type: 'square', vol: 0.005, delay, bus, lp: 5200 });
+      else if (r < 0.2) { const f = 380 + Math.random() * 120; this.tone(f, 0.08, { type: 'square', to: f * 0.7, vol: 0.01, delay, bus, lp: 900 }); this.tone(f, 0.08, { type: 'square', to: f * 0.7, vol: 0.01, delay: delay + 0.14, bus, lp: 900 }); }
+      else if (r < 0.215) this.noise(1.6, { freq: 300, to: 800, q: 2, vol: 0.02, delay, bus });
+    } else if (kind === 'dawn') {                      // เช้าตรู่: นกร้องถี่ + ไก่ขันไกล ๆ นาน ๆ ที
       if (r < 0.1) { const f = 2400 + Math.random() * 1400;
         for (let k = 0; k < 2 + Math.floor(Math.random() * 3); k++) this.tone(f + k * 140, 0.06, { type: 'sine', to: f + 500, vol: 0.022, delay: delay + k * 0.09, bus }); }
       else if (r < 0.108) { this.tone(660, 0.18, { type: 'sawtooth', to: 880, vol: 0.012, delay, bus, lp: 1800, attack: 0.03 });

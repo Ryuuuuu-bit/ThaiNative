@@ -42,7 +42,8 @@ export function bakeTileset(scene) {
   fill(T.TALL, '#4f8b3d'); for (let x = 0; x < TILE; x += 3) { const h = 6 + Math.floor(rnd() * 8); px(T.TALL, x, TILE - h, 1, h, '#2f6b28'); px(T.TALL, x + 1, TILE - h + 3, 1, h - 3, '#79b85f'); }
   // ไม้กระดาน (สะพาน)
   fill(T.WOOD, '#9c6a3a'); for (let y = 0; y < TILE; y += 4) { px(T.WOOD, 0, y, TILE, 1, '#5e3a1c'); px(T.WOOD, 0, y + 1, TILE, 2, '#b07c46'); } px(T.WOOD, 7, 0, 1, TILE, '#5e3a1c');
-  scene.textures.addCanvas('td_tiles', c);
+  const tex = scene.textures.addCanvas('td_tiles', c);
+  for (let i = 0; i < N; i++) tex.add(i, 0, i * TILE, 0, TILE, TILE);   // เฟรมรายไทล์ (ใช้กับ tileSprite)
 }
 
 /** ของประกอบฉากที่วาดด้วยโค้ด: เจดีย์ ปรางค์ ต้นไม้ ซากอิฐ */

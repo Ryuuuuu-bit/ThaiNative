@@ -22,6 +22,9 @@ function tex(scene, key, w, h, draw) {
 // ------------------------------------------------------------
 //  พื้นผิว
 // ------------------------------------------------------------
+/** ความลึกของเอฟเฟกต์: ฉากด้านข้างใช้ค่าคงที่ · ฉาก top-down (depth = y) แปลงผ่าน scene.fxDepth (ของบนพื้น/ลอยเหนือทุกอย่าง) */
+const D = (scene, d) => (scene.fxDepth ? scene.fxDepth(d) : d);
+
 export function bakeFx(scene) {
   // เงานุ่ม (วงรีไล่จาง)
   tex(scene, 'fx_shadow', 64, 20, (g, w, h) => {
@@ -127,7 +130,7 @@ const NUM = {
 export function popupNumber(scene, x, y, text, kind = 'normal', opts = {}) {
   const st = NUM[kind] || NUM.normal;
   const t = makeText(scene, x + (Math.random() * 10 - 5), y, text, { fontSize: `${st.size}px`, color: st.color, stroke: st.stroke, strokeThickness: kind === 'crit' ? 4 : 3, fontStyle: '700' })
-    .setOrigin(0.5).setDepth(50);
+    .setOrigin(0.5).setDepth(D(scene, 50));
   const dir = opts.dir ?? (Math.random() < 0.5 ? -1 : 1);
   if (kind === 'crit') {
     t.setScale(0.4);
@@ -148,16 +151,16 @@ export function popupNumber(scene, x, y, text, kind = 'normal', opts = {}) {
 
 /** ประกายกระทบ: ดาว 4 แฉก + วงแหวนขยาย + เศษประกาย */
 export function hitSpark(scene, x, y, { crit = false, tint = 0xffffff, dir = 1 } = {}) {
-  const star = scene.add.image(x, y, 'fx_spark').setDepth(45).setBlendMode(Phaser.BlendModes.ADD).setTint(crit ? 0xffd35c : tint).setScale(crit ? 1.3 : 0.8).setAngle(Math.random() * 90);
+  const star = scene.add.image(x, y, 'fx_spark').setDepth(D(scene, 45)).setBlendMode(Phaser.BlendModes.ADD).setTint(crit ? 0xffd35c : tint).setScale(crit ? 1.3 : 0.8).setAngle(Math.random() * 90);
   scene.tweens.add({ targets: star, scale: crit ? 2.2 : 1.4, alpha: 0, angle: star.angle + 45, duration: crit ? 260 : 170, ease: 'Cubic.easeOut', onComplete: () => star.destroy() });
   if (crit) {
-    const ring = scene.add.image(x, y, 'fx_ring').setDepth(45).setBlendMode(Phaser.BlendModes.ADD).setTint(0xffd35c).setScale(0.2);
+    const ring = scene.add.image(x, y, 'fx_ring').setDepth(D(scene, 45)).setBlendMode(Phaser.BlendModes.ADD).setTint(0xffd35c).setScale(0.2);
     scene.tweens.add({ targets: ring, scale: 1.1, alpha: 0, duration: 300, ease: 'Cubic.easeOut', onComplete: () => ring.destroy() });
   }
   const em = scene.add.particles(x, y, 'particle', {
     speed: { min: 40, max: crit ? 160 : 100 }, angle: { min: dir > 0 ? -60 : 120, max: dir > 0 ? 60 : 240 }, lifespan: 300, gravityY: 300,
     scale: { start: crit ? 0.9 : 0.6, end: 0 }, tint: crit ? [0xffd35c, 0xfff2b0, 0xff9f43] : [0xffffff, 0xfff2b0], quantity: crit ? 12 : 6, emitting: false, blendMode: 'ADD',
-  }).setDepth(44);
+  }).setDepth(D(scene, 44));
   em.explode(crit ? 12 : 6);
   scene.time.delayedCall(400, () => em.destroy());
 }
@@ -167,21 +170,21 @@ export function yantCircle(scene, x, y, { tint = 0xffe9a6, size = 60, ms = 1200,
   const y0 = y - 1;
   // หมุนภาพในคอนเทนเนอร์ที่ถูกบีบแนวตั้ง → วงยันต์นอนราบกับพื้นแบบมีมุมมอง
   const img = scene.add.image(0, 0, 'fx_yant').setBlendMode(Phaser.BlendModes.ADD).setTint(tint).setDisplaySize(size, size);
-  const ring = scene.add.container(x, y0, [img]).setDepth(9).setScale(1, 0.34).setAlpha(0);
+  const ring = scene.add.container(x, y0, [img]).setDepth(D(scene, 9)).setScale(1, 0.34).setAlpha(0);
   scene.tweens.add({ targets: ring, alpha: 0.95, duration: 150 });
   scene.tweens.add({ targets: img, angle: 120, duration: ms, ease: 'Sine.easeInOut' });
   scene.tweens.add({ targets: ring, alpha: 0, duration: 300, delay: ms - 300, onComplete: () => ring.destroy() });
-  const glow = scene.add.image(x, y0, 'fx_glow').setDepth(8.9).setBlendMode(Phaser.BlendModes.ADD).setTint(tint).setDisplaySize(size * 1.2, size * 0.5).setAlpha(0.35);
+  const glow = scene.add.image(x, y0, 'fx_glow').setDepth(D(scene, 8.9)).setBlendMode(Phaser.BlendModes.ADD).setTint(tint).setDisplaySize(size * 1.2, size * 0.5).setAlpha(0.35);
   scene.tweens.add({ targets: glow, alpha: 0, duration: ms, onComplete: () => glow.destroy() });
   if (rise) {                                                        // เสาแสงขึ้นฟ้า (เลเวลอัป)
-    const beam = scene.add.image(x, y0, 'fx_glow').setDepth(9).setBlendMode(Phaser.BlendModes.ADD).setTint(tint).setDisplaySize(44, 140).setOrigin(0.5, 1).setAlpha(0.95);
+    const beam = scene.add.image(x, y0, 'fx_glow').setDepth(D(scene, 9)).setBlendMode(Phaser.BlendModes.ADD).setTint(tint).setDisplaySize(44, 140).setOrigin(0.5, 1).setAlpha(0.95);
     scene.tweens.add({ targets: beam, displayHeight: 230, displayWidth: 20, alpha: 0, duration: 1100, ease: 'Cubic.easeOut', onComplete: () => beam.destroy() });
-    const ring2 = scene.add.image(x, y0 - 14, 'fx_ring').setDepth(9).setBlendMode(Phaser.BlendModes.ADD).setTint(tint).setScale(0.3, 0.12).setAlpha(0.9);
+    const ring2 = scene.add.image(x, y0 - 14, 'fx_ring').setDepth(D(scene, 9)).setBlendMode(Phaser.BlendModes.ADD).setTint(tint).setScale(0.3, 0.12).setAlpha(0.9);
     scene.tweens.add({ targets: ring2, scaleX: 2.4, scaleY: 0.9, alpha: 0, duration: 700, ease: 'Cubic.easeOut', onComplete: () => ring2.destroy() });
     const em = scene.add.particles(x, y0 - 10, 'particle', {
       x: { min: -14, max: 14 }, speedY: { min: -120, max: -50 }, speedX: { min: -8, max: 8 }, lifespan: 900, scale: { start: 0.7, end: 0 },
       tint: [tint, 0xffffff, 0xffb347], quantity: 3, frequency: 30, blendMode: 'ADD',
-    }).setDepth(46);
+    }).setDepth(D(scene, 46));
     scene.time.delayedCall(700, () => em.stop());
     scene.time.delayedCall(1700, () => em.destroy());
   }
