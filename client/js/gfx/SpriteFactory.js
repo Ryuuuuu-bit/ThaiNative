@@ -347,17 +347,26 @@ function bakeEnvironment(scene) {
   px(ctx, 3, 8, 2, 22, '#4d3319'); px(ctx, 1, 2, 6, 7, '#f39c12'); px(ctx, 2, 3, 4, 5, '#fdebd0'); px(ctx, 0, 1, 8, 1, '#7b241c');
   scene.textures.addCanvas('lantern', t.c);
 
-  // ต้นมะพร้าว + กอกล้วย
-  t = makeCanvas(56, 104); ctx = t.ctx;
-  for (let y = 22; y < 104; y += 3) { const x = 26 + Math.sin(y / 18) * 4; px(ctx, x, y, 5, 3, y % 6 ? '#7d5a3a' : '#6b4a2e'); }
-  const frond = (dx, dy, len, droop) => {
-    ctx.strokeStyle = '#1e8449'; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(28, 22);
-    ctx.quadraticCurveTo(28 + dx * len * 0.6, 22 + dy, 28 + dx * len, 22 + droop); ctx.stroke();
-    ctx.strokeStyle = '#27ae60'; ctx.lineWidth = 1; ctx.stroke();
+  // ต้นมะพร้าว (พิกเซลอาร์ต: ลำต้นมีปล้อง ทางใบเป็นก้อนพิกเซลมีขอบเข้ม ลูกมะพร้าว) – ไม่มีกอกล้วยแบนแล้ว
+  t = makeCanvas(64, 104); ctx = t.ctx;
+  const P = (x, y, w, h, c) => px(ctx, Math.round(x), Math.round(y), w, h, c);
+  for (let y = 26; y < 104; y += 2) {                                             // ลำต้นโค้งเล็กน้อย + ปล้อง
+    const x = 30 + Math.sin((y - 26) / 30) * 5, ring = ((y - 26) / 2) % 4 === 0;
+    P(x, y, 6, 2, ring ? '#5a3d22' : '#8a5e38'); P(x, y, 2, 2, ring ? '#4a3018' : '#a8794a'); P(x + 5, y, 1, 2, '#4a3018');
+  }
+  const leaf = (dir, dy, len, droop, dark) => {                                  // ทางใบ: จุดตามเส้นโค้ง วาดเป็นก้อน 3×3 มีขอบเข้ม แล้วไส้สว่าง
+    const pts = [];
+    for (let i = 0; i <= 14; i++) { const u = i / 14; pts.push([31 + dir * len * u, 24 + dy * (1 - (1 - u) ** 2) * -1 + droop * u * u]); }
+    for (const [x, y] of pts) P(x - 2, y - 2, 5, 5, dark ? '#0f3d1f' : '#155a2b');
+    for (const [x, y] of pts) P(x - 1, y - 1, 3, 3, dark ? '#1c6b34' : '#249a47');
+    for (let i = 3; i < 14; i += 2) { const [x, y] = pts[i]; P(x - 1, y - 1, 2, 1, dark ? '#2f8f4a' : '#4fd06a'); P(x, y + 2, 1, 3, dark ? '#0f3d1f' : '#155a2b'); }
   };
-  frond(-1, -10, 26, 10); frond(1, -10, 26, 10); frond(-1, -14, 18, -2); frond(1, -14, 18, -2); frond(-0.3, -16, 14, -10); frond(0.4, -12, 20, 16);
-  px(ctx, 24, 24, 4, 4, '#7e5109'); px(ctx, 29, 25, 4, 4, '#7e5109');
-  for (const [x, c] of [[8, '#27ae60'], [14, '#2ecc71'], [42, '#229954']]) { ctx.fillStyle = c; ctx.beginPath(); ctx.ellipse(x, 90, 6, 14, x > 28 ? 0.4 : -0.4, 0, 7); ctx.fill(); }
+  leaf(-1, 14, 28, 18, true); leaf(1, 14, 28, 18, true);                          // คู่ล่าง (เข้ม ห้อยลง)
+  leaf(-1, 20, 24, 4, false); leaf(1, 20, 24, 4, false);                          // คู่กลาง
+  leaf(-0.45, 24, 16, -6, false); leaf(0.5, 24, 18, -4, false);                   // คู่บน (ชี้ขึ้น)
+  P(31, 8, 2, 14, '#155a2b');                                                     // ยอด
+  P(27, 26, 4, 4, '#6e4b1e'); P(32, 27, 4, 4, '#8a5e2a'); P(29, 30, 3, 3, '#5a3d14');   // ลูกมะพร้าว
+  P(28, 27, 1, 1, '#c9a26b'); P(33, 28, 1, 1, '#c9a26b');
   scene.textures.addCanvas('palm', t.c);
   tex.addCanvas = orig;
 }

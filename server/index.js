@@ -9,7 +9,7 @@ import { Server } from 'socket.io';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { WORLD } from '../shared/constants.js';
-import { MAPS, mapAt, gateNear } from '../shared/data/maps.js';
+import { MAPS, mapAt, gateNear, canTravelFrom } from '../shared/data/maps.js';
 import { sanitizeAppearance } from '../shared/data/appearance.js';
 import { getDerived } from '../shared/character.js';
 import { migrate } from '../shared/charmodel.js';
@@ -214,7 +214,7 @@ io.on('connection', (socket) => {
     const reject = () => socket.emit('player:warp:reject', { x: Math.round(p.x), y: Math.round(p.y) });
     if (d.kind === 'travel') {
       const to = MAPS[d.to];
-      if (!to || to.noTravel || !gateNear(p.x) || p.level < (to.minLv || 1) || p.dead) return reject();
+      if (!to || to.noTravel || !canTravelFrom(p.x) || p.level < (to.minLv || 1) || p.dead) return reject();
       if (map.dungeon) dungeon.leave(p, 'travel');
       warpTo(p, to);
     } else if (d.kind === 'respawn') {

@@ -142,5 +142,7 @@ export function mapAt(x) {
 
 /** ประตูที่ใกล้ที่สุดภายในระยะ r */
 export const gateNear = (x, r = 90) => mapAt(x).gates.find((g) => Math.abs(x - g.x) < r) || null;
+/** วาร์ปได้จากที่ไหน: ทุกจุดในหมู่บ้าน (เขตปลอดภัย) หรือยืนใกล้ประตูของแมพล่า */
+export const canTravelFrom = (x, r = 110) => mapAt(x).id === 'village' || !!gateNear(x, r);
 
 export const regionOf = (map) => REGIONS[map.region] || null;

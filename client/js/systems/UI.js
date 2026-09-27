@@ -47,7 +47,7 @@ export class UI {
     $('#chat').classList.remove('hidden');
 
     // ปุ่มเปิด/ปิดหน้าต่าง
-    document.querySelectorAll('[data-open]').forEach((b) => (b.onclick = () => this.toggle(b.dataset.open)));
+    document.querySelectorAll('[data-open]').forEach((b) => (b.onclick = () => (b.dataset.open === 'map-panel' ? this.scene.world.toggleMap() : this.toggle(b.dataset.open))));
     document.querySelectorAll('.window .close').forEach((b) => (b.onclick = () => b.closest('.window').classList.add('hidden')));
     $('#shop-tabs').onclick = (e) => {
       const b = e.target.closest('button[data-tab]');

@@ -4,7 +4,7 @@
 // ============================================================
 import { WORLD } from '/shared/constants.js';
 import { MONSTERS } from '/shared/data/monsters.js';
-import { MAP_LIST, MAPS, HUNT_MAPS, REGIONS, mapAt, gateNear } from '/shared/data/maps.js';
+import { MAP_LIST, MAPS, HUNT_MAPS, REGIONS, mapAt, gateNear, canTravelFrom } from '/shared/data/maps.js';
 import { makeText } from './util.js';
 
 const $ = (s) => document.querySelector(s);
@@ -132,7 +132,6 @@ export class World {
         g.fillStyle(0xd4ac0d).fillTriangle(x - 7, gy - 34, x + 9, gy - 34, x + 1, gy - 42);
         g.fillStyle(0xc0392b).fillRect(x - 4, gy - 30, 10, 8);
       }
-      for (let x = X0 + 120; x < X1; x += 420 + rnd() * 120) s.add.image(x, gy + 5, 'palm').setOrigin(0.5, 1).setDepth(0).setScale(0.8);
     } else if (R.decor === 'swamp') {
       for (let x = X0; x < X1; x += 90 + rnd() * 80) {                           // แอ่งน้ำ + ใบบัว
         const w = 30 + rnd() * 40;
@@ -226,10 +225,20 @@ export class World {
     this.openTravel();
   }
 
+  /** ปุ่ม M / ปุ่มแผนที่: เปิด-ปิดแผนที่โลก (กดจุดเพื่อวาร์ปได้เลยถ้าอยู่ในหมู่บ้านหรือใกล้ประตู) */
+  toggleMap() {
+    const open = !$('#travel-panel').classList.contains('hidden');
+    if (open) { this.scene.ui.closeAll(); this.scene.sfx.play('close'); return; }
+    this.openTravel();
+  }
+
   openTravel() {
     const s = this.scene, lv = s.player.char.level, cur = s.map.id;
     s.ui.closeAll();
     s.ui.toggle('travel-panel', true);
+    const can = s.player.alive && canTravelFrom(s.player.x, 100);
+    const hint = $('#wmap-hint');
+    if (hint) { hint.textContent = can ? 'กดจุดบนแผนที่เพื่อวาร์ป' : 'ดูได้อย่างเดียว — ในแมพล่าต้องยืนที่ประตูวาร์ป (ซ้าย/ขวาสุด) ก่อนถึงจะวาร์ปได้ · ในหมู่บ้านวาร์ปได้ทุกที่'; hint.classList.toggle('warn', !can); }
     // ตำแหน่งบนแผนที่โลก (สัดส่วน % ของภาพ 16:9) เรียงตามถนนจากหมู่บ้านล่างซ้าย → ภูเขาไฟบนขวา
     const pos = WORLD_MAP_POS;
     const pts = MAP_LIST.flatMap((m) => (pos[m.id] ? [...(WORLD_MAP_WAY[m.id] || []), pos[m.id]] : []));
@@ -270,11 +279,12 @@ export class World {
   travel(toId) {
     const s = this.scene, to = MAPS[toId];
     if (!to || s.warping) return;
-    // ต้องยืนอยู่ที่ประตูและยังมีชีวิต (server ก็ตรวจแบบเดียวกัน → ตำแหน่งไม่หลุดกัน)
-    if (!s.player.alive || !gateNear(s.player.x, 80)) {
+    // วาร์ปได้จากทุกที่ในหมู่บ้าน หรือยืนใกล้ประตูในแมพล่า และยังมีชีวิต (server ตรวจแบบเดียวกัน → ตำแหน่งไม่หลุดกัน)
+    if (!s.player.alive || !canTravelFrom(s.player.x, 100)) {
       s.ui.closeAll();
-      return s.ui.toast('ต้องยืนที่ประตูวาร์ปก่อน', 'warn');
+      return s.ui.toast('ในแมพล่าต้องยืนที่ประตูวาร์ป (ซ้าย/ขวาสุด) ก่อน · ในหมู่บ้านวาร์ปได้ทุกที่', 'warn');
     }
+    if (to.id === s.map.id) { s.ui.closeAll(); return s.ui.toast('คุณอยู่ที่แมพนี้แล้ว'); }
     if (s.player.char.level < (to.minLv || 1)) {
       s.sfx.play('error');
       return s.ui.toast(`🔒 ต้อง Lv.${to.minLv} ขึ้นไปถึงจะไป ${to.nameTh} ได้`, 'warn');
@@ -283,9 +293,10 @@ export class World {
     s.sfx.play('blessing');
     s.combat.burst(s.player.x, s.player.y - 20, 0x76d7c4, 18);
     const cam = s.cameras.main;
-    cam.fadeOut(260, 10, 30, 30);
-    cam.once(Phaser.Cameras.Scene2D.Events.FADE_OUT_COMPLETE, () => {
-      if (!s.player.alive) { s.warping = false; cam.fadeIn(200); return; }   // ตายระหว่างวาร์ป → ยกเลิก
+    let done = false;
+    const arrive = () => {
+      if (done) return; done = true;
+      if (!s.player.alive) { s.warping = false; cam.fadeIn(200, 10, 30, 30); return; }   // ตายระหว่างวาร์ป → ยกเลิก
       s.net.send('player:warp', { kind: 'travel', to: toId, x: Math.round(s.player.x) });
       s.player.setPosition(to.arriveX, WORLD.groundY - 2).setVelocity(0, 0);
       s.setMap(to);
@@ -293,7 +304,10 @@ export class World {
       cam.fadeIn(320, 10, 30, 30);
       s.combat.burst(s.player.x, s.player.y - 20, 0x76d7c4, 18);
       s.warping = false;
-    });
+    };
+    // Phaser 3.90: fadeOut(duration, r, g, b, callback) บังคับเริ่มเฟดใหม่เสมอ → callback ถูกเรียกแน่ แม้เฟดก่อนหน้ายังไม่จบ
+    cam.fadeOut(260, 10, 30, 30, (_c, t) => { if (t >= 1) arrive(); });
+    s.time.delayedCall(700, arrive);                                            // กันเหนียว: เฟดไม่จบก็ไปต่อ
   }
 
   // ------------------------------------------------------------

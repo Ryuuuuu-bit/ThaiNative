@@ -214,20 +214,26 @@ export class SceneFx {
     this.buildForeground();
   }
 
-  /** แถวหน้า: หญ้า/ดอกไม้/กกเงาเข้ม เลื่อนเร็วกว่าพื้นเล็กน้อย → มีมิติ */
+  /** แถวหน้า: หญ้า/ดอกไม้/กกเงาเข้ม เลื่อนเร็วกว่าพื้นเล็กน้อย → มีมิติ
+   *  วาดเป็นเท็กซ์เจอร์ทีละช่วง 960px แล้ววางเป็นภาพ (ไม่ใช้ Graphics ก้อนเดียวยาว 25,000px ที่ต้องวาดใหม่ทุกเฟรม) */
   buildForeground() {
-    const s = this.scene, gy = WORLD.groundY;
-    const g = s.add.graphics().setDepth(6.6).setAlpha(0.9);
+    const s = this.scene, gy = WORLD.groundY, CH = 960, H = 16;
     let seed = 99; const rnd = () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
-    for (let x = WORLD.minX; x < WORLD.width; x += 5 + rnd() * 9) {
-      const r = rnd();
-      const inTown = x < WORLD.townEndX;
-      const col = inTown ? (r < 0.15 ? 0xf4a3c4 : r < 0.25 ? 0xffe27a : 0x2f7a3a) : 0x1f4a2a;
-      const h = 4 + rnd() * 7;
-      if (r < 0.25 && inTown) { g.fillStyle(col, 1); g.fillRect(x, gy + 1 - h, 1, h); g.fillCircle(x + 0.5, gy - h, 1.6); }        // ดอกไม้
-      else { g.fillStyle(col, 1); g.fillRect(x, gy + 1 - h, 1, h); if (rnd() < 0.5) g.fillRect(x + 2, gy + 3 - h, 1, h - 2); }      // หญ้า
+    this.fg = [];
+    for (let cx = WORLD.minX; cx < WORLD.width; cx += CH) {
+      const g = s.make.graphics({ x: 0, y: 0, add: false });
+      for (let x = 0; x < CH; x += 5 + rnd() * 9) {
+        const r = rnd(), inTown = cx + x < WORLD.townEndX;
+        const col = inTown ? (r < 0.15 ? 0xf4a3c4 : r < 0.25 ? 0xffe27a : 0x2f7a3a) : 0x1f4a2a;
+        const h = 4 + rnd() * 7, base = H - 1;
+        if (r < 0.25 && inTown) { g.fillStyle(col, 1); g.fillRect(x, base - h, 1, h); g.fillCircle(x + 0.5, base - h - 1, 1.6); }   // ดอกไม้
+        else { g.fillStyle(col, 1); g.fillRect(x, base - h, 1, h); if (rnd() < 0.5) g.fillRect(x + 2, base - h + 2, 1, h - 2); }  // หญ้า
+      }
+      const key = `fx_fg_${cx}`;
+      if (!s.textures.exists(key)) g.generateTexture(key, CH, H);
+      g.destroy();
+      this.fg.push(s.add.image(cx, gy + 2, key).setOrigin(0, 1).setDepth(6.6).setAlpha(0.9));
     }
-    this.fg = g;
   }
 
   update(time, player, maxHp) {

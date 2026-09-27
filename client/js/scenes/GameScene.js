@@ -181,7 +181,7 @@ export class GameScene extends Phaser.Scene {
     this.shrineSprite = img('spirit_house', 240, 2, { sink: 3, shadowW: 0.7 });
     this.shrineX = 240; this.shrineY = gy - (this.shrineSprite?.height || 48) + 6;
     label(240, gy - (this.textures.get('spirit_house').getSourceImage().height || 48) - 4, 'ศาลพระภูมิ');
-    img('palm', 300, 0, { shadowW: 0.4 }); img('palm', 640, 0, { flip: true, shadowW: 0.4 });
+    // (เอาต้นมะพร้าววาดด้วย canvas ออก – ดูแบนไม่เข้ากับภาพพิกเซล; ฉากหลังมีเงามะพร้าวอยู่แล้ว)
     const h1 = img('house', 420, 1);
     if (h1) label(420, gy - h1.height - 4, 'เรือนไทย', '#e5c07b');
     const sala = img('sala', 560, 1);
@@ -263,7 +263,7 @@ export class GameScene extends Phaser.Scene {
     kb.on('keydown-J', () => this.village.openQuests());      // สมุดเควส
     // ↓ = ลงจากแพลตฟอร์มไม้ (ทะลุลงไป 0.3 วิ)
     kb.on('keydown-DOWN', () => { if (this.player.body.blocked.down || this.player.body.touching.down) this.player.dropUntil = this.time.now + 300; });
-    kb.on('keydown-M', () => this.ui.toggle('map-panel'));     // แผนที่โลก
+    kb.on('keydown-M', () => this.world.toggleMap());           // แผนที่โลก (ภาพ + จุดวาร์ป)
     kb.on('keydown-K', () => this.ui.toggle('skill-panel'));   // Skill Tree
     kb.on('keydown-P', () => { this.ui.toggle('social-panel'); this.social.renderSocialPanel(); });   // ปาร์ตี้ / ผู้เล่น
     kb.on('keydown-C', () => this.ui.toggle('stats-panel'));
@@ -422,8 +422,6 @@ export class GameScene extends Phaser.Scene {
     this.farShine = this.add.graphics().setDepth(0.43);
     // ครัวป้าสา
     if (!img('food_stall', -262, 1)) img('stall', -262, 1, { tint: 0xf5cba7 });
-    // ต้นมะพร้าวริมน้ำ
-    img('palm', -460, 0, { shadowW: 0.4 }); img('palm', -120, 0, { flip: true, shadowW: 0.4 });
   }
 
   // ------------------------------------------------------------
