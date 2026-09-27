@@ -32,7 +32,9 @@ import { bakeGround, makeWater, TdAtmosphere, bakeTdFx, TdVfx, TdMinimap } from 
 
 const $ = (s) => document.querySelector(s);
 const OUTFIT_IDS = ['mohom', 'ruenton', 'jongkraben', 'rajpatan', 'chaona', 'silk', 'warrior', 'hunter', 'isan', 'mahadlek'];
-const SPEED = 92;                                   // ความเร็วเดิน (px/วิ) – ตรงกับ server/td.js
+const SPEED = 92;
+/** ระบบ Auto: หาผีเองในรัศมีนี้รอบตัว (px ≈ 10 ช่อง) */
+const AUTO_RADIUS = 160;                                   // ความเร็วเดิน (px/วิ) – ตรงกับ server/td.js
 const SPAWN = TD_SPAWN;
 const HP_POTS = ['hp_s', 'hp_m', 'pot_aloe', 'pot_turmeric'];
 const MP_POTS = ['mp_s', 'mp_m', 'pot_anchan'];
@@ -328,11 +330,24 @@ export class TopDownScene extends Phaser.Scene {
     return m;
   }
 
-  setTarget(m) {
+  setTarget(m, auto = false) {
     if (!m.alive) return;
     this.player.target = m; this.player.path = [];
     this.ui.setTarget({ def: { ...m.def, hp: m.maxHp }, get hp() { return m.hp; }, get alive() { return m.alive; } });
-    this.sfx.play('target');
+    if (!auto) this.sfx.play('target');
+  }
+
+  /** Auto: ผีที่ใกล้ที่สุดในรัศมีรอบตัว (นอกเมืองเท่านั้น) */
+  autoPick() {
+    const p = this.player;
+    if (this.inTown()) return null;
+    let best = null, bd = AUTO_RADIUS;
+    for (const m of this.mobs) {
+      if (!m.alive || m.visible === false) continue;
+      const d = dist(p, m);
+      if (d < bd) { bd = d; best = m; }
+    }
+    return best;
   }
 
   setMobVisible(m, on) {
@@ -554,7 +569,7 @@ export class TopDownScene extends Phaser.Scene {
   toggleAutoSkill(on = !this.settings.autoSkill) {
     this.settings.autoSkill = on; saveSettings(this.settings);
     $('#auto-skill')?.classList.toggle('on', on);
-    this.ui.toast(on ? '⚡ Auto Skill: เปิด — ร่ายสกิลในแถบ Q–T อัตโนมัติระหว่างตีเป้า' : 'Auto Skill: ปิด', on ? 'ok' : '', 1800);
+    this.ui.toast(on ? '⚡ Auto: เปิด — ตีผีรอบตัวเอง + ร่ายสกิลในแถบ 1–0 อัตโนมัติ (เดิน/คลิกพื้นเพื่อพักชั่วคราว)' : 'Auto: ปิด', on ? 'ok' : '', 2200);
   }
 
   // ------------------------------------------------------------
@@ -745,6 +760,11 @@ export class TopDownScene extends Phaser.Scene {
           if (dd > range) { if (!p.path.length || time > (p.nextPath || 0)) { p.nextPath = time + 400; p.path = this.findPath(p.x, p.y - 2, m.x, m.y); } }
           else { p.path = []; if (time >= p.nextAtk && p.st !== 'attack') this.playerAttack(m, time); }
         }
+      } else if (this.settings.autoSkill && !p.path.length && !this.recalling && time > (p.nextAuto || 0)) {
+        // Auto: ไม่มีเป้า/ไม่ได้สั่งเดิน → ล็อกผีที่ใกล้ที่สุดในรัศมีรอบตัวแล้วตีเอง
+        p.nextAuto = time + 300;
+        const m = this.autoPick();
+        if (m) this.setTarget(m, true);
       }
       if (!vx && !vy && p.path.length) {
         const n = p.path[0], dx = n.x - p.x, dy = n.y - (p.y - 2), d = Math.hypot(dx, dy);
@@ -761,6 +781,13 @@ export class TopDownScene extends Phaser.Scene {
     } else p.setVelocity(0, 0);
     p.setDepth(p.y);
     this.nameTag.setPosition(p.x, p.y - p.displayHeight - 3);
+    // วงรัศมี Auto (จางๆ ใต้เท้า)
+    if (!this.autoRing) {
+      this.autoRing = this.add.graphics().setDepth(1);
+      this.autoRing.lineStyle(1, 0xffd35c, 0.35).strokeEllipse(0, 0, AUTO_RADIUS * 2, AUTO_RADIUS * 2);
+      this.autoRing.fillStyle(0xffd35c, 0.04).fillEllipse(0, 0, AUTO_RADIUS * 2, AUTO_RADIUS * 2);
+    }
+    this.autoRing.setPosition(p.x, p.y).setVisible(!!this.settings.autoSkill && p.alive && !this.inTown());
     for (const sh of this.shadows) sh.img.setPosition(sh.obj.x, sh.obj.y + 1).setVisible(sh.obj.visible && sh.obj.alpha > 0.2);
     for (const m of this.mobs) { if (this.econ.server) this.updateMobOnline(m, dt); else this.updateMobLocal(m, time); this.drawMob(m); }
     this.remotes.forEach((r) => r.update(dt));
