@@ -54,9 +54,10 @@ export const FACES = [
   { nameTh: 'ประแป้งดินสอพอง', eyes: 'round', mouth: 'smile', brow: false, blush: false, mark: 'powder' },
 ];
 
-/** ชุดเริ่มต้นของทุกคน: ชุดลายขิดอีสาน (เปลี่ยนชุดได้ที่ร้านแม่ช้อยในเมือง) */
-export const START_OUTFIT = 8;
-export const DEFAULT_APPEARANCE = { gender: 'male', outfit: START_OUTFIT, hair: 1, face: 0, job: 'boxer', weapon: null, armor: null, path: null };
+/** ชุดตัวละคร (มีท่าครบ ยืน/เดิน/โจมตี/ตาย): ชาย = ชุดม่อฮ่อม · หญิง = ชุดไทยเรือนต้น — กำหนดตามเพศ เปลี่ยนไม่ได้ */
+export const GENDER_OUTFIT = { male: 0, female: 1 };
+export const startOutfit = (gender) => GENDER_OUTFIT[gender === 'female' ? 'female' : 'male'];
+export const DEFAULT_APPEARANCE = { gender: 'male', outfit: 0, hair: 1, face: 0, job: 'boxer', weapon: null, armor: null, path: null };
 
 const idx = (v, n) => (Number.isInteger(v) && v >= 0 && v < n ? v : 0);
 const itemOf = (id, type) => (typeof id === 'string' && ITEMS[id]?.type === type ? id : null);
@@ -70,7 +71,7 @@ export function sanitizeAppearance(a = {}) {
   const weapon = itemOf(a.weapon, 'weapon');
   return {
     gender: a.gender === 'female' ? 'female' : 'male',
-    outfit: idx(a.outfit, OUTFITS.length),
+    outfit: startOutfit(a.gender),
     hair: idx(a.hair, HAIRSTYLES.length),
     face: idx(a.face, FACES.length),
     job: weaponStyle(weapon),

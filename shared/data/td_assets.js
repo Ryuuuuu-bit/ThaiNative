@@ -29,7 +29,7 @@ export const MOB_ANIMS = {
 export const NPC_ANIMS = { idle: { frames: 4, rate: 4, loop: true, prompt: 'idle breathing' } };
 
 // ------------------------------------------------------------
-//  ตัวละครผู้เล่น: 2 เพศ × 10 ชุด (ชุดแยกทุกแบบ) — ผม/อาวุธ แยกชั้น (ผมย้อมสีด้วยโค้ด อาวุธเป็น overlay 8 ทิศ)
+//  ตัวละครผู้เล่น: ชาย = ชุดม่อฮ่อม · หญิง = ชุดไทยเรือนต้น (ชุดอื่นเลิกใช้) — ผม/อาวุธ แยกชั้น (ผมย้อมสีด้วยโค้ด อาวุธเป็น overlay 8 ทิศ)
 // ------------------------------------------------------------
 const OUTFIT_PROMPTS = [
   ['mohom',    'indigo Mo Hom farmer shirt and pants'],
@@ -43,7 +43,7 @@ const OUTFIT_PROMPTS = [
   ['isan',     'orange Isan khit-pattern cloth outfit'],
   ['mahadlek', 'dark blue royal page uniform with gold trim'],
 ];
-export const HEROES = ['male', 'female'].flatMap((g) => OUTFIT_PROMPTS.map(([o, desc], i) => ({
+export const HEROES = ['male', 'female'].flatMap((g) => OUTFIT_PROMPTS.map(([o, desc], i) => ({ o, desc, i })).filter(({ i }) => i === (g === 'female' ? 1 : 0)).map(({ o, desc, i }) => ({
   id: `hero_${g}_${o}`, kind: 'hero', gender: g, outfit: i, phase: 1, size: SIZE.hero, anims: HERO_ANIMS,
   prompt: `young Thai ${g === 'male' ? 'man' : 'woman'} adventurer wearing ${desc}, short dark hair, bare hands, ${STYLE}`,
 })));

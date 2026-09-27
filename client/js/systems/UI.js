@@ -885,11 +885,11 @@ export class UI {
     s.sfx.play('click');
   }
 
-  /** ร้านแม่ช้อย: ย้อมสีผม / เปลี่ยนชุดพื้นฐาน */
+  /** ร้านแม่ช้อย: ย้อมสีผม */
   renderDye(el) {
     const c = this.char, a = c.appearance;
     const row = (part, list, th) => `<div class="dye-row"><b>${th}</b> <span class="meta">ตอนนี้: ${esc(list[a[part]]?.nameTh || '')}</span><div class="dye-opts">${list.map((o, i) => `<button data-dye="${part}" data-v="${i}" class="${a[part] === i ? 'active' : ''}" title="${esc(o.nameTh)}">${i + 1}</button>`).join('')}</div></div>`;
-    el.innerHTML = `<p class="hint">ย้อมสีผม / เปลี่ยนชุดพื้นฐาน ครั้งละ ฿${DYE_PRICE} · กด 👁 เพื่อลองดูก่อน (ไม่เสียเงิน)</p>` + row('hair', HAIRSTYLES, '💇 สีผม') + row('outfit', OUTFITS, '👘 ชุดพื้นฐาน');
+    el.innerHTML = `<p class="hint">ย้อมสีผม ครั้งละ ฿${DYE_PRICE} · ชุดตัวละครกำหนดตามเพศ (อยากแต่งตัวใช้ชุดแต่งตัวจากแท็บร้าน)</p>` + row('hair', HAIRSTYLES, '💇 สีผม');
     el.querySelectorAll('[data-dye]').forEach((b) => {
       b.onmouseenter = () => this.scene.player.previewAppearance({ ...a, [b.dataset.dye]: +b.dataset.v }, 1500);
       b.onclick = () => {

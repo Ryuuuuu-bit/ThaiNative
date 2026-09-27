@@ -482,8 +482,8 @@ function recall(c, { to }) {
   return OK('', { warp: 'home' });
 }
 function dye(c, { part, v }, ctx) {
-  const N = { hair: HAIRSTYLES.length, outfit: OUTFITS.length }[part];
-  if (!N) return NO('');
+  const N = { hair: HAIRSTYLES.length }[part];
+  if (!N) return NO(part === 'outfit' ? 'ชุดตัวละครกำหนดตามเพศ เปลี่ยนไม่ได้ (ใช้ชุดแต่งตัวแทนได้)' : '');
   v = int(v, 0, N - 1, -1);
   if (v < 0) return NO('');
   if (ctx.x != null && !nearNpc(ctx.x, 'tailor')) return NO('ต้องยืนคุยกับแม่ช้อยก่อน');
