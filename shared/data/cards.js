@@ -42,6 +42,22 @@ const DEFS = {
   mae_nak:         { slot: 'accessory', bonus: { VIT: 3, hpMul: 0.06 },      flavor: 'รอคอยไม่มีวันสิ้นสุด' },
   pu_som:          { slot: 'accessory', bonus: { CRI: 2 }, econ: { gold: 15, drop: 5 }, flavor: 'ทองท่วมตัวแต่ไม่เคยได้ใช้' },
   chalawan:        { slot: 'armor',     bonus: { def: 10, hpMul: 0.12 },     flavor: 'เกล็ดพญาจระเข้แกร่งดั่งเหล็ก' },
+  // ---- แดนต่าง ๆ (Lv.30–99) ----
+  kumphan:         { slot: 'armor',     bonus: { hp: 160, VIT: 3 },           flavor: 'ผิวยักษ์หนาดั่งหินผา' },
+  khotchasi:       { slot: 'weapon',    bonus: { atk: 18, STR: 3 },           flavor: 'แรงช้างผสานสิงห์' },
+  hatsadiling:     { slot: 'accessory', bonus: { DEX: 4, eva: 6 },            flavor: 'ปีกพายุแห่งหิมพานต์' },
+  makkaliphon:     { slot: 'accessory', bonus: { INT: 4, mp: 80 },            flavor: 'มนต์หลงเสน่ห์นารีผล' },
+  kumphakan:       { slot: 'weapon',    bonus: { STR: 6, patkMul: 0.12, crit: 0.03 }, flavor: 'หอกโมกขศักดิ์ทะลวงฟ้า' },
+  nak_phrai:       { slot: 'armor',     bonus: { def: 12, mpMul: 0.08 },      flavor: 'เกล็ดนาคพรายเย็นเยียบ' },
+  ngueak_phi:      { slot: 'weapon',    bonus: { matk: 26, INT: 3 },          flavor: 'เพลงล่อวิญญาณใต้บาดาล' },
+  pla_khiao:       { slot: 'accessory', bonus: { crit: 0.04, acc: 10 },       flavor: 'เขี้ยวแก้วแหลมคม' },
+  tahan_nak:       { slot: 'armor',     bonus: { def: 16, hp: 200 },          flavor: 'เกราะเกล็ดเงินองครักษ์นาคราช' },
+  anantanak:       { slot: 'armor',     bonus: { VIT: 6, hpMul: 0.14, def: 12 }, flavor: 'เจ็ดเศียรคุ้มภัย' },
+  niraiyaban:      { slot: 'weapon',    bonus: { atk: 30, critDmg: 0.15 },    flavor: 'หอกเหล็กเผาไฟนรก' },
+  pret_khem:       { slot: 'accessory', bonus: {}, econ: { exp: 8 },          flavor: 'หิวกระหายความรู้ชั่วกัลป์' },
+  phi_ton_ngiw:    { slot: 'armor',     bonus: { def: 20, hp: 260, STR: 2 },  flavor: 'หนามเหล็กต้นงิ้วสะท้อนกลับ' },
+  yommathut:       { slot: 'accessory', bonus: {}, econ: { drop: 12, gold: 10 }, flavor: 'บ่วงบาศคล้องของมีค่า' },
+  phaya_yom:       { slot: 'weapon',    bonus: { STR: 5, INT: 5, patkMul: 0.14, matkMul: 0.14 }, flavor: 'คำพิพากษาแห่งยมโลก' },
 };
 
 /** รายการการ์ดทั้งหมด (เรียงตามเลเวลผี) */
@@ -88,7 +104,9 @@ export const BOOK_TIERS = [
   { n: 10, bonus: { STR: 1, DEX: 1, INT: 1, CRI: 1, VIT: 1 }, text: 'สถานะทุกตัว +1' },
   { n: 15, econ: { exp: 5 }, text: 'EXP +5%' },
   { n: 20, bonus: { STR: 2, DEX: 2, INT: 2, CRI: 2, VIT: 2, crit: 0.02 }, text: 'สถานะทุกตัว +2 · คริติคอล +2%' },
-  { n: 23, bonus: { patkMul: 0.05, matkMul: 0.05 }, text: 'ครบทุกใบ: ATK/MATK +5%' },
+  { n: 23, bonus: { patkMul: 0.05, matkMul: 0.05 }, text: 'ATK/MATK +5%' },
+  { n: 30, econ: { exp: 5, drop: 5 }, bonus: { hp: 200 }, text: 'EXP +5% · โอกาสดรอป +5% · HP +200' },
+  { n: 38, bonus: { STR: 5, DEX: 5, INT: 5, CRI: 5, VIT: 5, patkMul: 0.05, matkMul: 0.05 }, text: 'ครบทุกใบ: สถานะทุกตัว +5 · ATK/MATK +5%' },
 ];
 export const bookCount = (c) => Object.keys(c?.cardBook || {}).filter((id) => CARD_BY_ID[id]).length;
 

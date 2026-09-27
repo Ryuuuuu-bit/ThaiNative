@@ -12,7 +12,7 @@ SIZE = 80
 
 
 def monsters():
-    src = subprocess.check_output(['node', '-e', "import('./shared/data/monsters.js').then(({MONSTERS})=>console.log(JSON.stringify(Object.fromEntries(Object.entries(MONSTERS).map(([k,m])=>[k,{lv:m.level,pal:m.palette||null,beh:m.behavior}])))))"], cwd=ROOT)
+    src = subprocess.check_output(['node', '-e', "import('./shared/data/monsters.js').then(({MONSTERS})=>console.log(JSON.stringify(Object.fromEntries(Object.entries(MONSTERS).map(([k,m])=>[k,{lv:m.level,pal:m.palette||null,beh:m.behavior,d8:m.d8||null,tint:m.tint||null,realm:!!m.realm}])))))"], cwd=ROOT)
     return json.loads(src)
 
 
@@ -51,6 +51,25 @@ def from_src(mon):
     return fit(Image.open(f).convert('RGBA')) if os.path.exists(f) else None
 
 
+def from_borrow(mon, m):
+    """ผีแดนใหม่ที่ยังไม่มีภาพจริง: ยืมภาพ 8 ทิศของผีอื่น (d8) + ย้อมสี (tint) แบบเดียวกับในเกม"""
+    if not (m.get('realm') and m.get('d8')):
+        return None
+    im = from_td(m['d8'])
+    if im is None:
+        return None
+    t = m.get('tint')
+    if t:
+        r, g, b = (t >> 16) & 255, (t >> 8) & 255, t & 255
+        px = im.load()
+        for y in range(im.height):
+            for x in range(im.width):
+                R, G, B, A_ = px[x, y]
+                if A_:
+                    px[x, y] = (R * r // 255, G * g // 255, B * b // 255, A_)
+    return im
+
+
 def hexc(h, a=255):
     h = h.lstrip('#'); return (int(h[0:2], 16), int(h[2:4], 16), int(h[4:6], 16), a)
 
@@ -83,7 +102,7 @@ def main():
     man = json.load(open(os.path.join(A, 'manifest.json')))
     mons = monsters()
     for mon, m in mons.items():
-        im = from_td(mon) or from_side(mon, man) or from_src(mon) or spirit(mon, m['pal'])
+        im = from_td(mon) or from_side(mon, man) or from_src(mon) or from_borrow(mon, m) or spirit(mon, m['pal'])
         src = 'td' if os.path.exists(os.path.join(A, 'td', f'mob_{mon}')) else 'side' if man.get('monsters', {}).get(mon) else 'pixellab' if os.path.exists(os.path.join(os.path.dirname(__file__), 'card_src', f'{mon}.png')) else 'spirit'
         im.save(os.path.join(OUT, f'{mon}.png'), optimize=True)
         print(f'{mon:16s} Lv.{m["lv"]:<3} {src}')

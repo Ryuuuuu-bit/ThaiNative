@@ -255,3 +255,4 @@ body.touch #skillbar .skill .hb-x { opacity: .85; width: 2.8cqh; height: 2.8cqh;
 .warp-card.here { border-color: #2ecc71; }
 .warp-card.lock { opacity: .6; }
 .warp-card.lock button { cursor: not-allowed; }
+body.td-mode.win-open #boss-bar { visibility: hidden; }   /* เปิดหน้าต่างอยู่ → ซ่อนแถบบอสชั่วคราว (ข้อความแจ้งเตือนใช้ที่ด้านบนแทน) */

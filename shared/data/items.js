@@ -29,10 +29,10 @@ const ITEMS_BASE = {
   // ---------- เกราะ / เครื่องประดับ ----------
   yant_shirt:  { nameTh: 'เสื้อยันต์',         type: 'armor', icon: '👕', price: 150, bonus: { def: 5, hp: 30 }, look: { top: '#f2efe6', bottom: '#5d4037' } },
   // ชุดประจำสาย (ได้จากผู้ใหญ่ชัยเมื่อเลือกสายหลัก Lv.10) – look = สีชุดที่แสดงบนตัวละคร
-  armor_swordman: { nameTh: 'เกราะนักรบบางระจัน', type: 'armor', icon: '🛡️', sell: 60, path: 'swordman', bonus: { def: 9, hp: 70 }, look: { top: '#922b21', bottom: '#4a2511' } },
-  armor_mage:     { nameTh: 'ผ้ายันต์หมอผีเจ็ดป่าช้า', type: 'armor', icon: '🧥', sell: 60, path: 'mage', bonus: { def: 5, mp: 50, matk: 6 }, look: { top: '#1c1c1c', bottom: '#4a235a' } },
-  armor_archer:   { nameTh: 'ชุดพรานไพรลายพราง', type: 'armor', icon: '🦺', sell: 60, path: 'archer', bonus: { def: 6, hp: 40, DEX: 2 }, look: { top: '#3d6b35', bottom: '#5b4a2e' } },
-  armor_boxer:    { nameTh: 'กางเกงมวยผ้าประเจียด', type: 'armor', icon: '🩳', sell: 60, path: 'boxer', bonus: { def: 7, hp: 60, STR: 2 }, look: { top: '#c0392b', bottom: '#c0392b' } },
+  armor_swordman: { nameTh: 'เกราะนักรบบางระจัน', type: 'armor', icon: '🛡️', price: 350, path: 'swordman', bonus: { def: 9, hp: 70 }, look: { top: '#922b21', bottom: '#4a2511' } },
+  armor_mage:     { nameTh: 'ผ้ายันต์หมอผีเจ็ดป่าช้า', type: 'armor', icon: '🧥', price: 350, path: 'mage', bonus: { def: 5, mp: 50, matk: 6 }, look: { top: '#1c1c1c', bottom: '#4a235a' } },
+  armor_archer:   { nameTh: 'ชุดพรานไพรลายพราง', type: 'armor', icon: '🦺', price: 350, path: 'archer', bonus: { def: 6, hp: 40, DEX: 2 }, look: { top: '#3d6b35', bottom: '#5b4a2e' } },
+  armor_boxer:    { nameTh: 'กางเกงมวยผ้าประเจียด', type: 'armor', icon: '🩳', price: 350, path: 'boxer', bonus: { def: 7, hp: 60, STR: 2 }, look: { top: '#c0392b', bottom: '#c0392b' } },
   takrut:      { nameTh: 'ตะกรุดโทน',        type: 'accessory', icon: '📿', price: 220, bonus: { def: 2, CRI: 4 } },
   prajiad:     { nameTh: 'ประเจียดแขน',       type: 'accessory', icon: '🎗️', price: 200, bonus: { STR: 2, DEX: 2 } },
   // เครื่องรางพระเครื่อง (ลุงดำ)
@@ -248,22 +248,22 @@ export const SHOPS = {
   kru_sword: {
     nameTh: 'ครูเหม สำนักดาบกรุงศรี', job: 'swordman',
     greeting: 'ดาบดีต้องคู่กับใจนิ่ง… เลือกอาวุธและเกราะที่เหมาะกับฝีมือเจ้าเถิด',
-    stock: gearShopStock('swordman'), tabs: ['buy', 'sell'],
+    stock: ['armor_swordman', ...gearShopStock('swordman')], tabs: ['buy', 'sell'],
   },
   kru_mage: {
     nameTh: 'หลวงตาเผือก หมอธรรมป่าช้า', job: 'mage',
     greeting: 'อาคมจะขลังได้ ต้องมีของดีติดตัว… มาดูเครื่องรางของข้าก่อน',
-    stock: gearShopStock('mage'), tabs: ['buy', 'sell'],
+    stock: ['armor_mage', ...gearShopStock('mage')], tabs: ['buy', 'sell'],
   },
   kru_archer: {
     nameTh: 'พรานแก้ว ค่ายพรานไพร', job: 'archer',
     greeting: 'ตาไว มือนิ่ง ลมไม่แรง… ธนูดี ๆ ต้องแบบนี้เลยจ้ะ',
-    stock: gearShopStock('archer'), tabs: ['buy', 'sell'],
+    stock: ['armor_archer', ...gearShopStock('archer')], tabs: ['buy', 'sell'],
   },
   kru_boxer: {
     nameTh: 'ครูแดง ค่ายมวยกรุงศรี', job: 'boxer',
     greeting: 'ไหว้ครูให้ดี ใจสู้ให้ถึง! อุปกรณ์มวยครบ มาเลือกเอา',
-    stock: gearShopStock('boxer'), tabs: ['buy', 'sell'],
+    stock: ['armor_boxer', ...gearShopStock('boxer')], tabs: ['buy', 'sell'],
   },
   pa_sa: {
     nameTh: 'ป้าสา ครัวริมน้ำ',
