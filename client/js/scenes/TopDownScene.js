@@ -14,6 +14,10 @@ import { makeText } from '../systems/util.js';
 import { sound } from '../systems/Sound.js';
 import { loadSettings } from '../systems/Settings.js';
 import { TILE, MAP_W, MAP_H, T, RIVER, bakeTileset, bakeProps, buildLayout } from '../topdown/AyutthayaMap.js';
+import { dirFromVector, playDir, registerDir8, texKey } from '../topdown/Dir8.js';
+import { ALL_ASSETS } from '/shared/data/td_assets.js';
+
+const OUTFIT_IDS = ['mohom', 'ruenton', 'jongkraben', 'rajpatan', 'chaona', 'silk', 'warrior', 'hunter', 'isan', 'mahadlek'];
 
 const $ = (s) => document.querySelector(s);
 const SPEED = 92;            // ความเร็วเดิน (px/วิ)
@@ -24,7 +28,22 @@ const rand = (a, b) => a + Math.random() * (b - a);
 export class TopDownScene extends Phaser.Scene {
   constructor() { super('ayutthaya'); }
 
+  /** โหลดภาพ 8 ทิศที่มีแล้ว (client/assets/td/manifest.json เขียนโดยตัวนำเข้าภาพ PixelLab) – ไม่มีไฟล์ก็เล่นได้ด้วยภาพเดิม */
+  preload() {
+    this.load.json('td_manifest', '/assets/td/manifest.json');
+    this.load.once('filecomplete-json-td_manifest', (_k, _t, data) => {
+      for (const [id, anims] of Object.entries(data?.sprites || {})) for (const anim of anims) this.load.image(texKey(id, anim), `/assets/td/${id}/${anim}.png`);
+      for (const id of data?.images || []) this.load.image(id, `/assets/td/${id}.png`);
+    });
+    this.load.on('loaderror', () => {});   // ยังไม่มี manifest/ภาพ → ข้าม
+  }
+
+  registerTdAssets() {
+    for (const a of ALL_ASSETS) if (a.anims) registerDir8(this, { id: a.id, anims: a.anims });
+  }
+
   create({ char }) {
+    this.registerTdAssets();
     this.char = char;
     this.sfx = sound; this.settings = loadSettings(); this.sfx.applySettings(this.settings);
     this.physics.world.gravity.y = 0;
@@ -99,7 +118,7 @@ export class TopDownScene extends Phaser.Scene {
     const c = this.char, key = bakeCharacter(this, c.appearance);
     const p = this.physics.add.sprite(60 * TILE, 57 * TILE, key, 'idle_0').setOrigin(0.5, 1).setDepth(57 * TILE);
     p.body.setSize(12, 8).setOffset((p.width - 12) / 2, p.height - 8);
-    p.texKey = key; p.facing = 1; p.state = 'idle'; p.path = []; p.target = null; p.nextAtk = 0; p.hp = c.hp; p.alive = true;
+    p.texKey = key; p.legacyKey = key; p.d8id = `hero_${c.appearance.gender}_${OUTFIT_IDS[c.appearance.outfit] || 'mohom'}`; p.dir = 'south'; p.facing = 1; p.state = 'idle'; p.path = []; p.target = null; p.nextAtk = 0; p.hp = c.hp; p.alive = true;
     p.play(`${key}:idle`);
     this.addShadow(p, 22);
     this.player = p;
@@ -117,12 +136,7 @@ export class TopDownScene extends Phaser.Scene {
     this.shadows.push({ img, obj, w });
   }
 
-  playerAnim(name, restart = false) {
-    const p = this.player, key = `${p.texKey}:${name}`;
-    if (!this.anims.exists(key)) return;
-    if (p.anims.currentAnim?.key === key && !restart) return;
-    p.play(key, !restart);
-  }
+  playerAnim(name, restart = false) { const p = this.player; playDir(p, name, p.dir || 'south', restart); }
 
   // ------------------------------------------------------------
   //  NPC
@@ -131,7 +145,7 @@ export class TopDownScene extends Phaser.Scene {
     this.npcs = this.layout.npcs.map((n) => {
       const real = this.textures.exists(n.key), key = real ? n.key : 'npc_maekha';
       const spr = this.add.sprite(n.x, n.y, key, 'idle_0').setOrigin(0.5, 1).setDepth(n.y);
-      spr.play(`${key}:idle`);
+      spr.legacyKey = key; spr.d8id = n.key; playDir(spr, 'idle', 'south');
       this.addShadow(spr, 20);
       makeText(this, n.x, n.y - spr.height - 3, n.nameTh, { fontSize: '7px', color: n.color }).setOrigin(0.5, 1).setDepth(n.y + 1);
       makeText(this, n.x, n.y - spr.height - 13, `[${n.role}]`, { fontSize: '6px', color: '#ecf0f1' }).setOrigin(0.5, 1).setDepth(n.y + 1);
@@ -166,7 +180,7 @@ export class TopDownScene extends Phaser.Scene {
     const scale = def.scale || 1; m.setScale(scale);
     m.body.setSize(14 / scale, 8 / scale).setOffset((m.width - 14 / scale) / 2, m.height - 8 / scale);
     m.def = def; m.key = key; m.spawn = s; m.hp = def.hp; m.maxHp = def.hp; m.alive = true; m.mode = 'wander'; m.nextThink = 0; m.nextAtk = 0;
-    m.play(`${key}:walk`);
+    m.legacyKey = key; m.d8id = `mob_${s.id}`; m.dir = 'south'; playDir(m, 'walk', 'south');
     this.addShadow(m, Math.max(14, m.displayWidth * 0.7));
     m.label = makeText(this, m.x, m.y, `Lv.${def.level} ${def.nameTh}`, { fontSize: '6px', color: '#f5b7b1' }).setOrigin(0.5, 1);
     m.hpBg = this.add.rectangle(0, 0, 22, 3, 0x000000, 0.7); m.hpBar = this.add.rectangle(0, 0, 22, 3, 0xe74c3c).setOrigin(0, 0.5);
@@ -206,14 +220,15 @@ export class TopDownScene extends Phaser.Scene {
       }
       if (m.wanderTo) { if (Phaser.Math.Distance.Between(m.x, m.y, m.wanderTo.x, m.wanderTo.y) < 6) { m.wanderTo = null; m.setVelocity(0, 0); } else this.physics.moveTo(m, m.wanderTo.x, m.wanderTo.y, spd * 0.6); }
     }
-    if (m.body.velocity.x) m.setFlipX(m.body.velocity.x < 0);
-    if (m.body.velocity.length() > 2) { if (!m.anims.currentAnim?.key.endsWith(':walk')) m.play(`${m.key}:walk`); }
-    else if (this.anims.exists(`${m.key}:idle`) && !m.anims.currentAnim?.key.endsWith(':idle') && !m.anims.currentAnim?.key.endsWith(':attack')) m.play(`${m.key}:idle`);
+    const v = m.body.velocity, busy = m.anims.currentAnim?.key.includes(':attack') && m.anims.isPlaying;
+    if (v.length() > 2) m.dir = dirFromVector(v.x, v.y, m.dir);
+    else if (m.mode === 'chase') m.dir = dirFromVector(p.x - m.x, p.y - m.y, m.dir);
+    if (!busy) playDir(m, v.length() > 2 ? 'walk' : 'idle', m.dir) || playDir(m, 'walk', m.dir);
   }
 
   monsterAttack(m) {
     const p = this.player;
-    if (this.anims.exists(`${m.key}:attack`)) m.play(`${m.key}:attack`).once('animationcomplete', () => m.alive && m.play(`${m.key}:walk`));
+    playDir(m, 'attack', m.dir, true);
     this.time.delayedCall(220, () => {
       if (!m.alive || !p.alive || Phaser.Math.Distance.Between(m.x, m.y, p.x, p.y) > (m.def.attackRange || 16) + 14) return;
       if (Math.random() * 100 < (this.derived.evasion || 0) * 0.5) { popupNumber(this, p.x, p.y - 30, 'MISS', 'miss'); return; }
@@ -231,7 +246,7 @@ export class TopDownScene extends Phaser.Scene {
   playerAttack(m, time) {
     const p = this.player;
     p.nextAtk = time + ATK_CD; p.state = 'attack'; p.setVelocity(0, 0);
-    p.facing = m.x >= p.x ? 1 : -1; p.setFlipX(p.facing < 0);
+    p.facing = m.x >= p.x ? 1 : -1; p.dir = dirFromVector(m.x - p.x, m.y - p.y, p.dir);
     this.playerAnim('attack', true);
     this.sfx.play('swing');
     this.time.delayedCall(180, () => {
@@ -254,7 +269,7 @@ export class TopDownScene extends Phaser.Scene {
     m.alive = false; m.setVelocity(0, 0); m.disableInteractive();
     if (this.player.target === m) this.player.target = null;
     const d = m.def;
-    if (this.anims.exists(`${m.key}:die`)) m.play(`${m.key}:die`); else m.setTint(0x777777);
+    if (!playDir(m, 'die', m.dir, true)) m.setTint(0x777777);
     this.sfx.play('ghostDie');
     this.tweens.add({ targets: m, alpha: 0, duration: 900, delay: 300, onComplete: () => { m.setVisible(false); m.label.setVisible(false); m.hpBg.setVisible(false); m.hpBar.setVisible(false); } });
     // รางวัล (ไม่บันทึก – โหมดทดลอง)
@@ -272,7 +287,7 @@ export class TopDownScene extends Phaser.Scene {
     m.setPosition(s.x + rand(-s.r, s.r), s.y + rand(-s.r, s.r)).setAlpha(1).setVisible(true).clearTint();
     m.hp = m.maxHp; m.alive = true; m.mode = 'wander'; m.nextThink = 0; m.wanderTo = null;
     m.label.setVisible(true); m.hpBg.setVisible(true); m.hpBar.setVisible(true);
-    m.play(`${m.key}:walk`); m.setInteractive({ useHandCursor: true });
+    playDir(m, 'walk', 'south', true); m.setInteractive({ useHandCursor: true });
   }
 
   playerDie() {
@@ -382,7 +397,8 @@ export class TopDownScene extends Phaser.Scene {
       else if (vx || vy) {
         const len = Math.hypot(vx, vy) || 1;
         p.setVelocity(vx / len * SPEED, vy / len * SPEED);
-        if (vx) { p.facing = vx > 0 ? 1 : -1; p.setFlipX(p.facing < 0); }
+        if (vx) p.facing = vx > 0 ? 1 : -1;
+        p.dir = dirFromVector(vx, vy, p.dir);
         p.state = 'walk'; this.playerAnim('walk');
       } else { p.setVelocity(0, 0); p.state = 'idle'; this.playerAnim('idle'); }
       // ฟื้น HP ช้า ๆ ในเมือง
