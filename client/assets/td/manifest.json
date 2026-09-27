@@ -5,14 +5,22 @@
     "idle",
     "walk"
    ],
+   "frames": {
+    "idle": 4,
+    "walk": 6
+   },
    "frame": 72,
-   "scale": 0.5
+   "scale": 0.6
   },
   "mob_nang_tani": {
    "anims": [
     "idle",
     "walk"
    ],
+   "frames": {
+    "idle": 4,
+    "walk": 6
+   },
    "frame": 72,
    "scale": 0.667
   },
@@ -21,6 +29,10 @@
     "idle",
     "walk"
    ],
+   "frames": {
+    "idle": 4,
+    "walk": 6
+   },
    "frame": 72,
    "scale": 0.667
   },
@@ -29,6 +41,10 @@
     "idle",
     "walk"
    ],
+   "frames": {
+    "idle": 4,
+    "walk": 6
+   },
    "frame": 72,
    "scale": 0.667
   }

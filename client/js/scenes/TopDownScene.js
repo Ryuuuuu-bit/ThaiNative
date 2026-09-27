@@ -61,6 +61,13 @@ export class TopDownScene extends Phaser.Scene {
   }
 
   create({ char }) {
+    // ภาพ 8 ทิศจาก manifest (จำนวนเฟรมจริงของแต่ละท่า) ก่อน แล้วค่อยใช้ค่าตั้งต้นจากแผน asset
+    const RATE = { idle: [5, true], walk: [10, true], attack: [14, false], cast: [12, false], hit: [12, false], die: [8, false] };
+    for (const [id, m] of Object.entries(this.d8meta || {})) {
+      const anims = {};
+      for (const a of m.anims) { const [rate, loop] = RATE[a] || [10, false]; anims[a] = { frames: m.frames?.[a] || (a === 'idle' ? 4 : 6), rate, loop }; }
+      registerDir8(this, { id, anims });
+    }
     for (const a of ALL_ASSETS) if (a.anims) registerDir8(this, { id: a.id, anims: a.anims });
     this.td = true;
     this.sfx = sound; this.settings = loadSettings(); document.body.classList.add('td-mode'); this.sfx.applySettings(this.settings);
