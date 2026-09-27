@@ -588,7 +588,7 @@ export class TopDownScene extends Phaser.Scene {
       .on('td:reward', (r) => this.showReward({ ...r, x: this.mobs[r.mid]?.x, y: this.mobs[r.mid]?.y }))
       .on('td:respawn', (d) => this.onRespawn(d))
       .on('td:correct', ({ x, y }) => { if (dist(this.player, { x, y }) > 24) { this.player.setPosition(x, y); this.player.path = []; } });
-    net.connect(this.player.char.name, () => ({ token: account.token }));
+    net.connect(this.player.char.name, () => ({ token: account.token, slot: account.slot }));
   }
 
   applyState({ p: ps, m: ms }) {

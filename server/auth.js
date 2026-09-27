@@ -3,7 +3,7 @@
 //  ▸ ส่ง token ผ่าน header  Authorization: Bearer <token>
 // ============================================================
 import express from 'express';
-import { createStore, hashPassword, verifyPassword } from './store.js';
+import { createStore, hashPassword, verifyPassword, MAX_SLOTS } from './store.js';
 import { newCharacter, migrate, hotbarItemOk } from '../shared/charmodel.js';
 import { runAction } from '../shared/economy.js';
 
@@ -15,7 +15,14 @@ export const isAdmin = (username) => !!username && ADMIN_IDS.has(String(username
 
 export function setupAuth(app, hooks = {}) {
   const storeReady = createStore();
-  const live = (accId) => hooks.onlineChar?.(accId) || null;       // ตัวละครที่กำลังออนไลน์ (server ถือข้อมูลล่าสุด)
+  const live = (accId) => hooks.onlineChar?.(accId) || null;       // { slot, save } ตัวละครที่กำลังออนไลน์ (server ถือข้อมูลล่าสุด)
+  const slotArg = (v) => { const n = Number(v); return Number.isInteger(n) && n >= 0 && n < MAX_SLOTS ? n : -1; };
+  /** ตัวละครทุกช่อง (ช่องที่ออนไลน์อยู่ใช้ข้อมูลล่าสุดจาก server) */
+  const listChars = async (store, accId) => {
+    const list = await store.getCharacters(accId), on = live(accId);
+    if (on) list[on.slot] = on.save;
+    return list;
+  };
   const api = express.Router();
   api.use(express.json({ limit: '200kb' }));
 
@@ -50,7 +57,8 @@ export function setupAuth(app, hooks = {}) {
   };
   const withSession = async (req, acc) => {
     await req.store.touch(acc.id);
-    return { token: await req.store.createSession(acc.id), account: pub(acc), character: await req.store.getCharacter(acc.id) };
+    const characters = await listChars(req.store, acc.id);
+    return { token: await req.store.createSession(acc.id), account: pub(acc), characters, maxSlots: MAX_SLOTS };
   };
 
   // เล่นแบบ Guest: สร้างบัญชีชั่วคราว (เชื่อม ID ภายหลังได้)
@@ -94,18 +102,32 @@ export function setupAuth(app, hooks = {}) {
   }));
 
   api.get('/me', auth(async (req, res) => {
-    res.json({ account: pub(req.account), character: live(req.account.id) || await req.store.getCharacter(req.account.id) });
+    res.json({ account: pub(req.account), characters: await listChars(req.store, req.account.id), maxSlots: MAX_SLOTS });
   }));
 
-  // สร้างตัวละครใหม่: server สร้างเองจากชื่อ + รูปลักษณ์ (client ส่งค่าพลัง/ของ/เงินมาเองไม่ได้)
+  // สร้างตัวละครใหม่ลงช่องว่าง: server สร้างเองจากชื่อ + รูปลักษณ์ (client ส่งค่าพลัง/ของ/เงินมาเองไม่ได้)
   api.post('/character/new', limited, auth(async (req, res) => {
     const { name, appearance, weapon } = req.body || {};
-    if (typeof name !== 'string' || !appearance || typeof appearance !== 'object') return res.status(400).json({ error: 'ข้อมูลตัวละครไม่ถูกต้อง' });
-    if (live(req.account.id)) return res.status(409).json({ error: 'ตัวละครนี้กำลังออนไลน์อยู่ที่อื่น' });
+    const slot = req.body?.slot === undefined ? 0 : slotArg(req.body.slot);
+    if (slot < 0 || typeof name !== 'string' || !appearance || typeof appearance !== 'object') return res.status(400).json({ error: 'ข้อมูลตัวละครไม่ถูกต้อง' });
+    if (live(req.account.id)) return res.status(409).json({ error: 'บัญชีนี้กำลังออนไลน์อยู่ที่อื่น' });
+    if (await req.store.getCharacter(req.account.id, slot)) return res.status(409).json({ error: 'ช่องนี้มีตัวละครอยู่แล้ว' });
     const c = newCharacter(name, appearance);
     if (typeof weapon === 'string') runAction(c, 'equip', { id: weapon });
-    await req.store.saveCharacter(req.account.id, c);
-    res.json({ character: c });
+    await req.store.saveCharacter(req.account.id, slot, c);
+    res.json({ character: c, slot });
+  }));
+
+  // ลบตัวละคร: ต้องพิมพ์ชื่อตัวละครยืนยัน
+  api.post('/character/delete', limited, auth(async (req, res) => {
+    const slot = slotArg(req.body?.slot), name = String(req.body?.name ?? '').trim();
+    if (slot < 0) return res.status(400).json({ error: 'ช่องไม่ถูกต้อง' });
+    if (live(req.account.id)) return res.status(409).json({ error: 'บัญชีนี้กำลังออนไลน์อยู่ที่อื่น' });
+    const cur = await req.store.getCharacter(req.account.id, slot);
+    if (!cur) return res.status(404).json({ error: 'ช่องนี้ไม่มีตัวละคร' });
+    if (name !== String(cur.name).trim()) return res.status(400).json({ error: 'ชื่อที่พิมพ์ยืนยันไม่ตรงกับชื่อตัวละคร' });
+    await req.store.deleteCharacter(req.account.id, slot);
+    res.json({ ok: true });
   }));
 
   // เซฟจาก client (เวอร์ชันเก่า/ปิดแท็บ): รับเฉพาะ Hotbar – ของ/เงิน/เลเวล server เป็นคนเซฟเองเท่านั้น
@@ -114,13 +136,17 @@ export function setupAuth(app, hooks = {}) {
     if (!data || typeof data !== 'object' || Array.isArray(data)) return res.status(400).json({ error: 'ข้อมูลตัวละครไม่ถูกต้อง' });
     if (Buffer.byteLength(JSON.stringify(data)) > MAX_CHAR_BYTES) return res.status(413).json({ error: 'ข้อมูลตัวละครใหญ่เกินไป' });
     if (live(req.account.id)) return res.json({ ok: true, ignored: true });
-    const cur = migrate(await req.store.getCharacter(req.account.id));
+    const slot = Math.max(0, slotArg(req.body?.slot ?? 0));
+    const cur = migrate(await req.store.getCharacter(req.account.id, slot));
     if (!cur) return res.status(404).json({ error: 'ยังไม่มีตัวละคร' });
     const hb = data.hotbar && typeof data.hotbar === 'object' ? data.hotbar : null;
     if (hb) for (const k of Object.keys(cur.hotbar)) if (hb[k] === null || (typeof hb[k] === 'string' && (cur.skills[hb[k]] > 0 || (hb[k].startsWith('it:') && hotbarItemOk(hb[k].slice(3)))))) cur.hotbar[k] = hb[k];
-    await req.store.saveCharacter(req.account.id, cur);
+    await req.store.saveCharacter(req.account.id, slot, cur);
     res.json({ ok: true });
   }));
+
+  // สถานะเซิร์ฟเวอร์ (หน้าเข้าเกม): จำนวนผู้เล่นออนไลน์
+  api.get('/status', (req, res) => res.json({ ok: true, online: hooks.onlineCount?.() ?? 0 }));
 
   // ตารางอันดับ (สาธารณะ · แคช 30 วิ): เลเวลสูงสุด / ตีบวกสูงสุด
   let lbCache = null, lbAt = 0;

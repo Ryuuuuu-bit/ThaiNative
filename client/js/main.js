@@ -4,6 +4,7 @@
 import { WORLD, VIEW } from '/shared/constants.js';
 import { BootScene } from './scenes/BootScene.js';
 import { CreateScene } from './scenes/CreateScene.js';
+import { LobbyScene } from './scenes/LobbyScene.js';
 import { GameScene } from './scenes/GameScene.js';
 import { TopDownScene } from './scenes/TopDownScene.js';
 
@@ -21,7 +22,7 @@ const config = {
     arcade: { gravity: { y: WORLD.gravity }, debug: false },
   },
   scale: { mode: Phaser.Scale.FIT, autoCenter: Phaser.Scale.CENTER_BOTH },
-  scene: [BootScene, CreateScene, GameScene, TopDownScene],
+  scene: [BootScene, LobbyScene, CreateScene, GameScene, TopDownScene],
 };
 
 window.game = new Phaser.Game(config);

@@ -21,6 +21,7 @@ import { setupMobs } from './mobs.js';
 import { setupDungeon } from './dungeon.js';
 import { setupTD } from './td.js';
 import { setupAuth, isAdmin } from './auth.js';
+import { MAX_SLOTS } from './store.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.join(__dirname, '..');
@@ -34,7 +35,10 @@ const byAcc = new Map();
 
 const app = express();
 app.disable('x-powered-by');
-const storeReady = setupAuth(app, { onlineChar: (acc) => players.get(byAcc.get(acc))?.save || null });
+const storeReady = setupAuth(app, {
+  onlineChar: (acc) => { const p = players.get(byAcc.get(acc)); return p ? { slot: p.slot || 0, save: p.save } : null; },
+  onlineCount: () => players.size,
+});
 app.use(express.static(path.join(ROOT, 'client')));
 app.use('/shared', express.static(path.join(ROOT, 'shared')));
 app.use('/vendor', express.static(path.join(ROOT, 'node_modules/phaser/dist')));
@@ -69,7 +73,7 @@ function flushSync(p) {
 async function persist(p) {
   if (!p?.dirty || !p.acc) return;
   p.dirty = false;
-  try { await (await storeReady).saveCharacter(p.acc, p.save); }
+  try { await (await storeReady).saveCharacter(p.acc, p.slot || 0, p.save); }
   catch (e) { p.dirty = true; console.error('[persist]', e.message); }
 }
 
@@ -157,19 +161,20 @@ io.on('connection', (socket) => {
       const acc = typeof data.token === 'string' && data.token ? await store.getSession(data.token) : null;
       if (!acc) return socket.emit('player:rejected', { reason: 'auth', msg: 'เซสชันหมดอายุ กรุณาเข้าสู่ระบบใหม่' });
       // บัญชีเดียวกันเข้าจากที่อื่น → เตะเครื่องเก่า (เซฟก่อน)
+      const slot = Number.isInteger(data.slot) && data.slot >= 0 && data.slot < MAX_SLOTS ? data.slot : 0;
       const oldId = byAcc.get(acc.id), old = oldId && players.get(oldId);
       let save = null;
       if (old) {
-        save = old.save;
+        if ((old.slot || 0) === slot) save = old.save;          // ตัวเดียวกัน → ใช้ข้อมูลล่าสุดในหน่วยความจำ (ตัวอื่น: leave() เซฟให้ก่อน)
         io.to(oldId).emit('player:kicked', { msg: 'บัญชีนี้เข้าเกมจากเครื่องอื่น' });
         await leave(oldId);
         io.sockets.sockets.get(oldId)?.disconnect(true);
       }
       if (!socket.connected) return;
-      save = migrate(save || (await store.getCharacter(acc.id)));
+      save = migrate(save || (await store.getCharacter(acc.id, slot)));
       if (!save) return socket.emit('player:rejected', { reason: 'nochar', msg: 'ยังไม่มีตัวละคร' });
       const p = {
-        id: socket.id, acc: acc.id, admin: isAdmin(acc.username), save, char: save,
+        id: socket.id, acc: acc.id, slot, admin: isAdmin(acc.username), save, char: save,
         name: save.name, appearance: save.appearance, appKey: JSON.stringify(save.appearance),
         x: WORLD.spawnX, y: WORLD.spawnY, ...startPos(data),
         anim: 'idle', flipX: false, level: save.level, maxHp: 1, buffs: [], sess: { joinAt: Date.now() },

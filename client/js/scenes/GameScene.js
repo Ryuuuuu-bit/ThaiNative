@@ -476,7 +476,7 @@ export class GameScene extends Phaser.Scene {
       .on('chat', (m) => this.ui.chat(m))
       .on('skill', (d) => this.combat.remoteVfx(d, this.remotes.get(d.id)));   // สกิลของผู้เล่นอื่น
 
-    if (this.econ.server) net.connect(char.name, () => ({ token: account.token, x: Math.round(this.player.x), y: Math.round(this.player.y) }));
+    if (this.econ.server) net.connect(char.name, () => ({ token: account.token, slot: account.slot, x: Math.round(this.player.x), y: Math.round(this.player.y) }));
     else { this.ui.setOnline(false, 0); this.ui.toast('โหมดออฟไลน์: เซฟในเครื่อง · ระบบออนไลน์ (ปาร์ตี้/เรด/ดันเจี้ยน) ใช้ไม่ได้', '', 6000); }
   }
 

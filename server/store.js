@@ -6,6 +6,10 @@
 import crypto from 'node:crypto';
 
 const SESSION_DAYS = 60;
+/** จำนวนช่องตัวละครต่อบัญชี (แบบ RO) */
+export const MAX_SLOTS = 3;
+const slotOf = (v) => (Number.isInteger(+v) && +v >= 0 && +v < MAX_SLOTS ? +v : 0);
+const toList = (rows) => { const out = Array(MAX_SLOTS).fill(null); for (const r of rows) if (r.slot >= 0 && r.slot < MAX_SLOTS) out[r.slot] = r.data; return out; };
 
 // ---------------- รหัสผ่าน (scrypt + salt) ----------------
 export function hashPassword(pw) {
@@ -52,6 +56,16 @@ class PgStore {
         data JSONB NOT NULL,
         updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
       );`);
+    // หลายตัวละครต่อบัญชี: เพิ่มคอลัมน์ slot (ตัวเดิม = ช่อง 0) แล้วเปลี่ยน primary key เป็น (account_id, slot)
+    await this.pool.query(`
+      ALTER TABLE characters ADD COLUMN IF NOT EXISTS slot SMALLINT NOT NULL DEFAULT 0;
+      DO $$ BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.key_column_usage
+                        WHERE table_name = 'characters' AND constraint_name = 'characters_pkey' AND column_name = 'slot') THEN
+          ALTER TABLE characters DROP CONSTRAINT IF EXISTS characters_pkey;
+          ALTER TABLE characters ADD PRIMARY KEY (account_id, slot);
+        END IF;
+      END $$;`);
     return this;
   }
 
@@ -93,14 +107,22 @@ class PgStore {
   }
   async deleteSession(token) { await this.pool.query('DELETE FROM sessions WHERE token = $1', [token]); }
 
-  async getCharacter(accountId) {
-    const { rows } = await this.pool.query('SELECT data FROM characters WHERE account_id = $1', [accountId]);
+  /** ตัวละครทุกช่องของบัญชี → [ช่อง0, ช่อง1, ช่อง2] (ช่องว่าง = null) */
+  async getCharacters(accountId) {
+    const { rows } = await this.pool.query('SELECT slot, data FROM characters WHERE account_id = $1', [accountId]);
+    return toList(rows);
+  }
+  async getCharacter(accountId, slot = 0) {
+    const { rows } = await this.pool.query('SELECT data FROM characters WHERE account_id = $1 AND slot = $2', [accountId, slotOf(slot)]);
     return rows[0]?.data || null;
   }
-  async saveCharacter(accountId, data) {
+  async saveCharacter(accountId, slot, data) {
     await this.pool.query(
-      `INSERT INTO characters (account_id, data, updated_at) VALUES ($1, $2, now())
-       ON CONFLICT (account_id) DO UPDATE SET data = EXCLUDED.data, updated_at = now()`, [accountId, data]);
+      `INSERT INTO characters (account_id, slot, data, updated_at) VALUES ($1, $2, $3, now())
+       ON CONFLICT (account_id, slot) DO UPDATE SET data = EXCLUDED.data, updated_at = now()`, [accountId, slotOf(slot), data]);
+  }
+  async deleteCharacter(accountId, slot) {
+    await this.pool.query('DELETE FROM characters WHERE account_id = $1 AND slot = $2', [accountId, slotOf(slot)]);
   }
   /** ตารางอันดับ: เลเวล/EXP + ตีบวกสูงสุด (ข้อมูลย่อ) */
   async topCharacters(limit = 300) {
@@ -134,8 +156,10 @@ class MemoryStore {
   async createSession(accountId) { const t = newToken(); this.sessions.set(t, accountId); return t; }
   async getSession(token) { const id = this.sessions.get(token); return id ? this.accounts.get(id) : null; }
   async deleteSession(token) { this.sessions.delete(token); }
-  async getCharacter(id) { return this.chars.get(id) || null; }
-  async saveCharacter(id, data) { this.chars.set(id, data); }
+  async getCharacters(id) { return Array.from({ length: MAX_SLOTS }, (_, i) => this.chars.get(`${id}:${i}`) || null); }
+  async getCharacter(id, slot = 0) { return this.chars.get(`${id}:${slotOf(slot)}`) || null; }
+  async saveCharacter(id, slot, data) { this.chars.set(`${id}:${slotOf(slot)}`, data); }
+  async deleteCharacter(id, slot) { this.chars.delete(`${id}:${slotOf(slot)}`); }
   async topCharacters(limit = 300) {
     return [...this.chars.values()].sort((a, b) => (b.level || 0) - (a.level || 0) || (b.exp || 0) - (a.exp || 0)).slice(0, limit)
       .map((d) => ({ name: d.name, level: d.level, exp: d.exp, enhance: d.enhance, path: d.path, equipment: d.equipment }));

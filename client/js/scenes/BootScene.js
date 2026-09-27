@@ -78,7 +78,7 @@ export class BootScene extends Phaser.Scene {
 
   goNext() {
     // รอฟอนต์ไทยโหลดก่อน เพื่อให้ข้อความในเกมใช้ฟอนต์ Mitr
-    const go = () => showAuth().then((d) => this.scene.start('create', d || {}));
+    const go = () => showAuth().then(() => this.scene.start('lobby', { boot: true }));
     if (document.fonts?.load) Promise.race([document.fonts.load('10px Mitr'), new Promise((r) => setTimeout(r, 1500))]).then(go);
     else go();
   }

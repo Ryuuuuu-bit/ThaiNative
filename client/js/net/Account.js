@@ -11,6 +11,9 @@ class AccountClient {
     this.offline = false;            // เปิดไฟล์ตรงๆ ไม่มี server → เล่นออฟไลน์ (เซฟในเครื่อง)
     try { this.token = localStorage.getItem(TOKEN_KEY); } catch { /* ignore */ }
     this.pending = null;
+    this.characters = [];            // ตัวละครทุกช่องของบัญชี (null = ช่องว่าง)
+    this.maxSlots = 3;
+    this.slot = 0;                   // ช่องที่กำลังเล่น
     this.saveTimer = null;
   }
 
@@ -33,6 +36,9 @@ class AccountClient {
   setSession(d) {
     if (d.token) { this.token = d.token; try { localStorage.setItem(TOKEN_KEY, d.token); } catch { /* ignore */ } }
     if (d.account) this.account = d.account;
+    if (Array.isArray(d.characters)) this.characters = d.characters;
+    else if ('character' in d) this.characters = [d.character || null];       // server เวอร์ชันเก่า
+    if (d.maxSlots) this.maxSlots = d.maxSlots;
     return d;
   }
 
@@ -63,8 +69,12 @@ class AccountClient {
     try { localStorage.removeItem(TOKEN_KEY); } catch { /* ignore */ }
   }
 
-  /** สร้างตัวละครใหม่บน server (server กำหนดค่าเริ่มต้นเอง) */
-  async createCharacter(name, appearance, weapon) { return (await this.api('/character/new', 'POST', { name, appearance, weapon })).character; }
+  /** โหลดรายชื่อตัวละครใหม่ (หลังสร้าง/ลบ) */
+  async refresh() { return this.setSession(await this.api('/me')); }
+  /** สร้างตัวละครใหม่ลงช่องว่าง (server กำหนดค่าเริ่มต้นเอง) */
+  async createCharacter(slot, name, appearance, weapon) { return (await this.api('/character/new', 'POST', { slot, name, appearance, weapon })).character; }
+  async deleteCharacter(slot, name) { return this.api('/character/delete', 'POST', { slot, name }); }
+  async status() { return this.api('/status'); }
 
   /** (เลิกใช้) ตัวละครออนไลน์ server เป็นคนเซฟเอง */
   saveCharacter() {}

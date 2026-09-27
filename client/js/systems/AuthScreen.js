@@ -21,6 +21,7 @@ export async function showAuth() {
   return new Promise((resolve) => {
     const scr = $('#auth-screen');
     scr.classList.remove('hidden');
+    serverStatus();
     let mode = 'login', busy = false;
     const err = (t) => { $('#auth-err').textContent = t || ''; };
     const setMode = (m) => {
@@ -83,6 +84,7 @@ export function bindAccountSettings(ui) {
       render();
     } catch (err) { $('#link-err').textContent = err.message; sound.play('error'); }
   };
+  $('#acc-switch').onclick = () => { ui.scene.saveNow?.(); setTimeout(() => location.reload(), 150); };   // โหลดใหม่ → หน้าเลือกตัวละคร
   $('#acc-logout').onclick = async () => {
     if (account.isGuest && !confirm('บัญชี Guest ยังไม่ได้เชื่อม ID — ถ้าออกจากระบบจะกลับมาเล่นตัวละครนี้ไม่ได้อีก ต้องการออกจริงไหม?')) return;
     ui.scene.saveNow?.();
@@ -91,6 +93,20 @@ export function bindAccountSettings(ui) {
   };
   render();
   return render;
+}
+
+/** สถานะเซิร์ฟเวอร์ใต้กล่องเข้าสู่ระบบ */
+async function serverStatus() {
+  const el = $('#srv-status');
+  if (!el) return;
+  try {
+    const d = await account.status();
+    el.className = 'srv-status on';
+    el.querySelector('span').textContent = `เซิร์ฟเวอร์ออนไลน์ · ผู้เล่นขณะนี้ ${d.online ?? 0} คน`;
+  } catch {
+    el.className = 'srv-status off';
+    el.querySelector('span').textContent = 'เชื่อมต่อเซิร์ฟเวอร์ไม่ได้';
+  }
 }
 
 /** ปุ่มชื่อฉาก (คลิก = เปลี่ยนฉาก) + ปุ่มเสียง */
