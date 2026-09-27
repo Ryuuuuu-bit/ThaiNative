@@ -1,4 +1,4 @@
-import { ITEMS } from '/shared/data/items.js';
+import { ITEMS, baseItemId } from '/shared/data/items.js';
 // ตัวช่วยเล็กๆ ที่ใช้หลายที่
 
 /** สร้างข้อความในโลกเกมให้คมชัดแม้กล้องซูม x2 (render ละเอียด + filter แบบ linear) */
@@ -33,7 +33,8 @@ const ITEM_ALIAS = { skin_swordman: 'skin_scroll', skin_mage: 'skin_scroll', ski
 /** HTML ไอคอนไอเทม: มีภาพ → <img>, ไม่มี → อีโมจิเดิม */
 export function itemIcon(id, emoji = '') {
   if (typeof id === 'string' && id.startsWith('card_')) return `<img class="px-ico card-ico" src="assets/cards/${id.slice(5)}.png" alt="">`;   // การ์ดผี
-  const f = ICONS[`it_${ITEM_ALIAS[id] || id}`] || (ITEMS[id]?.art && ICONS[`it_${ITEMS[id].art}`]);
+  const b = baseItemId(id);                                           // ของมีค่าสุ่ม (base@...) ใช้ไอคอนของชิ้นฐาน
+  const f = ICONS[`it_${ITEM_ALIAS[b] || b}`] || (ITEMS[id]?.art && ICONS[`it_${ITEMS[id].art}`]);
   return f ? `<img class="px-ico" src="${f}" alt="">` : emoji;
 }
 export function skillIcon(id, emoji = '') {
