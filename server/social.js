@@ -20,11 +20,15 @@ const int = (v, lo, hi) => clamp(Math.floor(Number(v) || 0), lo, hi);
 const MAX_FRIENDS = 50;
 let seq = 1;
 
+import { ZONES, zoneAt } from '../shared/td/ayutthaya.js';
 export function setupSocial(io, players, H = {}) {
   const { queueSync = () => {}, refresh = () => {}, hurtPlayer = () => {}, byAcc = new Map() } = H;
   const sock = (id) => io.sockets.sockets.get(id);
   const emitTo = (id, ev, data) => sock(id)?.emit(ev, data);
   const sys = (id, text) => emitTo(id, 'chat', { id: null, name: '📢 ระบบ', text });
+  /** ตำแหน่งผู้เล่น (โลกอยุธยา top-down ใช้ tx/ty · โลกเดิมใช้ x อย่างเดียว) */
+  const pos = (p) => (p.world === 'td' ? { x: p.tx, y: p.ty } : { x: p.x, y: 0 });
+  const apart = (a, b) => { if ((a.world === 'td') !== (b.world === 'td')) return Infinity; const A = pos(a), B = pos(b); return Math.hypot(A.x - B.x, A.y - B.y); };
 
   // ===================== ปาร์ตี้ =====================
   const parties = new Map();              // partyId → { id, leader, members:Set }
@@ -34,7 +38,7 @@ export function setupSocial(io, players, H = {}) {
     return {
       id: party.id, leader: party.leader,
       members: [...party.members].map((id) => players.get(id)).filter(Boolean).map((p) => ({
-        id: p.id, name: p.name, level: p.level, job: p.appearance.path || 'villager', hp: Math.round(p.hp), maxHp: p.maxHp, x: Math.round(p.x), inst: p.inst || 0,
+        id: p.id, name: p.name, level: p.level, job: p.appearance.path || 'villager', hp: Math.round(p.hp), maxHp: p.maxHp, x: Math.round(pos(p).x), y: Math.round(pos(p).y), inst: p.inst || 0,
       })),
     };
   }
@@ -227,7 +231,7 @@ export function setupSocial(io, players, H = {}) {
     if (!share) return;
     for (const id of party.members) {
       const m = players.get(id);
-      if (id === p.id || !m?.save || exclude.includes(id) || Math.abs(m.x - p.x) > PARTY.shareRange || m.dead) continue;
+      if (id === p.id || !m?.save || exclude.includes(id) || apart(m, p) > PARTY.shareRange || m.dead) continue;
       const g = grant(m.save, { exp: share });
       refresh(m); queueSync(m);
       emitTo(id, 'party:exp', { amount: share, from: p.name, ups: g.ups });
@@ -301,7 +305,7 @@ export function setupSocial(io, players, H = {}) {
     return (p.save.friends || []).map((f) => {
       const q = players.get(byAcc.get(f.acc));
       if (q) f.name = q.name;
-      return { acc: f.acc, name: f.name, online: !!q, id: q?.id || null, level: q?.level || null, map: q ? mapAt(q.x).nameTh : null, job: q?.appearance?.path || null };
+      return { acc: f.acc, name: f.name, online: !!q, id: q?.id || null, level: q?.level || null, map: q ? (q.world === 'td' ? (ZONES[zoneAt(q.tx, q.ty)]?.nameTh || 'กรุงศรีอยุธยา') : mapAt(q.x).nameTh) : null, job: q?.appearance?.path || null };
     });
   }
   function pushFriends(p) { emitTo(p.id, 'friends:state', friendsState(p)); }
@@ -383,7 +387,7 @@ export function setupSocial(io, players, H = {}) {
       const p = me(), t = players.get(id);
       if (!p || !t || t.id === p.id) return;
       if (p.tradeId || t.tradeId) return sys(p.id, 'อีกฝ่ายกำลังเทรดอยู่');
-      if (Math.abs(p.x - t.x) > 250 || (p.inst || 0) !== (t.inst || 0)) return sys(p.id, 'ต้องอยู่ใกล้กันจึงจะเทรดได้');
+      if (apart(p, t) > 250 || (p.inst || 0) !== (t.inst || 0)) return sys(p.id, 'ต้องอยู่ใกล้กันจึงจะเทรดได้');
       if (!tradeReqs.has(t.id)) tradeReqs.set(t.id, new Map());
       tradeReqs.get(t.id).set(p.id, Date.now() + 30000);
       emitTo(t.id, 'trade:request', { fromId: p.id, fromName: p.name });

@@ -27,6 +27,8 @@ import { dirFromVector, stableDir, playDir, registerDir8, texKey } from '../topd
 import { TdSkills } from '../topdown/TdSkills.js';
 import { SKILL_SLOTS, SLOT_KEYNAME, isItemSlot, slotItemId } from '/shared/data/skills.js';
 import { WeaponOverlay } from '../topdown/WeaponOverlay.js';
+import { TdSocial } from '../topdown/TdSocial.js';
+import { TITLE_BY_ID } from '/shared/data/titles.js';
 import { TouchControls } from '../topdown/TouchControls.js';
 import { ALL_ASSETS } from '/shared/data/td_assets.js';
 import { bakeGround, makeWater, TdAtmosphere, bakeTdFx, TdVfx, TdMinimap } from '../topdown/TdTheme.js';
@@ -122,6 +124,7 @@ export class TopDownScene extends Phaser.Scene {
     this.zone = null;
     this.ui.updateHud();
     this.setupNetwork();
+    if (this.econ.server) this.social = new TdSocial(this);           // ปาร์ตี้ · เทรด · เพื่อน · อันดับ · ฉายา (ต้องออนไลน์)
     this.ui.toast('🏯 ยินดีต้อนรับสู่กรุงศรีอยุธยา · คลิกพื้นเพื่อเดิน คลิกผีเพื่อโจมตี · คลิก NPC เพื่อเปิดร้าน', '', 6000);
     if (!this.econ.server) this.time.addEvent({ delay: 5000, loop: true, callback: () => this.saveSoon() });
     // ฟื้น MP ทุกวินาที (ในเมืองเร็วกว่า) – MP เป็นของ client ทั้งออนไลน์/ออฟไลน์ · HP ออนไลน์ server ฟื้นให้
@@ -277,7 +280,8 @@ export class TopDownScene extends Phaser.Scene {
     p.actionAnim = () => ACTION_ANIM[p.char.appearance.job];      // ดาบ/ไม้เท้า/ธนู ใช้ท่ายืน + อาวุธเหวี่ยง · มวยใช้ท่าต่อยจริง (ถ้ามี)
     this.player = p;
     this.physics.add.collider(p, this.blocks);
-    this.nameTag = makeText(this, 0, 0, char.name, { fontSize: '7px', color: '#fff3c4' }).setOrigin(0.5, 1).setDepth(99999);
+    this.nameTag = makeText(this, 0, 0, char.name, { fontSize: '7px', color: '#fff3c4', align: 'center' }).setOrigin(0.5, 1).setDepth(99999);
+    this.refreshNameTag();
     p.on('animationcomplete', (anim) => { if (/:(attack|cast|hit|slash|shoot)(:|$)/.test(anim.key) && p.alive) p.st = 'idle'; });
     this.playerAnim('idle');
   }
@@ -707,6 +711,14 @@ export class TopDownScene extends Phaser.Scene {
     this.ui.toast(on ? `⚡ Auto: เปิด — ตีผี${only ? `ที่เลือก ${only.size} ชนิด` : 'ทุกตัว'}ในหน้าจอ + ร่ายสกิลในแถบ 1–0 (เดิน/คลิกพื้นเพื่อพักชั่วคราว)` : 'Auto: ปิด', on ? 'ok' : '', 2200);
   }
 
+  /** ป้ายชื่อตัวเอง (มีฉายาอยู่บรรทัดบน) */
+  refreshNameTag() {
+    const c = this.player?.char; if (!c || !this.nameTag) return;
+    const t = TITLE_BY_ID[c.title];
+    const txt = t ? `«${t.nameTh}»\n${c.name}` : c.name;
+    if (this.nameTag.text !== txt) this.nameTag.setText(txt);
+  }
+
   // ------------------------------------------------------------
   //  ออนไลน์
   // ------------------------------------------------------------
@@ -736,6 +748,7 @@ export class TopDownScene extends Phaser.Scene {
       .on('td:die', ({ mid }) => this.onMobDie(this.mobs[mid]))
       .on('td:matk', ({ mid }) => { const m = this.mobs[mid]; if (m?.alive) playDir(m, 'attack', m.dir, true); })
       .on('td:aoe', (a) => this.bossAoe(a))
+      .on('td:title', ({ id, title }) => this.remotes.get(id)?.setTitle(title))
       .on('td:reward', (r) => this.showReward({ ...r, x: this.mobs[r.mid]?.x, y: this.mobs[r.mid]?.y }))
       .on('td:respawn', (d) => this.onRespawn(d))
       .on('td:correct', ({ x, y }) => { if (dist(this.player, { x, y }) > 24) { this.player.setPosition(x, y); this.player.path = []; } });
@@ -752,7 +765,7 @@ export class TopDownScene extends Phaser.Scene {
         if (!m.alive) { m.alive = true; m.setPosition(x, y); this.setMobVisible(m, true); playDir(m, 'walk', m.dir, true); }
       } else if (m.alive) this.onMobDie(m);
     }
-    for (const [id, x, y, dir, anim] of ps) if (id !== this.net.selfId) this.remotes.get(id)?.push({ x, y, dir, anim });
+    for (const [id, x, y, dir, anim, hp, maxHp, level] of ps) if (id !== this.net.selfId) { const r = this.remotes.get(id); if (r) { r.push({ x, y, dir, anim }); r.hp = hp; r.maxHp = maxHp; if (level) r.level = level; } }
   }
 
   removeRemote(id) { this.remotes.get(id)?.destroy(); this.remotes.delete(id); this.ui.setOnline(this.net.online, this.remotes.size); }
@@ -763,9 +776,13 @@ export class TopDownScene extends Phaser.Scene {
     const s = this.add.sprite(q.x, q.y, key, 'idle_0').setOrigin(0.5, 1).setDepth(q.y);
     s.legacyKey = key; s.d8id = heroId(q.appearance); s.holdAttack = () => q.appearance?.job !== 'boxer'; s.actionAnim = () => ACTION_ANIM[q.appearance?.job];
     this.weapons?.attach(s, () => q.appearance, () => ({ anim: r.anim }));
-    const tag = makeText(this, q.x, q.y, `${q.name} Lv.${q.level}`, { fontSize: '7px', color: '#aed6f1' }).setOrigin(0.5, 1);
+    const tt = TITLE_BY_ID[q.title];
+    const tag = makeText(this, q.x, q.y, `${tt ? `«${tt.nameTh}»\n` : ''}${q.name} Lv.${q.level}`, { fontSize: '7px', color: '#aed6f1', align: 'center' }).setOrigin(0.5, 1);
+    s.setInteractive({ useHandCursor: true });                                   // คลิกผู้เล่น → เมนู เชิญ/เทรด/เพื่อน/กระซิบ
+    s.on('pointerdown', (ptr) => { ptr.event?.stopPropagation?.(); this.social?.openPlayerMenu(r, { x: ptr.x, y: ptr.y }); });
     const sh = this.addShadow(s, 22);
     const r = {
+      id: q.id, netId: q.id, name: q.name, level: q.level, hp: q.hp, maxHp: q.maxHp,
       tx: q.x, ty: q.y, dir: 'south', anim: 'idle',
       push(st) { this.tx = st.x; this.ty = st.y; this.dir = st.dir || this.dir; this.anim = st.anim || 'idle'; },
       update(dt) {
@@ -776,6 +793,7 @@ export class TopDownScene extends Phaser.Scene {
       },
       destroy: () => { this.weapons?.detach(s); s.destroy(); tag.destroy(); sh.destroy(); this.shadows = this.shadows.filter((x) => x.obj !== s); },
       get x() { return s.x; }, get y() { return s.y; },
+      setTitle(t) { const T = TITLE_BY_ID[t]; tag.setText(`${T ? `«${T.nameTh}»\n` : ''}${q.name} Lv.${this.level}`); },
     };
     this.remotes.set(q.id, r);
   }
@@ -820,6 +838,7 @@ export class TopDownScene extends Phaser.Scene {
     kb.on('keydown-I', () => this.ui.toggle('inv-panel'));
     kb.on('keydown-C', () => this.ui.toggle('stats-panel'));
     kb.on('keydown-K', () => this.ui.toggle('skill-panel'));
+    kb.on('keydown-P', () => this.ui.toggle('social-panel'));
     kb.on('keydown-O', () => (document.querySelector('#card-panel').classList.contains('hidden') ? this.ui.cards.open() : this.ui.toggle('card-panel', false)));
     kb.on('keydown-J', () => this.village.openQuests());
     kb.on('keydown-H', () => this.ui.toggle('help-panel'));
@@ -949,6 +968,8 @@ export class TopDownScene extends Phaser.Scene {
     this.remotes.forEach((r) => r.update(dt));
     this.weapons?.update(time);
     this.skills?.autoTick(time);
+    this.social?.update(time);
+    if (time > (this.tagAt || 0)) { this.tagAt = time + 500; this.refreshNameTag(); }
     this.life?.update(time, dt);
     this.autoPotion(time);
     // ส่งตำแหน่ง ~10 ครั้ง/วิ
