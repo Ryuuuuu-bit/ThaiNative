@@ -13,7 +13,7 @@ import { dayPhase, dayIndex, moonOf, nightMods, isNight } from '../shared/data/w
 import { rollGearDrop } from '../shared/data/gear.js';
 import { grantKill } from '../shared/economy.js';
 import { NPC_BY_ID } from '../shared/data/npcs.js';
-import { buildLayout, TILE, MAP_W, MAP_H, SPAWN, inTownXY } from '../shared/td/ayutthaya.js';
+import { buildLayout, TILE, MAP_W, MAP_H, SPAWN, inTownXY, T } from '../shared/td/ayutthaya.js';
 
 export const TD_SPAWN = { ...SPAWN };
 const SPEED = 92;                   // ความเร็วเดินผู้เล่น (ตรงกับ client)
@@ -208,6 +208,12 @@ export function setupTD(io, players, opts = {}) {
 
   return {
     tick, econX,
+    /** ยืนริมน้ำ (ตกปลาได้) */
+    nearWater(p) {
+      const tx = Math.floor(p.tx / TILE), ty = Math.floor(p.ty / TILE);
+      for (let y = ty - 2; y <= ty + 2; y++) for (let x = tx - 2; x <= tx + 2; x++) { const g = L.ground[y]?.[x]; if (g === T.WATER || g === T.WATER2) return true; }
+      return false;
+    },
     warpHome(p) { p.tx = TD_SPAWN.x; p.ty = TD_SPAWN.y; p.tdLast = Date.now(); p.save.tdPos = { ...TD_SPAWN }; p.dirty = true; },
     inTown: (p) => inTown(p.tx, p.ty),
     onConnection(socket) {

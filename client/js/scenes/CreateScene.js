@@ -4,7 +4,7 @@
 //  ▸ เลือกเพศ / ชุด 10 แบบ (ภาพย่อ) / อาวุธเริ่มต้น · ทุกคนเริ่มเป็นชาวบ้าน · เลือกสายหลักตอน Lv.10
 // ============================================================
 import { GENDERS, OUTFITS, HAIRSTYLES, DEFAULT_APPEARANCE } from '/shared/data/appearance.js';
-import { JOBS, PATH_LV } from '/shared/data/classes.js';
+import { JOBS } from '/shared/data/classes.js';
 import { ITEMS } from '/shared/data/items.js';
 import { newCharacter, saveCharacter } from '../systems/Character.js';
 import { runAction } from '/shared/economy.js';
@@ -132,7 +132,7 @@ export class CreateScene extends Phaser.Scene {
     const wi = Math.max(0, START_WEAPONS.findIndex((w) => w.id === (a.weapon || null)));
     document.querySelectorAll('#cc-jobs .job').forEach((b) => b.classList.toggle('active', +b.dataset.w === wi));
     const job = JOBS[START_WEAPONS[wi].job];
-    $('#cc-job-desc').textContent = `แนว${job.nameTh}: ${job.desc} · ทุกคนเริ่มเป็นชาวบ้าน ได้อาวุธฝึกครบทุกแบบ แล้วเลือกสายหลักตอน Lv.${PATH_LV}`;
+    $('#cc-job-desc').textContent = `แนว${job.nameTh}: ${job.desc} · ทุกคนเริ่มเป็นชาวบ้าน ได้อาวุธฝึกครบทุกแบบ · อาชีพเกิดจากอาวุธที่ใช้ + ต้นไม้พรสวรรค์`;
     document.querySelectorAll('#create-screen .preview-anims button').forEach((b) => b.classList.toggle('active', b.dataset.anim === this.anim));
     this.preview.set({ ...a, job: START_WEAPONS[wi].job }, this.anim);
   }

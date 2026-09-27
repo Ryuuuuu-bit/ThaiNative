@@ -255,6 +255,22 @@
    },
    "frame": 72,
    "scale": 0.667
+  },
+  "mob_phi_tuay_kaew": {
+   "anims": [
+    "idle",
+    "attack",
+    "die",
+    "walk"
+   ],
+   "frames": {
+    "idle": 4,
+    "attack": 6,
+    "die": 7,
+    "walk": 6
+   },
+   "frame": 72,
+   "scale": 0.6
   }
  },
  "images": [

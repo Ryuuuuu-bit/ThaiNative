@@ -825,6 +825,7 @@ body.touch .td-bottom .k-hint { display: none; }
 body.touch .td-bottom .t-hint { display: inline; }
 body.touch, body.touch #game-wrap { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; -webkit-tap-highlight-color: transparent; }
 body.touch #td-minimap { width: 9em; }
+body.touch.td-mode #td-hud .td-zone { top: 35.6% !important; width: 12em; }
 body.touch #chat { bottom: auto; top: 30%; width: 17em; font-size: .7em; }
 body.touch #skillbar .skill, body.touch .slot.pot { touch-action: manipulation; }
 #touch-ui { position: absolute; inset: 0; pointer-events: none; z-index: 30; }
@@ -996,3 +997,77 @@ canvas.px { image-rendering: pixelated; image-rendering: crisp-edges; }
 .emblem { width: 4.2em; height: 4.2em; image-rendering: pixelated; filter: drop-shadow(0 0 .6em rgba(255,190,90,.55)) drop-shadow(0 .2em .3em rgba(0,0,0,.7)); animation: crest 4s ease-in-out infinite; }
 @keyframes crest { 50% { transform: translateY(-.15em); filter: drop-shadow(0 0 1em rgba(255,200,110,.85)) drop-shadow(0 .2em .3em rgba(0,0,0,.7)); } }
 .emblem-sm { width: 1.15em; height: 1.15em; image-rendering: pixelated; vertical-align: -.15em; margin-right: .3em; filter: drop-shadow(0 0 .3em rgba(255,190,90,.5)); }
+
+/* ============================================================
+   คัมภีร์ (K): ต้นไม้พรสวรรค์ · สกิลอาวุธ · ทักษะชีวิต
+   ============================================================ */
+.window.xwide { width: 58em; max-width: 96%; top: 5%; max-height: 90%; }
+.sk-modes { display: flex; gap: .4em; margin: -.1em 0 .6em; }
+.sk-modes button { flex: 1; padding: .4em .5em; font: inherit; border-radius: 8px; cursor: pointer; background: linear-gradient(#2b1a3d, #1a0f26); color: var(--muted); border: 1px solid rgba(212,175,55,.35); }
+.sk-modes button.active { color: #2a1b3a; background: linear-gradient(#f7dc6f, #d4af37); border-color: #fff2b3; font-weight: 600; box-shadow: 0 0 10px rgba(244,208,63,.35); }
+.sk-passive { display: flex; gap: .8em; align-items: stretch; }
+.sk-passive-svg { flex: 1; min-width: 0; background: radial-gradient(circle at 50% 50%, rgba(212,175,55,.08), rgba(10,5,18,.6) 70%); border: 1px solid rgba(212,175,55,.25); border-radius: 10px; }
+.ptree { width: 100%; height: auto; max-height: 62vh; display: block; }
+.ptree .pl { stroke: rgba(255,255,255,.14); stroke-width: 3; }
+.ptree .pl.half { stroke: rgba(212,175,55,.4); }
+.ptree .pl.on { stroke: #f4d03f; stroke-width: 4; filter: drop-shadow(0 0 3px rgba(244,208,63,.8)); }
+.ptree .pn { cursor: pointer; }
+.ptree .pn-shape { fill: #1a1024; stroke: rgba(255,255,255,.28); stroke-width: 2; transition: transform .12s; transform-box: fill-box; transform-origin: center; }
+.ptree .pn.notable .pn-shape { stroke-width: 3; }
+.ptree .pn.key .pn-shape { stroke-width: 3; stroke: color-mix(in srgb, var(--c) 60%, #fff 10%); }
+.ptree .pn.on .pn-shape { fill: var(--c); stroke: #fff2b3; filter: drop-shadow(0 0 5px var(--c)); }
+.ptree .pn.root .pn-shape { fill: #5a3d10; stroke: #f4d03f; }
+.ptree .pn.can .pn-shape { stroke: #f4d03f; stroke-dasharray: 3 2; animation: pnPulse 1.2s ease-in-out infinite; }
+.ptree .pn:hover .pn-shape { transform: scale(1.25); }
+@keyframes pnPulse { 50% { stroke: #fff; filter: drop-shadow(0 0 6px #f4d03f); } }
+.ptree .pn-t { font-size: 12px; text-anchor: middle; pointer-events: none; }
+.ptree .pb-t { font-size: 13px; font-weight: 600; text-anchor: middle; paint-order: stroke; stroke: #0d0714; stroke-width: 3px; pointer-events: none; }
+.sk-passive-side { width: 17em; display: flex; flex-direction: column; gap: .6em; }
+.sk-passive-info { flex: 1; background: rgba(10,5,18,.55); border: 1px solid rgba(212,175,55,.25); border-radius: 10px; padding: .7em .8em; display: flex; flex-direction: column; gap: .3em; font-size: .9em; }
+.sk-passive-info > b { font-size: 1.15em; color: var(--gold-soft); }
+.sk-passive-info small { color: var(--muted); font-size: .8em; }
+.sk-passive-info p { margin: .2em 0; color: #a9dfbf; }
+.sk-passive-info em { color: #f7dc6f; font-style: normal; font-size: .85em; }
+.ms { display: flex; flex-direction: column; gap: .25em; margin-top: .3em; border-top: 1px solid rgba(212,175,55,.2); padding-top: .4em; }
+.ms-row { display: grid; grid-template-columns: 6.5em 1fr 2.8em; align-items: center; gap: .4em; font-size: .85em; color: var(--muted); }
+.ms-row.cur { color: #fff; }
+.ms-row.cur span::after { content: ' ✔'; color: #58d68d; }
+.ms-bar { height: .5em; background: #0c0612; border-radius: 4px; overflow: hidden; border: 1px solid rgba(0,0,0,.6); }
+.ms-bar i { display: block; height: 100%; background: linear-gradient(90deg, #b7950b, #f4d03f); }
+.ms-row b { color: var(--gold-soft); font-weight: 500; text-align: right; }
+.sk-passive-foot { display: flex; flex-direction: column; gap: .4em; font-size: .85em; color: var(--muted); }
+.sk-passive-foot b { color: #f7dc6f; font-size: 1.2em; }
+.sk-life { display: grid; grid-template-columns: 1fr 1fr; gap: .6em; }
+.sk-life .hint { grid-column: 1 / -1; }
+.life-card { display: flex; gap: .7em; padding: .7em; border-radius: 10px; background: linear-gradient(180deg, rgba(43,26,61,.7), rgba(18,10,27,.85)); border: 1px solid rgba(212,175,55,.3); }
+.life-ic { font-size: 2em; width: 1.6em; text-align: center; filter: drop-shadow(0 2px 2px #000); }
+.life-main { flex: 1; display: flex; flex-direction: column; gap: .25em; }
+.life-h { display: flex; justify-content: space-between; align-items: center; }
+.life-h b { color: var(--gold-soft); }
+.life-main small { color: var(--muted); font-size: .78em; }
+@media (max-aspect-ratio: 4/3) { .sk-passive { flex-direction: column; } .sk-passive-side { width: 100%; } .sk-life { grid-template-columns: 1fr; } }
+#td-hud .td-act { position: absolute; left: 50%; bottom: 23%; transform: translateX(-50%); pointer-events: auto; z-index: 3; padding: .35em 1.1em; border-radius: 2em; font: inherit; font-size: .9em; cursor: pointer;
+  color: #fff3c4; background: linear-gradient(#5a1e16, #33100c); border: 2px solid var(--gold); box-shadow: 0 0 12px rgba(244,208,63,.35), 0 3px 8px rgba(0,0,0,.6); animation: actBob 1.6s ease-in-out infinite; }
+@keyframes actBob { 50% { transform: translate(-50%, -3px); } }
+
+/* ============================================================
+   HUD กรุงศรีฯ (td-mode): เรียงใหม่ให้โล่ง อ่านง่าย ธีมรักปิดทอง
+   ============================================================ */
+#ui { z-index: 6; }                                     /* หน้าต่างอยู่เหนือมินิแมพ/ป้ายโซน */
+body.td-mode:not(.touch) #hud > .hud-buttons.dock { position: absolute; right: .9%; top: 49%; bottom: auto; display: grid; grid-template-columns: repeat(3, auto); gap: .22em; padding: .3em .35em;
+  background: linear-gradient(180deg, rgba(58,20,16,.92), rgba(26,10,12,.94)); border: 2px solid var(--gold); border-radius: 12px; box-shadow: 0 0 0 2px rgba(0,0,0,.5), 0 4px 14px rgba(0,0,0,.5); }
+body.td-mode:not(.touch) #hud > .hud-buttons.dock button { width: 2.25em; height: 2.25em; }
+body.td-mode #td-hud .td-zone { top: 42.1% !important; right: 1.2%; width: 16.67em; text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 0; transform: none; font-size: .75em; padding: .15em .9em; border-radius: 0 0 10px 10px; border-top: none;
+  background: linear-gradient(#6e1f17, #3e110c); color: #fff3c4; box-shadow: 0 3px 8px rgba(0,0,0,.45); }
+#td-hud .td-bottom { transition: opacity .8s; }
+#td-hud .td-bottom.fade { opacity: 0; pointer-events: none; }
+#chat-log { background: linear-gradient(180deg, rgba(20,10,26,.0), rgba(20,10,26,.55) 30%); border-radius: 8px; padding: .2em .3em; }
+#chat-log div { background: none; }
+#chat-log:empty { background: none; }
+
+body.td-mode:not(.touch) #chat { width: 19em; font-size: .72em; }
+body.td-mode #chat-log { max-height: 6.5em; }
+#skill-panel .sk-tree { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+#skill-panel .sk-assign { display: flex; flex-wrap: wrap; justify-content: center; gap: 2px; }
+#skill-panel .sk-assign button { min-width: 1.5em; padding: 0 .2em; font-size: .75em; }
+#skill-panel .sk-card { font-size: .88em; }

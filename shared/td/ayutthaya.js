@@ -18,6 +18,13 @@ const isMoat = (tx, ty) => { const dx = Math.abs(tx - CENTER.x), dy = Math.abs(t
 /** พิกัดพิกเซลอยู่ในเขตเมือง (Safe Zone) ไหม – ใช้ร่วม client/server */
 export const inTownXY = (x, y) => isIsland(Math.floor(x / TILE), Math.floor(y / TILE));
 export const SPAWN = { x: 60 * TILE, y: 58 * TILE };
+/** จุดเก็บเกี่ยวในทุ่งนอกเมือง (ช่องตาราง) · รวงข้าวในนา + สมุนไพรริมทุ่ง */
+export const HERB_SPOTS = [
+  [14, 106, 'rice_sheaf'], [24, 112, 'rice_sheaf'], [36, 107, 'rice_sheaf'], [30, 118, 'rice_sheaf'],
+  [82, 108, 'rice_sheaf'], [94, 114, 'rice_sheaf'], [104, 111, 'rice_sheaf'], [100, 119, 'rice_sheaf'],
+  [48, 126, 'herb_aloe'], [64, 130, 'herb_aloe'], [18, 124, 'herb_lemongrass'], [74, 124, 'herb_lemongrass'],
+  [90, 126, 'herb_aloe'], [67, 114, 'herb_lemongrass'],
+].map(([x, y, item], i) => ({ i, x: x * TILE + 8, y: y * TILE + 8, item }));
 export const GATES = { south: { x0: 58, x1: 61 }, west: { y0: 48, y1: 51 }, east: { y0: 48, y1: 51 } };
 
 let seed = 1234;

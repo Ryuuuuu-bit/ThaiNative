@@ -9,6 +9,8 @@ import { computeDerived, STAT_KEYS, MAX_LEVEL, POINTS_PER_LEVEL, clamp } from '.
 import { SKILL_BY_ID, MAX_SKILL_LV, SP_PER_LEVEL, START_SP, skillStats } from './data/skills.js';
 import { combineBlessings } from './data/blessings.js';
 import { setInfo } from './data/gear.js';
+import { passiveBonus } from './data/passives.js';
+import { masteryLevel } from './data/life.js';
 
 /** ช่องสวมใส่ (เครื่องประดับ 2 ข้าง) → ชนิดไอเทมที่ใส่ได้ */
 export const EQUIP_SLOTS = ['weapon', 'armor', 'accessory', 'accessory2'];
@@ -31,7 +33,9 @@ export function equipmentBonus(c) {
 /** ค่าพลังรวม (สถานะ + อุปกรณ์ + สายหลัก) */
 export function getDerived(c) {
   const bonus = equipmentBonus(c);
-  for (const [k, v] of Object.entries(JOBS[c.path]?.pathBonus || {})) bonus[k] = (bonus[k] || 0) + v;   // โบนัสสายหลัก
+  for (const [k, v] of Object.entries(passiveBonus(c.passives))) bonus[k] = (bonus[k] || 0) + v;   // ต้นไม้พรสวรรค์
+  const m = masteryLevel(c.wm?.[c.appearance?.job] || 0).lv;                                         // ความชำนาญอาวุธที่ถือ
+  if (m) { bonus.patkMul = (bonus.patkMul || 0) + m * 0.01; bonus.matkMul = (bonus.matkMul || 0) + m * 0.01; }
   return computeDerived(c.stats, VILLAGER, c.level, bonus);
 }
 

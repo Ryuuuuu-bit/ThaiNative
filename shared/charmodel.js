@@ -8,7 +8,9 @@ import { ITEMS, STARTING_GOLD, STARTING_ITEMS, STARTER_WEAPON } from './data/ite
 import { sanitizeAppearance } from './data/appearance.js';
 import { expToNext, POINTS_PER_LEVEL, STAT_KEYS, MAX_LEVEL } from './stats.js';
 import { getDerived } from './character.js';
-import { SKILL_SLOTS, OLD_SKILL_SLOTS, SP_PER_LEVEL, START_SP, SKILL_BY_ID, canLearn, isItemSlot, slotItemId } from './data/skills.js';
+import { SKILL_SLOTS, OLD_SKILL_SLOTS, SP_PER_LEVEL, START_SP, SKILL_BY_ID, canLearn, isItemSlot, slotItemId, skillCap } from './data/skills.js';
+import { PASSIVES, KEYSTONE, canAllocate, branchPoints, totalPassivePoints } from './data/passives.js';
+import { LIFE, LIFE_IDS, lifeLevel, masteryLevel } from './data/life.js';
 
 export const SAVE_VERSION = 2;          // v2 = ตัวละครแบบเดียว + สายหลัก + แนวต่อสู้ตามอาวุธ
 
@@ -50,6 +52,7 @@ export function newCharacter(name, appearance = {}) {
     sp: START_SP, skills: {}, hotbar: emptyHotbar(),
     quests: { active: {}, done: [] }, enhance: {}, costume: {},
     rec: {}, titles: [], friends: [],
+    passives: ['root'], life: {}, wm: {},
   };
   const d = getDerived(c);
   c.hp = d.maxHp; c.mp = d.maxMp;
@@ -83,6 +86,99 @@ function swapHotbar(c, from, to) {
 
 export const styleOf = (c) => c.appearance.job;
 export const pathName = (c) => (c.path ? JOBS[c.path].nameTh : VILLAGER.nameTh);
+
+// ------------------------------------------------------------
+//  ต้นไม้พรสวรรค์ / อาชีพจากการใช้อาวุธ / ทักษะชีวิต
+// ------------------------------------------------------------
+/** แต้มพรสวรรค์ที่ยังไม่ได้ลง */
+export const passiveFree = (c) => Math.max(0, totalPassivePoints(c.level) - ((c.passives?.length || 1) - 1));
+
+/** อาชีพ (สาย) = กิ่งพรสวรรค์ที่ลงมากสุด × 3 + ความชำนาญอาวุธ · ต้องถึงเกณฑ์ก่อนถึงได้ฉายา ไม่งั้นเป็นชาวบ้าน */
+export function recomputePath(c) {
+  const bp = branchPoints(c.passives || []);
+  let best = null, score = 0;
+  for (const j of Object.keys(JOBS)) {
+    const s = bp[j] * 3 + masteryLevel(c.wm?.[j] || 0).lv;
+    if (s > score) { score = s; best = j; }
+  }
+  c.path = score >= 9 ? best : null;
+  return c.path;
+}
+/** ฉายาเต็ม: มีคีย์สโตนของสาย = ฉายาประจำสาย */
+export function classTitle(c) {
+  if (!c.path) return VILLAGER.nameTh;
+  return c.passives?.includes(KEYSTONE[c.path]) ? JOBS[c.path].pathTitle : JOBS[c.path].nameTh;
+}
+
+/** สกิลที่เลเวลเกินเพดานใหม่ (หลังล้าง/ย้ายพรสวรรค์) → คืน SP */
+export function clampSkills(c) {
+  let refund = 0;
+  for (const [id, lv] of Object.entries(c.skills || {})) {
+    const s = SKILL_BY_ID[id];
+    if (!s) { delete c.skills[id]; continue; }
+    const cap = skillCap(c, s);
+    if (lv > cap) { refund += lv - cap; if (cap) c.skills[id] = cap; else delete c.skills[id]; }
+  }
+  if (refund) { c.sp = (c.sp || 0) + refund; c.hotbar = fixHotbar(c, c.hotbar); if (c.hotbars) for (const j of Object.keys(c.hotbars)) c.hotbars[j] = fixHotbar(c, c.hotbars[j]); }
+  return refund;
+}
+
+export function allocPassive(c, id) {
+  c.passives ||= ['root'];
+  if (!PASSIVES[id]) return { ok: false, msg: 'ไม่มีจุดนี้' };
+  if (c.passives.includes(id)) return { ok: false, msg: 'ลงจุดนี้แล้ว' };
+  if (passiveFree(c) < 1) return { ok: false, msg: 'แต้มพรสวรรค์ไม่พอ (ได้ 1 แต้มต่อเลเวล)' };
+  if (!canAllocate(c.passives, id)) return { ok: false, msg: 'ต้องลงจุดที่ติดกันก่อน' };
+  c.passives.push(id);
+  const before = c.path;
+  recomputePath(c);
+  syncAppearance(c);
+  const n = PASSIVES[id];
+  return { ok: true, msg: `${n.kind === 'key' ? '🌟 คีย์สโตน' : n.kind === 'notable' ? '✦' : '+'} ${n.nameTh}`, pathChanged: before !== c.path };
+}
+
+export function resetPassives(c) {
+  c.passives = ['root'];
+  recomputePath(c);
+  const refund = clampSkills(c);
+  syncAppearance(c);
+  return refund;
+}
+
+/** ซ่อมต้นไม้: ตัดจุดที่ไม่มี/ไม่ต่อกับกลาง/เกินแต้ม */
+function fixPassives(c) {
+  const want = new Set((Array.isArray(c.passives) ? c.passives : []).filter((id) => PASSIVES[id]));
+  const out = ['root'], max = totalPassivePoints(c.level) + 1;
+  let grown = true;
+  while (grown && out.length < max) {
+    grown = false;
+    for (const id of want) if (!out.includes(id) && canAllocate(out, id) && out.length < max) { out.push(id); grown = true; }
+  }
+  c.passives = out;
+}
+
+/** เพิ่ม EXP ทักษะชีวิต → { lv, up } */
+export function addLifeXp(c, key, n = 1) {
+  if (!LIFE[key]) return null;
+  c.life ||= {};
+  const before = lifeLevel(c.life[key] || 0).lv;
+  c.life[key] = (c.life[key] || 0) + Math.max(0, n | 0);
+  const lv = lifeLevel(c.life[key]).lv;
+  return { key, lv, up: lv > before };
+}
+export const lifeLv = (c, key) => lifeLevel(c.life?.[key] || 0).lv;
+
+/** ฆ่าผีด้วยอาวุธที่ถืออยู่ → ความชำนาญอาวุธนั้นขึ้น */
+export function addMastery(c, n = 1) {
+  const j = c.appearance?.job;
+  if (!JOBS[j]) return;
+  c.wm ||= {};
+  const before = masteryLevel(c.wm[j] || 0).lv;
+  c.wm[j] = (c.wm[j] || 0) + n;
+  const lv = masteryLevel(c.wm[j]).lv;
+  if (lv !== before) recomputePath(c);
+  return lv > before ? { job: j, lv } : null;
+}
 
 /** ได้ EXP – คืนจำนวนเลเวลที่ขึ้น (ขึ้นเลเวล = ฟื้นเต็ม) */
 export function gainExp(c, amount) {
@@ -217,6 +313,24 @@ export function migrate(c) {
   }
   if (c.path && !JOBS[c.path]) c.path = null;
   if (c.path === undefined) c.path = null;
+  if (!c.life || typeof c.life !== 'object') c.life = {};
+  for (const k of Object.keys(c.life)) if (!LIFE_IDS.includes(k) || !Number.isFinite(+c.life[k])) delete c.life[k];
+  if (!c.wm || typeof c.wm !== 'object') c.wm = {};
+  // ระบบเดิม (เลือกสายหลักตอน Lv.10) → ต้นไม้พรสวรรค์: ลงแต้มตามกิ่งสายเดิมให้อัตโนมัติ ไม่เสียความเก่ง
+  if (!Array.isArray(c.passives)) {
+    c.passives = ['root'];
+    if (c.path) {
+      for (const i of [0, 1, 2, 3, 5, 7, 8, 4, 6]) {
+        if (passiveFree(c) < 1) break;
+        const id = `${c.path}_${i}`;
+        if (canAllocate(c.passives, id)) c.passives.push(id);
+      }
+      c.wm[c.path] = Math.max(c.wm[c.path] || 0, 60);
+    }
+  }
+  fixPassives(c);
+  recomputePath(c);
+  clampSkills(c);
   syncAppearance(c);
   const d = getDerived(c);
   if (!Number.isFinite(c.hp) || c.hp <= 0) c.hp = d.maxHp;

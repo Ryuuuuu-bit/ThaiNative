@@ -8,7 +8,6 @@ import { MONSTERS } from '/shared/data/monsters.js';
 import { rollGearDrop } from '/shared/data/gear.js';
 import { WORLD } from '/shared/constants.js';
 import { getDerived, gainExp } from './Character.js';
-import { PATH_LV } from '/shared/data/classes.js';
 import { grantKill } from '/shared/economy.js';
 import { QUEST_BY_ID } from '/shared/data/village.js';
 import { makeText, rand } from './util.js';
@@ -433,8 +432,7 @@ export class Combat {
     yantCircle(this.scene, this.player.x, this.player.y, { tint: 0xffd35c, size: 84, ms: 1500, rise: true });
     this.burst(this.player.x, this.player.y - 20, 0xf1c40f, 24);
     this.sfx.play('levelup');
-    if (!c.path && c.level >= PATH_LV && c.level - ups < PATH_LV)
-      this.scene.time.delayedCall(1800, () => this.scene.ui.banner(`🎖️ Lv.${PATH_LV}! ไปหาผู้ใหญ่ชัยที่หมู่บ้านเพื่อเลือกสายหลัก`));
+    if (ups) this.scene.time.delayedCall(1600, () => this.scene.ui.toast(`🌳 ได้แต้มพรสวรรค์ +${ups} — กด K เพื่อลงแต้ม`, 'ok', 3500));
   }
 
   /** ได้ EXP ในเครื่อง (ออฟไลน์เท่านั้น) */

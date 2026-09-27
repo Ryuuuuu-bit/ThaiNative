@@ -5,12 +5,12 @@
 // ============================================================
 export const MONSTERS = {
   phi_tuay_kaew: {
-    nameTh: 'ผีถ้วยแก้ว', nameEn: 'Glass Cup Spirit', level: 1,
-    desc: 'วิญญาณเร่ร่อนในถ้วยแก้ว ลอยวนไปมา อ่อนแอแต่ก่อกวน',
+    nameTh: 'หุ่นไล่กาผีสิง', nameEn: 'Haunted Scarecrow', level: 1,
+    desc: 'หุ่นไล่กากลางนาที่วิญญาณเร่ร่อนเข้าสิง ถือเคียวสนิมเดินโซเซไล่ฟันคน',
     hp: 40, atk: 6, def: 0, eva: 3, acc: 85, speed: 40, behavior: 'flyer',
     attackRange: 18, attackCooldown: 1400, exp: 8, gold: [2, 6],
     frame: { w: 24, h: 24 }, zone: [1400, 1750],
-    palette: { main: '#d6eaf8', dark: '#85c1e9', glow: '#aed6f1' },
+    palette: { main: '#d4ac6e', dark: '#7e5109', glow: '#ff6b5b' },
     drops: [{ item: 'glass_shard', chance: 0.5 }, { item: 'hp_s', chance: 0.15 }],
   },
   kuman_thong: {

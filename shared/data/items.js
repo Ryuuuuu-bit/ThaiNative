@@ -82,13 +82,13 @@ export const ITEMS = {
 
   // ---------- ล้างแต้ม / เปลี่ยนสายหลัก ----------
   reset_water:   { nameTh: 'น้ำมนต์ล้างแต้ม', type: 'reset', icon: '💧', price: 300, desc: 'คืนแต้มสถานะและแต้มสกิลทั้งหมดให้ลงใหม่' },
-  skin_swordman: { nameTh: 'คัมภีร์เปลี่ยนสายหลัก: ขุนศึก',  type: 'skin', icon: '📜', price: 800, job: 'swordman' },
-  skin_mage:     { nameTh: 'คัมภีร์เปลี่ยนสายหลัก: จอมขมังเวทย์', type: 'skin', icon: '📜', price: 800, job: 'mage' },
-  skin_archer:   { nameTh: 'คัมภีร์เปลี่ยนสายหลัก: พรานป่า',  type: 'skin', icon: '📜', price: 800, job: 'archer' },
-  skin_boxer:    { nameTh: 'คัมภีร์เปลี่ยนสายหลัก: นักมวยคาดเชือก', type: 'skin', icon: '📜', price: 800, job: 'boxer' },
+  skin_swordman: { nameTh: 'คัมภีร์ล้างต้นไม้พรสวรรค์', desc: 'ใช้แล้วคืนแต้มพรสวรรค์ทั้งหมด (ฟรี ไม่เสียเงิน)',  type: 'skin', icon: '📜', price: 800, job: 'swordman' },
+  skin_mage: { nameTh: 'คัมภีร์ล้างต้นไม้พรสวรรค์', desc: 'ใช้แล้วคืนแต้มพรสวรรค์ทั้งหมด (ฟรี ไม่เสียเงิน)', type: 'skin', icon: '📜', price: 800, job: 'mage' },
+  skin_archer: { nameTh: 'คัมภีร์ล้างต้นไม้พรสวรรค์', desc: 'ใช้แล้วคืนแต้มพรสวรรค์ทั้งหมด (ฟรี ไม่เสียเงิน)',  type: 'skin', icon: '📜', price: 800, job: 'archer' },
+  skin_boxer: { nameTh: 'คัมภีร์ล้างต้นไม้พรสวรรค์', desc: 'ใช้แล้วคืนแต้มพรสวรรค์ทั้งหมด (ฟรี ไม่เสียเงิน)', type: 'skin', icon: '📜', price: 800, job: 'boxer' },
 
   // ---------- ของดรอปจากผี (ขายได้อย่างเดียว) ----------
-  glass_shard:  { nameTh: 'เศษถ้วยแก้วร้าว',  type: 'material', icon: '🥃', sell: 3 },
+  glass_shard:  { nameTh: 'ฟางหุ่นไล่กาต้องมนตร์', type: 'material', icon: '🌾', sell: 3 },
   gold_leaf:    { nameTh: 'แผ่นทองคำเปลว',    type: 'material', icon: '✨', sell: 5 },
   krasue_hair:  { nameTh: 'เส้นผมกระสือ',     type: 'material', icon: '🧵', sell: 7 },
   banana_leaf:  { nameTh: 'ใบตองตานี',        type: 'material', icon: '🍃', sell: 8 },
@@ -132,6 +132,7 @@ export const ITEMS = {
   // ---------- สมุนไพรป่าผีดุ (เก็บด้วย F) → ยายติ๋มปรุงยา / ป้าสาทำอาหาร ----------
   herb_aloe:      { nameTh: 'ว่านหางจระเข้',     type: 'herb', icon: '🌵', sell: 5 },
   herb_lemongrass:{ nameTh: 'ตะไคร้ป่า',          type: 'herb', icon: '🌾', sell: 5 },
+  rice_sheaf:     { nameTh: 'รวงข้าวหอม',        type: 'herb', icon: '🌾', sell: 4 },
   herb_turmeric:  { nameTh: 'ขมิ้นชัน',           type: 'herb', icon: '🫚', sell: 8 },
   herb_anchan:    { nameTh: 'ดอกอัญชัน',          type: 'herb', icon: '💠', sell: 8 },
   herb_bamboo:    { nameTh: 'หน่อไม้ป่า',          type: 'herb', icon: '🎋', sell: 6 },
@@ -172,7 +173,7 @@ export const SHOPS = {
     nameTh: 'ยายติ๋ม ร้านยาและของใช้',
     greeting: 'มาจ้ะหลาน ยาดีของยาย ผีหลอกก็ไม่กลัว!',
     stock: ['hp_s', 'hp_m', 'mp_s', 'mp_m', 'yant_home', 'garland', 'nam_daeng', 'khai_tom', 'hua_mu',
-      'reset_water', 'skin_swordman', 'skin_mage', 'skin_archer', 'skin_boxer'],
+      'reset_water', 'skin_swordman'],
     tabs: ['buy', 'sell', 'brew'],
   },
   lung_dam: {

@@ -7,7 +7,8 @@ import { JOBS } from '/shared/data/classes.js';
 import { ITEMS } from '/shared/data/items.js';
 import { getDerived } from '/shared/character.js';
 import { expToNext, MAX_LEVEL, STAT_KEYS } from '/shared/stats.js';
-import { loadCharacter, reviveCharacter, pathName } from '../systems/Character.js';
+import { loadCharacter, reviveCharacter } from '../systems/Character.js';
+import { classTitle as pathName } from '/shared/charmodel.js';
 import { account } from '../net/Account.js';
 import { sound } from '../systems/Sound.js';
 import { titleScreen } from '../systems/TitleScreen.js';
@@ -117,7 +118,7 @@ export class LobbyScene extends Phaser.Scene {
     });
     $('#lb-start').textContent = c ? '⚔️ เข้าสู่กรุงศรีฯ' : '✨ สร้างตัวละคร';
     $('#lb-delete').classList.toggle('hidden', !c || !this.online);
-    $('#lb-info').innerHTML = c ? this.infoHtml(c) : `<div class="lb-empty-info"><b>ช่องที่ ${i + 1} ว่างอยู่</b><br>สร้างตัวละครใหม่ได้เลย — ทุกคนเริ่มเป็นชาวบ้านแห่งกรุงศรีฯ ลองอาวุธได้ทุกแบบ แล้วเลือกสายหลักตอน Lv.10</div>`;
+    $('#lb-info').innerHTML = c ? this.infoHtml(c) : `<div class="lb-empty-info"><b>ช่องที่ ${i + 1} ว่างอยู่</b><br>สร้างตัวละครใหม่ได้เลย — ทุกคนเริ่มเป็นชาวบ้านแห่งกรุงศรีฯ ลองอาวุธได้ทุกแบบ แล้วปั้นอาชีพจากอาวุธที่ใช้และต้นไม้พรสวรรค์</div>`;
     if (!silent) try { localStorage.setItem(LAST_SLOT, String(i)); } catch { /* ignore */ }
   }
 

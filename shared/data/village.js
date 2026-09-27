@@ -26,6 +26,7 @@ export function rollFish(night, rnd = Math.random) {
 export const RECIPES = [
   { out: 'food_pla_pao',  need: { pla_nin: 2 }, fee: 10 },
   { out: 'food_khao_tom', need: { pla_taphian: 1, pla_nin: 1 }, fee: 10 },
+  { out: 'food_khao_tom', need: { rice_sheaf: 3, pla_nin: 1 }, fee: 5 },
   { out: 'food_tom_yum',  need: { pla_chon: 1, pla_duk: 1 }, fee: 20 },
   { out: 'food_kung_ob',  need: { kung: 2 }, fee: 30 },
   { out: 'food_phrai',    need: { pla_phrai: 1, pla_chon: 1 }, fee: 60 },
@@ -112,7 +113,7 @@ export const ENHANCE = {
 export const QUESTS = [
   { id: 'q_fish1', lv: 1, nameTh: 'ปลาไว้กินมื้อเย็น', text: 'ป้าสาบ่นว่าครัวไม่มีปลา ไปตกปลาที่ท่าน้ำ (ซ้ายสุดของหมู่บ้าน) มาให้หน่อย',
     goal: { fish: 'any', n: 3 }, reward: { exp: 40, gold: 60, items: [{ id: 'food_pla_pao', qty: 1 }] } },
-  { id: 'q_tuay', lv: 1, nameTh: 'ผีถ้วยแก้วป่วนทุ่ง', text: 'ผีถ้วยแก้วป่วนทุ่งนา วาร์ปไป Map 1 ทุ่งถ้วยแก้ว แล้วจัดการ 8 ตัว',
+  { id: 'q_tuay', lv: 1, nameTh: 'หุ่นไล่กาผีสิงป่วนนา', text: 'หุ่นไล่กาในทุ่งนานอกประตูใต้ถูกผีสิง ออกไปจัดการ 8 ตัว',
     goal: { kill: 'phi_tuay_kaew', n: 8 }, reward: { exp: 120, gold: 120, items: [{ id: 'hp_s', qty: 5 }] } },
   { id: 'q_herb', lv: 2, nameTh: 'สมุนไพรให้ยาย', text: 'ยายติ๋มยาใกล้หมด ไปเก็บสมุนไพรในแมพล่าผี (มีประกายวิบวับ กด F) มาให้ 5 ครั้ง',
     goal: { herb: 'any', n: 5 }, reward: { exp: 150, gold: 150, items: [{ id: 'pot_aloe', qty: 3 }] } },

@@ -33,6 +33,7 @@
       <div class="td-zone" id="td-zone"></div>
       <div class="td-target" id="td-target"></div>
       <div class="td-toast hidden" id="td-toast"></div>
+      <button class="td-act hidden" id="td-act"></button>
       <div class="td-bottom"><span class="t-hint">👆 แตะพื้น = เดิน · แตะผี / ปุ่ม ⚔️ = ตี · แตะช่องสกิล = ร่าย · ⚡ = ออโต้ (ตีเอง) · จอยซ้าย = เดิน</span><span class="k-hint">🖱️ คลิกพื้น = เดิน · คลิกผี = โจมตี · คลิก NPC = ร้าน/เควส · ลูกศร เดิน · 1–0 Hotbar (สกิล/ไอเทม) · A ออโต้ (ตีผีรอบตัว) · B ยันต์คืนถิ่น · I กระเป๋า · C สถานะ · K สกิล · J เควส · คลิกขวาที่ผี = ตี</span></div>
     </div>
     <div id="game"></div>
@@ -325,11 +326,22 @@
       </section>
 
       <!-- Skill Tree (K) -->
-      <section id="skill-panel" class="panel window wide hidden">
-        <header><span>คัมภีร์สกิล · <b id="sk-job"></b></span><span class="sp">SP <b id="sk-sp">0</b> <button class="close">✕</button></span></header>
-        <p class="hint">กด <b>+</b> เพื่อเรียน/อัปสกิล · <b>ลากไอคอน</b> ไปวางที่ช่อง 1–0 หรือ <b>คลิกปุ่มตัวเลข</b> เพื่อติดตั้ง · ไอเทมลากจากกระเป๋า (I) มาวางได้ · คลิกขวาที่ช่องเพื่อถอดออก</p>
-        <div id="sk-tree" class="sk-tree"></div>
-        <div class="sk-hotbar-wrap"><span>Hotbar</span><div id="sk-hotbar" class="sk-hotbar"></div></div>
+      <section id="skill-panel" class="panel window xwide hidden">
+        <header><span>คัมภีร์ · <b id="sk-job"></b></span><span class="sp">พรสวรรค์ <b id="sk-pp">0</b> · SP <b id="sk-sp">0</b> <button class="close">✕</button></span></header>
+        <div class="sk-modes" id="sk-modes">
+          <button data-mode="passive">🌳 ต้นไม้พรสวรรค์</button><button data-mode="active">⚔️ สกิลอาวุธ</button><button data-mode="life">🌾 ทักษะชีวิต</button>
+        </div>
+        <div id="sk-passive" class="sk-passive">
+          <div id="sk-passive-svg" class="sk-passive-svg"></div>
+          <aside class="sk-passive-side"><div id="sk-passive-info" class="sk-passive-info"></div><div id="sk-passive-foot" class="sk-passive-foot"></div></aside>
+        </div>
+        <div id="sk-active" class="hidden">
+          <p class="hint">กด <b>+</b> เพื่อเรียน/อัปสกิล · <b>ลากไอคอน</b> ไปวางที่ช่อง 1–0 หรือ <b>คลิกปุ่มตัวเลข</b> เพื่อติดตั้ง · คลิกขวาที่ช่องเพื่อถอด</p>
+          <div id="sk-tabs" class="sk-tabs"></div>
+          <div id="sk-tree" class="sk-tree"></div>
+          <div class="sk-hotbar-wrap"><span>Hotbar</span><div id="sk-hotbar" class="sk-hotbar"></div></div>
+        </div>
+        <div id="sk-life" class="sk-life hidden"></div>
       </section>
 
       <!-- แผนที่โลก (M) -->
@@ -382,7 +394,7 @@
           <div><kbd>M</kbd> แผนที่โลก</div><div><kbd>Esc</kbd> ตั้งค่า / ปิดหน้าต่าง</div>
           <div><kbd>P</kbd> ปาร์ตี้ / เทรด · คลิกที่ผู้เล่นอื่น</div><div>ลานพญายักษ์ (ตะวันออกสุด) = <b>เรดบอส</b></div>
           <div><kbd>J</kbd> สมุดเควส (รับเควสที่ผู้ใหญ่ชัย)</div><div>🗺️ 20 แมพล่าผี 5 ภาค: แมพละผี 1 ชนิด · ประตูขวา = แมพถัดไป · ประตูซ้าย = เลือกวาร์ป · กองไฟ = จุดพัก/ฟื้น</div><div>🌿 เก็บสมุนไพร (F) · หีบสมบัติ · ค่าหัวพรานบุญ (Map 1)</div><div>🎣 ท่าน้ำซ้ายสุดของหมู่บ้าน: กด F ตกปลา → ป้าสาทำอาหาร</div>
-          <div>⚔️ แนวต่อสู้ = อาวุธที่ถือ (ดาบ / ไม้เท้า / ธนู / มือเปล่า) · สกิลใช้ได้เมื่อถืออาวุธตรงแนว</div><div>🎖️ Lv.10 เลือกสายหลักกับผู้ใหญ่ชัย: สกิลสายหลักอัปถึง Lv.5 + ท่าไม้ตาย · สายอื่นถึง Lv.2</div>
+          <div>⚔️ แนวต่อสู้ = อาวุธที่ถือ (ดาบ / ไม้เท้า / ธนู / มือเปล่า) · สกิลใช้ได้เมื่อถืออาวุธตรงแนว</div><div>🌳 <kbd>K</kbd> ต้นไม้พรสวรรค์ (1 แต้ม/เลเวล) + ความชำนาญอาวุธ = อาชีพ/ฉายา · กิ่งอาวุธปลดเลเวลสกิล · คีย์สโตนปลดท่าไม้ตาย ★ · 🎣🌾 ทักษะชีวิต: ตกปลาริมน้ำ / เก็บเกี่ยวในทุ่ง (กด F)</div>
           <div><kbd>1</kbd><kbd>2</kbd> ยา HP / MP</div><div><kbd>C</kbd> สถานะ · <kbd>I</kbd> กระเป๋า · <kbd>Enter</kbd> แชท</div>
           <div><kbd>B</kbd> ยันต์คืนถิ่น (ร่าย 2.5 วิ กลับหมู่บ้าน)</div><div><kbd>Tab</kbd> สลับอาวุธ</div>
           <div>💬 <b>/w ชื่อ ข้อความ</b> กระซิบ · <b>/r ข้อความ</b> ตอบกลับ · <b>/p</b> แชทปาร์ตี้</div><div>🏆 ตารางอันดับอยู่ในหน้าต่างผู้เล่น (P)</div>

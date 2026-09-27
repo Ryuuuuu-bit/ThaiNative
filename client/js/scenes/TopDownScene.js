@@ -17,6 +17,7 @@ import { loadSettings, saveSettings } from '../systems/Settings.js';
 import { saveCharacter } from '../systems/Character.js';
 import { UI } from '../systems/UI.js';
 import { Village } from '../systems/Village.js';
+import { TdLife } from '../topdown/TdLife.js';
 import { Econ } from '../net/Econ.js';
 import { Network } from '../net/Network.js';
 import { account } from '../net/Account.js';
@@ -96,6 +97,10 @@ export class TopDownScene extends Phaser.Scene {
     this.econ = new Econ(this);
     this.ui = new UI(this);
     this.village = new Village(this);
+    this.life = new TdLife(this);
+    // HUD: ย้ายปุ่มเมนูลงมุมขวาล่าง (ข้าง Hotbar) · ซ่อนแถบคำแนะนำหลัง 15 วิ
+    { const hb = document.querySelector('.hud-buttons'); if (hb) { hb.classList.add('dock'); $('#hud').appendChild(hb); } }
+    { const tb = document.querySelector('#td-hud .td-bottom'); if (tb) { tb.classList.remove('fade'); clearTimeout(this._hintT); this._hintT = setTimeout(() => tb.classList.add('fade'), 15000); } }
     document.querySelector('.minimap')?.classList.add('hidden');
     this.buildNpcs();
     this.buildMonsters();
@@ -137,12 +142,13 @@ export class TopDownScene extends Phaser.Scene {
         yantCircle(this, p.x, p.y, { tint: 0xffd35c, size: 84, ms: 1500, rise: true });
         popupNumber(this, p.x, p.y - 48, `LEVEL UP! Lv.${p.char.level}`, 'crit');
         this.sfx.play('levelup');
-        this.ui.banner(`🎉 เลเวลอัพ! Lv.${p.char.level}`, ups > 1 ? `ขึ้น ${ups} เลเวล` : 'แต้มสถานะ +5 · SP +1');
+        this.ui.banner(`🎉 เลเวลอัพ! Lv.${p.char.level}`, `${ups > 1 ? `ขึ้น ${ups} เลเวล · ` : ''}แต้มสถานะ +${5 * ups} · SP +${ups} · 🌳 พรสวรรค์ +${ups} (K)`);
       },
       popup: (x, y, r, kind) => popupNumber(this, x, y, r.hit === false ? 'MISS' : `${r.dmg}${r.crit ? '!' : ''}`, r.hit === false ? 'miss' : kind || (r.crit ? 'crit' : 'normal')),
       popupText: (x, y, text) => popupNumber(this, x, y, text, 'exp'),
       burst: () => {}, dust: () => {},
     };
+    this.onJobChanged = () => { this.onAppearanceChanged(); this.ui.hudCache = ''; this.ui.refreshPanels?.(); };
     this.onAppearanceChanged = () => {
       const p = this.player, key = bakeCharacter(this, p.char.appearance);
       p.texKey = p.legacyKey = key; p.setTexture(key, 'idle_0');
@@ -278,18 +284,35 @@ export class TopDownScene extends Phaser.Scene {
       const spr = this.add.sprite(n.x, n.y, key, 'idle_0').setOrigin(0.5, 1).setDepth(n.y);
       spr.legacyKey = key; spr.d8id = n.key; playDir(spr, 'idle', 'south');
       this.addShadow(spr, 20);
-      makeText(this, n.x, n.y - spr.height - 3, `${NPC_ICON[n.id] || ''} ${n.nameTh}`, { fontSize: '7px', color: n.color }).setOrigin(0.5, 1).setDepth(n.y + 1);
-      makeText(this, n.x, n.y - spr.height - 13, `[${n.role}]`, { fontSize: '6px', color: '#ecf0f1' }).setOrigin(0.5, 1).setDepth(n.y + 1);
+      this.npcPlate(n, spr);
       spr.setInteractive({ useHandCursor: true });
       spr.on('pointerdown', (ptr) => { ptr.event.stopPropagation(); this.talk(n); });
       spr.on('pointerover', () => { this.hovered = spr; document.body.dataset.cursor = 'talk'; });
       spr.on('pointerout', () => { if (this.hovered === spr) this.hovered = null; delete document.body.dataset.cursor; });
-      if (n.id === 'quest') {                                                              // เครื่องหมาย ! ลอยเหนือหัวคนให้เควส
-        const q = makeText(this, n.x, n.y - spr.height - 26, '❗', { fontSize: '10px' }).setOrigin(0.5, 1).setDepth(n.y + 2);
-        this.tweens.add({ targets: q, y: q.y - 4, duration: 600, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
+      if (n.id === 'quest') {                                                              // เครื่องหมาย ! ทองลอยเหนือป้ายชื่อ
+        const y0 = n.y - spr.height - 30;
+        const g = this.add.graphics().setDepth(n.y + 3);
+        g.fillStyle(0x5a1611, 1).fillCircle(0, 0, 6).lineStyle(1.5, 0xf4d03f).strokeCircle(0, 0, 6);
+        const t = makeText(this, 0, 1, '!', { fontSize: '9px', color: '#ffe082' }).setOrigin(0.5);
+        const q = this.add.container(n.x, y0, [g, t]).setDepth(n.y + 3);
+        this.tweens.add({ targets: q, y: y0 - 4, duration: 650, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
       }
       return { ...n, icon: NPC_ICON[n.id], spr, line: 0 };
     });
+  }
+
+  /** ป้ายชื่อ NPC: กรอบรักดำขอบทอง · บรรทัดบน = หน้าที่ (ไอคอน) · บรรทัดล่าง = ชื่อ */
+  npcPlate(n, spr) {
+    const top = n.y - spr.height - 2;
+    const role = makeText(this, 0, 0, `${NPC_ICON[n.id] || '💬'} ${n.role}`, { fontSize: '6px', color: '#f7dc6f' }).setOrigin(0.5, 1);
+    const name = makeText(this, 0, 0, n.nameTh, { fontSize: '7px', color: n.color || '#ffffff' }).setOrigin(0.5, 1);
+    const w = Math.max(role.width, name.width) / 1 + 8, h = role.height + name.height - 2;
+    name.setY(0); role.setY(-name.height + 3);
+    const g = this.add.graphics();
+    g.fillStyle(0x140a1c, 0.78).fillRoundedRect(-w / 2, -h - 1, w, h + 2, 3);
+    g.lineStyle(1, 0xd4af37, 0.85).strokeRoundedRect(-w / 2, -h - 1, w, h + 2, 3);
+    g.fillStyle(0xd4af37, 1).fillTriangle(-2, 1, 2, 1, 0, 3);
+    this.add.container(n.x, top - 2, [g, role, name]).setDepth(n.y + 2);
   }
 
   talk(n) {
@@ -492,6 +515,7 @@ export class TopDownScene extends Phaser.Scene {
     for (const it of r.items || []) this.ui.loot?.(`${it.rare ? '✨ ' : ''}ได้ ${ITEMS[it.id]?.nameTh || it.id} x${it.qty || 1}`);
     if (r.quests?.length || r.titles?.length) this.ui.result({ ok: true, quests: r.quests, titles: r.titles });
     if (r.ups && !this.econ.server) this.combat.levelUpFx(r.ups);
+    if (r.mastery) this.ui.toast(`${JOBS[r.mastery.job]?.icon || '⚔️'} ความชำนาญ${JOBS[r.mastery.job]?.weaponTh || 'อาวุธ'} Lv.${r.mastery.lv} (โจมตี +${r.mastery.lv}%)`, 'ok', 2500);
     this.ui.hudCache = '';
   }
 
@@ -665,7 +689,13 @@ export class TopDownScene extends Phaser.Scene {
     });
     // แตะ/คลิกช่องสกิลในแถบล่าง = ร่ายสกิล (มือถือไม่มีคีย์บอร์ด)
     $('#skillbar')?.addEventListener('click', (e) => { const k = e.target.closest('.skill')?.dataset.key; if (k) this.useSlot(k); });
-    kb.on('keydown-F', () => { const n = this.nearestNpc(60); if (n) this.talk(n); });
+    kb.on('keydown-F', () => {
+      if (this.ui.typing) return;
+      if (this.life.fish) return this.life.press();
+      const n = this.nearestNpc(60);
+      if (n) return this.talk(n);
+      this.life.action();
+    });
     for (const k of SKILL_SLOTS) kb.on(`keydown-${SLOT_KEYNAME[k]}`, () => this.useSlot(k));   // Hotbar 1–0 (สกิล/ไอเทม)
     kb.on('keydown-B', () => this.recall());
     kb.on('keydown-A', () => { if (!this.ui.anyOpen?.()) this.toggleAutoSkill(); });
@@ -793,6 +823,7 @@ export class TopDownScene extends Phaser.Scene {
     this.remotes.forEach((r) => r.update(dt));
     this.weapons?.update(time);
     this.skills?.autoTick(time);
+    this.life?.update(time, dt);
     this.autoPotion(time);
     // ส่งตำแหน่ง ~10 ครั้ง/วิ
     if (this.net?.online && time - (this.sentAt || 0) > 100) {
@@ -812,7 +843,7 @@ export class TopDownScene extends Phaser.Scene {
     if (zone !== this.zone) {
       this.zone = zone;
       this.ui.setZone(zone === 'town' ? 'กรุงศรีอยุธยา' : 'ทุ่งนาบางปะอิน', true);
-      $('#td-zone').textContent = zone === 'town' ? '🏯 เกาะเมือง (Safe Zone)' : '🌾 ผีถ้วยแก้ว · กุมารทอง · นางตานี';
+      $('#td-zone').textContent = zone === 'town' ? '🏯 เกาะเมือง (Safe Zone)' : '🌾 หุ่นไล่กาผีสิง · กุมารทอง · นางตานี';
     }
     this.sfx.setMood({ lowHp: p.alive && p.char.hp / p.derived.maxHp < 0.25, boss: 0 });
     this.ui.updateHud();

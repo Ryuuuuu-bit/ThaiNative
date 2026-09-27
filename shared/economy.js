@@ -19,7 +19,8 @@ import { getDerived, EQUIP_SLOTS, SLOT_TYPE } from './character.js';
 import { OUTFITS, HAIRSTYLES } from './data/appearance.js';
 import { STAT_KEYS, expToNext, MAX_LEVEL } from './stats.js';
 import { SKILL_BY_ID } from './data/skills.js';
-import { gainExp, choosePath, resetStats, resetSkills, syncAppearance, learnSkill, assignHotbar, allocateStat } from './charmodel.js';
+import { gainExp, resetStats, resetSkills, syncAppearance, learnSkill, assignHotbar, allocateStat, allocPassive, resetPassives, addLifeXp, lifeLv, addMastery, recomputePath } from './charmodel.js';
+import { HERB_SPOTS } from './td/ayutthaya.js';
 
 const OK = (msg, extra = {}) => ({ ok: true, msg, ...extra });
 const NO = (msg) => ({ ok: false, msg });
@@ -100,8 +101,9 @@ export function grantKill(c, r, day) {
   for (const it of r.items || []) addItem(c, it.id, it.qty || 1);
   const ups = gainExp(c, r.exp || 0);
   rec(c, 'kills');
+  const mastery = addMastery(c, 1);
   const quests = questEvent(c, 'kill', r.mon), bounty = bountyKill(c, r.mon, day);
-  return { ups, quests, bounty, titles: checkTitles(c) };
+  return { ups, quests, bounty, mastery, titles: checkTitles(c) };
 }
 /** รางวัลทั่วไป (เรด/ดันเจี้ยน/บอสภาค/ปาร์ตี้) */
 export function grant(c, { exp = 0, gold = 0, items = [] } = {}) {
@@ -171,19 +173,18 @@ function use(c, { id }) {
     removeItem(c, id);
     return OK(`ใช้ ${it.nameTh}`, { potion: true, healed: Math.round(c.hp - hp0) });
   }
-  if (it.type === 'skin') {
-    if (!c.path) return NO('ยังไม่มีสายหลัก — ถึง Lv.10 แล้วไปหาผู้ใหญ่ชัยเพื่อเลือกสายฟรี');
-    const r = choosePath(c, it.job);
-    if (!r.ok) return r;
+  if (it.type === 'skin') {                                         // คัมภีร์เปลี่ยนสาย → ล้างต้นไม้พรสวรรค์ฟรี
+    if ((c.passives?.length || 1) <= 1) return NO('ยังไม่ได้ลงแต้มพรสวรรค์');
     removeItem(c, id);
+    resetPassives(c);
     clampHp(c);
-    return OK(`${r.msg} กด K เพื่อเรียนสกิลใหม่`, { jobChanged: true });
+    return OK('ล้างต้นไม้พรสวรรค์แล้ว — กด K เพื่อลงแต้มใหม่', { jobChanged: true });
   }
   if (it.type === 'reset') {
     removeItem(c, id);
-    resetStats(c); resetSkills(c);
+    resetStats(c); resetSkills(c); resetPassives(c);
     clampHp(c);
-    return OK(`ล้างแต้มแล้ว! ได้แต้มสถานะ ${c.statPoints} และ SP ${c.sp} (กด C / K เพื่อลงใหม่)`);
+    return OK(`ล้างแต้มแล้ว! ได้แต้มสถานะ ${c.statPoints}, SP ${c.sp} และแต้มพรสวรรค์คืนทั้งหมด (กด C / K เพื่อลงใหม่)`);
   }
   if (it.type === 'food') {
     if (it.effect.hp) c.hp = Math.min(d.maxHp, c.hp + it.effect.hp);
@@ -286,16 +287,20 @@ function craft(c, { list, idx, n = 1 }, ctx) {
   if (ctx.x != null && !nearNpc(ctx.x, L.npc)) return NO(`ต้องยืนคุยกับ${L.who}ก่อน`);
   n = int(n, 1, 99, 1);
   let done = 0;
+  const lk = list === 'forge' ? 'smith' : 'cook';
+  let extra = 0;
   while (done < n && canCraft(c, r)) {
     Object.entries(r.need).forEach(([id, k]) => removeItem(c, id, k));
     c.gold -= r.fee;
     addItem(c, r.out);
+    if (list !== 'forge' && ctx.rnd && ctx.rnd() < lifeLv(c, lk) * 0.02) { addItem(c, r.out); extra++; }
     done++;
   }
+  const life = done ? addLifeXp(c, lk, done * (list === 'forge' ? 6 : 3)) : null;
   if (!done) return NO(Object.entries(r.need).every(([id, k]) => count(c, id) >= k) ? 'เงินไม่พอจ่ายค่าแรง' : 'วัตถุดิบไม่พอ');
   rec(c, 'craft', done);
   const it = ITEMS[r.out];
-  return OK(`${L.who}${list === 'forge' ? 'หลอม' : 'ทำ'} ${it.icon} ${it.nameTh}${done > 1 ? ` x${done}` : ''} ให้แล้ว!`, { done, out: r.out, forged: list === 'forge' && !r.util });
+  return OK(`${L.who}${list === 'forge' ? 'หลอม' : 'ทำ'} ${it.icon} ${it.nameTh}${done > 1 ? ` x${done}` : ''} ให้แล้ว!${extra ? ` (ฝีมือดี ได้เพิ่ม ${extra})` : ''}`, { done, out: r.out, forged: list === 'forge' && !r.util, life });
 }
 
 // ------------------------------------------------------------
@@ -316,7 +321,8 @@ function enhance(c, { slot, guard }, ctx) {
   if (ore) removeItem(c, 'black_iron', ore);
   if (fang) removeItem(c, 'yak_fang', fang);
   if (useGuard) removeItem(c, 'yant_guard', 1);
-  const success = ctx.rnd() < ENHANCE.rate(lv);
+  const success = ctx.rnd() < ENHANCE.rate(lv) + lifeLv(c, 'smith') * 0.003;
+  const life = addLifeXp(c, 'smith', 2 + Math.floor(lv / 3));
   let drop = 0;
   if (success) c.enhance[slot] = lv + 1;
   else { drop = useGuard ? 0 : ENHANCE.drop(lv, ctx.rnd); c.enhance[slot] = Math.max(0, lv - drop); }
@@ -324,7 +330,7 @@ function enhance(c, { slot, guard }, ctx) {
   c.rec.enhMax = Math.max(c.rec.enhMax || 0, c.enhance[slot]);
   const jobChanged = syncAppearance(c);
   clampHp(c);
-  return { ok: success, success, slot, from: lv, lv: c.enhance[slot], drop, guard: useGuard, jobChanged, msg: '' };
+  return { ok: success, success, slot, from: lv, lv: c.enhance[slot], drop, guard: useGuard, jobChanged, life, msg: '' };
 }
 
 // ------------------------------------------------------------
@@ -353,13 +359,24 @@ function qClaim(c, { id }, ctx) {
   const ups = gainExp(c, q.reward.exp);
   return OK(`✔ เควสสำเร็จ: ${q.nameTh}`, { quest: id, exp: q.reward.exp, ups });
 }
-function path(c, { job }, ctx) {
-  if (ctx.x != null && !nearSpot(ctx.x, 'chai')) return NO('ต้องยืนคุยกับผู้ใหญ่ชัยที่หมู่บ้านก่อน');
-  if (c.path) return NO('เลือกสายหลักไปแล้ว (เปลี่ยนได้ด้วยคัมภีร์เปลี่ยนสายหลัก)');
-  const r = choosePath(c, job);
-  if (!r.ok) return r;
-  addItem(c, `armor_${job}`);
-  return OK(r.msg, { jobChanged: true, pathChosen: job });
+function path() { return NO('ระบบใหม่: อาชีพมาจากต้นไม้พรสวรรค์ + อาวุธที่ใช้บ่อย (กด K)'); }
+/** ลงแต้มพรสวรรค์ */
+function passive(c, { id }) {
+  const r = allocPassive(c, String(id || ''));
+  if (!r.ok) return NO(r.msg);
+  clampHp(c);
+  return OK(r.msg, { jobChanged: r.pathChanged });
+}
+/** ล้างต้นไม้พรสวรรค์: ต่ำกว่า Lv.10 ฟรี · จากนั้นเสียเงิน 60 × เลเวล */
+export const passiveResetCost = (c) => (c.level < 10 ? 0 : c.level * 60);
+function passiveReset(c) {
+  if ((c.passives?.length || 1) <= 1) return NO('ยังไม่ได้ลงแต้มพรสวรรค์');
+  const cost = passiveResetCost(c);
+  if (c.gold < cost) return NO(`ต้องใช้เงิน ฿${cost}`);
+  c.gold -= cost;
+  const refund = resetPassives(c);
+  clampHp(c);
+  return OK(`ล้างต้นไม้พรสวรรค์แล้ว${cost ? ` (฿${cost})` : ''}${refund ? ` · คืน SP ${refund}` : ''}`, { jobChanged: true });
 }
 function bounty(c, { i }, ctx) {
   if (ctx.x != null && !(mapAt(ctx.x).id === 'm1' && Math.abs(ctx.x - CAMP.npcX) < 160)) return NO('ต้องกลับไปหาพรานบุญที่ค่าย (แมพ 1)');
@@ -377,7 +394,7 @@ function bounty(c, { i }, ctx) {
 const atFish = (x) => mapAt(x).id === 'village' && x >= FISH_SPOT.from - 20 && x <= FISH_SPOT.to + 20;
 function fishBite(c, a, ctx) {
   const S = ctx.sess;
-  if (ctx.x != null && !atFish(ctx.x)) return NO('ต้องยืนที่ท่าน้ำ');
+  if (ctx.td ? !ctx.tdFish : (ctx.x != null && !atFish(ctx.x))) return NO('ต้องยืนริมน้ำ');
   if (ctx.now - (S.fishAt || 0) < 2000) return NO('ปลายังไม่กินเบ็ด');
   S.fishAt = ctx.now;
   const f = rollFish(ctx.night, ctx.rnd);
@@ -389,26 +406,31 @@ function fishLand(c, a, ctx) {
   S.fish = null;
   if (!f || ctx.now - f.at < 250 || ctx.now - f.at > 60000) return NO('ปลาหลุดเบ็ดไปแล้ว…');
   addItem(c, f.id);
+  let bonus = 0;
+  if (f.id !== 'junk_boot' && ctx.rnd && ctx.rnd() < lifeLv(c, 'fish') * 0.02) { addItem(c, f.id); bonus = 1; }
+  const life = addLifeXp(c, 'fish', f.id === 'junk_boot' ? 1 : 4);
   if (f.id !== 'junk_boot') rec(c, 'fish');
   if (f.id === 'pla_buek') rec(c, 'buek');
   const quests = questEvent(c, 'fish', f.id);
-  return OK('', { id: f.id, quests });
+  return OK('', { id: f.id, quests, bonus, life });
 }
 function fishLose(c, a, ctx) { ctx.sess.fish = null; return OK(''); }
 function gather(c, { node }, ctx) {
-  const S = ctx.sess, n = HERB_NODES[int(node, 0, 999, -1)];
+  const S = ctx.sess, n = ctx.td ? HERB_SPOTS[int(node, 0, 999, -1)] : HERB_NODES[int(node, 0, 999, -1)];
   if (!n) return NO('');
-  if (ctx.x != null && (mapAt(ctx.x).id !== n.mapId || Math.abs(ctx.x - n.x) > 45)) return NO('อยู่ไกลเกินไป');
+  if (ctx.td) { if (ctx.tdPos && Math.hypot(ctx.tdPos.x - n.x, ctx.tdPos.y - n.y) > 44) return NO('อยู่ไกลเกินไป'); }
+  else if (ctx.x != null && (mapAt(ctx.x).id !== n.mapId || Math.abs(ctx.x - n.x) > 45)) return NO('อยู่ไกลเกินไป');
   S.herb ||= {};
   if ((S.herb[node] || 0) > ctx.now) return NO('สมุนไพรยังไม่งอกใหม่');
   if (ctx.now - (S.gatherAt || 0) < 1100) return NO('');
   S.gatherAt = ctx.now;
   S.herb[node] = ctx.now + HERB_RESPAWN_MS;
-  const qty = ctx.rnd() < 0.25 ? 2 : 1;
+  const qty = ctx.rnd() < 0.25 + lifeLv(c, 'gather') * 0.02 ? 2 : 1;
   addItem(c, n.item, qty);
   rec(c, 'herb');
+  const life = addLifeXp(c, 'gather', 3);
   const quests = questEvent(c, 'herb', n.item);
-  return OK('', { item: n.item, qty, quests });
+  return OK('', { item: n.item, qty, quests, life, node: int(node, 0, 999, -1), respawn: HERB_RESPAWN_MS });
 }
 function chest(c, a, ctx) {
   const S = ctx.sess;
@@ -515,11 +537,11 @@ function gm(c, { cmd = 'help', a1, a2 }, ctx) {
 // ------------------------------------------------------------
 export const ACTIONS = {
   use, equip, unequip, cosOff, buy, sell, sellMany, lock, offer, siamsi, craft, enhance,
-  qAccept, qDrop, qClaim, path, bounty, fishBite, fishLand, fishLose, gather, chest,
+  qAccept, qDrop, qClaim, path, passive, passiveReset, bounty, fishBite, fishLand, fishLose, gather, chest,
   alloc, learn, hotbar, recall, dye, title, friendDel, gm,
 };
 /** ระหว่างเทรด ห้ามทำสิ่งที่แตะกระเป๋า/เงิน (กันของซ้ำ) */
-const TRADE_SAFE = new Set(['lock', 'qAccept', 'qDrop', 'hotbar', 'title', 'friendDel', 'fishBite', 'fishLand', 'fishLose', 'gather', 'chest', 'learn', 'alloc']);
+const TRADE_SAFE = new Set(['lock', 'qAccept', 'qDrop', 'hotbar', 'title', 'friendDel', 'fishBite', 'fishLand', 'fishLose', 'gather', 'chest', 'learn', 'alloc', 'passive']);
 
 /**
  * รันคำสั่ง: ctx = { rnd, now, x (ตำแหน่งผู้เล่น · null = ไม่ตรวจ), night, admin, trade, sess }

@@ -15,7 +15,8 @@
 //   stun   { ms }              ศัตรูขยับ/โจมตีไม่ได้
 //   poison { ticks, every, ratio } ดาเมจต่อเนื่อง ratio × ดาเมจครั้งแรก ต่อ tick
 // ============================================================
-import { SUB_CAP, PATH_LV } from './classes.js';
+import { SUB_CAP } from './classes.js';
+import { PASSIVES, KEYSTONE, BRANCHES, branchPoints } from './passives.js';
 
 // Hotbar 10 ช่อง (ปุ่มตัวเลขแถวบน 1–0) · ใส่ได้ทั้งสกิล (id สกิล) และไอเทม ('it:<id ไอเทม>')
 export const SKILL_SLOTS = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '0'];
@@ -125,11 +126,11 @@ export function reqCharLevel(skill, nextLv) {
   return skill.reqLv + (nextLv - 1) * 2;
 }
 
-/** เลเวลสกิลสูงสุดที่ตัวละครนี้อัปได้ (สายหลัก 5 / สายรองหรือยังไม่เลือกสาย 2 / ท่าไม้ตายสายรอง 0) */
+/** เลเวลสกิลสูงสุดที่อัปได้ = 2 + (แต้มพรสวรรค์ในกิ่งอาวุธนั้น ÷ 2) สูงสุด 5 · ท่าไม้ตาย ★ ต้องมีคีย์สโตนของกิ่ง */
 export function skillCap(char, skill) {
-  const main = char.path && skill.job === char.path;
-  if (main) return MAX_SKILL_LV;
-  return skill.ultimate ? 0 : SUB_CAP;
+  const owned = char.passives || [];
+  if (skill.ultimate) return owned.includes(KEYSTONE[skill.job]) ? MAX_SKILL_LV : 0;
+  return Math.min(MAX_SKILL_LV, SUB_CAP + Math.floor(branchPoints(owned)[skill.job] / 2));
 }
 
 /** ตรวจว่าอัปสกิลได้ไหม → { ok, reason } */
@@ -139,8 +140,11 @@ export function canLearn(char, skillId) {
   const cur = char.skills?.[skillId] || 0;
   const cap = skillCap(char, s);
   if (cur >= MAX_SKILL_LV) return { ok: false, reason: 'เลเวลสูงสุดแล้ว' };
-  if (cap === 0) return { ok: false, reason: 'ท่าไม้ตาย ★ เฉพาะสายหลัก' };
-  if (cur >= cap) return { ok: false, reason: char.path ? `สายรองอัปได้ถึง Lv.${cap}` : `เลือกสายหลักตอน Lv.${PATH_LV} เพื่ออัปต่อ` };
+  if (cap === 0) return { ok: false, reason: `★ ต้องมีคีย์สโตน “${PASSIVES[KEYSTONE[s.job]].nameTh}”` };
+  if (cur >= cap) {
+    const need = (cur + 1 - SUB_CAP) * 2 - branchPoints(char.passives || [])[s.job];
+    return { ok: false, reason: `ลงแต้ม${BRANCHES[s.job].nameTh}อีก ${need} แต้ม` };
+  }
   if ((char.sp || 0) < 1) return { ok: false, reason: 'SP ไม่พอ' };
   const need = reqCharLevel(s, cur + 1);
   if (char.level < need) return { ok: false, reason: `ต้องการ Lv.${need}` };

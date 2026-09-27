@@ -12,7 +12,10 @@ import { TITLES, TITLE_BY_ID } from '/shared/data/titles.js';
 import { DYE_PRICE } from '/shared/economy.js';
 import { OUTFITS, HAIRSTYLES } from '/shared/data/appearance.js';
 import { SKILLS, SKILL_SLOTS, SKILL_BY_ID, MAX_SKILL_LV, skillStats, canLearn, skillCap, isItemSlot, slotItemId } from '/shared/data/skills.js';
-import { hotbarItemOk } from '/shared/charmodel.js';
+import { hotbarItemOk, passiveFree, classTitle } from '/shared/charmodel.js';
+import { PASSIVES, BRANCHES, KEYSTONE, canAllocate, branchPoints, bonusText, totalPassivePoints } from '/shared/data/passives.js';
+import { LIFE, LIFE_IDS, lifeLevel, masteryLevel, MASTERY_MAX } from '/shared/data/life.js';
+import { passiveResetCost } from '/shared/economy.js';
 import { MONSTERS } from '/shared/data/monsters.js';
 import { WORLD } from '/shared/constants.js';
 import { MAPS, MAP_LIST, REGIONS, mapAt } from '/shared/data/maps.js';
@@ -124,22 +127,22 @@ export class UI {
   updateHud() {
     const c = this.char, d = getDerived(c);
     const need = expToNext(c.level);
-    const sig = [c.hp, c.mp, d.maxHp, d.maxMp, c.exp, c.level, c.gold, c.appearance.job, c.path, c.statPoints, c.sp, JSON.stringify(c.skills), Inv.count(c, 'hp_s'), Inv.count(c, 'mp_s')].join('|');
+    const sig = [c.hp, c.mp, d.maxHp, d.maxMp, c.exp, c.level, c.gold, c.appearance.job, c.path, c.statPoints, c.sp, JSON.stringify(c.skills), (c.passives || []).length, Inv.count(c, 'hp_s'), Inv.count(c, 'mp_s')].join('|');
     if (sig === this.hudCache) return;
     this.hudCache = sig;
 
     $('#hud-name').textContent = c.name;
     // จุดแดงเตือน: มีแต้มสถานะ / มีสกิลที่อัปได้
     document.querySelector('.hud-buttons [data-open="stats-panel"]')?.classList.toggle('alert', c.statPoints > 0);
-    const canSkill = c.sp > 0 && Object.values(SKILLS).some((list) => list.some((sk) => canLearn(c, sk.id).ok));
+    const canSkill = passiveFree(c) > 0 || (c.sp > 0 && Object.values(SKILLS).some((list) => list.some((sk) => canLearn(c, sk.id).ok)));
     document.querySelector('.hud-buttons [data-open="skill-panel"]')?.classList.toggle('alert', canSkill);
     if ($('#hud-lv2').textContent !== String(c.level)) {
       const up = +$('#hud-lv2').textContent > 0 && c.level > +$('#hud-lv2').textContent;
       $('#hud-lv').textContent = c.level; $('#hud-lv2').textContent = c.level;
       if (up) document.querySelectorAll('.lv-tag').forEach((el) => { el.classList.remove('up'); void el.offsetWidth; el.classList.add('up'); });
     }
-    $('#hud-job').textContent = `${pathName(c)} · ${JOBS[c.appearance.job].icon}`;
-    $('#hud-job').title = `สายหลัก: ${pathName(c)} · แนวต่อสู้ตอนนี้: ${JOBS[c.appearance.job].nameTh} (ตามอาวุธที่ถือ)`;
+    $('#hud-job').textContent = `${classTitle(c)} · ${JOBS[c.appearance.job].icon}`;
+    $('#hud-job').title = `อาชีพ: ${classTitle(c)} · แนวต่อสู้ตอนนี้: ${JOBS[c.appearance.job].nameTh} (ตามอาวุธที่ถือ)`;
     $('#hud-hp').textContent = `HP ${Math.ceil(c.hp)} / ${d.maxHp}`;
     $('#hud-mp').textContent = `MP ${Math.floor(c.mp)} / ${d.maxMp}`;
     $('#hud-hp-fill').style.width = `${(c.hp / d.maxHp) * 100}%`;
@@ -381,16 +384,112 @@ export class UI {
   // ============================================================
   renderSkillTree() {
     const c = this.char;
-    if (!this.skTab) this.skTab = c.path || c.appearance.job;
-    const job = this.skTab;
-    $('#sk-job').textContent = c.path ? `สายหลัก ${JOBS[c.path].pathTitle}` : `ชาวบ้าน (เลือกสายหลักตอน Lv.${PATH_LV})`;
+    this.skMode ||= 'passive';
+    $('#sk-job').textContent = classTitle(c);
     $('#sk-sp').textContent = c.sp;
+    $('#sk-pp').textContent = passiveFree(c);
+    document.querySelectorAll('#sk-modes [data-mode]').forEach((b) => {
+      b.classList.toggle('active', b.dataset.mode === this.skMode);
+      b.onclick = () => { this.skMode = b.dataset.mode; this.scene.sfx.play('click'); this.renderSkillTree(); };
+    });
+    for (const m of ['passive', 'active', 'life']) $(`#sk-${m}`).classList.toggle('hidden', m !== this.skMode);
+    if (this.skMode === 'passive') return this.renderPassives();
+    if (this.skMode === 'life') return this.renderLife();
+    this.renderActives();
+  }
+
+  /** ต้นไม้พรสวรรค์ (SVG) */
+  renderPassives() {
+    const c = this.char, owned = c.passives || ['root'], free = passiveFree(c), U = 30, R = 7.6;
+    const bp = branchPoints(owned);
+    const P = (n) => [(n.x + R) * U, (n.y + R) * U];
+    const done = new Set();
+    let lines = '', nodes = '';
+    for (const n of Object.values(PASSIVES)) {
+      for (const l of n.links) {
+        const key = [n.id, l].sort().join('|');
+        if (done.has(key)) continue; done.add(key);
+        const [x1, y1] = P(n), [x2, y2] = P(PASSIVES[l]);
+        const a = owned.includes(n.id), b = owned.includes(l);
+        lines += `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" class="pl ${a && b ? 'on' : a || b ? 'half' : ''}"/>`;
+      }
+    }
+    for (const n of Object.values(PASSIVES)) {
+      const [x, y] = P(n), on = owned.includes(n.id), can = !on && free > 0 && canAllocate(owned, n.id);
+      const r = { root: 12, key: 15, notable: 11, small: 7 }[n.kind];
+      const col = n.branch ? BRANCHES[n.branch].color : '#d4af37';
+      const shape = n.kind === 'key' ? `<polygon points="${x},${y - r} ${x + r},${y} ${x},${y + r} ${x - r},${y}"` : `<circle cx="${x}" cy="${y}" r="${r}"`;
+      nodes += `<g class="pn ${n.kind} ${on ? 'on' : ''} ${can ? 'can' : ''}" data-id="${n.id}" style="--c:${col}">${shape} class="pn-shape"/>${n.kind === 'root' ? `<text x="${x}" y="${y + 4}" class="pn-t">🏠</text>` : ''}</g>`;
+    }
+    const labels = Object.entries(BRANCHES).map(([j, b]) => {
+      const [x, y] = [(b.dir[0] * 8.1 + R) * U, (b.dir[1] * 8.1 + R) * U + 4];
+      return `<text x="${x}" y="${y}" class="pb-t" style="fill:${b.color}">${JOBS[j].icon} ${JOBS[j].weaponTh} · ${bp[j]}</text>`;
+    }).join('');
+    const W = R * 2 * U;
+    $('#sk-passive-svg').innerHTML = `<svg viewBox="-20 -20 ${W + 40} ${W + 40}" class="ptree">${lines}${nodes}${labels}</svg>`;
+    const info = $('#sk-passive-info');
+    const show = (id) => {
+      const n = PASSIVES[id], on = owned.includes(id), can = !on && canAllocate(owned, id);
+      const kind = { root: 'จุดเริ่มต้น', key: '🌟 คีย์สโตน (ฉายาประจำสาย · ปลดท่าไม้ตาย ★)', notable: '✦ จุดสำคัญ', small: 'จุดเล็ก' }[n.kind];
+      info.innerHTML = `<b style="color:${n.branch ? BRANCHES[n.branch].color : 'var(--gold-soft)'}">${n.nameTh}</b><small>${kind}${n.branch ? ` · ${BRANCHES[n.branch].nameTh}` : ''}</small>
+        <p>${bonusText(n.bonus) || 'จุดศูนย์กลาง — เริ่มลงแต้มจากตรงนี้'}</p>
+        <em>${on ? '✔ ลงแล้ว' : can ? (free ? 'คลิกเพื่อลงแต้ม' : 'แต้มพรสวรรค์หมด') : 'ต้องลงจุดที่ติดกันก่อน'}</em>`;
+    };
+    const summary = () => {
+      const tot = {};
+      for (const id of owned) for (const [k, v] of Object.entries(PASSIVES[id].bonus)) tot[k] = (tot[k] || 0) + v;
+      const ms = JOB_IDS.map((j) => { const m = masteryLevel(c.wm?.[j] || 0); const pct = m.need ? Math.round(m.cur / m.need * 100) : 100;
+        return `<div class="ms-row ${c.appearance.job === j ? 'cur' : ''}"><span>${JOBS[j].icon} ${JOBS[j].weaponTh}</span><div class="ms-bar"><i style="width:${pct}%"></i></div><b>Lv.${m.lv}</b></div>`; }).join('');
+      info.innerHTML = `<b>${classTitle(c)}</b><small>อาชีพมาจาก: แต้มในกิ่ง × 3 + ความชำนาญอาวุธ (ถึง 9 คะแนนจึงได้ฉายา)</small>
+        <p>${bonusText(tot) || 'ยังไม่ได้ลงแต้ม — คลิกจุดที่ติดกับ 🏠 ตรงกลาง'}</p>
+        <div class="ms"><small>ความชำนาญอาวุธ (ฆ่าผีด้วยอาวุธนั้น · โจมตี +1%/Lv)</small>${ms}</div>`;
+    };
+    summary();
+    $('#sk-passive-svg').querySelectorAll('.pn').forEach((g) => {
+      g.onmouseenter = () => show(g.dataset.id);
+      g.onmouseleave = summary;
+      g.onclick = () => {
+        if (!g.classList.contains('can')) { show(g.dataset.id); return; }
+        this.scene.econ.act('passive', { id: g.dataset.id }).then((r) => {
+          this.scene.sfx.play(r.ok ? (PASSIVES[g.dataset.id].kind === 'key' ? 'levelup' : 'buff') : 'error');
+          this.toast(r.msg, r.ok ? '' : 'warn');
+          if (r.ok && r.jobChanged) this.scene.onJobChanged?.();
+          this.refreshPanels(); this.scene.saveSoon();
+        });
+      };
+    });
+    const cost = passiveResetCost(c);
+    $('#sk-passive-foot').innerHTML = `<span>แต้มพรสวรรค์ <b>${free}</b> / ${totalPassivePoints(c.level)} (ได้ 1 แต้มต่อเลเวล)</span>
+      <button class="btn ghost sm" id="sk-preset" ${owned.length > 1 ? '' : 'disabled'}>↺ ล้างต้นไม้ ${cost ? `(฿${cost})` : '(ฟรีก่อน Lv.10)'}</button>`;
+    $('#sk-preset').onclick = () => {
+      if (!confirm(`ล้างต้นไม้พรสวรรค์ทั้งหมด${cost ? ` เสียเงิน ฿${cost}` : ''}? (สกิลที่เลเวลเกินเพดานจะคืน SP)`)) return;
+      this.scene.econ.act('passiveReset').then((r) => { this.toast(r.msg, r.ok ? '' : 'warn'); this.scene.sfx.play(r.ok ? 'blessing' : 'error'); if (r.ok) this.scene.onJobChanged?.(); this.refreshPanels(); });
+    };
+  }
+
+  /** ทักษะชีวิต */
+  renderLife() {
+    const c = this.char;
+    $('#sk-life').innerHTML = LIFE_IDS.map((k) => {
+      const L = LIFE[k], m = lifeLevel(c.life?.[k] || 0), pct = m.need ? Math.round(m.cur / m.need * 100) : 100;
+      return `<div class="life-card"><div class="life-ic">${L.icon}</div><div class="life-main">
+        <div class="life-h"><b>${L.nameTh}</b><span class="lv-tag">Lv.${m.lv}</span></div>
+        <div class="bar exp"><i style="width:${pct}%"></i><span>${m.need ? `${m.cur} / ${m.need}` : 'MAX'}</span></div>
+        <small>🎁 ${L.perk(m.lv)}</small><small>📍 ${L.how}</small></div></div>`;
+    }).join('') + '<p class="hint">ทักษะชีวิตขึ้นเลเวลจากการทำจริง ไม่ใช้แต้มสกิล · เลเวลสูงสุด 20</p>';
+  }
+
+  /** สกิลอาวุธ (Active) */
+  renderActives() {
+    const c = this.char;
+    if (!this.skTab) this.skTab = c.appearance.job;
+    const job = this.skTab;
+    const bp = branchPoints(c.passives || []);
     let tabs = $('#sk-tabs');
-    if (!tabs) { tabs = document.createElement('div'); tabs.id = 'sk-tabs'; tabs.className = 'sk-tabs'; $('#sk-tree').before(tabs); }
     tabs.innerHTML = JOB_IDS.map((j) => {
       const learned = SKILLS[j].reduce((a, sk) => a + (c.skills[sk.id] || 0), 0);
-      return `<button data-sktab="${j}" class="${j === job ? 'active' : ''} ${c.path === j ? 'main' : ''}">${JOBS[j].icon} ${JOBS[j].nameTh}${c.path === j ? ' ★' : ''}${learned ? ` <small>${learned}</small>` : ''}</button>`;
-    }).join('') + `<span class="sk-note">${c.path === job ? 'สายหลัก: อัปได้ถึง Lv.5 + ท่าไม้ตาย ★' : c.path ? 'สายรอง: อัปได้ถึง Lv.2 ไม่มีท่าไม้ตาย' : `ก่อน Lv.${PATH_LV} ทุกสายอัปได้ถึง Lv.2`} · ใช้ได้เมื่อถือ${JOBS[job].weaponTh}${c.appearance.job === job ? ' ✔' : ''}</span>`;
+      return `<button data-sktab="${j}" class="${j === job ? 'active' : ''} ${c.appearance.job === j ? 'main' : ''}">${JOBS[j].icon} ${JOBS[j].weaponTh}${learned ? ` <small>${learned}</small>` : ''}</button>`;
+    }).join('') + `<span class="sk-note">เพดานเลเวลสกิล = 2 + (แต้ม${BRANCHES[job].nameTh} ${bp[job]} ÷ 2) · ★ ต้องมีคีย์สโตน · ใช้ได้เมื่อถือ${JOBS[job].weaponTh}${c.appearance.job === job ? ' ✔' : ''}</span>`;
     tabs.querySelectorAll('[data-sktab]').forEach((b) => (b.onclick = () => { this.skTab = b.dataset.sktab; this.scene.sfx.play('click'); this.renderSkillTree(); }));
     $('#sk-tree').innerHTML = SKILLS[job].map((base) => {
       const lv = c.skills[base.id] || 0;
@@ -606,7 +705,7 @@ export class UI {
       const up = after[key] !== d[key];
       return `<div><span>${label}</span><b>${f(d[key])}${up ? ` <em class="up">→ ${f(after[key])}</em>` : ''}</b></div>`;
     }).join('')
-      + `<div class="path-line"><span>สายหลัก</span><b>${c.path ? `${JOBS[c.path].pathTitle} (${JOBS[c.path].pathTextTh})` : `ชาวบ้าน · ถึง Lv.${PATH_LV} ไปหาผู้ใหญ่ชัย`}</b></div>`
+      + `<div class="path-line"><span>อาชีพ (พรสวรรค์ + อาวุธ)</span><b>${classTitle(c)} · แต้มพรสวรรค์เหลือ ${passiveFree(c)} (K)</b></div>`
       + `<div class="path-line"><span>แนวต่อสู้ (ตามอาวุธ)</span><b>${JOBS[c.appearance.job].icon} ${JOBS[c.appearance.job].nameTh}</b></div>`;
   }
 

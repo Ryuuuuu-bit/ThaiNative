@@ -11,7 +11,7 @@ import { count, tradeLock, questState as qState } from './Inventory.js';
 import { craftList, canCraft, MAX_ACTIVE_QUESTS } from '/shared/economy.js';
 import { FISH_SPOT } from '/shared/data/npcs.js';
 import { AURA_TH, AURA_COLOR } from '../gfx/Aura.js';
-import { JOBS, JOB_IDS, PATH_LV } from '/shared/data/classes.js';
+import { JOBS, JOB_IDS } from '/shared/data/classes.js';
 import { SKILLS } from '/shared/data/skills.js';
 import { itemIcon } from './util.js';
 
@@ -298,39 +298,15 @@ export class Village {
     return [`${r.exp} EXP`, `฿${r.gold}`, ...(r.items || []).map((it) => `${ITEMS[it.id].icon}${ITEMS[it.id].nameTh} x${it.qty}`)].join(' · ');
   }
 
-  /** พิธีเลือกสายหลัก (Lv.10) – แสดงบนสุดของสมุดเควส  เลือกได้เมื่อยืนใกล้ผู้ใหญ่ชัย */
+  /** แนะนำระบบอาชีพใหม่ (แทนพิธีเลือกสายหลัก) – แสดงบนสุดของสมุดเควส */
   renderPathBox() {
     let box = $('#path-box');
     if (!box) { box = document.createElement('div'); box.id = 'path-box'; $('#quest-list').before(box); }
     const c = this.char;
     if (c.path) { box.innerHTML = ''; return; }
-    const near = this.nearChai();
-    if (c.level < PATH_LV) {
-      box.innerHTML = `<div class="quest locked"><div><b>🎖️ พิธีเลือกสายหลัก</b> <span class="meta">Lv.${PATH_LV}+</span>
-        <p>“ตอนนี้เอ็งยังเป็นชาวบ้านธรรมดา ลองจับดาบ ไม้เท้า ธนู หรือกำหมัดดูให้ครบ พอถึง Lv.${PATH_LV} ค่อยมาบอกข้าว่าจะเดินทางไหน”</p>
-        <small>ระหว่างนี้ทุกสายอัปสกิลได้ถึง Lv.2 · เปลี่ยนอาวุธ = เปลี่ยนแนวต่อสู้</small></div><span class="meta">Lv.${c.level}/${PATH_LV}</span></div>`;
-      return;
-    }
-    box.innerHTML = `<div class="quest ready"><div style="width:100%"><b>🎖️ พิธีเลือกสายหลัก</b>
-      <p>“ถึงเวลาแล้ว! เลือกทางของเอ็ง สายหลักอัปสกิลได้ถึง Lv.5 ใช้ท่าไม้ตาย ★ ได้ และได้ชุดประจำสาย สายอื่นยังใช้ได้แต่อัปได้แค่ Lv.2”</p>
-      ${near ? '' : '<small>⚠️ ต้องยืนคุยกับผู้ใหญ่ชัยที่หมู่บ้านก่อนจึงจะเลือกได้</small>'}
-      <div class="path-choose">${JOB_IDS.map((j) => { const J = JOBS[j]; return `<div class="path-card"><span class="ic">${J.icon}</span><b>${J.pathTitle}</b>
-<span>โบนัส: ${J.pathTextTh}</span><span class="meta">ท่าไม้ตาย: ${SKILLS[j].find((k) => k.ultimate).nameTh} · ถือ${J.weaponTh}</span>
-        <span class="meta">รางวัล: ${ITEMS[`armor_${j}`].nameTh}</span>
-        <button class="gold" data-path="${j}" ${near ? '' : 'disabled'}>เลือกสายนี้</button></div>`; }).join('')}</div></div></div>`;
-    box.querySelectorAll('[data-path]').forEach((b) => (b.onclick = () => {
-      const j = b.dataset.path;
-      if (!this.nearChai()) return this.ui.toast('ต้องยืนคุยกับผู้ใหญ่ชัยที่หมู่บ้านก่อน', 'warn');
-      if (!confirm(`เลือกสายหลัก “${JOBS[j].pathTitle}”?\n(เปลี่ยนภายหลังได้ด้วยคัมภีร์เปลี่ยนสายหลักที่ร้านยายติ๋ม)`)) return;
-      this.econ.act('path', { job: j }).then((r) => {
-        if (!r.ok) return this.ui.toast(r.msg, 'warn');
-        this.scene.sfx.play('victory');
-        this.ui.banner(`🎖️ ${JOBS[j].pathTitle}`);
-        this.ui.toast(`${r.msg} ได้รับ ${ITEMS[`armor_${j}`].nameTh} (สวมที่กระเป๋า I) · สกิลสาย${JOBS[j].nameTh}อัปได้ถึง Lv.5 แล้ว`);
-        if (r.jobChanged) this.scene.onAppearanceChanged();
-        this.afterChange();
-      });
-    }));
+    box.innerHTML = `<div class="quest locked"><div><b>🌳 เส้นทางของเอ็ง</b>
+      <p>“ที่กรุงศรีฯ ไม่มีใครเลือกทางให้ใคร จับอาวุธที่ถนัด ฆ่าผีให้ชำนาญ แล้วลงแต้มพรสวรรค์ไปทางนั้น ฉายาจะตามมาเอง”</p>
+      <small>กด K → ต้นไม้พรสวรรค์ (ได้ 1 แต้มต่อเลเวล) · ความชำนาญอาวุธขึ้นจากการฆ่าผีด้วยอาวุธนั้น</small></div></div>`;
   }
 
   renderQuests() {

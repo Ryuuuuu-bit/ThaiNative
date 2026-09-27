@@ -60,7 +60,7 @@ export const WEAPONS = [
 //  ผี 20 ชนิด (ใช้ id เดียวกับ shared/data/monsters.js) + บอส
 // ------------------------------------------------------------
 const MOB_PROMPTS = {
-  phi_tuay_kaew:   [1, 'small ghost spirit peeking out of a glass cup, pale blue glow'],
+  phi_tuay_kaew:   [1, 'haunted scarecrow of straw and bamboo, conical straw hat, glowing red eyes, rusty sickle'],
   kuman_thong:     [1, 'mischievous golden child spirit Kuman Thong with topknot'],
   krasue:          [1, 'floating female head Krasue with glowing green dangling organs, cute but creepy'],
   nang_tani:       [1, 'Nang Tani ghost woman in green dress emerging from banana tree leaves'],

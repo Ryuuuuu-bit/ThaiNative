@@ -256,7 +256,8 @@ io.on('connection', (socket) => {
     if (p.world === 'td' && a === 'recall' && d.to === 'hunt') return done({ r: { ok: false, msg: 'ในโลกใหม่ใช้ได้เฉพาะวาร์ปกลับเมือง' } });
     // MP เป็นของ client: รับค่าล่าสุดมาก่อนรันคำสั่ง (เช่น ดื่มยา MP) แล้วส่งค่าหลังรันกลับไป
     if (Number.isFinite(+d.mp)) p.save.mp = clamp(+d.mp, 0, 99999);
-    const r = runAction(p.save, a, d, { rnd: Math.random, now, x: ex, night: nightNow(), admin: p.admin, trade: !!p.tradeId, sess: p.sess });
+    const tdCtx = p.world === 'td' ? { td: true, tdPos: { x: p.tx, y: p.ty }, tdFish: td.nearWater(p) } : {};
+    const r = runAction(p.save, a, d, { rnd: Math.random, now, x: ex, night: nightNow(), admin: p.admin, trade: !!p.tradeId, sess: p.sess, ...tdCtx });
     if (r.warp && r.ok && p.world !== 'td') {
       if (r.warp === 'home') warpTo(p, MAPS.village, MAPS.village.arriveX);
       else if (r.warp === 'return') warpTo(p, MAPS[r.to], MAPS[r.to].respawnX);
