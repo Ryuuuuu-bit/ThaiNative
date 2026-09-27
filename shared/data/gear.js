@@ -1,5 +1,5 @@
 // ============================================================
-//  อุปกรณ์สวมใส่ตามอาชีพ: 4 อาชีพ × 50 ชิ้น (อาวุธ 17 · ชุด 16 · เครื่องประดับ 17)
+//  อุปกรณ์สวมใส่ตามอาชีพ: 4 อาชีพ × (อาวุธ 17 · ชุด 16 · เครื่องประดับ 17 · หมวก/ถุงมือ/รองเท้า/เข็มขัด อย่างละ 8)
 //  ▸ ระดับ Lv.1–20 ขายที่ครูประจำอาชีพในหมู่บ้าน · Lv.22–30 ดรอปจากผีตามเลเวลแมพ/หีบสมบัติ
 //  ▸ ชิ้นตำนาน (leg) ดรอปจากพญายักษ์ทมิฬเท่านั้น
 //  ▸ lv = เลเวลขั้นต่ำที่สวมได้ · job = อาชีพที่ออกแบบมาให้ (ใครก็ใส่ได้ ค่าพลังเหมาะกับอาชีพนั้น)
@@ -81,6 +81,45 @@ function accBonus(job, lv, leg) {
   return { STR: R((1 + lv / 5) * m), VIT: R((1 + lv / 5) * m), hp: R((10 + lv * 4) * m) };
 }
 
+// ------------------------------------------------------------
+//  ชิ้นส่วนใหม่ (แบบ PoE): หมวก · ถุงมือ · รองเท้า · เข็มขัด  — 8 ระดับต่อสาย (Lv.1–20 ขายที่ครู · Lv.24/28 ดรอป/หลอม)
+// ------------------------------------------------------------
+export const PART_TIERS = [1, 4, 8, 12, 16, 20, 24, 28];
+const PART_WORD = ['ผ้าดิบ', 'หนังควาย', 'ทองเหลือง', 'เหล็กน้ำพี้', 'ลงยันต์', 'เงินยวง', 'ทองคำ', 'เทพอสูร'];
+const PART_NOUN = {
+  swordman: { helm: 'หมวกเกราะ', gloves: 'ถุงมือเกราะ', boots: 'รองเท้าเกราะ', belt: 'เข็มขัดศึก' },
+  mage:     { helm: 'ผ้าโพกยันต์', gloves: 'ปลอกแขนยันต์', boots: 'รองเท้าลงอักขระ', belt: 'สายคาดเอวยันต์' },
+  archer:   { helm: 'หมวกพราน', gloves: 'ปลอกแขนพราน', boots: 'รองเท้าพรานป่า', belt: 'เข็มขัดซองศร' },
+  boxer:    { helm: 'มงคลคาดหัว', gloves: 'สนับศอก', boots: 'ผ้าพันแข้ง', belt: 'ผ้าคาดเอวมวย' },
+};
+const PART_ICON = { helm: '⛑️', gloves: '🧤', boots: '🥾', belt: '🎗️' };
+const PART_CODE = { helm: 'h', gloves: 'g', boots: 'b', belt: 'e' };
+function partBonus(slot, job, lv) {
+  if (slot === 'helm') {
+    const b = { def: R(1 + lv * 0.45), hp: R(10 + lv * 4) };
+    if (job === 'swordman') return { ...b, hp: R(b.hp * 1.2), ...(lv >= 8 ? { VIT: F(lv / 8) } : {}) };
+    if (job === 'mage') return { def: R(b.def * 0.7), mp: R(10 + lv * 3), ...(lv >= 8 ? { INT: F(lv / 8) } : {}) };
+    if (job === 'archer') return { ...b, ...(lv >= 4 ? { DEX: F(lv / 6) + 1 } : {}) };
+    return { ...b, ...(lv >= 4 ? { STR: F(lv / 6) + 1 } : {}) };
+  }
+  if (slot === 'gloves') {
+    if (job === 'swordman') return { atk: R(2 + lv * 0.9), acc: R(1 + lv / 4) };
+    if (job === 'mage') return { matk: R(2 + lv * 1.0), ...(lv >= 8 ? { INT: F(lv / 8) } : {}) };
+    if (job === 'archer') return { atk: R(2 + lv * 0.8), ...(lv >= 8 ? { crit: +(0.01 * F(lv / 8)).toFixed(2) } : {}) };
+    return { atk: R(2 + lv * 0.85), ...(lv >= 8 ? { crit: +(0.01 * F(lv / 8)).toFixed(2) } : {}) };
+  }
+  if (slot === 'boots') {
+    const b = { def: R(1 + lv * 0.35), eva: R(1 + lv * 0.3), hp: R(5 + lv * 2) };
+    if (job === 'archer') return { ...b, eva: R(b.eva * 1.4) };
+    if (job === 'mage') return { ...b, def: R(b.def * 0.7), mp: R(5 + lv * 2) };
+    return b;
+  }
+  const b = { hp: R(15 + lv * 5), flaskPct: 5 + lv };                     // เข็มขัด: เลือด + ขวดยาฟื้นแรงขึ้น %
+  if (job === 'mage') return { hp: R(b.hp * 0.7), mp: R(10 + lv * 3), flaskPct: b.flaskPct };
+  if (job === 'swordman') return { ...b, def: R(1 + lv / 5) };
+  return b;
+}
+
 /** สร้างรายการอุปกรณ์ทั้งหมด → { id: item } */
 function build() {
   const out = {};
@@ -93,6 +132,14 @@ function build() {
       out[`g_${k}_a${n}`] = base(`g_${k}_a${n}`, { nameTh: N.a[i], type: 'armor', icon: ia, bonus: armorBonus(job, lv) });
       out[`g_${k}_c${n}`] = base(`g_${k}_c${n}`, { nameTh: N.c[i], type: 'accessory', icon: ic, bonus: accBonus(job, lv) });
     });
+    for (const slot of ['helm', 'gloves', 'boots', 'belt']) {
+      PART_TIERS.forEach((lv, i) => {
+        const shop = lv <= SHOP_MAX_LV, id = `g_${k}_${PART_CODE[slot]}${String(i + 1).padStart(2, '0')}`;
+        const price = R(gearPrice(lv) * 0.6 / 10) * 10;
+        out[id] = { ...(shop ? { price } : { sell: R(price * 0.3) }), lv, job, tier: i + 1, drop: !shop, nameTh: `${PART_NOUN[job][slot]}${PART_WORD[i]}`,
+          type: slot, icon: PART_ICON[slot], art: `gx_${k}_${slot}_${lv >= 16 ? 2 : 1}`, bonus: partBonus(slot, job, lv) };
+      });
+    }
     const leg = (id, extra) => ({ lv: 30, job, tier: 17, legend: true, sell: 5000, ...extra, ...(GEAR_ART[id] || {}) });
     out[`g_${k}_wleg`] = leg(`g_${k}_wleg`, { nameTh: `✦ ${N.wl}`, type: 'weapon', icon: iw, wtype: WTYPE[job], bonus: weaponBonus(job, 30, true) });
     out[`g_${k}_cleg`] = leg(`g_${k}_cleg`, { nameTh: `✦ ${N.cl}`, type: 'accessory', icon: ic, bonus: accBonus(job, 30, true) });
@@ -105,7 +152,8 @@ export const LEGEND_IDS = GEAR_IDS.filter((id) => GEAR[id].legend);
 
 /** รายการขายของครูแต่ละอาชีพ (เรียงตามเลเวล) */
 export const gearShopStock = (job) => GEAR_IDS.filter((id) => GEAR[id].job === job && !GEAR[id].drop && !GEAR[id].legend)
-  .sort((a, b) => GEAR[a].lv - GEAR[b].lv || ['weapon', 'armor', 'accessory'].indexOf(GEAR[a].type) - ['weapon', 'armor', 'accessory'].indexOf(GEAR[b].type));
+  .sort((a, b) => GEAR[a].lv - GEAR[b].lv || GEAR_ORDER.indexOf(GEAR[a].type) - GEAR_ORDER.indexOf(GEAR[b].type));
+const GEAR_ORDER = ['weapon', 'helm', 'armor', 'gloves', 'boots', 'belt', 'accessory'];
 
 /** ดรอปอุปกรณ์ขั้นสูงจากผี: เลือกชิ้น drop ที่เลเวลใกล้ผี (−4 … +2) โอกาส 1.2% ต่อตัว (× ตัวคูณดรอป) */
 export function rollGearDrop(monLevel, dropMul = 1, rnd = Math.random) {
@@ -120,17 +168,18 @@ export function rollGearDrop(monLevel, dropMul = 1, rnd = Math.random) {
 // ============================================================
 export const SET_NAME = { swordman: 'ชุดขุนศึก', mage: 'ชุดหมอธรรม', archer: 'ชุดพรานไพร', boxer: 'ชุดนักมวยวัด' };
 const SET_BONUS = {
-  swordman: [(L) => ({ def: R(2 + L / 4) }), (L) => ({ atk: R(4 + L / 2), hp: R(30 + L * 6) }), (L) => ({ crit: 0.05, STR: R(2 + L / 6) })],
-  mage:     [(L) => ({ mp: R(20 + L * 3) }), (L) => ({ matk: R(5 + L * 0.6), INT: R(1 + L / 8) }), (L) => ({ crit: 0.04, matk: R(4 + L / 2) })],
-  archer:   [(L) => ({ DEX: R(1 + L / 8) }), (L) => ({ atk: R(4 + L / 2), CRI: R(1 + L / 8) }), (L) => ({ crit: 0.06, DEX: R(2 + L / 6) })],
-  boxer:    [(L) => ({ hp: R(25 + L * 5) }), (L) => ({ atk: R(4 + L / 2), def: R(2 + L / 5) }), (L) => ({ crit: 0.05, VIT: R(2 + L / 6) })],
+  swordman: [(L) => ({ def: R(2 + L / 4) }), (L) => ({ atk: R(4 + L / 2), hp: R(30 + L * 6) }), (L) => ({ crit: 0.05, STR: R(2 + L / 6) }), (L) => ({ patkMul: 0.08, hp: R(40 + L * 5) })],
+  mage:     [(L) => ({ mp: R(20 + L * 3) }), (L) => ({ matk: R(5 + L * 0.6), INT: R(1 + L / 8) }), (L) => ({ crit: 0.04, matk: R(4 + L / 2) }), (L) => ({ matkMul: 0.08, mp: R(30 + L * 4) })],
+  archer:   [(L) => ({ DEX: R(1 + L / 8) }), (L) => ({ atk: R(4 + L / 2), CRI: R(1 + L / 8) }), (L) => ({ crit: 0.06, DEX: R(2 + L / 6) }), (L) => ({ patkMul: 0.08, eva: R(3 + L / 4) })],
+  boxer:    [(L) => ({ hp: R(25 + L * 5) }), (L) => ({ atk: R(4 + L / 2), def: R(2 + L / 5) }), (L) => ({ crit: 0.05, VIT: R(2 + L / 6) }), (L) => ({ patkMul: 0.08, def: R(3 + L / 4) })],
 };
-export const SET_TEXT = { 2: '2 ชิ้น', 3: '3 ชิ้น', 4: 'ครบ 4 ชิ้น' };
+const SET_NEED = [2, 3, 4, 6];
+export const SET_TEXT = { 2: '2 ชิ้น', 3: '3 ชิ้น', 4: '4 ชิ้น', 6: '6 ชิ้นขึ้นไป' };
 
 /** ชุดที่ใส่อยู่ → { job, n, lv, bonus, tiers:[{n, bonus, on}] } (null = ไม่มีชุด ≥2 ชิ้น) */
 export function setInfo(equipment = {}) {
   const by = {};
-  for (const slot of ['weapon', 'armor', 'accessory', 'accessory2']) {
+  for (const slot of ['weapon', 'helm', 'armor', 'gloves', 'boots', 'belt', 'accessory', 'accessory2']) {
     const it = GEAR[equipment[slot]];
     if (!it?.job) continue;
     (by[it.job] ||= []).push(it.lv);
@@ -140,7 +189,7 @@ export function setInfo(equipment = {}) {
   const [job, lvs] = best, n = lvs.length, lv = Math.min(...lvs);
   const bonus = {}, tiers = [];
   SET_BONUS[job].forEach((f, i) => {
-    const need = i + 2, b = f(lv), on = n >= need;
+    const need = SET_NEED[i], b = f(lv), on = n >= need;
     tiers.push({ n: need, bonus: b, on });
     if (on) for (const [k, v] of Object.entries(b)) bonus[k] = +((bonus[k] || 0) + v).toFixed(3);
   });

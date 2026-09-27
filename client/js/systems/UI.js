@@ -32,9 +32,9 @@ import { CARD_BY_ID } from '/shared/data/cards.js';
 
 const $ = (s) => document.querySelector(s);
 const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
-const SLOT_TH = { weapon: 'อาวุธ', armor: 'ชุดเกราะ', accessory: 'เครื่องประดับ 1', accessory2: 'เครื่องประดับ 2' };
+import { SLOT_TH, GEAR_TYPES, TYPE_TH, FLASK_SLOTS } from '/shared/data/slots.js';
 /** ระดับความหายากของอุปกรณ์ (สี): 1 ธรรมดา · 2 ดี · 3 หายาก · 4 มหากาพย์ · 5 ตำนาน */
-export const rarityOf = (it) => (!it ? 0 : it.legend ? 5 : ['weapon', 'armor', 'accessory'].includes(it.type) ? ((it.lv || 1) >= 28 ? 4 : (it.lv || 1) >= 20 ? 3 : (it.lv || 1) >= 10 ? 2 : 1) : it.type === 'costume' && it.rare ? 4 : 0);
+export const rarityOf = (it) => (!it ? 0 : it.legend ? 5 : GEAR_TYPES.includes(it.type) ? ((it.lv || 1) >= 28 ? 4 : (it.lv || 1) >= 20 ? 3 : (it.lv || 1) >= 10 ? 2 : 1) : it.type === 'costume' && it.rare ? 4 : 0);
 const rcls = (it) => { const r = rarityOf(it); return r ? ` r${r}` : ''; };
 const rname = (it, name) => { const r = rarityOf(it); return r ? `<span class="rn${r}">${name}</span>` : name; };
 /** ป้ายแนวของอาวุธ / สายของชุด */
@@ -160,7 +160,21 @@ export class UI {
     const qh = $('#quick-hp'), qm = $('#quick-mp');       // (แถบเก่า – ถ้ามี)
     if (qh) { qh.querySelector('.n').textContent = `x${hp}`; qh.classList.toggle('empty', !hp); }
     if (qm) { qm.querySelector('.n').textContent = `x${mp}`; qm.classList.toggle('empty', !mp); }
+    this.updateFlasks(c);
     this.drawPortrait();
+  }
+
+  /** ปุ่มขวดยา Q/E บน HUD (อัปเดตเฉพาะตอนค่าเปลี่ยน) */
+  updateFlasks(c) {
+    const keys = { flask: 'Q', flask2: 'E' };
+    for (const slot of FLASK_SLOTS) {
+      const b = document.querySelector(`.flask-btn[data-flask="${slot}"]`); if (!b) continue;
+      const id = c.equipment?.[slot], f = ITEMS[id]?.flask, ch = c.flaskCh?.[slot] || 0;
+      const sig = `${id}|${ch.toFixed(2)}`; if (b._sig === sig) continue; b._sig = sig;
+      b.className = `flask-btn ${f ? f.kind : 'none'}${f && ch < 1 ? ' dry' : ''}`;
+      b.title = f ? `${ITEMS[id].nameTh} (${keys[slot]}) · ฟื้น ${f.kind.toUpperCase()} ${f.heal} · เหลือ ${Math.floor(ch)}/${f.max} ครั้ง · ฆ่าผีเพื่อเติม / กลับเมืองเติมเต็ม` : `ช่องขวดยา (${keys[slot]}) ว่าง · ซื้อขวดยาที่ร้านยายติ๋ม`;
+      b.innerHTML = `<i class="fill" style="height:${f ? Math.min(100, ch / f.max * 100) : 0}%"></i><span class="key">${keys[slot]}</span><span class="ic">${f ? itemIcon(id, ITEMS[id].icon) : '·'}</span>${f ? `<span class="n">${Math.floor(ch)}</span>` : ''}`;
+    }
   }
 
   /** รูปโปรไฟล์: ครอปส่วนหัวจากภาพตัวละครที่ย้อมสีแล้ว */
@@ -312,7 +326,7 @@ export class UI {
       if (isItemSlot(v)) {
         const id = slotItemId(v), it = ITEMS[id], n = Inv.count(c, id);
         const worn = Object.values(c.equipment || {}).includes(id);
-        const verb = { weapon: 'ถือ', armor: 'สวม', accessory: 'สวม', home: 'ร่ายยันต์', food: 'กิน' }[it.type] || 'ใช้';
+        const verb = { weapon: 'ถือ', armor: 'สวม', accessory: 'สวม', helm: 'สวม', gloves: 'สวม', boots: 'สวม', belt: 'คาด', flask: 'ใส่', home: 'ร่ายยันต์', food: 'กิน' }[it.type] || 'ใช้';
         return `<div class="skill item-slot${n || worn ? '' : ' empty-item'}${worn ? ' worn' : ''}" data-key="${key}" data-item="${id}" draggable="true"><span class="k">${key}</span><span class="ic">${itemIcon(id, it.icon)}</span><span class="n">${worn ? '✔' : n}</span>
           <div class="tip"><b>${esc(it.nameTh)}</b> (${key})<br>กด ${key} = ${verb}${worn ? ' · ใส่อยู่' : ` · เหลือ ${n}`}<br><small>คลิกขวาเพื่อถอดออกจากช่อง</small></div></div>`;
       }
@@ -716,8 +730,18 @@ export class UI {
   // ---------------- กระเป๋า ----------------
   renderInventory() {
     const c = this.char;
-    $('#inv-equip').innerHTML = Object.entries(c.equipment).map(([slot, id]) => `
-      <div class="eq"><small>${SLOT_TH[slot]}</small>${id ? `${itemIcon(id, ITEMS[id].icon)} ${ITEMS[id].nameTh}${c.enhance?.[slot] ? ` <b class="enh t${ENHANCE.auraTier(c.enhance[slot])}">+${c.enhance[slot]}</b>` : ''}${(c.cards?.[slot] || []).map((x) => CARD_BY_ID[x] ? `<span class="eq-card" title="${esc(CARD_BY_ID[x].nameTh)}">${itemIcon(x)}</span>` : '').join('')} <button class="close" data-unequip="${slot}">✕</button>` : '—'}</div>`).join('');
+    const EMPTY_IC = { weapon: '⚔️', helm: '⛑️', armor: '🥋', gloves: '🧤', boots: '👢', belt: '🎗️', accessory: '💍', accessory2: '📿', flask: '🧪', flask2: '🧪' };
+    const cell = (slot) => {
+      const id = c.equipment[slot], it = id && ITEMS[id];
+      if (!it) return `<div class="eqs eqs-${slot} empty" title="${SLOT_TH[slot]} (ว่าง)"><span class="ph">${EMPTY_IC[slot]}</span><small>${SLOT_TH[slot]}</small></div>`;
+      const enh = c.enhance?.[slot], cards = (c.cards?.[slot] || []).filter((x) => CARD_BY_ID[x]);
+      const ch = FLASK_SLOTS.includes(slot) && it.flask ? `<span class="fl-ch">${Math.floor(c.flaskCh?.[slot] || 0)}/${it.flask.max}</span>` : '';
+      return `<div class="eqs eqs-${slot}${rcls(it)}" title="${esc(it.nameTh)} · คลิกเพื่อถอด" data-unequip="${slot}">
+        <span class="ico">${itemIcon(id, it.icon)}</span>${enh ? `<b class="enh t${ENHANCE.auraTier(enh)}">+${enh}</b>` : ''}${ch}
+        ${cards.length ? `<span class="eqs-cards">${cards.map((x) => `<i title="${esc(CARD_BY_ID[x].nameTh)}"></i>`).join('')}</span>` : ''}
+        <small>${esc(it.nameTh)}</small></div>`;
+    };
+    $('#inv-equip').innerHTML = `<div class="eq-grid">${['weapon', 'helm', 'accessory', 'armor', 'accessory2', 'gloves', 'boots', 'flask', 'belt', 'flask2'].map(cell).join('')}</div>`;
     const COS_TH = { head: 'หมวก/มงกุฎ', face: 'หน้ากาก', back: 'ของหลัง', outfit: 'ชุดแต่งตัว' };
     $('#inv-equip').innerHTML += `<div class="eq-cos">${Object.entries(COS_TH).map(([slot, th]) => { const id = c.costume?.[slot];
       return `<div class="eq cos"><small>${th}</small>${id ? `${itemIcon(id, ITEMS[id].icon)} ${ITEMS[id].nameTh} <button class="close" data-uncos="${slot}">✕</button>` : '—'}</div>`; }).join('')}</div>`;
@@ -725,18 +749,18 @@ export class UI {
     const si = setInfo(c.equipment);
     const fmt = (b) => Object.entries(b).map(([k, v]) => `${k.toUpperCase()}+${k === 'crit' ? Math.round(v * 100) + '%' : v}`).join(' ');
     $('#inv-equip').innerHTML += si
-      ? `<div class="set-box"><b>✦ ${esc(si.nameTh)}</b> <span class="meta">${si.n}/4 ชิ้น · ระดับ Lv.${si.lv}</span>
+      ? `<div class="set-box"><b>✦ ${esc(si.nameTh)}</b> <span class="meta">${si.n} ชิ้น · ระดับ Lv.${si.lv}</span>
           ${si.tiers.map((t) => `<div class="${t.on ? 'on' : ''}">${t.on ? '✔' : '○'} ${SET_TEXT[t.n]}: ${fmt(t.bonus)}</div>`).join('')}</div>`
-      : '<div class="set-box off"><span class="meta">✦ โบนัสชุด: สวมอุปกรณ์สายเดียวกัน 2/3/4 ชิ้น (ซื้อจากครูประจำสาย) จะได้โบนัสเพิ่ม · ยิ่งเลเวลของสูงยิ่งแรง</span></div>';
+      : '<div class="set-box off"><span class="meta">✦ โบนัสชุด: สวมอุปกรณ์สายเดียวกัน 2/3/4/6 ชิ้น (ซื้อจากครูประจำสาย) จะได้โบนัสเพิ่ม · ยิ่งเลเวลของสูงยิ่งแรง</span></div>';
     $('#inv-equip').querySelectorAll('[data-unequip]').forEach((b) => (b.onclick = () => this.result(this.scene.econ.act('unequip', { slot: b.dataset.unequip }))));
     $('#inv-equip').querySelectorAll('[data-uncos]').forEach((b) => (b.onclick = () => this.result(this.scene.econ.act('cosOff', { slot: b.dataset.uncos }))));
 
     if (!c.inventory.length) { $('#inv-list').innerHTML = '<div class="empty">กระเป๋าว่างเปล่า</div>'; return; }
     // แท็บกรอง + เรียงลำดับ
-    const CAT = { all: ['ทั้งหมด', () => true], gear: ['อุปกรณ์', (t) => ['weapon', 'armor', 'accessory'].includes(t)], cos: ['ชุดแต่งตัว', (t) => t === 'costume'],
+    const CAT = { all: ['ทั้งหมด', () => true], gear: ['อุปกรณ์', (t) => GEAR_TYPES.includes(t) || t === 'flask'], cos: ['ชุดแต่งตัว', (t) => t === 'costume'],
       use: ['ยา/อาหาร', (t) => ['consumable', 'home', 'food', 'reset', 'skin', 'offering'].includes(t)],
       mat: ['วัตถุดิบ', (t) => ['material', 'herb', 'fish'].includes(t)], card: ['การ์ด', (t) => t === 'card'] };
-    const ORDER = ['card', 'weapon', 'armor', 'accessory', 'costume', 'home', 'consumable', 'food', 'reset', 'skin', 'offering', 'herb', 'fish', 'material'];
+    const ORDER = ['card', 'weapon', 'helm', 'armor', 'gloves', 'boots', 'belt', 'accessory', 'flask', 'costume', 'home', 'consumable', 'food', 'reset', 'skin', 'offering', 'herb', 'fish', 'material'];
     const cat = this.invCat || 'all', sort = this.invSort || 'type';
     const list = c.inventory.filter((s) => CAT[cat][1](ITEMS[s.id].type)).sort((a, b) => {
       const A = ITEMS[a.id], B = ITEMS[b.id];
@@ -747,7 +771,7 @@ export class UI {
     const tabs = `<div class="inv-tools"><div class="inv-tabs">${Object.entries(CAT).map(([k, [l]]) => `<button data-cat="${k}" class="${k === cat ? 'active' : ''}">${l}</button>`).join('')}</div>
       <select id="inv-sort"><option value="type">เรียง: ประเภท</option><option value="name">เรียง: ชื่อ</option><option value="price">เรียง: มูลค่า</option></select></div>`;
     // เทียบค่าพลังกับของที่ใส่อยู่ช่องเดียวกัน
-    const SLOT = { weapon: 'weapon', armor: 'armor', accessory: 'accessory' };
+    const SLOT = { weapon: 'weapon', armor: 'armor', accessory: 'accessory', helm: 'helm', gloves: 'gloves', boots: 'boots', belt: 'belt' };
     const diff = (it) => {
       let slot = SLOT[it.type]; if (!slot) return '';
       if (slot === 'accessory' && c.equipment.accessory && !c.equipment.accessory2) slot = 'accessory2';   // จะใส่ข้างที่ว่าง
@@ -759,7 +783,7 @@ export class UI {
     };
     $('#inv-list').innerHTML = tabs + (list.length ? list.map((s) => {
       const it = ITEMS[s.id], lock = Inv.isLocked(c, s.id);
-      const action = { home: 'ใช้', consumable: 'ใช้', food: 'กิน', offering: 'ถวาย', weapon: 'ถือ', armor: 'สวม', accessory: 'สวม', costume: 'แต่ง', reset: 'ใช้', card: 'ใส่', skin: c.path === it.job ? 'ใช้อยู่' : 'เปลี่ยนสาย' }[it.type];
+      const action = { home: 'ใช้', consumable: 'ใช้', food: 'กิน', offering: 'ถวาย', weapon: 'ถือ', armor: 'สวม', helm: 'สวม', gloves: 'สวม', boots: 'สวม', belt: 'คาด', accessory: 'สวม', flask: 'ใส่', costume: 'แต่ง', reset: 'ใช้', card: 'ใส่', skin: c.path === it.job ? 'ใช้อยู่' : 'เปลี่ยนสาย' }[it.type];
       const job = itemTag(it) || (it.type === 'costume' ? ` · ชุดแต่งตัว${it.rare ? ' ✨หายาก' : ''}` : '');
       const hb = hotbarItemOk(s.id);
       return `<div class="item inv${rcls(it)}"${hb ? ` draggable="true" data-hbitem="${s.id}" title="ลากไปวางที่ Hotbar (1–0)"` : ''}><span class="ic">${itemIcon(s.id, it.icon)}</span>

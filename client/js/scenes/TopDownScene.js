@@ -25,6 +25,7 @@ import { count } from '../systems/Inventory.js';
 import { TILE, MAP_W, MAP_H, T, SPAWN as TD_SPAWN, inTownXY, isIsland, bakeTileset, bakeProps, buildLayout, OX, ZONES, zoneAt } from '../topdown/AyutthayaMap.js';
 import { dirFromVector, stableDir, playDir, registerDir8, texKey } from '../topdown/Dir8.js';
 import { TdSkills } from '../topdown/TdSkills.js';
+import { GEAR_TYPES, FLASK_SLOTS } from '/shared/data/slots.js';
 import { SKILL_SLOTS, SLOT_KEYNAME, isItemSlot, slotItemId } from '/shared/data/skills.js';
 import { WeaponOverlay } from '../topdown/WeaponOverlay.js';
 import { TdSocial } from '../topdown/TdSocial.js';
@@ -680,11 +681,30 @@ export class TopDownScene extends Phaser.Scene {
     const p = this.player, set = this.settings || {};
     if (!p.alive || time < (this.nextAutoPot || 0) || this.econ.pending) return;
     const c = p.char, d = getDerived(c);
-    const hp = set.autoHp && c.hp / d.maxHp * 100 < set.autoHp && HP_POTS.some((i) => count(c, i));
-    const mp = !hp && set.autoMp && c.mp / d.maxMp * 100 < set.autoMp && MP_POTS.some((i) => count(c, i));
+    const lowHp = set.autoHp && c.hp / d.maxHp * 100 < set.autoHp, lowMp = set.autoMp && c.mp / d.maxMp * 100 < set.autoMp;
+    // ขวดยาที่มีประจุก่อน (ฟรี เติมได้) → ค่อยใช้ยาในกระเป๋า
+    const fl = (kind) => FLASK_SLOTS.find((s) => ITEMS[c.equipment?.[s]]?.flask?.kind === kind && (c.flaskCh?.[s] || 0) >= 1);
+    const fs = (lowHp && fl('hp')) || (lowMp && fl('mp'));
+    if (fs) { this.nextAutoPot = time + 1200; return this.drinkFlask(fs, true); }
+    const hp = lowHp && HP_POTS.some((i) => count(c, i));
+    const mp = !hp && lowMp && MP_POTS.some((i) => count(c, i));
     if (!hp && !mp) return;
     this.nextAutoPot = time + 1500;
     this.quickUse(hp ? HP_POTS : MP_POTS, true);
+  }
+
+  /** ดื่มขวดยา (Q = ช่อง 1 · E = ช่อง 2) · ประจุเติมจากการฆ่าผี · กลับเมือง = เต็ม */
+  drinkFlask(slot, quiet = false) {
+    const p = this.player, c = p?.char;
+    if (!p?.alive || this.econ.pending) return;
+    const it = ITEMS[c.equipment?.[slot]];
+    if (!it?.flask) return quiet ? null : this.ui.toast('ช่องขวดยาว่าง · ซื้อขวดยาที่ร้านยายติ๋มแล้วกด "ใส่"', 'warn', 1600);
+    this.econ.act('flask', { slot }).then((r) => {
+      if (!r.ok) return quiet ? null : this.ui.result(r);
+      this.sfx.play('potion');
+      popupNumber(this, p.x, p.y - 40, `+${r.amt} ${r.kind.toUpperCase()}`, r.kind === 'hp' ? 'heal' : 'night');
+      if (quiet) this.ui.loot?.(`🧪 ดื่ม${it.nameTh}อัตโนมัติ (เหลือ ${r.left})`);
+    });
   }
 
   /** กดช่อง Hotbar: ไอเทม → ใช้/สวม/ร่ายยันต์ · สกิล → ร่าย */
@@ -693,7 +713,8 @@ export class TopDownScene extends Phaser.Scene {
     if (!isItemSlot(v)) return this.skills.cast(key);
     if (this.ui.anyOpen?.() || !this.player.alive) return;
     const id = slotItemId(v), it = ITEMS[id], c = this.player.char;
-    if (['weapon', 'armor', 'accessory'].includes(it.type)) {
+    if (it.type === 'flask' && FLASK_SLOTS.some((s) => c.equipment?.[s] === id)) return this.drinkFlask(FLASK_SLOTS.find((s) => c.equipment[s] === id));
+    if ([...GEAR_TYPES, 'flask'].includes(it.type)) {
       if (Object.values(c.equipment || {}).includes(id)) return this.ui.toast(`${it.nameTh} ใส่อยู่แล้ว`, '', 1200);
       if (count(c, id) <= 0) return this.ui.toast(`ไม่มี ${it.nameTh} ในกระเป๋า`, 'warn');
       return this.econ.act('equip', { id }).then((r) => { this.ui.result(r); if (r.ok) this.sfx.play('equip'); });
@@ -828,6 +849,9 @@ export class TopDownScene extends Phaser.Scene {
     });
     for (const k of SKILL_SLOTS) kb.on(`keydown-${SLOT_KEYNAME[k]}`, () => this.useSlot(k));   // Hotbar 1–0 (สกิล/ไอเทม)
     kb.on('keydown-B', () => this.recall());
+    kb.on('keydown-Q', () => { if (!this.ui.typing && !this.ui.anyOpen?.()) this.drinkFlask('flask'); });
+    kb.on('keydown-E', () => { if (!this.ui.typing && !this.ui.anyOpen?.()) this.drinkFlask('flask2'); });
+    document.querySelectorAll('.flask-btn').forEach((b) => (b.onclick = () => this.drinkFlask(b.dataset.flask)));
     kb.on('keydown-A', (e) => { if (this.ui.anyOpen?.()) return; if (e.shiftKey) this.toggleAutoMenu(); else this.toggleAutoSkill(); });
     { const bt = $('#auto-skill'); if (bt) { bt.classList.toggle('on', !!this.settings.autoSkill); bt.onclick = () => this.toggleAutoSkill(); bt.oncontextmenu = (e) => { e.preventDefault(); this.toggleAutoMenu(); }; } }
     { const cf = $('#auto-cfg'); if (cf) cf.onclick = (e) => { e.stopPropagation(); this.toggleAutoMenu(); }; }

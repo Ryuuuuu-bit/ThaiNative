@@ -17,7 +17,7 @@ import { itemIcon } from './util.js';
 
 const $ = (s) => document.querySelector(s);
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
-const SLOT_TH = { weapon: 'อาวุธ', armor: 'ชุดเกราะ', accessory: 'เครื่องประดับ 1', accessory2: 'เครื่องประดับ 2' };
+import { SLOT_TH, ENH_SLOTS } from '/shared/data/slots.js';
 const MAX_ACTIVE = MAX_ACTIVE_QUESTS;
 export { FISH_SPOT };
 
@@ -231,7 +231,7 @@ export class Village {
   renderEnhance(el) {
     const c = this.char;
     const guards = count(c, 'yant_guard');
-    el.innerHTML = Object.keys(SLOT_TH).map((slot) => {
+    el.innerHTML = ENH_SLOTS.map((slot) => {
       const id = c.equipment[slot], lv = c.enhance[slot] || 0;
       const tier = ENHANCE.auraTier(lv);
       if (lv >= ENHANCE.max) return `<div class="item"><span class="ic">🌈</span><span>${SLOT_TH[slot]} <b class="enh t${tier}">+${lv}</b> <span class="meta">สูงสุดแล้ว · ออร่ารุ้ง</span></span><span></span><span></span></div>`;

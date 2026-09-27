@@ -12,7 +12,9 @@ import { combatDerived, attackSpec, blessingsOf, attackGate } from '../shared/ch
 import { dayPhase, dayIndex, moonOf, nightMods, isNight } from '../shared/data/world.js';
 import { rollGearDrop } from '../shared/data/gear.js';
 import { rollCard, CARD_BY_ID } from '../shared/data/cards.js';
-import { grantKill } from '../shared/economy.js';
+import { grantKill, refillFlasks } from '../shared/economy.js';
+import { FLASK_SLOTS } from '../shared/data/slots.js';
+import { ITEMS } from '../shared/data/items.js';
 import { NPC_BY_ID } from '../shared/data/npcs.js';
 import { buildLayout, TILE, MAP_W, MAP_H, SPAWN, inTownXY, T, OX, ZONES, zoneAt } from '../shared/td/ayutthaya.js';
 
@@ -210,7 +212,11 @@ export function setupTD(io, players, opts = {}) {
     p.tdir = DIRS.includes(s.dir) ? s.dir : p.tdir;
     p.tanim = ANIMS.includes(s.anim) ? s.anim : 'idle';
     if (Number.isFinite(+s.mp)) p.save.mp = Math.max(0, Math.min(99999, +s.mp));   // MP ยังเป็นของ client (ร่ายสกิล/ฟื้นเอง) – เก็บไว้เซฟ
-    if (now - (p.tdSaveAt || 0) > 3000) { p.tdSaveAt = now; p.save.tdPos = { x: Math.round(p.tx), y: Math.round(p.ty) }; p.dirty = true; }
+    if (now - (p.tdSaveAt || 0) > 3000) {
+      p.tdSaveAt = now; p.save.tdPos = { x: Math.round(p.tx), y: Math.round(p.ty) }; p.dirty = true;
+      // ในเมือง: ขวดยาเติมเต็ม
+      if (inTown(p.tx, p.ty) && FLASK_SLOTS.some((s) => { const f = ITEMS[p.save.equipment?.[s]]?.flask; return f && (p.save.flaskCh?.[s] || 0) < f.max; })) { refillFlasks(p.save); queueSync(p); }
+    }
   }
 
   function onRespawn(socket) {
@@ -218,6 +224,7 @@ export function setupTD(io, players, opts = {}) {
     if (!p || p.world !== 'td' || (!p.dead && p.hp > 0)) return;
     p.dead = false; p.hp = p.maxHp; p.invulnUntil = Date.now() + 2000;
     p.tx = TD_SPAWN.x; p.ty = TD_SPAWN.y; p.save.tdPos = { ...TD_SPAWN }; p.hpDirty = true;
+    refillFlasks(p.save); queueSync(p);
     socket.emit('td:respawn', { x: p.tx, y: p.ty, hp: Math.round(p.hp), maxHp: p.maxHp });
   }
 

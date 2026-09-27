@@ -159,6 +159,21 @@ export const ITEMS = {
   hua_mu:    { nameTh: 'หัวหมูบวงสรวง',    type: 'offering', icon: '🐷', price: 400 },
 };
 
+// ขวดยา (แบบ PoE): ใส่ช่องขวดยา 2 ช่อง · ดื่มได้หลายครั้ง · ฆ่าผีแล้วเติมกลับ (4 ตัว = 1 ครั้ง · บอส = เต็ม) · กลับเมือง/ฟื้น = เต็ม
+//  flask = { kind: 'hp'|'mp', heal, max }  (เข็มขัด flaskPct = ฟื้นเพิ่ม %)
+const FLASK_DEF = [
+  ['hp', 1, 'ขวดน้ำมนต์เล็ก', 80, 3, 150], ['hp', 8, 'ขวดน้ำมนต์ทองเหลือง', 220, 3, 1200], ['hp', 14, 'คนโทยาหอมแดง', 400, 4, 3500],
+  ['hp', 20, 'คนโทโอสถหลวง', 650, 4, 7000], ['hp', 26, 'น้ำทิพย์พญานาค', 950, 5, 0], ['hp', 30, 'อมฤตสวรรค์', 1300, 5, 0],
+  ['mp', 1, 'ขวดน้ำมะพร้าวเล็ก', 40, 3, 150], ['mp', 8, 'ขวดชาดอกอัญชัน', 100, 3, 1200], ['mp', 14, 'คนโทน้ำจันทร์', 180, 4, 3500],
+  ['mp', 20, 'คนโทน้ำค้างทิพย์', 280, 4, 7000], ['mp', 26, 'น้ำมนต์เจ็ดป่าช้า', 400, 5, 0], ['mp', 30, 'น้ำอมฤตจันทรา', 550, 5, 0],
+];
+FLASK_DEF.forEach(([kind, lv, nameTh, heal, max, price], i) => {
+  const n = (i % 6) + 1;
+  ITEMS[`flask_${kind}${n}`] = { nameTh, type: 'flask', icon: kind === 'hp' ? '🧪' : '🫙', lv, ...(price ? { price } : { sell: 1500 + lv * 60 }),
+    flask: { kind, heal, max }, art: `flask_${kind}_${n}`,
+    desc: `ขวดยา${kind === 'hp' ? 'ฟื้น HP' : 'ฟื้น MP'} +${heal} · ดื่มได้ ${max} ครั้ง · ฆ่าผีเติมกลับ · ใส่ช่องขวดยา (Q/E)` };
+});
+
 // อุปกรณ์ตามอาชีพ 200 ชิ้น (shared/data/gear.js)
 Object.assign(ITEMS, GEAR);
 // การ์ดผี 20 ใบ (shared/data/cards.js)
@@ -175,7 +190,7 @@ export const SHOPS = {
   mae_kha: {
     nameTh: 'ยายติ๋ม ร้านยาและของใช้',
     greeting: 'มาจ้ะหลาน ยาดีของยาย ผีหลอกก็ไม่กลัว!',
-    stock: ['hp_s', 'hp_m', 'mp_s', 'mp_m', 'yant_home', 'garland', 'nam_daeng', 'khai_tom', 'hua_mu',
+    stock: ['flask_hp1', 'flask_mp1', 'flask_hp2', 'flask_mp2', 'flask_hp3', 'flask_mp3', 'flask_hp4', 'flask_mp4', 'hp_s', 'hp_m', 'mp_s', 'mp_m', 'yant_home', 'garland', 'nam_daeng', 'khai_tom', 'hua_mu',
       'reset_water', 'skin_swordman'],
     tabs: ['buy', 'sell', 'cards', 'brew'],
   },

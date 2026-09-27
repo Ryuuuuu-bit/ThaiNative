@@ -14,8 +14,8 @@ import { masteryLevel } from './data/life.js';
 import { cardBonus } from './data/cards.js';
 
 /** ช่องสวมใส่ (เครื่องประดับ 2 ข้าง) → ชนิดไอเทมที่ใส่ได้ */
-export const EQUIP_SLOTS = ['weapon', 'armor', 'accessory', 'accessory2'];
-export const SLOT_TYPE = { weapon: 'weapon', armor: 'armor', accessory: 'accessory', accessory2: 'accessory' };
+import { EQUIP_SLOTS, SLOT_TYPE } from './data/slots.js';
+export { EQUIP_SLOTS, SLOT_TYPE };
 
 /** รวมโบนัสจากอุปกรณ์ที่สวมใส่ (+ตีบวก) */
 export function equipmentBonus(c) {

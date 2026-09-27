@@ -13,7 +13,7 @@ const TIER_NEED = {
   28: { need: { kongkoi_hair: 7, rib_bone: 7, black_iron: 8 }, fee: 12500 },
   30: { need: { chamot_scale: 8, asura_horn: 2, black_iron: 10, yak_fang: 1 }, fee: 18000 },
 };
-const TYPE_MUL = { weapon: 1.25, armor: 1, accessory: 0.8 };
+const TYPE_MUL = { weapon: 1.25, armor: 1, accessory: 0.8, helm: 0.7, gloves: 0.7, boots: 0.7, belt: 0.6 };
 
 /** รายการสูตรหลอมทั้งหมด: { out, need, fee, job, lv, type } */
 export const FORGE = [

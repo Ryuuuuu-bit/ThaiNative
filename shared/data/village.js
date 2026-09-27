@@ -103,6 +103,10 @@ export const ENHANCE = {
     armor: (lv) => ({ def: lv * 2, hp: lv * 15 }),
     accessory: (lv) => ({ def: lv, CRI: Math.floor(lv / 2) }),
     accessory2: (lv) => ({ def: lv, CRI: Math.floor(lv / 2) }),
+    helm: (lv) => ({ def: lv, hp: lv * 8 }),
+    gloves: (lv) => ({ atk: lv * 2, matk: lv * 2 }),
+    boots: (lv) => ({ def: lv, eva: Math.floor(lv / 2) }),
+    belt: (lv) => ({ hp: lv * 10, flaskPct: lv * 2 }),
   },
 };
 

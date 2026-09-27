@@ -12,12 +12,13 @@ import { SKILL_SLOTS, OLD_SKILL_SLOTS, SP_PER_LEVEL, START_SP, SKILL_BY_ID, canL
 import { PASSIVES, KEYSTONE, canAllocate, branchPoints, totalPassivePoints } from './data/passives.js';
 import { LIFE, LIFE_IDS, lifeLevel, masteryLevel } from './data/life.js';
 import { fixCards } from './data/cards.js';
+import { EQUIP_SLOTS, FLASK_SLOTS, SLOT_TYPE, emptyEquipment } from './data/slots.js';
 
 export const SAVE_VERSION = 2;          // v2 = ตัวละครแบบเดียว + สายหลัก + แนวต่อสู้ตามอาวุธ
 
 export function emptyHotbar() { return { ...Object.fromEntries(SKILL_SLOTS.map((k) => [k, null])), 1: 'it:hp_s', 2: 'it:mp_s' }; }
 /** ไอเทมที่ใส่ Hotbar ได้: ยา/อาหาร/ยันต์คืนถิ่น (กด = ใช้) · อาวุธ/เกราะ/เครื่องประดับ (กด = สวม) */
-export const HOTBAR_ITEM_TYPES = new Set(['consumable', 'food', 'home', 'weapon', 'armor', 'accessory']);
+export const HOTBAR_ITEM_TYPES = new Set(['consumable', 'food', 'home', 'weapon', 'armor', 'accessory', 'helm', 'gloves', 'boots', 'belt', 'flask']);
 export const hotbarItemOk = (id) => !!ITEMS[id] && HOTBAR_ITEM_TYPES.has(ITEMS[id].type);
 const SKILL_FILL_ORDER = ['3', '4', '5', '6', '7', '8', '9', '0', '1', '2'];
 /** แปลง/ซ่อม hotbar: เซฟเก่า Q W E R T → ช่อง 3–7 (ช่อง 1/2 = ยา HP/MP) · ตัดสกิลที่ยังไม่เรียน/ไอเทมที่ไม่มีแล้ว */
@@ -49,7 +50,7 @@ export function newCharacter(name, appearance = {}) {
     hp: 0, mp: 0,
     gold: STARTING_GOLD,
     inventory: STARTING_ITEMS.map((i) => ({ ...i })),
-    equipment: { weapon: null, armor: null, accessory: null, accessory2: null },
+    equipment: { ...emptyEquipment(), flask: 'flask_hp1', flask2: 'flask_mp1' }, flaskCh: { flask: 3, flask2: 3 }, starterFlask: true,
     sp: START_SP, skills: {}, hotbar: emptyHotbar(),
     quests: { active: {}, done: [] }, enhance: {}, costume: {},
     rec: {}, titles: [], friends: [],
@@ -278,14 +279,19 @@ export function migrate(c) {
   if (!c.skills || typeof c.skills !== 'object') c.skills = {};
   c.hotbar = fixHotbar(c, c.hotbar);
   if (c.hotbars && typeof c.hotbars === 'object') for (const j of Object.keys(c.hotbars)) c.hotbars[j] = fixHotbar(c, c.hotbars[j]);
-  if (!c.equipment) c.equipment = { weapon: null, armor: null, accessory: null, accessory2: null };
-  if (!('accessory2' in c.equipment)) c.equipment.accessory2 = null;
+  if (!c.equipment || typeof c.equipment !== 'object') c.equipment = emptyEquipment();
+  for (const s of EQUIP_SLOTS) if (!(s in c.equipment)) c.equipment[s] = null;
+  for (const s of Object.keys(c.equipment)) if (!EQUIP_SLOTS.includes(s)) delete c.equipment[s];
+  // ขวดยาเริ่มต้น (แจกครั้งเดียวให้ตัวละครเดิม)
+  if (!c.starterFlask) { c.starterFlask = true; if (!c.equipment.flask) c.equipment.flask = 'flask_hp1'; if (!c.equipment.flask2) c.equipment.flask2 = 'flask_mp1'; }
+  if (!c.flaskCh || typeof c.flaskCh !== 'object') c.flaskCh = {};
+  for (const s of FLASK_SLOTS) { const f = ITEMS[c.equipment[s]]?.flask; c.flaskCh[s] = f ? Math.max(0, Math.min(f.max, Number.isFinite(+c.flaskCh[s]) ? +c.flaskCh[s] : f.max)) : 0; }
   if (!Array.isArray(c.inventory)) c.inventory = [];
   c.inventory = c.inventory.filter((s) => s && ITEMS[s.id] && s.qty > 0).map((s) => ({ id: s.id, qty: Math.floor(s.qty) }));
   if (!c.costume || typeof c.costume !== 'object') c.costume = {};
   if (!c.enhance || typeof c.enhance !== 'object') c.enhance = {};
   fixCards(c);                                                   // การ์ดในช่องสวมใส่ + สมุดสะสม
-  for (const k of Object.keys(c.equipment)) if (c.equipment[k] && !ITEMS[c.equipment[k]]) c.equipment[k] = null;
+  for (const k of Object.keys(c.equipment)) if (c.equipment[k] && (!ITEMS[c.equipment[k]] || ITEMS[c.equipment[k]].type !== SLOT_TYPE[k])) c.equipment[k] = null;
   if (!c.quests) c.quests = { active: {}, done: [] };
   if (!c.rec) c.rec = {};
   if (!Array.isArray(c.titles)) c.titles = [];

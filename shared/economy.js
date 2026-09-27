@@ -22,6 +22,8 @@ import { SKILL_BY_ID } from './data/skills.js';
 import { gainExp, resetStats, resetSkills, syncAppearance, learnSkill, assignHotbar, allocateStat, allocPassive, resetPassives, addLifeXp, lifeLv, addMastery, recomputePath } from './charmodel.js';
 import { HERB_SPOTS } from './td/ayutthaya.js';
 import { CARDS, CARD_BY_ID, SLOT_CARD, CARD_SLOT_TH, socketCount, cardRemoveCost } from './data/cards.js';
+import { WEAR_TYPES, FLASK_SLOTS, ENH_SLOTS, SLOT_TH } from './data/slots.js';
+import { equipmentBonus } from './character.js';
 
 const OK = (msg, extra = {}) => ({ ok: true, msg, ...extra });
 const NO = (msg) => ({ ok: false, msg });
@@ -104,6 +106,7 @@ export function grantKill(c, r, day) {
   const ups = gainExp(c, r.exp || 0);
   rec(c, 'kills');
   const mastery = addMastery(c, 1);
+  chargeFlasks(c, r.boss ? 99 : FLASK_PER_KILL);
   const quests = questEvent(c, 'kill', r.mon), bounty = bountyKill(c, r.mon, day);
   return { ups, quests, bounty, mastery, titles: checkTitles(c) };
 }
@@ -121,13 +124,18 @@ export function grant(c, { exp = 0, gold = 0, items = [] } = {}) {
 function equip(c, { id, slot: forceSlot = null }) {
   const it = ITEMS[id];
   if (!it || !count(c, id)) return NO('ไม่มีไอเทมนี้');
-  if (!['weapon', 'armor', 'accessory'].includes(it.type)) return NO('สวมไอเทมนี้ไม่ได้');
+  if (!WEAR_TYPES.includes(it.type)) return NO('สวมไอเทมนี้ไม่ได้');
   if (it.lv && c.level < it.lv) return NO(`ต้อง Lv.${it.lv} ขึ้นไปถึงจะสวม ${it.nameTh} ได้`);
   let slot = forceSlot && SLOT_TYPE[forceSlot] === it.type ? forceSlot : it.type;
   if (!forceSlot && it.type === 'accessory' && c.equipment.accessory && !c.equipment.accessory2) slot = 'accessory2';
+  if (!forceSlot && it.type === 'flask') {                                // ขวดยา: ช่องว่างก่อน · ไม่ว่าง → แทนขวดชนิดเดียวกัน
+    const same = FLASK_SLOTS.find((s) => ITEMS[c.equipment[s]]?.flask?.kind === it.flask.kind);
+    slot = FLASK_SLOTS.find((s) => !c.equipment[s]) || same || 'flask';
+  }
   removeItem(c, id);
   if (c.equipment[slot]) addItem(c, c.equipment[slot]);
   c.equipment[slot] = id;
+  if (it.type === 'flask') { c.flaskCh ||= {}; c.flaskCh[slot] = it.flask.max; }
   const changed = syncAppearance(c);
   clampHp(c);
   const style = it.wtype ? ` · แนว${JOBS[c.appearance.job].nameTh}` : '';
@@ -138,6 +146,7 @@ function unequip(c, { slot }) {
   const id = c.equipment[slot];
   if (!id) return NO('');
   c.equipment[slot] = null;
+  if (c.flaskCh && slot in c.flaskCh) c.flaskCh[slot] = 0;
   addItem(c, id);
   const changed = syncAppearance(c);
   clampHp(c);
@@ -203,7 +212,7 @@ function use(c, { id }) {
   if (it.type === 'fish') return NO(`${it.nameTh}: นำไปให้ป้าสาทำอาหาร หรือขายได้`);
   if (it.type === 'offering') return NO(`${it.nameTh}: นำไปถวายที่ศาลพระภูมิ (ยืนหน้าศาลแล้วกด F)`);
   if (it.type === 'card') return NO(`${it.nameTh}: เปิดสมุดการ์ด (O) แล้วกดช่องการ์ดของ${CARD_SLOT_TH[it.cardSlot]}เพื่อใส่`);
-  if (['weapon', 'armor', 'accessory'].includes(it.type)) return equip(c, { id });
+  if (WEAR_TYPES.includes(it.type)) return equip(c, { id });
   return NO('ใช้ไอเทมนี้ไม่ได้');
 }
 
@@ -310,7 +319,7 @@ function craft(c, { list, idx, n = 1 }, ctx) {
 //  ตีบวก (ลุงดำ)
 // ------------------------------------------------------------
 function enhance(c, { slot, guard }, ctx) {
-  if (!EQUIP_SLOTS.includes(slot)) return NO('ช่องไม่ถูกต้อง');
+  if (!ENH_SLOTS.includes(slot)) return NO('ช่องไม่ถูกต้อง');
   if (ctx.x != null && !nearNpc(ctx.x, 'smith')) return NO('ต้องยืนคุยกับลุงดำก่อน');
   c.enhance ||= {};
   const lv = c.enhance[slot] || 0, cost = ENHANCE.cost(lv), ore = ENHANCE.ore(lv), fang = ENHANCE.fang(lv);
@@ -482,6 +491,7 @@ function recall(c, { to }) {
     return OK(`กลับไปจุดล่า: ${m.nameTh}`, { warp: 'return', to: m.id });
   }
   removeItem(c, 'yant_home', 1);
+  refillFlasks(c);
   return OK('', { warp: 'home' });
 }
 function dye(c, { part, v }, ctx) {
@@ -538,6 +548,30 @@ function gm(c, { cmd = 'help', a1, a2 }, ctx) {
 }
 
 // ------------------------------------------------------------
+//  ขวดยา (แบบ PoE)
+// ------------------------------------------------------------
+export const FLASK_PER_KILL = 0.25;                     // ฆ่าผี 4 ตัว = เติม 1 ครั้ง (บอส = เต็ม)
+function chargeFlasks(c, n) {
+  c.flaskCh ||= {};
+  for (const s of FLASK_SLOTS) { const f = ITEMS[c.equipment?.[s]]?.flask; if (f) c.flaskCh[s] = Math.min(f.max, (c.flaskCh[s] || 0) + n); }
+}
+/** เติมขวดยาเต็ม (กลับเมือง/ฟื้น) */
+export function refillFlasks(c) { chargeFlasks(c, 99); }
+/** ดื่มขวดยาในช่อง */
+function flask(c, { slot }) {
+  if (!FLASK_SLOTS.includes(slot)) return NO('ช่องไม่ถูกต้อง');
+  const it = ITEMS[c.equipment?.[slot]], f = it?.flask;
+  if (!f) return NO(`${SLOT_TH[slot]} ยังว่าง · ซื้อขวดยาที่ร้านยายติ๋ม`);
+  c.flaskCh ||= {};
+  if ((c.flaskCh[slot] || 0) < 1) return NO(`${it.nameTh} หมด · ฆ่าผีเพื่อเติม หรือกลับเมือง`);
+  const d = getDerived(c), amt = Math.round(f.heal * (1 + (equipmentBonus(c).flaskPct || 0) / 100));
+  if (f.kind === 'hp') { if (c.hp >= d.maxHp) return NO('HP เต็มอยู่แล้ว'); c.hp = Math.min(d.maxHp, c.hp + amt); }
+  else { if (c.mp >= d.maxMp) return NO('MP เต็มอยู่แล้ว'); c.mp = Math.min(d.maxMp, c.mp + amt); }
+  c.flaskCh[slot] -= 1;
+  return OK('', { flask: slot, kind: f.kind, amt, left: Math.floor(c.flaskCh[slot]) });
+}
+
+// ------------------------------------------------------------
 //  การ์ดผี (ใส่/ถอด/แลก)
 // ------------------------------------------------------------
 /** ใส่การ์ดในช่องการ์ดว่างของช่องสวมใส่ */
@@ -589,10 +623,10 @@ function cardTrade(c, { ids }, ctx) {
 export const ACTIONS = {
   use, equip, unequip, cosOff, buy, sell, sellMany, lock, offer, siamsi, craft, enhance,
   qAccept, qDrop, qClaim, path, passive, passiveReset, bounty, fishBite, fishLand, fishLose, gather, chest,
-  alloc, learn, hotbar, recall, dye, title, friendDel, gm, cardIn, cardOut, cardTrade,
+  alloc, learn, hotbar, recall, dye, title, friendDel, gm, cardIn, cardOut, cardTrade, flask,
 };
 /** ระหว่างเทรด ห้ามทำสิ่งที่แตะกระเป๋า/เงิน (กันของซ้ำ) */
-const TRADE_SAFE = new Set(['lock', 'qAccept', 'qDrop', 'hotbar', 'title', 'friendDel', 'fishBite', 'fishLand', 'fishLose', 'gather', 'chest', 'learn', 'alloc', 'passive']);
+const TRADE_SAFE = new Set(['flask', 'lock', 'qAccept', 'qDrop', 'hotbar', 'title', 'friendDel', 'fishBite', 'fishLand', 'fishLose', 'gather', 'chest', 'learn', 'alloc', 'passive']);
 
 /**
  * รันคำสั่ง: ctx = { rnd, now, x (ตำแหน่งผู้เล่น · null = ไม่ตรวจ), night, admin, trade, sess }

@@ -176,7 +176,7 @@ export const MONSTERS = {
     attackRange: 44, attackCooldown: 1600, exp: 3500, gold: [800, 1500],
     aoe: { cd: 7000, r: 90, mult: 1.4, nameTh: 'ไฟนรกภูมิ' },
     frame: { w: 40, h: 80 }, zone: [4600, 4900],
-    drops: [{ item: 'asura_horn', chance: 0.6 }, { item: 'hp_m', chance: 0.5 }, { item: 'takrut', chance: 0.5 }, { item: 'yant_guard', chance: 0.3 }],
+    drops: [{ item: 'asura_horn', chance: 0.6 }, { item: 'hp_m', chance: 0.5 }, { item: 'takrut', chance: 0.5 }, { item: 'yant_guard', chance: 0.3 }, { item: 'flask_hp5', chance: 0.2 }, { item: 'flask_mp5', chance: 0.15 }],
   },
   // ---------------- บอสประจำโซน (เกิดทุก 20 นาที · ประกาศทั้งเซิร์ฟ · ทุกคนที่ช่วยตี ≥5% ได้รางวัล) ----------------
   mae_nak: {
@@ -197,7 +197,7 @@ export const MONSTERS = {
     aoe: { cd: 7000, r: 80, mult: 1.35, nameTh: 'คำสาปขุมทรัพย์' },
     frame: { w: 32, h: 46 },
     palette: { main: '#f7dc6f', dark: '#7e5109', glow: '#fcf3cf' },
-    drops: [{ item: 'saming_fang', chance: 1 }, { item: 'hp_m', chance: 1 }, { item: 'kuman_statue', chance: 0.2 }, { item: 'yant_guard', chance: 0.2 }],
+    drops: [{ item: 'saming_fang', chance: 1 }, { item: 'hp_m', chance: 1 }, { item: 'kuman_statue', chance: 0.2 }, { item: 'yant_guard', chance: 0.2 }, { item: 'flask_mp5', chance: 0.15 }],
   },
   chalawan: {
     nameTh: 'พญาชาละวัน', nameEn: 'Chalawan', level: 21, boss: true, count: 1, scale: 1.8, respawnMs: 1200000,
@@ -207,7 +207,7 @@ export const MONSTERS = {
     aoe: { cd: 6500, r: 100, mult: 1.5, nameTh: 'ฟาดหางพญาจระเข้' },
     frame: { w: 40, h: 56 },
     palette: { main: '#52be80', dark: '#145a32', glow: '#f7dc6f' },
-    drops: [{ item: 'chamot_scale', chance: 1 }, { item: 'hp_m', chance: 1 }, { item: 'naga_statue', chance: 0.25 }, { item: 'yant_guard', chance: 0.4 }],
+    drops: [{ item: 'chamot_scale', chance: 1 }, { item: 'hp_m', chance: 1 }, { item: 'naga_statue', chance: 0.25 }, { item: 'yant_guard', chance: 0.4 }, { item: 'flask_hp6', chance: 0.2 }, { item: 'flask_mp6', chance: 0.2 }],
   },
 };
 
