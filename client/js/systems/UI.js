@@ -434,6 +434,7 @@ export class UI {
       $('#set-bgm-on').checked = st.bgmOn; $('#set-bgm').value = Math.round(st.bgmVol * 100); $('#set-bgm-v').textContent = `${Math.round(st.bgmVol * 100)}`;
       $('#set-sfx-on').checked = st.sfxOn; $('#set-sfx').value = Math.round(st.sfxVol * 100); $('#set-sfx-v').textContent = `${Math.round(st.sfxVol * 100)}`;
       $('#set-dmg').checked = st.damageNumbers; $('#set-mm').checked = st.minimap;
+      $('#set-shake').checked = st.fxShake !== false; $('#set-flash').value = st.fxFlash || 'full';
       $('#set-auto-hp').value = String(st.autoHp || 0); $('#set-auto-mp').value = String(st.autoMp || 0);
       document.querySelector('.minimap').classList.toggle('hidden', !st.minimap);
     };
@@ -445,6 +446,8 @@ export class UI {
     $('#set-sfx').onchange = () => this.scene.sfx.play('coin');
     $('#set-dmg').onchange = (e) => { st.damageNumbers = e.target.checked; apply(); };
     $('#set-mm').onchange = (e) => { st.minimap = e.target.checked; apply(); };
+    $('#set-shake').onchange = (e) => { st.fxShake = e.target.checked; apply(); };
+    $('#set-flash').onchange = (e) => { st.fxFlash = e.target.value; apply(); };
     $('#set-auto-hp').onchange = (e) => { st.autoHp = +e.target.value; apply(); };
     $('#set-auto-mp').onchange = (e) => { st.autoMp = +e.target.value; apply(); };
     $('#set-fullscreen').onclick = () => toggleFullscreen();

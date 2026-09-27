@@ -294,7 +294,8 @@ export class TdMinimap {
   }
 
   update(time, s) {
-    if (time - this.at < 200) return; this.at = time;
+    this.el.hidden = s.settings?.minimap === false;
+    if (this.el.hidden || time - this.at < 200) return; this.at = time;
     const g = this.ctx, p = s.player, W = this.el.width, H = this.el.height;
     const scale = 2 / TILE;                                   // 1 ไทล์ = 2px บนมินิแมพ
     const ox = Math.max(0, Math.min(this.base.width - W, p.x * scale - W / 2)), oy = Math.max(0, Math.min(this.base.height - H, p.y * scale - H / 2));

@@ -63,11 +63,15 @@ export class TopDownScene extends Phaser.Scene {
   create({ char }) {
     for (const a of ALL_ASSETS) if (a.anims) registerDir8(this, { id: a.id, anims: a.anims });
     this.td = true;
-    this.sfx = sound; this.settings = { ...loadSettings(), minimap: false }; this.sfx.applySettings(this.settings);
+    this.sfx = sound; this.settings = loadSettings(); document.body.classList.add('td-mode'); this.sfx.applySettings(this.settings);
     this.physics.world.gravity.y = 0;
     bakeFx(this); bakeTileset(this); bakeProps(this); bakeTdFx(this);
     // เอฟเฟกต์บนพื้น (ยันต์) อยู่ชั้นพื้น · เอฟเฟกต์ลอย (ตัวเลข/ประกาย) อยู่เหนือทุกอย่าง
     this.fxDepth = (d) => (d < 20 ? 0.9 : 100000 + d);
+    // ตั้งค่า: ปิดจอสั่น / ลดแสงวาบ ครอบทุกที่ที่เรียกกล้อง
+    { const cam = this.cameras.main, shake = cam.shake.bind(cam), flash = cam.flash.bind(cam);
+      cam.shake = (d, i, ...r) => (this.settings?.fxShake === false ? cam : shake(d, i, ...r));
+      cam.flash = (d, rr, g, b, ...r) => (this.settings?.fxFlash === 'off' ? cam : flash(this.settings?.fxFlash === 'soft' ? d * 0.4 : d, rr, g, b, ...r)); }
     this.layout = buildLayout();
     this.remotes = new Map();
     this.shadows = [];

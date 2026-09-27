@@ -87,14 +87,18 @@ export class GrandFx {
   }
 
   tween(t) { return this.s.tweens.add(t); }
-  shake(ms = 180, k = 0.006) { if (this.s.settings?.shake === false) return; this.s.cameras.main.shake(ms, k); }
+  shake(ms = 180, k = 0.006) { this.s.cameras.main.shake(ms, k); }             // ปิดได้ในตั้งค่า (ดู TopDownScene)
+  /** ความแรงแสงวาบตามตั้งค่า: เต็ม 1 · ลดลง 0.3 · ปิด 0 */
+  get flashK() { const f = this.s.settings?.fxFlash; return f === 'off' ? 0 : f === 'soft' ? 0.3 : 1; }
   flash(ms = 120, c = 0xffffff, a = 0.55) {
+    a *= this.flashK; if (!a) return;
     const cam = this.s.cameras.main, v = cam.worldView;
     const r = this.s.add.rectangle(v.centerX, v.centerY, v.width + 40, v.height + 40, c, a).setDepth(TOP + 10).setBlendMode(ADD());
     this.tween({ targets: r, alpha: 0, duration: ms, onComplete: () => r.destroy() });
   }
   /** ท้องฟ้ามืดลงชั่วครู่ (สกิลใหญ่) */
   darken(ms = 900, c = 0x140a2a, a = 0.45) {
+    a *= this.flashK ? Math.max(0.5, this.flashK) : 0; if (!a) return;
     const v = this.s.cameras.main.worldView;
     const r = this.s.add.rectangle(v.centerX, v.centerY, v.width * 1.6, v.height * 1.6, c, 0).setDepth(TOP - 20);
     this.tween({ targets: r, fillAlpha: a, duration: 160, yoyo: true, hold: ms, onComplete: () => r.destroy() });
