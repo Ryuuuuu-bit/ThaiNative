@@ -743,3 +743,36 @@ kbd { display: inline-block; min-width: 1.6em; text-align: center; padding: 0 .3
 .dye-opts button { width: 2.2em; height: 2em; background: #1d1229; color: #e8dcc0; border: 1px solid rgba(212,175,55,.35); border-radius: 6px; font: inherit; cursor: pointer; }
 .dye-opts button.active { background: var(--gold); color: #2a1b3a; }
 .dye-opts button:hover { border-color: var(--gold); }
+
+/* ---------- v3 ธีม: หลอดพลัง · ความหายาก · แจ้งเตือน · ป้ายเขต ---------- */
+.bar i.ghost { background: rgba(255,120,120,.55) !important; transition: width .6s ease-out .25s !important; z-index: 0; }
+.bar i:not(.ghost) { z-index: 1; }
+.bar i:not(.ghost)::before { content: ''; position: absolute; inset: 0; background: linear-gradient(90deg, transparent 0, rgba(255,255,255,.35) 50%, transparent 100%); background-size: 200% 100%; animation: sheen 3.2s linear infinite; }
+@keyframes sheen { from { background-position: 200% 0; } to { background-position: -200% 0; } }
+.bar.hp.low i:not(.ghost) { animation: hpPulse .8s ease-in-out infinite alternate; }
+@keyframes hpPulse { from { filter: brightness(1); } to { filter: brightness(1.6) saturate(1.3); } }
+.bar.boss .seg { position: absolute; inset: 0; z-index: 2; pointer-events: none; background: repeating-linear-gradient(90deg, transparent 0 calc(25% - 1px), rgba(0,0,0,.55) calc(25% - 1px) 25%); }
+.bar.boss i.ghost { background: rgba(255,200,120,.5) !important; }
+.bar { isolation: isolate; } .bar span { z-index: 3; }
+/* ความหายากของอุปกรณ์ (ตามเลเวล/ตำนาน) */
+.item.r1 { border-left-color: #b8b8b8; } .item.r2 { border-left-color: #5dd39e; } .item.r3 { border-left-color: #5fa8ff; } .item.r4 { border-left-color: #c58cff; }
+.item.r5 { border-left-color: #ffd35c; background: linear-gradient(90deg, rgba(90,60,10,.55), rgba(18,10,27,.9)); }
+.item .rn1 { color: #e6e6e6; } .item .rn2 { color: #8ff0c0; } .item .rn3 { color: #8ec5ff; } .item .rn4 { color: #d8b4ff; }
+.item .rn5 { background: linear-gradient(90deg, #fff3c4, #ffd35c 40%, #ff9f43 70%, #fff3c4); background-size: 200% 100%; -webkit-background-clip: text; background-clip: text; color: transparent; animation: sheen 2.4s linear infinite; font-weight: 600; }
+.item.r5 .ic { filter: drop-shadow(0 0 4px #ffd35c); }
+/* แจ้งเตือนแยกชนิด */
+.toast { border-left: 4px solid var(--gold); padding-left: .8em; }
+.toast::before { content: 'ℹ️'; margin-right: .4em; }
+.toast.warn { border-left-color: #ff6b6b; } .toast.warn::before { content: '⚠️'; }
+.toast.ok { border-left-color: #58d68d; } .toast.ok::before { content: '✔'; color: #58d68d; }
+.toast.loot { border-left-color: #ffd35c; } .toast.loot::before { content: '🎁'; }
+.toast.quest { border-left-color: #85c1e9; } .toast.quest::before { content: '📜'; }
+/* ป้ายเขต: ชื่อ + บรรทัดรอง + ลายเส้น */
+.banner { display: flex; flex-direction: column; align-items: center; line-height: 1.15; padding: .35em 2.2em .45em !important; }
+.banner b { font-weight: 600; }
+.banner small { font-size: .5em; color: #e8dcc0; font-weight: 400; letter-spacing: .08em; opacity: .9; }
+.banner small:empty { display: none; }
+.banner::before, .banner::after { content: ''; position: absolute; left: 50%; transform: translateX(-50%); width: 46%; height: 10px; background: var(--divider) center / 100% 100% no-repeat; }
+.banner::before { top: -7px; } .banner::after { bottom: -7px; }
+/* ชั้นหน้า: ตัวเลข/ข้อความในโลกเป็น Fx แล้ว · แชทแยกสี */
+#chat-log .party-msg b { color: #82e0aa; } #chat-log .whisper-msg b { color: #d7bde2; }

@@ -59,8 +59,9 @@ export class Clock {
 
     // แสงตะเกียง/คบไฟ (สว่างเฉพาะกลางคืน)
     s.children.list.filter((o) => o.texture?.key === 'lantern').forEach((l) => {
-      const glow = s.add.circle(l.x, l.y - 24, 18, 0xf5b041, 0).setDepth(31).setBlendMode(Phaser.BlendModes.ADD);
-      this.lanterns.push(glow);
+      const glow = s.add.image(l.x, l.y - 22, 'fx_glow').setDisplaySize(110, 90).setTint(0xffb454).setDepth(31).setBlendMode(Phaser.BlendModes.ADD).setAlpha(0);
+      const core = s.add.image(l.x, l.y - 22, 'fx_glow').setDisplaySize(28, 28).setTint(0xfff1c0).setDepth(31).setBlendMode(Phaser.BlendModes.ADD).setAlpha(0);
+      this.lanterns.push(glow, core);
     });
 
     // หิ่งห้อยกลางคืน
@@ -84,7 +85,8 @@ export class Clock {
     this.dark.setAlpha(darkA);
     this.dark.fillColor = moon.id === 'dark' ? 0x14041c : 0x0b0626;
     const t = s.time.now;
-    this.lanterns.forEach((g, i) => g.setAlpha((1 - L) * (0.45 + Math.sin(t / 180 + i * 1.7) * 0.08)).setScale(1 + Math.sin(t / 240 + i) * 0.06));
+    this.lanterns.forEach((g, i) => { const k = i % 2 ? 0.9 : 0.5; g.setAlpha((1 - L) * k * (0.9 + Math.sin(t / 180 + i * 1.7) * 0.1)); if (i % 2 === 0) g.setScale(g.scaleX * (1 + Math.sin(t / 240 + i) * 0.004)); });
+    (s.windows || []).forEach(({ w, gl }, i) => { w.setAlpha(1 - L); gl.setAlpha((1 - L) * (0.35 + Math.sin(t / 300 + i) * 0.06)); });
     // หิ่งห้อยเฉพาะกลางคืนในป่า
     const wantFlies = L < 0.3 && s.player?.x > WORLD.townEndX - 200;
     if (wantFlies && !this.fireflies.emitting) this.fireflies.start();

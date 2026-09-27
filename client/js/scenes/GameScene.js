@@ -17,6 +17,7 @@ import { Village } from '../systems/Village.js';
 import { FISH_SPOT, NPCS } from '/shared/data/npcs.js';
 import { Dungeon } from '../systems/Dungeon.js';
 import { Econ } from '../net/Econ.js';
+import { bakeFx, SceneFx } from '../gfx/Fx.js';
 import { Forest } from '../systems/Forest.js';
 import { Combat } from '../systems/Combat.js';
 import { UI } from '../systems/UI.js';
@@ -46,6 +47,7 @@ export class GameScene extends Phaser.Scene {
     this.settings = loadSettings();
     this.sfx.applySettings(this.settings);
     this.physics.world.setBounds(W.minX, -200, W.width - W.minX, W.height + 200);
+    bakeFx(this);
 
     this.buildBackground();
     this.buildLevel();
@@ -80,6 +82,7 @@ export class GameScene extends Phaser.Scene {
     this.village = new Village(this);     // ตกปลา · เควส · ครัว · ตีบวก
     this.forest = new Forest(this);       // Map 2: ค่ายพราน · สมุนไพร · หีบสมบัติ · ค่าหัว
     this.dungeon = new Dungeon(this);     // สุสานใต้ดิน (ดันเจี้ยนปาร์ตี้)
+    this.fx = new SceneFx(this);          // ขอบจอ · เมฆ · แถวหน้า · เตือน HP ต่ำ
 
     // ---------- กล้อง ----------
     const cam = this.cameras.main;
@@ -189,6 +192,12 @@ export class GameScene extends Phaser.Scene {
     this.anvilGlow = this.add.circle(880, gy - 14, 10, 0xff7b24, 0).setDepth(2).setBlendMode(Phaser.BlendModes.ADD);
     this.tweens.add({ targets: this.anvilGlow, alpha: { from: 0.15, to: 0.35 }, duration: 500, yoyo: true, repeat: -1 });
     [-420, -160, 200, 340, 500, 680, 800, 940].forEach((x) => this.add.image(x, gy, 'lantern').setOrigin(0.5, 1).setDepth(2));
+    // แสงหน้าต่างเรือน (สว่างตอนกลางคืน – Clock ปรับความโปร่งใส)
+    this.windows = [[396, gy - 58], [444, gy - 58], [860, gy - 50], [898, gy - 50], [-282, gy - 40], [742, gy - 44]].map(([x, y]) => {
+      const w = this.add.image(x, y, 'fx_window').setDepth(1.5).setAlpha(0);
+      const gl = this.add.image(x, y + 4, 'fx_glow').setDepth(1.4).setBlendMode(Phaser.BlendModes.ADD).setTint(0xffb454).setDisplaySize(70, 50).setAlpha(0);
+      return { w, gl };
+    });
     this.buildRiver(img, label);
 
     // ลานฝึกวิชา 4 สำนัก: ป้าย + หุ่นฝึก/เป้าธนู/กระสอบทราย/ธงยันต์
@@ -581,6 +590,7 @@ export class GameScene extends Phaser.Scene {
     this.village.update(time, this.game.loop.delta / 1000);
     this.forest.update(time);
     this.dungeon.update(time);
+    this.fx.update(time, this.player, getDerived(this.player.char).maxHp);
     this.animateWater(time);
     const spot = this.interactable();
     this.ui.prompt(spot ? spot.prompt : '');

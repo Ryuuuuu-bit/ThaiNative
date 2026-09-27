@@ -12,6 +12,7 @@ import { PATH_LV } from '/shared/data/classes.js';
 import { grantKill } from '/shared/economy.js';
 import { QUEST_BY_ID } from '/shared/data/village.js';
 import { makeText, rand } from './util.js';
+import { popupNumber, hitSpark, yantCircle } from '../gfx/Fx.js';
 
 export class Combat {
   constructor(scene) {
@@ -50,7 +51,7 @@ export class Combat {
     mon.takeHit(r, dir, knock);
     if (r.hit && effect) mon.applyEffect(effect, r.dmg);
     this.scene.ui.setTarget(mon);
-    if (r.hit) this.sfx.play(r.crit ? 'crit' : 'hit');
+    if (r.hit) { this.sfx.play(r.crit ? 'crit' : 'hit'); hitSpark(this.scene, mon.x + rand(-6, 6), mon.y - mon.displayHeight * 0.55, { crit: r.crit, dir }); }
     else this.sfx.play('miss');
     return r;
   }
@@ -63,7 +64,8 @@ export class Combat {
       this.popupText(target.x + rand(-6, 6), target.y - target.displayHeight * 0.6, `${d.dmg}`, '#58d68d', 7);
     } else if (mine) {
       target.takeHit({ hit: d.hit, crit: d.crit, dmg: d.dmg, stun: d.stun, poison: d.poisoned }, d.dir || 1, d.knock ?? 70, true);
-      if (d.hit) this.sfx.play(d.crit ? 'crit' : 'hit'); else this.sfx.play('miss');
+      if (d.hit) { this.sfx.play(d.crit ? 'crit' : 'hit'); hitSpark(this.scene, target.x + rand(-6, 6), target.y - target.displayHeight * 0.55 + rand(-6, 6), { crit: d.crit, dir: d.dir || 1 }); }
+      else this.sfx.play('miss');
     } else if (d.hit && this.scene.settings?.damageNumbers !== false && Math.abs(target.x - this.player.x) < 400) {
       this.popupText(target.x + rand(-14, 14), target.y - target.displayHeight * 0.6, d.crit ? `${d.dmg}!` : `${d.dmg}`, d.poison ? '#82e0aa' : d.crit ? '#f5b041' : '#d5d8dc', d.crit ? 9 : 7);
     }
@@ -80,6 +82,7 @@ export class Combat {
 
     if (!skill) return this.basicAttack(player, stats, f);
     const meta = { sk: skill.id };
+    if (skill.ultimate) yantCircle(this.scene, player.x, player.y, { tint: 0xffb454, size: 76, ms: 900 });
 
     switch (skill.type) {
       case 'melee': {
@@ -228,11 +231,12 @@ export class Combat {
     if (sk.heal) {
       const amt = Math.round(d.maxHp * sk.heal);
       if (!this.scene.econ?.server) c.hp = Math.min(d.maxHp, c.hp + amt);      // ออนไลน์: server ฮีลให้ (pl:hp)
-      this.popupText(player.x, player.y - 46, `+${amt} HP`, '#58d68d', 10);
+      popupNumber(this.scene, player.x, player.y - 46, `+${amt}`, 'heal');
     }
     player.buffs = player.buffs.filter((b) => b.sk !== sk.id);
     player.buffs.push({ buff: sk.buff, until: this.scene.time.now + sk.duration, name: sk.nameTh, icon: sk.icon, sk: sk.id, untilMs: Date.now() + sk.duration });
     this.popupText(player.x, player.y - 56, sk.nameTh, '#f7dc6f', 9);
+    yantCircle(this.scene, player.x, player.y, { tint: 0xffe9a6, size: 64, ms: 1100 });
     this.burst(player.x, player.y - 18, 0xf7dc6f, 18);
 
     // ออร่าตามตัวผู้เล่นจนหมดเวลา
@@ -396,7 +400,7 @@ export class Combat {
       this.popupText(x, y, `+${r.exp} EXP (ช่วยตี)`, '#aed6f1');
       this.scene.ui.loot(`🤝 ช่วยตี ${def.nameTh}: +${r.exp} EXP`);
     } else {
-      this.popupText(x, y, `+${r.exp} EXP  +฿${r.gold}${r.night ? ' 🌙' : ''}`, r.night ? '#d7bde2' : '#f7dc6f');
+      popupNumber(this.scene, x, y, `+${r.exp} EXP  ฿${r.gold}${r.night ? ' 🌙' : ''}`, r.night ? 'night' : 'exp', { dir: 0 });
       this.sfx.play('ghostDie');
       this.scene.time.delayedCall(250, () => this.sfx.play('coin'));
       this.scene.ui.loot(`☠️ ${def.nameTh}: +${r.exp} EXP · +฿${r.gold}`);
@@ -426,6 +430,7 @@ export class Combat {
     this.scene.ui.toast(`+${ups * 5} แต้มสถานะ (กด C เพื่ออัปค่าพลัง)`);
     this.scene.ui.banner(`LEVEL UP!  Lv.${c.level}`);
     this.popupText(this.player.x, this.player.y - 50, 'LEVEL UP!', '#f1c40f', 12);
+    yantCircle(this.scene, this.player.x, this.player.y, { tint: 0xffd35c, size: 84, ms: 1500, rise: true });
     this.burst(this.player.x, this.player.y - 20, 0xf1c40f, 24);
     this.sfx.play('levelup');
     if (!c.path && c.level >= PATH_LV && c.level - ups < PATH_LV)
@@ -443,10 +448,10 @@ export class Combat {
   // ============================================================
   //  เอฟเฟกต์ทั่วไป
   // ============================================================
-  popup(x, y, result) {
+  popup(x, y, result, kind = null) {
     if (this.scene.settings?.damageNumbers === false) return;
-    if (!result.hit) return this.popupText(x, y, 'MISS', '#bdc3c7');
-    this.popupText(x, y, result.crit ? `${result.dmg}!` : `${result.dmg}`, result.crit ? '#f1c40f' : '#ffffff', result.crit ? 11 : 8);
+    if (!result.hit) return popupNumber(this.scene, x, y, 'MISS', 'miss');
+    popupNumber(this.scene, x, y, result.crit ? `${result.dmg}!` : `${result.dmg}`, kind || (result.crit ? 'crit' : 'normal'));
   }
 
   popupText(x, y, text, color = '#fff', size = 8) {

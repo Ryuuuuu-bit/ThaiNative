@@ -9,6 +9,7 @@ import { MONSTERS } from '/shared/data/monsters.js';
 import { WORLD } from '/shared/constants.js';
 import { mapAt, MAPS } from '/shared/data/maps.js';
 import { makeText, rand } from '../systems/util.js';
+import { Shadow, squash } from '../gfx/Fx.js';
 
 const EV = Phaser.Animations.Events;
 const AGGRO_X = 170, AGGRO_Y = 90, RESPAWN_MS = 9000;
@@ -48,6 +49,8 @@ export class Monster extends Phaser.Physics.Arcade.Sprite {
     this.hpBg = scene.add.rectangle(0, 0, 20, 3, 0x000000, 0.7).setDepth(9);
     this.hpBar = scene.add.rectangle(0, 0, 20, 3, 0xe74c3c).setOrigin(0, 0.5).setDepth(9);
     this.label = makeText(scene, 0, 0, `Lv.${def.level} ${def.nameTh}`, { fontSize: def.regionBoss ? '8px' : '6px', color: def.regionBoss ? '#f9e79f' : '#f5b7b1' }).setOrigin(0.5).setDepth(9);
+    this.shadow = new Shadow(scene, this, Math.round(Math.max(16, (def.frame.bodyW || w * 0.6) * (def.scale || 1) * 1.3)));
+    this.groundY = WORLD.groundY;
 
     this.on(EV.ANIMATION_UPDATE, (anim, frame) => {
       if (anim.key === `${this.key}:attack` && frame.index === (anim.frames.length >= 6 ? 4 : 2)) scene.combat.monsterStrike(this);
@@ -191,10 +194,21 @@ export class Monster extends Phaser.Physics.Arcade.Sprite {
     this.play(`${this.key}:walk`);
   }
 
-  showUi(v) { this.hpBg.setVisible(v); this.hpBar.setVisible(v); this.label.setVisible(v); this.bossGlow?.setVisible(v); }
+  showUi(v) { this.hpBg.setVisible(v); this.hpBar.setVisible(v); this.label.setVisible(v); this.bossGlow?.setVisible(v); if (!v) this.shadow?.img.setVisible(false); }
+
+  /** สีป้ายชื่อตามเลเวลผีเทียบผู้เล่น: เขียว = ง่าย · ขาว = พอดี · ส้ม = ยาก · แดง = อันตราย */
+  refreshLabelColor(plv) {
+    if (this.def.regionBoss || this._plv === plv) return;
+    this._plv = plv;
+    const d = this.def.level - plv;
+    this.label.setColor(d <= -4 ? '#9be7a5' : d <= 2 ? '#f5f0e6' : d <= 5 ? '#ffb86b' : '#ff6b6b');
+    if (d >= 6 && !this.label.text.startsWith('💀')) this.label.setText(`💀 ${this.label.text}`);
+    else if (d < 6 && this.label.text.startsWith('💀')) this.label.setText(this.label.text.replace('💀 ', ''));
+  }
 
   update(time, player) {
     this.checkNightOnly();
+    this.shadow.update();
     if (!this.alive) return;
     // รอ server นานเกิน (ต่อไม่ได้) → แสดงผีแล้วใช้ AI ในเครื่อง
     if (this.awaitSync && time - (this.onMapAt || 0) > 1500) { this.awaitSync = false; this.setVisible(true); this.showUi(true); }
@@ -205,6 +219,7 @@ export class Monster extends Phaser.Physics.Arcade.Sprite {
     const d = this.def;
     const h = d.frame.h * (d.scale || 1);
     const bw = d.regionBoss ? 44 : 20;
+    if (player?.char) this.refreshLabelColor(player.char.level);
     this.hpBg.setPosition(this.x, this.y - h - 3).setSize(bw, 3);
     this.hpBar.setPosition(this.x - bw / 2, this.y - h - 3).setSize(bw * Math.max(0, this.hp / d.hp), 3);
     this.label.setPosition(this.x, this.y - h - 9);
@@ -349,7 +364,8 @@ export class Monster extends Phaser.Physics.Arcade.Sprite {
     if (fromServer) { if (result.stun) this.showStun(result.stun); if (result.poison) this.setTint(0x82e0aa); }
     if (net) this.hp = Math.max(1, this.hp - result.dmg);   // server ตัดสินตาย (mob:die) · แสดง HP ล่วงหน้า
     else this.hp -= result.dmg;
-    this.setTintFill(0xffffff);
+    this.setTintFill(result.crit ? 0xffd35c : 0xffffff);
+    squash(this.scene, this, result.crit ? 0.25 : 0.14, 110);
     this.scene.time.delayedCall(70, () => { if (!this.alive) return; this.clearTint(); if (this.baseTint) this.setTint(this.baseTint); });
     if (!net && this.hp <= 0) return this.die();
     this.scene.ui?.setTarget(this);
@@ -386,7 +402,7 @@ export class Monster extends Phaser.Physics.Arcade.Sprite {
     this.scene.time.delayedCall(RESPAWN_MS, () => this.reset(rand(this.def.zone[0], this.def.zone[1])));
   }
 
-  destroy(fromScene) { this.bossGlow?.destroy(); super.destroy(fromScene); }
+  destroy(fromScene) { this.bossGlow?.destroy(); this.shadow?.destroy(); super.destroy(fromScene); }
 
   /** ค่าสำหรับคำนวณความเสียหาย */
   get atkStats() { const a = Math.round(this.def.atk * this.mods.atk); return { patk: a, matk: a, accuracy: this.def.acc, critRate: 0.05, critDmg: 1.5 }; }

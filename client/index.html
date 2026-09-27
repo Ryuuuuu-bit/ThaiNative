@@ -77,7 +77,7 @@
           <div class="pf-portrait-wrap"><div class="pf-portrait"><canvas id="hud-portrait" width="44" height="44"></canvas></div><span class="pf-lv" id="hud-lv">1</span></div>
           <div class="pf-info">
             <div class="pf-name"><span class="pf-nm"><span class="lv-tag">Lv.<b id="hud-lv2">1</b></span><span id="hud-name"></span></span><span id="hud-job" class="job-tag"></span></div>
-            <div class="bar hp"><i id="hud-hp-fill"></i><span id="hud-hp"></span></div>
+            <div class="bar hp"><i class="ghost" id="hud-hp-ghost"></i><i id="hud-hp-fill"></i><span id="hud-hp"></span></div>
             <div class="bar mp"><i id="hud-mp-fill"></i><span id="hud-mp"></span></div>
             <div id="hud-buffs" class="buffs"></div>
           </div>
@@ -89,7 +89,7 @@
         <!-- เรดบอส (กลางบน) -->
         <div id="boss-bar" class="boss-bar hidden">
           <div class="bb-name"><b id="bb-name">👹 พญายักษ์ทมิฬ</b><span id="bb-state"></span></div>
-          <div class="bar boss"><i id="bb-fill"></i><span id="bb-hp"></span></div>
+          <div class="bar boss"><i class="ghost" id="bb-ghost"></i><i id="bb-fill"></i><span id="bb-hp"></span><em class="seg"></em></div>
         </div>
 
         <!-- ดันเจี้ยน (กลางบน) -->
@@ -148,7 +148,7 @@
           <div id="fish-bar" class="fish-bar hidden"><i id="fish-zone"></i><b id="fish-needle"></b></div>
         </div>
         <div id="prompt" class="prompt hidden"></div>
-        <div id="banner" class="banner hidden"></div>
+        <div id="banner" class="banner hidden"><b id="banner-text"></b><small id="banner-sub"></small></div>
         <div id="death" class="death hidden"><h2>คุณหมดสติ…</h2><p>ฟื้นที่ศาลพระภูมิใน <b id="death-t">3</b> วินาที</p></div>
       </section>
 

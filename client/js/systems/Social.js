@@ -502,6 +502,7 @@ export class Social {
     if (nearArena && b) {
       if (b.alive) {
         $('#bb-fill').style.width = `${Math.max(0, (b.hp / b.maxHp) * 100)}%`;
+        $('#bb-ghost').style.width = `${Math.max(0, (b.hp / b.maxHp) * 100)}%`;
         $('#bb-hp').textContent = `${Math.max(0, Math.ceil(b.hp)).toLocaleString()} / ${b.maxHp.toLocaleString()}`;
         $('#bb-state').textContent = b.hp / b.maxHp < RB.enrageAt ? '🔥 คลั่ง!' : '';
       } else {

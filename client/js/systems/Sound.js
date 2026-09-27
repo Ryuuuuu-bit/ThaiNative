@@ -1,6 +1,9 @@
 // ============================================================
-//  Sound – เสียงเอฟเฟกต์ + เพลงประกอบ สังเคราะห์สดด้วย Web Audio
+//  Sound – เสียงเอฟเฟกต์ + เพลงประกอบ สังเคราะห์สดด้วย Web Audio (v2 "วงปี่พาทย์")
 //  (ไม่ต้องมีไฟล์เสียง)  เพลงใช้บันไดเสียงเพนทาโทนิกแบบไทย
+//  v2: เครื่องดนตรีเสียงสมจริงขึ้น (ระนาดมีเสียงไม้กระทบ+ลูกระนาดก้อง, ฆ้องวงมีเสียงหึ่งโลหะ,
+//      ฉิ่ง-ฉาบเป็นโลหะจริง, ปี่มีเสียงลิ้น/ฟอร์แมนต์, โทน-กลองมีหนัง) + เสียงก้อง (reverb) + ซ้าย-ขวา (stereo)
+//      + SFX ใช้เครื่องดนตรีไทย (คลิก = เคาะระนาด, ซื้อ = เหรียญ+ฉิ่ง, เลเวลอัป = ระนาดรัว+ฆ้อง)
 //  ▸ sound.play('slash')   ▸ sound.music('town' | 'wild' | 'boss' | null)
 //  ▸ ถ้าอยากใช้ไฟล์เสียงจริง ใส่ .ogg ใน client/assets/sfx แล้วแก้ play() ให้โหลดไฟล์แทน
 // ============================================================
@@ -218,11 +221,31 @@ export class Sound {
     const AC = window.AudioContext || window.webkitAudioContext;
     if (!AC) return;
     const ctx = (this.ctx = new AC());
+    this.offline = typeof OfflineAudioContext !== 'undefined' && ctx instanceof OfflineAudioContext;
     this.master = ctx.createGain();
     this.master.gain.value = this.muted ? 0 : 0.6;
-    this.master.connect(ctx.destination);
-    this.sfxBus = ctx.createGain(); this.sfxBus.gain.value = 0.8; this.sfxBus.connect(this.master);
-    this.musicBus = ctx.createGain(); this.musicBus.gain.value = 0.32; this.musicBus.connect(this.master);
+    // soft-clip กันเสียงแตกเวลาเสียงซ้อนกันเยอะ (ไม่ใช้ compressor เพราะมันกดเสียงสั้น ๆ อย่างเสียงฟันให้เบาลง)
+    const clip = ctx.createWaveShaper();
+    const curve = new Float32Array(1024);
+    for (let i = 0; i < 1024; i++) { const x = (i / 511.5) - 1; curve[i] = Math.tanh(x); }
+    clip.curve = curve; clip.oversample = '2x';
+    this.master.connect(clip).connect(ctx.destination);
+    this.sfxBus = ctx.createGain(); this.sfxBus.gain.value = 0.8;
+    this.musicBus = ctx.createGain(); this.musicBus.gain.value = 0.5;
+    // เสียงก้อง (ศาลาไม้/ลานวัด): impulse สังเคราะห์ – เพลงก้องมาก, SFX ก้องนิดเดียว
+    this.verb = ctx.createConvolver(); this.verb.buffer = this.impulse(1.6, 2.2);
+    this.verbMusic = ctx.createGain(); this.verbMusic.gain.value = 0.28;
+    this.verbSfx = ctx.createGain(); this.verbSfx.gain.value = 0.12;
+    this.musicBus.connect(this.master); this.musicBus.connect(this.verbMusic).connect(this.verb);
+    this.sfxBus.connect(this.master); this.sfxBus.connect(this.verbSfx).connect(this.verb);
+    this.verb.connect(this.master);
+    // ช่องซ้าย-ขวาของแต่ละเครื่อง (วงปี่พาทย์นั่งเรียงหน้ากระดาน)
+    this.pan = {};
+    for (const [k, v] of Object.entries({ ranat: -0.35, khong: 0.4, pi: 0.18, saw: -0.15, pad: 0, bass: 0, ghost: 0.5, thon: -0.1, klong: 0.05, ching: 0.45, chap: -0.45 })) {
+      const p = ctx.createStereoPanner ? ctx.createStereoPanner() : ctx.createGain();
+      if (p.pan) p.pan.value = v;
+      p.connect(this.musicBus); this.pan[k] = p;
+    }
 
     // noise buffer ใช้ร่วมกัน
     const len = ctx.sampleRate;
@@ -231,8 +254,15 @@ export class Sound {
     for (let i = 0; i < len; i++) d[i] = Math.random() * 2 - 1;
 
     if (this.cfg) this.applySettings(this.cfg);
-    this.scheduler = setInterval(() => this.schedule(), 25);
+    if (!this.offline) this.scheduler = setInterval(() => this.schedule(), 25);
     if (this.wanted) this.music(this.wanted);
+  }
+
+  /** impulse response สังเคราะห์: noise ที่ค่อย ๆ จางแบบ exponential (สั้น = ห้องเล็ก) */
+  impulse(sec, decay) {
+    const ctx = this.ctx, n = Math.floor(ctx.sampleRate * sec), buf = ctx.createBuffer(2, n, ctx.sampleRate);
+    for (let c = 0; c < 2; c++) { const d = buf.getChannelData(c); for (let i = 0; i < n; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / n, decay) * (i < 400 ? i / 400 : 1); }
+    return buf;
   }
 
   /** ใช้ค่าจากหน้าต่างตั้งค่า { bgmOn, bgmVol, sfxOn, sfxVol } */
@@ -240,7 +270,7 @@ export class Sound {
     this.cfg = cfg;
     if (!this.ctx) return;
     const t = this.ctx.currentTime;
-    this.musicBus.gain.setTargetAtTime(cfg.bgmOn ? cfg.bgmVol * 0.55 : 0, t, 0.05);
+    this.musicBus.gain.setTargetAtTime(cfg.bgmOn ? cfg.bgmVol * 0.85 : 0, t, 0.05);
     this.sfxBus.gain.setTargetAtTime(cfg.sfxOn ? cfg.sfxVol : 0, t, 0.05);
   }
 
@@ -254,40 +284,86 @@ export class Sound {
   // ------------------------------------------------------------
   //  เครื่องกำเนิดเสียงพื้นฐาน
   // ------------------------------------------------------------
-  tone(freq, dur, { type = 'square', vol = 0.15, to = null, delay = 0, attack = 0.005, bus = this.sfxBus, vibrato = 0, lp = 0, release = 0 } = {}) {
+  tone(freq, dur, { type = 'square', vol = 0.15, to = null, delay = 0, attack = 0.005, bus = this.sfxBus, vibrato = 0, vibRate = 7, lp = 0, bp = 0, q = 1, release = 0, detune = 0, curve = 'exp' } = {}) {
     const ctx = this.ctx, t = ctx.currentTime + delay;
     const o = ctx.createOscillator(), g = ctx.createGain();
     o.type = type;
+    if (detune) o.detune.value = detune;
     o.frequency.setValueAtTime(freq, t);
     if (to) o.frequency.exponentialRampToValueAtTime(Math.max(20, to), t + dur);
     if (vibrato) {
       const lfo = ctx.createOscillator(), lg = ctx.createGain();
-      lfo.frequency.value = 7; lg.gain.value = vibrato;
+      lfo.frequency.value = vibRate; lg.gain.setValueAtTime(0, t); lg.gain.linearRampToValueAtTime(vibrato, t + Math.min(dur * 0.5, 0.25));
       lfo.connect(lg).connect(o.frequency); lfo.start(t); lfo.stop(t + dur + 0.05);
     }
     g.gain.setValueAtTime(0.0001, t);
     g.gain.exponentialRampToValueAtTime(vol, t + attack);
     if (release) { g.gain.setValueAtTime(vol, t + Math.max(attack, dur - release)); g.gain.linearRampToValueAtTime(0.0001, t + dur); }
+    else if (curve === 'lin') g.gain.linearRampToValueAtTime(0.0001, t + dur);
     else g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
-    if (lp) { const f = ctx.createBiquadFilter(); f.type = 'lowpass'; f.frequency.value = lp; o.connect(f).connect(g).connect(bus); }
-    else o.connect(g).connect(bus);
+    let node = o;
+    if (bp) { const f = ctx.createBiquadFilter(); f.type = 'bandpass'; f.frequency.value = bp; f.Q.value = q; node.connect(f); node = f; }
+    if (lp) { const f = ctx.createBiquadFilter(); f.type = 'lowpass'; f.frequency.value = lp; node.connect(f); node = f; }
+    node.connect(g).connect(bus);
     o.start(t); o.stop(t + dur + 0.05);
   }
 
-  noise(dur, { vol = 0.2, type = 'bandpass', freq = 1200, to = null, q = 1, delay = 0, bus = this.sfxBus } = {}) {
+  noise(dur, { vol = 0.2, type = 'bandpass', freq = 1200, to = null, q = 1, delay = 0, bus = this.sfxBus, attack = 0 } = {}) {
     const ctx = this.ctx, t = ctx.currentTime + delay;
     const src = ctx.createBufferSource(); src.buffer = this.noiseBuf;
     const f = ctx.createBiquadFilter(); f.type = type; f.Q.value = q;
     f.frequency.setValueAtTime(freq, t);
     if (to) f.frequency.exponentialRampToValueAtTime(to, t + dur);
     const g = ctx.createGain();
-    g.gain.setValueAtTime(vol, t);
+    if (attack) { g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(vol, t + attack); }
+    else g.gain.setValueAtTime(vol, t);
     g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
     src.connect(f).connect(g).connect(bus);
     src.start(t, Math.random() * 0.5); src.stop(t + dur + 0.05);
   }
 
-  arp(notes, step, opts) { notes.forEach((n, i) => this.tone(midi(n), step * 1.6, { ...opts, delay: i * step })); }
+  arp(notes, step, opts) { notes.forEach((n, i) => this.tone(midi(n), step * 1.6, { ...opts, delay: (opts?.delay || 0) + i * step })); }
+
+  // ------------------------------------------------------------
+  //  เครื่องดนตรีไทย (ใช้ทั้งเพลงและ SFX)
+  // ------------------------------------------------------------
+  /** ระนาดเอก: ไม้นวมกระทบลูกระนาด – เสียงไม้ + ตัวโน้ต 2 ตัวเพี้ยนกันนิดหน่อย (chorus) + ฮาร์มอนิกไม้ */
+  ranat(f, delay = 0, vol = 0.15, bus = this.sfxBus, dur = 0.42) {
+    this.noise(0.018, { type: 'bandpass', freq: 2600, q: 2, vol: vol * 0.9, delay, bus });                  // เสียงไม้กระทบ
+    this.tone(f, dur, { type: 'triangle', vol, delay, bus, attack: 0.003, detune: -4 });
+    this.tone(f, dur * 0.9, { type: 'sine', vol: vol * 0.7, delay, bus, attack: 0.003, detune: 5 });
+    this.tone(f * 2.76, dur * 0.28, { type: 'sine', vol: vol * 0.22, delay, bus, attack: 0.002 });         // ฮาร์มอนิกไม้ (แบบมาริมบา)
+    this.tone(f * 5.4, 0.06, { type: 'sine', vol: vol * 0.08, delay, bus, attack: 0.001 });
+  }
+  /** ฆ้องวงใหญ่: ลูกฆ้องโลหะ – ฮาร์มอนิกไม่ลงตัว + เสียงหึ่ง (beating) + ก้องยาว */
+  khong(f, delay = 0, vol = 0.1, bus = this.sfxBus) {
+    this.noise(0.03, { type: 'bandpass', freq: 1800, q: 1.5, vol: vol * 0.6, delay, bus });               // ไม้ตี
+    this.tone(f, 1.6, { type: 'sine', vol, delay, bus, attack: 0.004, to: f * 0.985 });                    // ตัวโน้ต (พิตช์ย้อยลงนิด)
+    this.tone(f * 1.0035, 1.4, { type: 'sine', vol: vol * 0.55, delay, bus, attack: 0.004 });             // หึ่ง
+    this.tone(f * 2.0, 0.9, { type: 'sine', vol: vol * 0.3, delay, bus });
+    this.tone(f * 2.76, 0.55, { type: 'sine', vol: vol * 0.28, delay, bus });
+    this.tone(f * 4.07, 0.25, { type: 'sine', vol: vol * 0.12, delay, bus });
+  }
+  /** ฉิ่ง (เปิด = "ฉิ่ง" ก้อง, ปิด = "ฉับ" สั้น) */
+  ching(delay = 0, vol = 0.07, bus = this.sfxBus, open = true) {
+    const d = open ? 0.55 : 0.07;
+    this.tone(4180, d, { type: 'sine', vol: vol * 0.7, delay, bus, attack: 0.001 });
+    this.tone(6720, d * 0.8, { type: 'sine', vol: vol * 0.45, delay, bus, attack: 0.001 });
+    this.tone(9400, d * 0.5, { type: 'sine', vol: vol * 0.2, delay, bus, attack: 0.001 });
+    this.noise(open ? 0.12 : 0.04, { type: 'highpass', freq: 6000, vol: vol * 0.9, delay, bus });
+  }
+  /** โทน (กลองหนัง): พิตช์ย้อย + เสียงหนังตึง */
+  thon(delay = 0, vol = 0.3, bus = this.sfxBus) {
+    this.tone(210, 0.2, { type: 'sine', to: 95, vol, delay, bus, attack: 0.002, curve: 'exp' });
+    this.tone(330, 0.05, { type: 'triangle', to: 180, vol: vol * 0.35, delay, bus, attack: 0.001 });
+    this.noise(0.03, { type: 'bandpass', freq: 1400, q: 1, vol: vol * 0.35, delay, bus });
+  }
+  /** กลองทัด/กลองแขก (ใหญ่): ทุ้มลึก */
+  klong(delay = 0, vol = 0.45, bus = this.sfxBus) {
+    this.tone(88, 0.42, { type: 'sine', to: 42, vol, delay, bus, attack: 0.002 });
+    this.tone(140, 0.08, { type: 'triangle', to: 70, vol: vol * 0.3, delay, bus, attack: 0.001 });
+    this.noise(0.07, { type: 'lowpass', freq: 700, vol: vol * 0.4, delay, bus });
+  }
 
   // ------------------------------------------------------------
   //  เสียงเอฟเฟกต์
@@ -295,7 +371,9 @@ export class Sound {
   play(name) {
     if (!this.ctx || this.muted || this.cfg?.sfxOn === false) return;
     const T = (...a) => this.tone(...a), N = (...a) => this.noise(...a);
+    const R = (n, d = 0, v = 0.12) => this.ranat(midi(n), d, v);
     switch (name) {
+      // ---- โจมตี/สกิล ----
       case 'swing':      N(0.12, { freq: 1200, to: 3200, vol: 0.25 }); break;
       case 'swingLight': N(0.07, { freq: 2000, to: 4200, vol: 0.2 }); break;
       case 'slash':      N(0.18, { freq: 800, to: 4000, vol: 0.32 }); T(900, 0.08, { type: 'sawtooth', to: 300, vol: 0.05 }); break;
@@ -308,41 +386,44 @@ export class Sound {
       case 'dash':       N(0.2, { freq: 600, to: 2600, q: 2, vol: 0.3 }); break;
       case 'punch':      N(0.06, { type: 'lowpass', freq: 900, vol: 0.45 }); T(150, 0.08, { type: 'sine', to: 60, vol: 0.4 }); break;
       case 'kick':       T(130, 0.15, { type: 'sine', to: 40, vol: 0.5 }); N(0.08, { type: 'lowpass', freq: 1500, vol: 0.35 }); break;
-      case 'thunder':    N(0.8, { type: 'lowpass', freq: 3000, to: 150, vol: 0.6 }); T(60, 0.5, { type: 'sawtooth', vol: 0.15 }); break;
-      case 'meteor':     T(420, 0.35, { type: 'sawtooth', to: 60, vol: 0.12 }); N(0.6, { type: 'lowpass', freq: 1500, to: 100, vol: 0.5, delay: 0.2 }); break;
-      case 'buff':       this.arp([72, 76, 79, 84], 0.08, { type: 'triangle', vol: 0.15 }); break;
-      case 'hit':        N(0.05, { freq: 1500, vol: 0.35 }); T(220, 0.06, { to: 110, vol: 0.1 }); break;
-      case 'crit':       N(0.07, { freq: 1500, vol: 0.4 }); T(880, 0.1, { to: 1760, vol: 0.1 }); break;
+      case 'thunder':    N(0.8, { type: 'lowpass', freq: 3000, to: 150, vol: 0.6 }); T(60, 0.5, { type: 'sawtooth', vol: 0.15 }); this.klong(0.02, 0.5); break;
+      case 'meteor':     T(420, 0.35, { type: 'sawtooth', to: 60, vol: 0.12 }); N(0.6, { type: 'lowpass', freq: 1500, to: 100, vol: 0.5, delay: 0.2 }); this.klong(0.25, 0.5); break;
+      case 'buff':       [72, 76, 79, 84].forEach((n, i) => R(n, i * 0.07, 0.11)); this.ching(0.28, 0.05); break;
+      // ---- โดน/พลาด/ตาย ----
+      case 'hit':        N(0.05, { freq: 1500, vol: 0.32 }); T(180, 0.07, { type: 'sine', to: 90, vol: 0.18 }); break;
+      case 'crit':       N(0.07, { freq: 1500, vol: 0.4 }); T(160, 0.09, { type: 'sine', to: 70, vol: 0.25 }); this.ching(0.01, 0.06); T(880, 0.1, { to: 1760, vol: 0.06 }); break;
       case 'miss':       N(0.1, { type: 'highpass', freq: 4000, vol: 0.12 }); break;
-      case 'hurt':       T(300, 0.15, { to: 120, vol: 0.15 }); N(0.1, { vol: 0.2 }); break;
-      case 'die':        T(440, 0.9, { type: 'sawtooth', to: 55, vol: 0.2 }); break;
-      case 'ghostDie':   T(760, 0.6, { type: 'sine', to: 140, vol: 0.14, vibrato: 30 }); N(0.5, { freq: 800, vol: 0.08 }); break;
+      case 'hurt':       T(300, 0.15, { to: 120, vol: 0.15 }); N(0.1, { vol: 0.2 }); this.thon(0, 0.18); break;
+      case 'die':        T(440, 0.9, { type: 'sawtooth', to: 55, vol: 0.18, lp: 1800 }); this.klong(0.05, 0.4); this.khong(midi(40), 0.3, 0.09); break;
+      case 'ghostDie':   T(760, 0.6, { type: 'sine', to: 140, vol: 0.14, vibrato: 30 }); N(0.7, { type: 'bandpass', freq: 900, to: 300, q: 3, vol: 0.09 }); T(1200, 0.5, { type: 'sine', to: 2400, vol: 0.03, attack: 0.15 }); break;
       case 'enemySwing': N(0.1, { freq: 700, vol: 0.14 }); break;
       case 'enemyShot':  T(300, 0.2, { type: 'sine', to: 520, vol: 0.1 }); break;
-      case 'coin':       T(988, 0.06, { vol: 0.1 }); T(1319, 0.16, { vol: 0.1, delay: 0.06 }); break;
-      case 'levelup':    this.arp([72, 74, 76, 79, 81, 84], 0.07, { vol: 0.13 }); break;
-      case 'potion':     T(400, 0.25, { type: 'sine', to: 900, vol: 0.15 }); break;
-      case 'buy':        this.play('coin'); break;
-      case 'jump':       T(300, 0.1, { to: 620, vol: 0.07 }); break;
-      case 'click':      T(800, 0.03, { type: 'triangle', vol: 0.1 }); break;
+      // ---- UI / ของ / เงิน ----
+      case 'coin':       T(2093, 0.08, { type: 'sine', vol: 0.09 }); T(2637, 0.22, { type: 'sine', vol: 0.09, delay: 0.06 }); T(5274, 0.12, { type: 'sine', vol: 0.03, delay: 0.06 }); break;
+      case 'buy':        this.play('coin'); this.ching(0.1, 0.05); break;
+      case 'levelup':    [72, 76, 79, 84, 88, 91].forEach((n, i) => R(n, i * 0.065, 0.12)); this.khong(midi(72), 0.4, 0.12); this.ching(0.4, 0.06); break;
+      case 'potion':     T(400, 0.25, { type: 'sine', to: 900, vol: 0.13 }); N(0.12, { type: 'bandpass', freq: 3000, q: 2, vol: 0.06, delay: 0.05 }); break;
+      case 'jump':       T(300, 0.1, { to: 620, vol: 0.06 }); break;
+      case 'click':      R(88, 0, 0.07); break;
+      case 'open':       R(79, 0, 0.07); R(84, 0.06, 0.07); break;
+      case 'close':      R(84, 0, 0.06); R(79, 0.06, 0.06); break;
       case 'step':       N(0.04, { type: 'lowpass', freq: 500, vol: 0.06 }); break;
       case 'land':       N(0.08, { type: 'lowpass', freq: 400, vol: 0.18 }); T(90, 0.08, { type: 'sine', to: 50, vol: 0.12 }); break;
-      case 'open':       T(660, 0.05, { type: 'triangle', vol: 0.08 }); T(990, 0.08, { type: 'triangle', vol: 0.07, delay: 0.04 }); break;
-      case 'close':      T(880, 0.05, { type: 'triangle', vol: 0.07 }); T(587, 0.08, { type: 'triangle', vol: 0.06, delay: 0.04 }); break;
-      case 'invite':     this.arp([79, 84, 88], 0.09, { type: 'triangle', vol: 0.12 }); this.khong(midi(72), 0, 0.08); break;
-      case 'bossWarn':   T(220, 0.35, { type: 'sawtooth', to: 440, vol: 0.08, lp: 1200 }); this.khong(midi(45), 0, 0.2); break;
-      case 'bossRoar':   N(1.1, { type: 'lowpass', freq: 600, to: 120, q: 4, vol: 0.55 }); T(80, 1.0, { type: 'sawtooth', to: 45, vol: 0.18, vibrato: 8, lp: 500 }); break;
-      case 'bossSlam':   T(70, 0.45, { type: 'sine', to: 30, vol: 0.6 }); N(0.5, { type: 'lowpass', freq: 900, to: 80, vol: 0.55 }); break;
-      case 'victory':    this.arp([72, 76, 79, 84, 79, 84, 88], 0.11, { type: 'triangle', vol: 0.16 }); this.khong(midi(60), 0, 0.2); this.khong(midi(67), 0.44, 0.2); break;
+      case 'invite':     [79, 84, 88].forEach((n, i) => R(n, i * 0.09, 0.09)); this.khong(midi(72), 0, 0.07); break;
+      case 'party':      R(76, 0, 0.08); R(81, 0.07, 0.08); break;
+      case 'error':      T(200, 0.1, { vol: 0.1 }); T(150, 0.12, { vol: 0.1, delay: 0.1 }); this.ching(0, 0.04, this.sfxBus, false); break;
+      // ---- โลก / พิธี ----
+      case 'bossWarn':   T(220, 0.35, { type: 'sawtooth', to: 440, vol: 0.08, lp: 1200 }); this.khong(midi(45), 0, 0.2); this.klong(0.15, 0.4); break;
+      case 'bossRoar':   N(1.1, { type: 'lowpass', freq: 600, to: 120, q: 4, vol: 0.55 }); T(80, 1.0, { type: 'sawtooth', to: 45, vol: 0.18, vibrato: 8, lp: 500 }); this.khong(midi(38), 0.1, 0.16); break;
+      case 'bossSlam':   T(70, 0.45, { type: 'sine', to: 30, vol: 0.6 }); N(0.5, { type: 'lowpass', freq: 900, to: 80, vol: 0.55 }); this.klong(0, 0.5); break;
+      case 'victory':    [72, 76, 79, 84, 79, 84, 88].forEach((n, i) => R(n, i * 0.1, 0.13)); this.khong(midi(60), 0, 0.2); this.khong(midi(67), 0.44, 0.2); this.ching(0.7, 0.07); this.ching(0.9, 0.07); break;
       case 'nightfall':  this.khong(midi(41), 0, 0.25); this.tone(midi(81), 1.8, { type: 'sine', to: midi(69), vol: 0.05, attack: 0.4, vibrato: 12, delay: 0.3 }); break;
       case 'rooster':    T(700, 0.12, { type: 'sawtooth', to: 1100, vol: 0.06, lp: 2500 }); T(1100, 0.35, { type: 'sawtooth', to: 800, vol: 0.06, lp: 2500, delay: 0.12, vibrato: 20 }); break;
-      case 'templeBell': this.khong(midi(64), 0, 0.22); this.khong(midi(76), 0.02, 0.08); break;
+      case 'templeBell': this.khong(midi(64), 0, 0.22); this.khong(midi(76), 0.02, 0.08); this.tone(midi(88), 2.2, { type: 'sine', vol: 0.03, delay: 0.02 }); break;
       case 'siamsi':     for (let i = 0; i < 12; i++) N(0.04, { type: 'bandpass', freq: 2600 + (i % 3) * 400, q: 6, vol: 0.18, delay: i * 0.12 }); N(0.08, { type: 'bandpass', freq: 1800, q: 5, vol: 0.3, delay: 1.5 }); break;
-      case 'blessing':   this.arp([72, 79, 84, 88, 91], 0.09, { type: 'sine', vol: 0.12 }); this.khong(midi(72), 0, 0.1); break;
+      case 'blessing':   [72, 79, 84, 88, 91].forEach((n, i) => R(n, i * 0.09, 0.1)); this.khong(midi(72), 0, 0.1); this.ching(0.5, 0.05); break;
       case 'howl':       T(420, 1.4, { type: 'sine', to: 620, vol: 0.08, attack: 0.3, vibrato: 10 }); T(620, 1.1, { type: 'sine', to: 380, vol: 0.07, attack: 0.1, delay: 1.3, vibrato: 10 }); break;
-      case 'eventHorn':  for (let i = 0; i < 3; i++) { T(196, 0.5, { type: 'sawtooth', vol: 0.09, lp: 900, delay: i * 0.6 }); this.drum('klong', i * 0.6, this.sfxBus); } break;
-      case 'party':      this.arp([76, 81], 0.07, { type: 'triangle', vol: 0.1 }); break;
-      case 'error':      T(200, 0.1, { vol: 0.1 }); T(150, 0.12, { vol: 0.1, delay: 0.1 }); break;
+      case 'eventHorn':  for (let i = 0; i < 3; i++) { T(196, 0.5, { type: 'sawtooth', vol: 0.09, lp: 900, delay: i * 0.6 }); this.klong(i * 0.6, 0.45); } break;
     }
   }
 
@@ -352,9 +433,8 @@ export class Sound {
   music(name) {
     this.wanted = name;
     if (!this.ctx || this.track === name) return;
-    // เปลี่ยนเพลงแบบ fade: ลดเสียงลง แล้วเริ่มเพลงใหม่
     const bus = this.musicBus, t = this.ctx.currentTime;
-    const target = this.cfg ? (this.cfg.bgmOn ? this.cfg.bgmVol * 0.55 : 0) : 0.32;
+    const target = this.cfg ? (this.cfg.bgmOn ? this.cfg.bgmVol * 0.85 : 0) : 0.5;
     bus.gain.cancelScheduledValues(t);
     bus.gain.setValueAtTime(bus.gain.value, t);
     bus.gain.linearRampToValueAtTime(0.0001, t + 0.4);
@@ -364,35 +444,31 @@ export class Sound {
     this.nextTime = t + 0.45;
   }
 
-  /** ฆ้อง: เสียงโลหะ (ความถี่ไม่ลงตัว) หางเสียงยาว */
-  khong(f, delay = 0, vol = 0.1, bus = this.sfxBus) {
-    this.tone(f, 1.1, { type: 'sine', vol, delay, bus });
-    this.tone(f * 2.76, 0.5, { type: 'sine', vol: vol * 0.35, delay, bus });
-    this.tone(f * 5.4, 0.18, { type: 'sine', vol: vol * 0.15, delay, bus });
-  }
-
-  playNote(inst, n, vol, delay, stepDur, bus) {
-    const f = midi(n);
+  playNote(inst, n, vol, delay, stepDur, bus = this.musicBus) {
+    const f = midi(n), out = this.pan?.[inst] || bus;
     switch (inst) {
-      case 'ranat': this.tone(f, 0.28, { type: 'triangle', vol, delay, bus }); this.tone(f * 2, 0.1, { type: 'square', vol: vol * 0.13, delay, bus, lp: 3000 }); break;
-      case 'khong': this.khong(f, delay, vol, bus); break;
-      case 'pi':    this.tone(f, stepDur * 2.6, { type: 'sawtooth', vol, delay, bus, attack: 0.05, vibrato: 5, lp: 1400, release: 0.15 });
-                    this.tone(f * 1.003, stepDur * 2.6, { type: 'square', vol: vol * 0.3, delay, bus, attack: 0.06, lp: 900, release: 0.15 }); break;
-      case 'saw':   this.tone(f, stepDur * 1.8, { type: 'sawtooth', vol, delay, bus, attack: 0.01, vibrato: 3, lp: 2200, release: 0.05 }); break;
-      case 'pad':   this.tone(f, stepDur * 15, { type: 'triangle', vol, delay, bus, attack: 0.6, release: 1.2 });
-                    this.tone(f * 1.5, stepDur * 15, { type: 'triangle', vol: vol * 0.6, delay, bus, attack: 0.8, release: 1.2 });
-                    this.tone(f * 2.004, stepDur * 15, { type: 'sine', vol: vol * 0.5, delay, bus, attack: 0.8, release: 1.2 }); break;
-      case 'bass':  this.tone(f, stepDur * 1.8, { type: 'sine', vol, delay, bus, attack: 0.01 }); this.tone(f * 2, stepDur, { type: 'triangle', vol: vol * 0.2, delay, bus }); break;
-      case 'ghost': this.tone(f, stepDur * 6, { type: 'sine', to: f * 0.84, vol, delay, bus, attack: 0.4, vibrato: 12 }); break;
+      case 'ranat': this.ranat(f, delay, vol, out, 0.36); break;
+      case 'khong': this.khong(f, delay, vol, out); break;
+      case 'pi':    // ปี่ใน: ลิ้นไม้ – ฟันเลื่อยผ่านฟอร์แมนต์ + ลูกคอ (vibrato) ค่อย ๆ ขึ้น
+                    this.tone(f, stepDur * 2.6, { type: 'sawtooth', vol, delay, bus: out, attack: 0.04, vibrato: 6, vibRate: 5.5, bp: 1150, q: 2.2, release: 0.12 });
+                    this.tone(f * 2.003, stepDur * 2.6, { type: 'square', vol: vol * 0.22, delay, bus: out, attack: 0.05, lp: 2600, release: 0.12 });
+                    this.noise(0.03, { type: 'bandpass', freq: 2400, q: 3, vol: vol * 0.25, delay, bus: out }); break;   // ลมเป่าตอนเริ่มโน้ต
+      case 'saw':   this.tone(f, stepDur * 1.8, { type: 'sawtooth', vol, delay, bus: out, attack: 0.03, vibrato: 4, vibRate: 5, lp: 2000, release: 0.06 });
+                    this.tone(f * 1.002, stepDur * 1.8, { type: 'triangle', vol: vol * 0.5, delay, bus: out, attack: 0.05, release: 0.06 }); break;
+      case 'pad':   this.tone(f, stepDur * 15, { type: 'triangle', vol, delay, bus: out, attack: 0.6, release: 1.2, lp: 1200 });
+                    this.tone(f * 1.5, stepDur * 15, { type: 'triangle', vol: vol * 0.6, delay, bus: out, attack: 0.8, release: 1.2, lp: 1200 });
+                    this.tone(f * 2.004, stepDur * 15, { type: 'sine', vol: vol * 0.5, delay, bus: out, attack: 0.8, release: 1.2 }); break;
+      case 'bass':  this.tone(f, stepDur * 1.8, { type: 'sine', vol, delay, bus: out, attack: 0.01 }); this.tone(f * 2, stepDur, { type: 'triangle', vol: vol * 0.2, delay, bus: out, lp: 900 }); break;
+      case 'ghost': this.tone(f, stepDur * 6, { type: 'sine', to: f * 0.84, vol, delay, bus: out, attack: 0.4, vibrato: 12 }); break;
     }
   }
 
-  drum(kind, delay, bus) {
-    const T = (f, d, o) => this.tone(f, d, { ...o, delay, bus }), N = (d, o) => this.noise(d, { ...o, delay, bus });
-    if (kind === 'thon')  { T(180, 0.16, { type: 'sine', to: 95, vol: 0.3 }); N(0.03, { type: 'lowpass', freq: 1200, vol: 0.1 }); }
-    if (kind === 'klong') { T(75, 0.35, { type: 'sine', to: 40, vol: 0.45 }); N(0.06, { type: 'lowpass', freq: 600, vol: 0.18 }); }
-    if (kind === 'ching') N(0.05, { type: 'highpass', freq: 6500, vol: 0.07 });
-    if (kind === 'chap')  N(0.25, { type: 'highpass', freq: 4500, vol: 0.06 });
+  drum(kind, delay, bus = this.musicBus) {
+    const out = this.pan?.[kind] || bus;
+    if (kind === 'thon') this.thon(delay, 0.28, out);
+    if (kind === 'klong') this.klong(delay, 0.42, out);
+    if (kind === 'ching') this.ching(delay, 0.045, out, true);
+    if (kind === 'chap') this.ching(delay, 0.05, out, false);
   }
 
   /** เสียงบรรยากาศ: นก/จิ้งหรีด (หมู่บ้าน), ลม/นกฮูก (ป่า), ฟ้าร้อง (เรด) */
@@ -407,31 +483,42 @@ export class Sound {
                            this.tone(400, 0.45, { type: 'sine', to: 340, vol: 0.025, delay: delay + 0.45, bus, attack: 0.05 }); }
       else if (r < 0.16) this.noise(1.6, { freq: 300, to: 900, q: 2, vol: 0.03, delay, bus });              // ลมพัด
     } else if (kind === 'river') {
-      if (r < 0.05) this.noise(0.9, { type: 'lowpass', freq: 500, to: 250, vol: 0.035, delay, bus });                        // น้ำกระเพื่อม
-      else if (r < 0.12) this.tone(4400, 0.04, { type: 'square', vol: 0.005, delay, bus, lp: 5000 });                        // จิ้งหรีด
-      else if (r < 0.13) this.tone(1800 + Math.random() * 600, 0.06, { type: 'sine', to: 900, vol: 0.02, delay, bus });      // ปลาผุด
+      if (r < 0.05) this.noise(0.9, { type: 'lowpass', freq: 500, to: 250, vol: 0.035, delay, bus });
+      else if (r < 0.12) this.tone(4400, 0.04, { type: 'square', vol: 0.005, delay, bus, lp: 5000 });
+      else if (r < 0.13) this.tone(1800 + Math.random() * 600, 0.06, { type: 'sine', to: 900, vol: 0.02, delay, bus });
     } else if (kind === 'paddy') {
-      if (r < 0.1) this.tone(900 + Math.random() * 200, 0.08, { type: 'square', to: 600, vol: 0.008, delay, bus, lp: 1800 });   // กบร้อง
-      else if (r < 0.13) this.tone(4600, 0.04, { type: 'square', vol: 0.005, delay, bus, lp: 5200 });                        // จิ้งหรีด
+      if (r < 0.1) this.tone(900 + Math.random() * 200, 0.08, { type: 'square', to: 600, vol: 0.008, delay, bus, lp: 1800 });
+      else if (r < 0.13) this.tone(4600, 0.04, { type: 'square', vol: 0.005, delay, bus, lp: 5200 });
     } else if (kind === 'swamp') {
-      if (r < 0.06) this.tone(1500 + Math.random() * 800, 0.05, { type: 'sine', to: 700, vol: 0.03, delay, bus });            // น้ำหยด
-      else if (r < 0.12) this.tone(300 + Math.random() * 80, 0.18, { type: 'square', to: 220, vol: 0.008, delay, bus, lp: 700 }); // อึ่งอ่าง
+      if (r < 0.06) this.tone(1500 + Math.random() * 800, 0.05, { type: 'sine', to: 700, vol: 0.03, delay, bus });
+      else if (r < 0.12) this.tone(300 + Math.random() * 80, 0.18, { type: 'square', to: 220, vol: 0.008, delay, bus, lp: 700 });
     } else if (kind === 'jungle') {
-      if (r < 0.04) { const f = 1600 + Math.random() * 1400;                                                                  // นกป่า
+      if (r < 0.04) { const f = 1600 + Math.random() * 1400;
         this.tone(f, 0.12, { type: 'sine', to: f * 1.5, vol: 0.02, delay, bus }); this.tone(f * 1.2, 0.1, { type: 'sine', to: f, vol: 0.018, delay: delay + 0.15, bus }); }
-      else if (r < 0.14) this.tone(5200, 0.03, { type: 'square', vol: 0.004, delay, bus, lp: 6000 });                        // แมลง
-      else if (r < 0.15) this.noise(1.2, { freq: 400, to: 1200, q: 1.5, vol: 0.025, delay, bus });                          // ใบไม้ไหว
+      else if (r < 0.14) this.tone(5200, 0.03, { type: 'square', vol: 0.004, delay, bus, lp: 6000 });
+      else if (r < 0.15) this.noise(1.2, { freq: 400, to: 1200, q: 1.5, vol: 0.025, delay, bus });
     } else if (kind === 'grave') {
-      if (r < 0.012) this.khong(midi(84), delay, 0.03, bus);                                                                // ระฆังวัดไกลๆ
-      else if (r < 0.03) this.noise(2, { freq: 200, to: 600, q: 3, vol: 0.03, delay, bus });                                // ลมหวีด
-      else if (r < 0.04) { this.tone(420, 0.35, { type: 'sine', to: 380, vol: 0.02, delay, bus, attack: 0.05 });            // นกแสก
+      if (r < 0.012) this.khong(midi(84), delay, 0.03, bus);
+      else if (r < 0.03) this.noise(2, { freq: 200, to: 600, q: 3, vol: 0.03, delay, bus });
+      else if (r < 0.04) { this.tone(420, 0.35, { type: 'sine', to: 380, vol: 0.02, delay, bus, attack: 0.05 });
                            this.tone(400, 0.45, { type: 'sine', to: 340, vol: 0.02, delay: delay + 0.45, bus, attack: 0.05 }); }
     } else if (kind === 'cursed') {
-      if (r < 0.03) this.noise(1.6, { type: 'lowpass', freq: 180, to: 60, vol: 0.08, delay, bus });                         // ธรณีคำราม
-      else if (r < 0.08) this.noise(0.08, { type: 'highpass', freq: 3000, vol: 0.015, delay, bus });                        // ถ่านไฟแตก
+      if (r < 0.03) this.noise(1.6, { type: 'lowpass', freq: 180, to: 60, vol: 0.08, delay, bus });
+      else if (r < 0.08) this.noise(0.08, { type: 'highpass', freq: 3000, vol: 0.015, delay, bus });
     } else if (kind === 'boss' && r < 0.03) {
-      this.noise(1.8, { type: 'lowpass', freq: 250, to: 60, vol: 0.12, delay, bus });                       // ฟ้าคำราม
+      this.noise(1.8, { type: 'lowpass', freq: 250, to: 60, vol: 0.12, delay, bus });
     }
+  }
+
+  /** เล่น 1 ช่วงจังหวะของเพลง (ใช้ทั้งตอนเล่นสดและตอน render ไฟล์ตัวอย่าง) */
+  stepTrack(tr, step, delay, stepDur) {
+    const bus = this.musicBus;
+    for (const L of tr.layers) {
+      const n = L.notes[step % L.notes.length];
+      if (n) this.playNote(L.inst, n, L.vol, delay, stepDur, bus);
+    }
+    for (const [kind, pat] of Object.entries(tr.drums || {})) if (pat[step % pat.length] === 'x') this.drum(kind, delay, bus);
+    if (tr.wail && step % 64 === 44) this.tone(midi(81), 1.6, { type: 'sine', to: midi(69), vol: 0.05, delay, bus, attack: 0.4, vibrato: 12 });
   }
 
   schedule() {
@@ -440,13 +527,7 @@ export class Sound {
     const stepDur = 60 / tr.bpm / 2;
     while (this.nextTime < this.ctx.currentTime + 0.12) {
       const delay = Math.max(0, this.nextTime - this.ctx.currentTime);
-      const bus = this.musicBus;
-      for (const L of tr.layers) {
-        const n = L.notes[this.step % L.notes.length];
-        if (n) this.playNote(L.inst, n, L.vol, delay, stepDur, bus);
-      }
-      for (const [kind, pat] of Object.entries(tr.drums || {})) if (pat[this.step % pat.length] === 'x') this.drum(kind, delay, bus);
-      if (tr.wail && this.step % 64 === 44) this.tone(midi(81), 1.6, { type: 'sine', to: midi(69), vol: 0.05, delay, bus, attack: 0.4, vibrato: 12 }); // เสียงโหยหวน
+      this.stepTrack(tr, this.step, delay, stepDur);
       if (tr.amb) this.ambience(tr.amb, delay, this.sfxBus);
       this.nextTime += stepDur;
       this.step++;
@@ -454,5 +535,6 @@ export class Sound {
   }
 }
 
+export { TRACKS };
 /** ใช้ instance เดียวทั้งเกม */
 export const sound = new Sound();

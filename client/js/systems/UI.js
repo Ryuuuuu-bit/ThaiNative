@@ -27,6 +27,10 @@ import { account } from '../net/Account.js';
 const $ = (s) => document.querySelector(s);
 const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const SLOT_TH = { weapon: 'อาวุธ', armor: 'ชุดเกราะ', accessory: 'เครื่องประดับ 1', accessory2: 'เครื่องประดับ 2' };
+/** ระดับความหายากของอุปกรณ์ (สี): 1 ธรรมดา · 2 ดี · 3 หายาก · 4 มหากาพย์ · 5 ตำนาน */
+export const rarityOf = (it) => (!it ? 0 : it.legend ? 5 : ['weapon', 'armor', 'accessory'].includes(it.type) ? ((it.lv || 1) >= 28 ? 4 : (it.lv || 1) >= 20 ? 3 : (it.lv || 1) >= 10 ? 2 : 1) : it.type === 'costume' && it.rare ? 4 : 0);
+const rcls = (it) => { const r = rarityOf(it); return r ? ` r${r}` : ''; };
+const rname = (it, name) => { const r = rarityOf(it); return r ? `<span class="rn${r}">${name}</span>` : name; };
 /** ป้ายแนวของอาวุธ / สายของชุด */
 const itemTag = (it) => (it.lv ? ` · Lv.${it.lv}` : '') + (it.legend ? ' · ✦ตำนาน' : '') + (it.wtype ? ` · แนว${JOBS[WTYPE_JOB[it.wtype]].nameTh}`
   : it.job ? ` · สาย${JOBS[it.job].nameTh}` : it.path ? ` · ชุดสาย${JOBS[it.path].nameTh}` : '');
@@ -138,6 +142,8 @@ export class UI {
     $('#hud-hp').textContent = `HP ${Math.ceil(c.hp)} / ${d.maxHp}`;
     $('#hud-mp').textContent = `MP ${Math.floor(c.mp)} / ${d.maxMp}`;
     $('#hud-hp-fill').style.width = `${(c.hp / d.maxHp) * 100}%`;
+    $('#hud-hp-ghost').style.width = `${(c.hp / d.maxHp) * 100}%`;
+    $('#hud-hp-fill').parentElement.classList.toggle('low', c.hp / d.maxHp < 0.3);
     $('#hud-mp-fill').style.width = `${(c.mp / d.maxMp) * 100}%`;
     const maxed = c.level >= MAX_LEVEL;
     $('#hud-exp-fill').style.width = maxed ? '100%' : `${(c.exp / need) * 100}%`;
@@ -245,12 +251,15 @@ export class UI {
 
   setZone(name, announce = true) {
     $('#zone-name').textContent = name;
-    if (announce) this.banner(name);
+    const mp = this.scene.map, R = REGIONS[mp?.region], mon = mp?.mon ? MONSTERS[mp.mon] : null;
+    const sub = mp?.id === 'village' ? 'SAFE ZONE · หมู่บ้านบางผี' : mp?.boss ? 'เรดบอส · พญายักษ์ทมิฬ Lv.30' : mp?.dungeon ? 'ดันเจี้ยนปาร์ตี้' : R ? `ภาค ${R.no} ${R.nameTh}${mon ? ` · ${mon.nameTh} Lv.${mon.level}` : ''}` : '';
+    if (announce) this.banner(name, sub);
   }
 
-  banner(text) {
+  banner(text, sub = '') {
     const el = $('#banner');
-    el.textContent = text;
+    $('#banner-text').textContent = text;
+    $('#banner-sub').textContent = sub;
     el.classList.remove('hidden');
     el.style.animation = 'none'; void el.offsetWidth; el.style.animation = '';
     clearTimeout(this.bannerT);
@@ -412,7 +421,7 @@ export class UI {
         ${m.id === cur ? '<i class="wm-me">📍 คุณอยู่ที่นี่</i>' : ''}${friends[m.id] ? `<i class="wm-fr">👥 ${friends[m.id]}</i>` : ''}</div>`;
     };
     const html = `<div class="wm-region village"><h4>🏘️ หมู่บ้าน</h4><div class="wm-maps">${chip(MAPS.village)}</div></div>`
-      + Object.values(REGIONS).map((R) => `<div class="wm-region ${R.id}"><h4>ภาค ${R.no} · ${esc(R.nameTh)}</h4><div class="wm-maps">${MAP_LIST.filter((m) => m.region === R.id).map(chip).join('')}</div></div>`).join('');
+      + Object.values(REGIONS).map((R) => `<div class="wm-region ${R.id}"><h4>ภาค ${R.no} · ${esc(R.nameTh)}</h4><div class="wm-maps">${MAP_LIST.filter((m) => m.region === R.id && !m.noTravel).map(chip).join('')}</div></div>`).join('');
     if (html !== this.mapHtml) { this.mapHtml = html; $('#world-map').innerHTML = html; }
   }
 
@@ -463,6 +472,7 @@ export class UI {
 
   toast(msg, kind = '', ms = 2400) {
     const el = document.createElement('div');
+    if (!kind) kind = /^(✔|🏆|🎖|🔨 ตีบวกสำเร็จ)/.test(msg) ? 'ok' : /^(🎁|✨|ได้รับ|🎣 ได้)/.test(msg) ? 'loot' : /^(รับเควส|📜|👑)/.test(msg) ? 'quest' : '';
     el.className = `toast ${kind}`;
     el.textContent = msg;
     $('#toasts').appendChild(el);
@@ -615,8 +625,8 @@ export class UI {
       const it = ITEMS[s.id], lock = Inv.isLocked(c, s.id);
       const action = { home: 'ใช้', consumable: 'ใช้', food: 'กิน', offering: 'ถวาย', weapon: 'ถือ', armor: 'สวม', accessory: 'สวม', costume: 'แต่ง', reset: 'ใช้', skin: c.path === it.job ? 'ใช้อยู่' : 'เปลี่ยนสาย' }[it.type];
       const job = itemTag(it) || (it.type === 'costume' ? ` · ชุดแต่งตัว${it.rare ? ' ✨หายาก' : ''}` : '');
-      return `<div class="item inv"><span class="ic">${itemIcon(s.id, it.icon)}</span>
-        <span>${esc(it.nameTh)} <span class="meta">x${s.qty}${job}</span>${diff(it)}</span>
+      return `<div class="item inv${rcls(it)}"><span class="ic">${itemIcon(s.id, it.icon)}</span>
+        <span>${rname(it, esc(it.nameTh))} <span class="meta">x${s.qty}${job}</span>${diff(it)}</span>
         <button class="lock ${lock ? 'on' : ''}" data-lock="${s.id}" title="${lock ? 'ปลดล็อก' : 'ล็อก (กันขาย)'}">${lock ? '🔒' : '🔓'}</button>
         <span class="price">฿${sellPrice(s.id)}</span>
         ${action ? `<button data-use="${s.id}" ${action === 'ใช้อยู่' ? 'disabled' : ''}>${action}</button>` : '<span></span>'}</div>`;
@@ -678,7 +688,7 @@ export class UI {
         const food = it.buff ? `<span class="meta"> ${esc(it.buff.textTh)}</span>` : '';
         const have = Inv.count(c, id);
         const prev = ['costume', 'armor', 'weapon'].includes(it.type) ? `<button class="prev-btn" data-prev="${id}" title="ลองใส่ดูก่อนซื้อ">👁</button>` : '';
-        return `<div class="item ${under ? 'under' : ''}"><span class="ic">${itemIcon(id, it.icon)}</span><span>${esc(it.nameTh)}${have ? ` <span class="meta">(มี ${have})</span>` : ''}${job}${bonus}${food}${under ? ' <span class="need-lv">🔒 ต้อง Lv.' + it.lv + '</span>' : ''}</span>
+        return `<div class="item ${under ? 'under' : ''}${rcls(it)}"><span class="ic">${itemIcon(id, it.icon)}</span><span>${rname(it, esc(it.nameTh))}${have ? ` <span class="meta">(มี ${have})</span>` : ''}${job}${bonus}${food}${under ? ' <span class="need-lv">🔒 ต้อง Lv.' + it.lv + '</span>' : ''}</span>
           <span class="price">${prev}฿${(it.price * n).toLocaleString()}</span>
           <button data-buy="${id}" data-n="${n}" ${owned || c.gold < it.price ? 'disabled' : ''}>${owned ? 'มีแล้ว' : n > 1 ? `ซื้อ x${n}` : 'ซื้อ'}</button></div>`;
       }).join('');

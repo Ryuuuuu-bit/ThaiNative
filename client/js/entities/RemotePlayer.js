@@ -8,6 +8,7 @@ import { NET } from '/shared/constants.js';
 import { bakeCharacter } from '../gfx/SpriteFactory.js';
 import { makeText } from '../systems/util.js';
 import { TITLE_BY_ID } from '/shared/data/titles.js';
+import { Shadow } from '../gfx/Fx.js';
 
 export class RemotePlayer extends Phaser.GameObjects.Sprite {
   constructor(scene, info) {
@@ -27,6 +28,7 @@ export class RemotePlayer extends Phaser.GameObjects.Sprite {
     this.titleTag = makeText(scene, info.x, info.y - 50, '', { fontSize: '6px', color: '#f7dc6f' }).setOrigin(0.5).setDepth(9);
     this.aura = new Aura(scene, this);
     this.aura.setTier(info.appearance?.aura || 0);
+    this.shadow = new Shadow(scene, this, 24);
     this.inst = info.inst || 0;
     this.setTitle(info.appearance);
     this.pushState(info);
@@ -88,6 +90,7 @@ export class RemotePlayer extends Phaser.GameObjects.Sprite {
       const k = `${this.texKey}:${latest.anim}`;
       this.play(this.scene.anims.exists(k) ? k : `${this.texKey}:${latest.anim.startsWith('fish') || latest.anim === 'gather' ? 'idle' : 'attack'}`);
     }
+    this.shadow.update();
     this.nameTag.setPosition(this.x, this.y - this.height + (this.texture.customData?.padTop || 0) + 2);
     this.titleTag.setPosition(this.x, this.y - this.height + (this.texture.customData?.padTop || 0) - 6);
     this.hpBar.setPosition(this.x, this.y - this.height + (this.texture.customData?.padTop || 0) + 7);
@@ -110,6 +113,7 @@ export class RemotePlayer extends Phaser.GameObjects.Sprite {
   destroy(fromScene) {
     this.nameTag?.destroy();
     this.titleTag?.destroy();
+    this.shadow?.destroy();
     this.hpBar?.destroy();
     this.aura?.destroy();
     super.destroy(fromScene);
