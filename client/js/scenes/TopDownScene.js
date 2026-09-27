@@ -698,6 +698,11 @@ export class TopDownScene extends Phaser.Scene {
     this.quickUse(hp ? HP_POTS : MP_POTS, true);
   }
 
+  /** ตัวเลขฟื้นฟูลอยเหนือหัว (HP เขียว · MP ฟ้า) */
+  popHeal(t, text, kind = 'hp') {
+    const o = t.spr || t; popupNumber(this, o.x, o.y - (o.displayHeight || 40) - 16, text, kind === 'mp' ? 'mana' : 'heal');
+  }
+
   /** ดื่มขวดยา (Q = ช่อง 1 · E = ช่อง 2) · ประจุเติมจากการฆ่าผี · กลับเมือง = เต็ม */
   drinkFlask(slot, quiet = false) {
     const p = this.player, c = p?.char;
@@ -707,7 +712,8 @@ export class TopDownScene extends Phaser.Scene {
     this.econ.act('flask', { slot }).then((r) => {
       if (!r.ok) return quiet ? null : this.ui.result(r);
       this.sfx.play('potion');
-      popupNumber(this, p.x, p.y - 40, `+${r.amt} ${r.kind.toUpperCase()}`, r.kind === 'hp' ? 'heal' : 'night');
+      this.vfx.potion(p, r.kind, true);
+      this.popHeal(p, `+${r.amt} ${r.kind.toUpperCase()}`, r.kind);
       if (quiet) this.ui.loot?.(`🧪 ดื่ม${it.nameTh}อัตโนมัติ (เหลือ ${r.left})`);
     });
   }
@@ -775,6 +781,7 @@ export class TopDownScene extends Phaser.Scene {
       .on('td:matk', ({ mid }) => { const m = this.mobs[mid]; if (m?.alive) playDir(m, 'attack', m.dir, true); })
       .on('td:aoe', (a) => this.bossAoe(a))
       .on('td:title', ({ id, title }) => this.remotes.get(id)?.setTitle(title))
+      .on('td:fx', ({ id, kind, big }) => { const r = this.remotes.get(id); if (r && r.visible !== false) this.vfx.potion(r, kind, big); })
       .on('td:reward', (r) => this.showReward({ ...r, x: this.mobs[r.mid]?.x, y: this.mobs[r.mid]?.y }))
       .on('td:respawn', (d) => this.onRespawn(d))
       .on('td:correct', ({ x, y }) => { if (dist(this.player, { x, y }) > 24) { this.player.setPosition(x, y); this.player.path = []; } });
@@ -808,7 +815,7 @@ export class TopDownScene extends Phaser.Scene {
     s.on('pointerdown', (ptr) => { ptr.event?.stopPropagation?.(); this.social?.openPlayerMenu(r, { x: ptr.x, y: ptr.y }); });
     const sh = this.addShadow(s, 22);
     const r = {
-      id: q.id, netId: q.id, name: q.name, level: q.level, hp: q.hp, maxHp: q.maxHp,
+      id: q.id, netId: q.id, name: q.name, level: q.level, hp: q.hp, maxHp: q.maxHp, spr: s,
       tx: q.x, ty: q.y, dir: 'south', anim: 'idle',
       push(st) { this.tx = st.x; this.ty = st.y; this.dir = st.dir || this.dir; this.anim = st.anim || 'idle'; },
       update(dt) {

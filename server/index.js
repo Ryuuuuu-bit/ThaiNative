@@ -265,6 +265,7 @@ io.on('connection', (socket) => {
       r.x = Math.round(p.x);
     }
     if (r.warp === 'home' && r.ok && p.world === 'td') td.warpHome(p);   // ยันต์คืนถิ่นในโลกใหม่ → ลานน้ำพุกลางเมือง
+    if (r.ok && (r.potion || r.ate || r.flask) && p.world === 'td') socket.broadcast.emit('td:fx', { id: p.id, kind: r.kind, big: !!r.flask });   // คนอื่นเห็นเอฟเฟกต์ดื่มยา
     if (a === 'title' && r.ok) io.emit('td:title', { id: p.id, title: p.save.title || null });   // ฉายาเหนือชื่อ → ทุกคนเห็นทันที
     if (a === 'enhance' && r.slot && r.lv >= 10 && r.success) io.emit('chat', { id: null, name: '🔨 ลุงดำ', text: `${p.name} ตีบวกสำเร็จ +${r.lv}!` });
     refresh(p);

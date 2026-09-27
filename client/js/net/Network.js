@@ -62,7 +62,7 @@ export class Network {
       'rboss:spawn', 'rboss:list', 'rboss:down', 'rboss:slam', 'rboss:reward',
       'dg:start', 'dg:state', 'dg:wave', 'dg:cleared', 'dg:dmg', 'dg:die', 'dg:exp', 'dg:slam', 'dg:end', 'dg:exit',
       // โลก New Version (top-down)
-      'td:init', 'td:state', 'td:joined', 'td:left', 'td:dmg', 'td:die', 'td:matk', 'td:reward', 'td:respawn', 'td:correct', 'td:aoe', 'td:title']) {
+      'td:init', 'td:state', 'td:joined', 'td:left', 'td:dmg', 'td:die', 'td:matk', 'td:reward', 'td:respawn', 'td:correct', 'td:aoe', 'td:title', 'td:fx']) {
       s.on(ev, (d) => this.emitLocal(ev, d));
     }
     s.on('player:rejected', (d) => this.emitLocal('rejected', d));

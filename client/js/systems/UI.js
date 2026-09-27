@@ -648,6 +648,11 @@ export class UI {
     if (r.jobChanged) this.scene.onAppearanceChanged();
     if (r.titles?.length) this.scene.social?.onNewTitles(r.titles);
     if (r.ups) this.scene.combat.levelUpFx(r.ups);
+    if (r.ok && (r.potion || r.ate) && this.scene.vfx?.potion) {           // เอฟเฟกต์ดื่มยา/กินอาหาร
+      const pl = this.scene.player; this.scene.vfx.potion(pl, r.kind, false);
+      if (r.healed > 0 && this.scene.popHeal) this.scene.popHeal(pl, `+${r.healed}`, 'hp');
+      else if (r.kind === 'mp' && r.amt && this.scene.popHeal) this.scene.popHeal(pl, `+${r.amt} MP`, 'mp');
+    }
     this.hudCache = '';
     this.refreshPanels();
     this.scene.saveSoon();

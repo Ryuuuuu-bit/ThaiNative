@@ -291,6 +291,11 @@ export function bakeTdFx(scene) {
   // ลูกไฟ / ลูกธนู
   mk('td_arrow', 20, 4, (g) => { g.fillStyle = '#8a5a2a'; g.fillRect(0, 1, 15, 2); g.fillStyle = '#e8e8e8'; g.fillRect(15, 0, 5, 4); g.fillStyle = '#f5d76e'; g.fillRect(0, 0, 3, 4); });
   mk('td_orb', 16, 16, (g) => { const r = g.createRadialGradient(8, 8, 0, 8, 8, 8); r.addColorStop(0, '#fffbe0'); r.addColorStop(0.4, '#ffb347'); r.addColorStop(1, 'rgba(255,80,0,0)'); g.fillStyle = r; g.fillRect(0, 0, 16, 16); });
+  // เอฟเฟกต์ยา: เครื่องหมายบวก · ฟองน้ำยา · วงแหวนพื้น
+  mk('td_plus', 12, 12, (g) => { g.fillStyle = '#ffffff'; g.fillRect(4, 0, 4, 12); g.fillRect(0, 4, 12, 4); g.fillStyle = 'rgba(255,255,255,.55)'; g.fillRect(5, 1, 2, 10); });
+  mk('td_bubble', 10, 10, (g) => { g.strokeStyle = 'rgba(255,255,255,.95)'; g.lineWidth = 1.5; g.beginPath(); g.arc(5, 5, 3.6, 0, Math.PI * 2); g.stroke(); g.fillStyle = 'rgba(255,255,255,.8)'; g.fillRect(3, 3, 2, 2); });
+  mk('td_ring', 64, 32, (g) => { g.save(); g.scale(1, 0.5); const r = g.createRadialGradient(32, 32, 6, 32, 32, 31); r.addColorStop(0, 'rgba(255,255,255,0)'); r.addColorStop(0.6, 'rgba(255,255,255,.2)');
+    r.addColorStop(0.86, 'rgba(255,255,255,1)'); r.addColorStop(1, 'rgba(255,255,255,0)'); g.fillStyle = r; g.beginPath(); g.arc(32, 32, 31, 0, Math.PI * 2); g.fill(); g.restore(); });
   // วิญญาณ (ดวงไฟผีลอยขึ้นตอนตาย)
   mk('td_soul', 12, 16, (g) => { const r = g.createRadialGradient(6, 10, 0, 6, 10, 6); r.addColorStop(0, '#ffffff'); r.addColorStop(0.5, '#b8f0ff'); r.addColorStop(1, 'rgba(120,200,255,0)'); g.fillStyle = r; g.beginPath(); g.moveTo(6, 0); g.quadraticCurveTo(12, 10, 6, 16); g.quadraticCurveTo(0, 10, 6, 0); g.fill(); });
 }
@@ -332,6 +337,42 @@ export class TdVfx {
     if (kind === 'magic') b.setBlendMode(Phaser.BlendModes.ADD);
     const trail = s.add.particles(0, 0, 'fx_spark', { follow: b, lifespan: 250, scale: { start: kind === 'magic' ? 0.3 : 0.12, end: 0 }, alpha: { start: 0.8, end: 0 }, tint: kind === 'magic' ? 0xff9a3c : 0xfff2c0, frequency: 20, blendMode: 'ADD' }).setDepth(99989);
     s.tweens.add({ targets: b, x: tx, y: ty, duration: Math.min(260, Math.hypot(tx - sx, ty - sy) * 1.8), onComplete: () => { b.destroy(); s.time.delayedCall(200, () => trail.destroy()); trail.stop(); } });
+  }
+
+  /**
+   * เอฟเฟกต์ดื่มยา/ขวดยา/กินอาหาร
+   * kind: hp (แดง→เขียว) · mp (ฟ้า) · both (ม่วง) · food (ทอง) · big = ขวดยา/ยาใหญ่ (วงใหญ่ขึ้น)
+   */
+  potion(t, kind = 'hp', big = false) {
+    const s = this.s; if (!t || !s.add) return;
+    const COL = { hp: [0xff4d5e, 0x6dff8e], mp: [0x3fa9ff, 0xaee4ff], both: [0xc27cff, 0x6dff8e], food: [0xffc83d, 0xfff1b8] }[kind] || [0xffffff, 0xffffff];
+    const o = t.spr || t, x = o.x, y = o.y, h = Math.max(30, (o.displayHeight || 40) * 0.85), k = big ? 1.3 : 1;
+    const ADD = Phaser.BlendModes.ADD;
+    // 1) วงแหวนแสงที่พื้น 2 ชั้น ขยายออก
+    for (let i = 0; i < 2; i++) {
+      const ring = s.add.image(x, y, 'td_ring').setDepth(y - 1).setBlendMode(ADD).setTint(i ? COL[1] : COL[0]).setScale(0.35 * k).setAlpha(0);
+      s.tweens.add({ targets: ring, scale: (1.25 + i * 0.3) * k, alpha: { from: 1, to: 0 }, delay: i * 180, duration: 900, ease: 'Cubic.easeOut', onComplete: () => ring.destroy() });
+    }
+    // 2) เสาแสงครอบตัว ค่อยๆ จาง
+    const glow = s.add.image(x, y - h * 0.5, 'fx_glow').setDepth(y + 2).setBlendMode(ADD).setTint(COL[0]).setDisplaySize(40 * k, h * 1.4).setAlpha(0);
+    s.tweens.add({ targets: glow, alpha: { from: 0.8, to: 0 }, displayHeight: h * 2, displayWidth: 28 * k, duration: 1000, ease: 'Sine.easeOut', onComplete: () => glow.destroy() });
+    // 3) อนุภาคลอยวนขึ้น (บวก=HP · ฟอง=MP · ประกาย=อาหาร)
+    const key = kind === 'mp' ? 'td_bubble' : kind === 'food' ? 'fx_spark' : 'td_plus';
+    const n = big ? 14 : 10;
+    for (let i = 0; i < n; i++) {
+      const a = (i / n) * Math.PI * 2, rx = Math.cos(a) * 14 * k, ry = Math.sin(a) * 6;
+      const base = key === 'fx_spark' ? 0.5 : 0.8;
+      const pc = s.add.image(x + rx, y - 2 + ry, key).setDepth(y + 3).setBlendMode(key === 'fx_spark' ? ADD : Phaser.BlendModes.NORMAL).setTint(i % 2 ? COL[0] : COL[1]).setScale(base * (0.8 + Math.random() * 0.5)).setAlpha(0);
+      s.tweens.add({ targets: pc, y: pc.y - h - 18 - Math.random() * 16, x: x + Math.cos(a + 1.6) * 8 * k, alpha: { from: 1, to: 0 }, scale: pc.scale * 0.6, angle: key === 'fx_spark' ? 220 : 0,
+        delay: Math.floor(i / 2) * 90, duration: 1100 + Math.random() * 300, ease: 'Sine.easeOut', onComplete: () => pc.destroy() });
+    }
+    // 4) ตัวละครสว่างวาบสีเดียวกับยา แล้วค่อยๆ คืนสี
+    const spr = o.setTint ? o : null;
+    if (spr && !o.dead) {
+      spr.setTintFill?.(COL[1]);
+      s.time.delayedCall(80, () => spr.setTint(COL[1]));
+      s.time.delayedCall(450, () => spr.clearTint?.());
+    }
   }
 
   soul(m) {

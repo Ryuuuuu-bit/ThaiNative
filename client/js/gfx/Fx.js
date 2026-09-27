@@ -122,6 +122,7 @@ const NUM = {
   crit:   { color: '#ffd35c', size: 13, stroke: '#5a2a00' },
   taken:  { color: '#ff6b6b', size: 10, stroke: '#3a0000' },
   heal:   { color: '#7dff9a', size: 9, stroke: '#0d3a1a' },
+  mana:   { color: '#8fd3ff', size: 9, stroke: '#0a2340' },
   miss:   { color: '#cfd3d6', size: 8, stroke: '#222' },
   poison: { color: '#a3f7b5', size: 8, stroke: '#0b3a1a' },
   exp:    { color: '#ffe9a6', size: 8, stroke: '#3a2a0a' },

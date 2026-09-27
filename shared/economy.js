@@ -182,7 +182,7 @@ function use(c, { id }) {
     if (it.effect.hp) c.hp = Math.min(d.maxHp, c.hp + it.effect.hp);
     if (it.effect.mp) c.mp = Math.min(d.maxMp, c.mp + it.effect.mp);
     removeItem(c, id);
-    return OK(`ใช้ ${it.nameTh}`, { potion: true, healed: Math.round(c.hp - hp0) });
+    return OK(`ใช้ ${it.nameTh}`, { potion: true, healed: Math.round(c.hp - hp0), kind: it.effect.hp && it.effect.mp ? 'both' : it.effect.mp ? 'mp' : 'hp', amt: it.effect.hp || it.effect.mp });
   }
   if (it.type === 'skin') {                                         // คัมภีร์เปลี่ยนสาย → ล้างต้นไม้พรสวรรค์ฟรี
     if ((c.passives?.length || 1) <= 1) return NO('ยังไม่ได้ลงแต้มพรสวรรค์');
@@ -204,7 +204,7 @@ function use(c, { id }) {
     const now = Date.now(), bid = it.buff.id || 'food';
     c.blessings = (c.blessings || []).filter((b) => b.until > now && b.id !== bid);
     c.blessings.push({ id: bid, nameTh: it.nameTh, icon: it.icon, until: now + it.buff.minutes * 60000, mods: it.buff.mods });
-    return OK(`กิน${it.nameTh} อร่อย! ${it.buff.textTh} (${it.buff.minutes} นาที)`, { ate: true });
+    return OK(`กิน${it.nameTh} อร่อย! ${it.buff.textTh} (${it.buff.minutes} นาที)`, { ate: true, kind: 'food', amt: it.effect.hp || 0 });
   }
   if (it.type === 'costume') return wearCostume(c, id);
   if (it.type === 'home') return { ok: true, home: true };
