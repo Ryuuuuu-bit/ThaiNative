@@ -72,7 +72,7 @@ export class TopDownScene extends Phaser.Scene {
 
   create({ char }) {
     // ภาพ 8 ทิศจาก manifest (จำนวนเฟรมจริงของแต่ละท่า) ก่อน แล้วค่อยใช้ค่าตั้งต้นจากแผน asset
-    const RATE = { idle: [5, true], walk: [10, true], attack: [14, false], slash: [18, false], shoot: [16, false], cast: [16, false], hit: [12, false], die: [8, false] };
+    const RATE = { idle: [5, true], walk: [10, true], attack: [14, false], slash: [20, false], shoot: [18, false], cast: [18, false], hit: [12, false], die: [8, false] };
     for (const [id, m] of Object.entries(this.d8meta || {})) {
       const anims = {};
       for (const a of m.anims) { const [rate, loop] = RATE[a] || [10, false]; anims[a] = { frames: m.frames?.[a] || (a === 'idle' ? 4 : 6), rate, loop }; }
@@ -453,7 +453,8 @@ export class TopDownScene extends Phaser.Scene {
     this.playerAnim('attack', true);
     const magic = JOBS[p.char.appearance.job]?.attack?.kind === 'magic';
     // จังหวะ: ง้าง/รวมพลังก่อน แล้วค่อยปล่อย (ธนู ~170ms · เวท ~150ms · ดาบฟันตอน ~110ms)
-    const fireAt = ranged ? (magic ? 150 : 170) : 110;
+    const act = ACTION_ANIM[p.char.appearance.job], real = act && this.anims.exists(`td:${p.d8id}:${act}:south`);
+    const fireAt = real ? ({ slash: 170, shoot: 300, cast: 260, attack: 150 }[act] || 150) : ranged ? (magic ? 150 : 170) : 110;
     if (!ranged) { const k = Math.min(1, 4 / Math.max(1, dist(p, m))); this.tweens.add({ targets: p, x: p.x + (m.x - p.x) * k, y: p.y + (m.y - p.y) * k, duration: 90, yoyo: true, ease: 'Quad.easeOut' }); }
     this.time.delayedCall(ranged ? fireAt - 40 : 0, () => this.sfx.play(ranged ? 'arrow' : 'swing'));
     if (ranged) this.time.delayedCall(fireAt, () => m.alive && p.alive && this.vfx.shoot(p, m, magic ? 'magic' : 'arrow'));

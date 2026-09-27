@@ -44,7 +44,11 @@ def bob(fr, dy):
     out = Image.new('RGBA', fr.size); out.alpha_composite(body, (x0, y0 + dy)); return out
 
 
-def fill_dirs(frames, rot, is_walk):
+# ท่าโจมตี: ทิศเฉียงใช้ท่ามองข้าง (อ่านท่าฟัน/ยิงชัดกว่าหันหน้า/หลัง)
+NEAR_SIDE = {'south-east': ['east', 'south'], 'north-east': ['east', 'north'], 'south-west': ['west', 'south'], 'north-west': ['west', 'north']}
+
+
+def fill_dirs(frames, rot, is_walk, side_first=False):
     """frames: {dir: [img...]} → ครบ 8 ทิศ"""
     real = sorted(frames)
     for d in DIRS:
@@ -56,7 +60,8 @@ def fill_dirs(frames, rot, is_walk):
         if is_walk:
             frames[d] = [bob(rot[d], v) for v in (0, 1, 2, 1, 0, 1)]
         else:
-            src = next((n for n in NEAR[d] if n in frames), None) or next(iter(frames))
+            near = NEAR_SIDE.get(d, NEAR[d]) if side_first else NEAR[d]
+            src = next((n for n in near if n in frames), None) or next(iter(frames))
             frames[d] = frames[src]
     return real
 
@@ -97,23 +102,34 @@ def game_name(pl):
 def from_folder(folder, prefix, sid, scale=None):
     rs = Image.open(os.path.join(folder, f'{prefix}__rot.png')).convert('RGBA'); C = rs.width // 8
     rot = {d: crop(rs.crop((i * C, 0, i * C + C, C))) for i, d in enumerate(DIRS)}
-    anims, report = {}, []
+    anims, report, raw = {}, [], {}
     for f in sorted(glob.glob(os.path.join(folder, f'{prefix}__*.png'))):
         pl = os.path.basename(f)[len(prefix) + 2:-4]
         g = game_name(pl)
-        if pl == 'rot' or not g or g in anims:
+        if pl == 'rot' or not g:
             continue
         im = Image.open(f).convert('RGBA'); C = im.height // 8; n = im.width // C
         frames = {}
         for i, d in enumerate(DIRS):
             fr = [crop(im.crop((k * C, i * C, k * C + C, i * C + C))) for k in range(n)]
             fr = [x for x in fr if x]
+            if g in ('slash', 'shoot', 'cast') and len(fr) >= 8:
+                fr = fr[2:]                                   # ตัดเฟรมยืนเตรียม 2 เฟรมแรกของท่า custom → ออกท่าไวขึ้น
             if fr:
                 frames[d] = fr
         if not frames:
             continue
-        real = fill_dirs(frames, rot, g == 'walk')
-        anims[g] = frames; report.append(f'{g}({pl}) จริง {real}')
+        if g in anims:                                        # ท่าเดียวกันหลายไฟล์ → รวมทิศ (ไฟล์แรกมาก่อน)
+            for d, fr in frames.items():
+                if d not in raw[g]:
+                    raw[g][d] = fr
+            continue
+        raw[g] = dict(frames)
+        anims[g] = frames; report.append(f'{g}({pl})')
+    for g in anims:
+        anims[g] = dict(raw[g])
+        real = fill_dirs(anims[g], rot, g == 'walk', g in ('slash', 'shoot', 'cast'))
+        report.append(f'{g} จริง {real}')
     if 'walk' not in anims:
         anims['walk'] = {}; fill_dirs(anims['walk'], rot, True)
     anims.pop('idle_anim', None)
