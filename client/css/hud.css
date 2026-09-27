@@ -204,3 +204,33 @@ body.touch #skillbar .skill .hb-x { opacity: .85; width: 2.8cqh; height: 2.8cqh;
 .td-wm .wm-legend .boss { background: #ff2d2d; } .td-wm .wm-legend .camp { background: #ff5a5a; }
 #map-panel.window { width: 78cqh !important; }
 #map-panel .hint { display: none; }
+
+/* ============================================================
+   ค่าพลังไอเทม: กล่องลอยแบบ PoE + สรุปผลต่อตัวละคร
+   ============================================================ */
+.item-tip { position: fixed; z-index: 200; display: flex; gap: 8px; align-items: flex-start; pointer-events: none; font-size: clamp(12px, 2vh, 16px); max-width: min(94vw, 42em); }
+.item-tip.hidden { display: none; }
+.item-tip .tt-card { width: 19em; max-width: 46vw; padding: .6em .75em .55em; border-radius: 8px; line-height: 1.4; color: #f6ecd9;
+  background: linear-gradient(180deg, rgba(38,22,50,.98), rgba(14,7,20,.98)); border: 1px solid rgba(232,199,102,.9); box-shadow: 0 0 0 2px rgba(0,0,0,.6), 0 8px 22px rgba(0,0,0,.6); }
+.item-tip .tt-card.cur { opacity: .92; border-color: rgba(200,200,200,.6); }
+.item-tip .tt-top { font-size: .78em; color: #bfb3cc; margin-bottom: .15em; }
+.item-tip .tt-name { font-size: 1.12em; font-weight: 600; color: #fff3c4; text-align: center; padding-bottom: .2em; border-bottom: 1px solid rgba(232,199,102,.35); }
+.item-tip .tt-name.rn1 { color: #e6e6e6; } .item-tip .tt-name.rn2 { color: #8ff0c0; } .item-tip .tt-name.rn3 { color: #8ec5ff; } .item-tip .tt-name.rn4 { color: #d8b4ff; } .item-tip .tt-name.rn5 { color: #ffd35c; }
+.item-tip .tt-meta { text-align: center; font-size: .82em; color: #cfc3dd; margin: .2em 0 .1em; }
+.item-tip .tt-meta .bad { color: #ff7b72; font-weight: 600; }
+.item-tip .tt-sec { margin-top: .35em; padding-top: .3em; border-top: 1px dashed rgba(232,199,102,.22); }
+.item-tip .tt-h { font-size: .78em; color: #e8c766; margin-bottom: .1em; letter-spacing: .02em; }
+.item-tip .st { font-size: .95em; }
+.item-tip .st.aff.a1 { color: #8ec5ff; } .item-tip .st.aff.a2, .item-tip .st.aff.a3 { color: #d8b4ff; }
+.item-tip .st.aff small { color: #9d8fb0; font-size: .78em; }
+.item-tip .st.enhs { color: #f7dc6f; } .item-tip .st.cardl { color: #ffd6a5; }
+.item-tip .tt-set { margin-top: .35em; font-size: .82em; color: #82e0aa; }
+.item-tip .tt-desc { margin-top: .35em; font-size: .82em; color: #cfc3dd; }
+.item-tip .tt-price { margin-top: .4em; font-size: .82em; color: #f3d98b; text-align: right; }
+.item-tip .tt-imp { margin-top: .45em; padding: .35em .5em; border-radius: 6px; background: rgba(0,0,0,.35); }
+.item-tip .upv, .item .imp .upv { color: #7dff9a; } .item-tip .dnv, .item .imp .dnv { color: #ff8a80; }
+.vb { display: inline-grid; place-items: center; min-width: 1.35em; height: 1.35em; border-radius: 4px; font-size: .85em; font-weight: 700; margin-right: .2em; vertical-align: middle; }
+.vb-up { background: #1e7a3c; color: #d9ffe2; } .vb-down { background: #8a2320; color: #ffe0dc; } .vb-mix { background: #8a6a12; color: #fff3c4; } .vb-same { background: #444; color: #ddd; }
+.item .imp { font-size: .72em; margin-top: .15em; line-height: 1.45; }
+.item .stl { font-size: .72em; color: #d9cfe6; margin-top: .1em; }
+.item-tip .tt-card { max-height: calc(100vh - 12px); overflow: hidden; }

@@ -14,6 +14,7 @@ import { AURA_TH, AURA_COLOR } from '../gfx/Aura.js';
 import { JOBS, JOB_IDS } from '/shared/data/classes.js';
 import { SKILLS } from '/shared/data/skills.js';
 import { itemIcon } from './util.js';
+import { inlineStats } from './ItemTip.js';
 
 const $ = (s) => document.querySelector(s);
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -209,7 +210,7 @@ export class Village {
       }).join(' ');
       const can = canCraft(c, r);
       const max = Math.min(...Object.entries(r.need).map(([id, n]) => Math.floor(count(c, id) / n)), r.fee ? Math.floor(c.gold / r.fee) : 99);
-      const eff = it.buff ? `${esc(it.buff.textTh)} · ${it.buff.minutes} นาที` : it.bonus ? `Lv.${it.lv} · ${Object.entries(it.bonus).map(([k, v]) => `${k.toUpperCase()}+${k === 'crit' ? v * 100 + '%' : v}`).join(' ')}` : '';
+      const eff = it.buff ? `${esc(it.buff.textTh)} · ${it.buff.minutes} นาที` : it.bonus ? `Lv.${it.lv} · ${inlineStats(it.bonus)}` : '';
       const under = it.lv && c.level < it.lv ? ' <span class="need-lv">🔒 ต้อง Lv.' + it.lv + '</span>' : '';
       return `<div class="item ${it.lv && c.level < it.lv ? 'under' : ''}"><span class="ic">${itemIcon(r.out, it.icon)}</span>
         <span>${esc(it.nameTh)}${under} <span class="meta">${eff}</span><div class="need">${needs} · ค่าแรง ฿${r.fee.toLocaleString()}</div></span>
@@ -236,7 +237,7 @@ export class Village {
       const tier = ENHANCE.auraTier(lv);
       if (lv >= ENHANCE.max) return `<div class="item"><span class="ic">🌈</span><span>${SLOT_TH[slot]} <b class="enh t${tier}">+${lv}</b> <span class="meta">สูงสุดแล้ว · ออร่ารุ้ง</span></span><span></span><span></span></div>`;
       const cost = ENHANCE.cost(lv), ore = ENHANCE.ore(lv), fang = ENHANCE.fang(lv), rate = ENHANCE.rate(lv);
-      const next = Object.entries(ENHANCE.bonus[slot](lv + 1)).filter(([, v]) => v).map(([k, v]) => `${k.toUpperCase()}+${v}`).join(' ');
+      const next = inlineStats(ENHANCE.bonus[slot](lv + 1));
       const can = id && c.gold >= cost && count(c, 'black_iron') >= ore && count(c, 'yak_fang') >= fang;
       const risk = lv < 10 ? 'พลาด: ขั้นไม่ลด' : lv < 15 ? '⚠️ พลาด: ลด 1 ขั้น' : '⚠️ พลาด: ลด 1 ขั้น (30% ลด 2)';
       const nt = ENHANCE.auraTier(lv + 1);

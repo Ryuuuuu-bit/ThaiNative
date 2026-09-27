@@ -29,6 +29,7 @@ import { bindAccountSettings } from './AuthScreen.js';
 import { account } from '../net/Account.js';
 import { CardUI } from './Cards.js';
 import { CARD_BY_ID } from '/shared/data/cards.js';
+import { ItemTip, impactLine, inlineStats } from './ItemTip.js';
 
 const $ = (s) => document.querySelector(s);
 const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -54,6 +55,7 @@ export class UI {
     this.hudCache = '';
 
     this.cards = new CardUI(this);
+    this.itemTip = new ItemTip(this, rarityOf);
     this.setupLayoutGuard();
     $('#hud').classList.remove('hidden');
     $('#chat').classList.remove('hidden');
@@ -775,7 +777,7 @@ export class UI {
       if (!it) return `<div class="eqs eqs-${slot} empty" title="${SLOT_TH[slot]} (ว่าง)"><span class="ph">${EMPTY_IC[slot]}</span><small>${SLOT_TH[slot]}</small></div>`;
       const enh = c.enhance?.[slot], cards = (c.cards?.[slot] || []).filter((x) => CARD_BY_ID[x]);
       const ch = FLASK_SLOTS.includes(slot) && it.flask ? `<span class="fl-ch">${Math.floor(c.flaskCh?.[slot] || 0)}/${it.flask.max}</span>` : '';
-      return `<div class="eqs eqs-${slot}${rcls(it)}" title="${esc(it.nameTh)}${it.affixes ? '\n' + it.affixes.map((a) => '◆ ' + a.text).join('\n') : ''}\nคลิกเพื่อถอด" data-unequip="${slot}">
+      return `<div class="eqs eqs-${slot}${rcls(it)}" data-tip-item="${id}" data-tip-slot="${slot}" data-unequip="${slot}">
         <span class="ico">${itemIcon(id, it.icon)}</span>${enh ? `<b class="enh t${ENHANCE.auraTier(enh)}">+${enh}</b>` : ''}${ch}
         ${cards.length ? `<span class="eqs-cards">${cards.map((x) => `<i title="${esc(CARD_BY_ID[x].nameTh)}"></i>`).join('')}</span>` : ''}
         <small>${esc(it.nameTh)}</small></div>`;
@@ -786,7 +788,7 @@ export class UI {
       return `<div class="eq cos"><small>${th}</small>${id ? `${itemIcon(id, ITEMS[id].icon)} ${ITEMS[id].nameTh} <button class="close" data-uncos="${slot}">✕</button>` : '—'}</div>`; }).join('')}</div>`;
     // โบนัสชุดประจำสาย
     const si = setInfo(c.equipment);
-    const fmt = (b) => Object.entries(b).map(([k, v]) => `${k.toUpperCase()}+${k === 'crit' ? Math.round(v * 100) + '%' : v}`).join(' ');
+    const fmt = (b) => inlineStats(b);
     $('#inv-equip').innerHTML += si
       ? `<div class="set-box"><b>✦ ${esc(si.nameTh)}</b> <span class="meta">${si.n} ชิ้น · ระดับ Lv.${si.lv}</span>
           ${si.tiers.map((t) => `<div class="${t.on ? 'on' : ''}">${t.on ? '✔' : '○'} ${SET_TEXT[t.n]}: ${fmt(t.bonus)}</div>`).join('')}</div>`
@@ -809,24 +811,13 @@ export class UI {
     });
     const tabs = `<div class="inv-tools"><div class="inv-tabs">${Object.entries(CAT).map(([k, [l]]) => `<button data-cat="${k}" class="${k === cat ? 'active' : ''}">${l}</button>`).join('')}</div>
       <select id="inv-sort"><option value="type">เรียง: ประเภท</option><option value="name">เรียง: ชื่อ</option><option value="price">เรียง: มูลค่า</option></select></div>`;
-    // เทียบค่าพลังกับของที่ใส่อยู่ช่องเดียวกัน
-    const SLOT = { weapon: 'weapon', armor: 'armor', accessory: 'accessory', helm: 'helm', gloves: 'gloves', boots: 'boots', belt: 'belt' };
-    const diff = (it) => {
-      let slot = SLOT[it.type]; if (!slot) return '';
-      if (slot === 'accessory' && c.equipment.accessory && !c.equipment.accessory2) slot = 'accessory2';   // จะใส่ข้างที่ว่าง
-      const cur = ITEMS[c.equipment[slot]]?.bonus || {}, nb = it.bonus || {};
-      const keys = [...new Set([...Object.keys(cur), ...Object.keys(nb)])];
-      const parts = keys.map((k) => { const d = (nb[k] || 0) - (cur[k] || 0); if (!d) return ''; const v = k === 'crit' ? `${+(d * 100).toFixed(1)}%` : Math.abs(d);
-        return `<span class="${d > 0 ? 'upv' : 'dnv'}">${k.toUpperCase()}${d > 0 ? '▲' : '▼'}${typeof v === 'string' ? v.replace('-', '') : v}</span>`; }).filter(Boolean);
-      return parts.length ? `<div class="cmp">${c.equipment[slot] ? 'เทียบของที่ใส่: ' : 'ใส่แล้วได้: '}${parts.join(' ')}</div>` : '<div class="cmp">ค่าพลังเท่ากับของที่ใส่</div>';
-    };
     $('#inv-list').innerHTML = tabs + (list.length ? list.map((s) => {
       const it = ITEMS[s.id], lock = Inv.isLocked(c, s.id);
       const action = { home: 'ใช้', consumable: 'ใช้', food: 'กิน', offering: 'ถวาย', weapon: 'ถือ', armor: 'สวม', helm: 'สวม', gloves: 'สวม', boots: 'สวม', belt: 'คาด', accessory: 'สวม', flask: 'ใส่', costume: 'แต่ง', reset: 'ใช้', card: 'ใส่', skin: c.path === it.job ? 'ใช้อยู่' : 'เปลี่ยนสาย' }[it.type];
       const job = itemTag(it) || (it.type === 'costume' ? ` · ชุดแต่งตัว${it.rare ? ' ✨หายาก' : ''}` : '');
       const hb = hotbarItemOk(s.id);
-      return `<div class="item inv${rcls(it)}"${hb ? ` draggable="true" data-hbitem="${s.id}" title="ลากไปวางที่ Hotbar (1–0)"` : ''}><span class="ic">${itemIcon(s.id, it.icon)}</span>
-        <span>${rname(it, esc(it.nameTh))} <span class="meta">x${s.qty}${job}</span>${affixHtml(it)}${diff(it)}</span>
+      return `<div class="item inv${rcls(it)}" data-tip-item="${s.id}"${hb ? ` draggable="true" data-hbitem="${s.id}" title="ลากไปวางที่ Hotbar (1–0)"` : ''}><span class="ic">${itemIcon(s.id, it.icon)}</span>
+        <span>${rname(it, esc(it.nameTh))} <span class="meta">x${s.qty}${job}</span>${impactLine(c, s.id)}</span>
         <button class="lock ${lock ? 'on' : ''}" data-lock="${s.id}" title="${lock ? 'ปลดล็อก' : 'ล็อก (กันขาย)'}">${lock ? '🔒' : '🔓'}</button>
         <span class="price">฿${sellPrice(s.id)}</span>
         <span class="inv-acts">${hb ? `<button class="hb-add" data-hbadd="${s.id}" title="ใส่ Hotbar ช่องว่างแรก">⌨</button>` : ''}${action ? `<button data-use="${s.id}" ${action === 'ใช้อยู่' ? 'disabled' : ''}>${action}</button>` : ''}</span></div>`;
@@ -887,11 +878,11 @@ export class UI {
         const owned = it.type === 'skin' && Inv.count(c, id);
         const n = it.type === 'skin' ? 1 : Math.max(1, Math.min(q, Math.floor(c.gold / it.price)));
         const job = itemTag(it) ? `<span class="meta">${itemTag(it)}</span>` : it.desc ? `<span class="meta"> · ${esc(it.desc)}</span>` : '';
-        const bonus = it.bonus ? `<span class="meta"> ${Object.entries(it.bonus).map(([k, v]) => `${k.toUpperCase()}+${k === 'crit' ? v * 100 + '%' : v}`).join(' ')}</span>` : '';
+        const bonus = it.bonus ? `<div class="meta stl">${inlineStats(it.bonus)}</div>` : '';
         const food = it.buff ? `<span class="meta"> ${esc(it.buff.textTh)}</span>` : '';
         const have = Inv.count(c, id);
         const prev = ['costume', 'armor', 'weapon'].includes(it.type) ? `<button class="prev-btn" data-prev="${id}" title="ลองใส่ดูก่อนซื้อ">👁</button>` : '';
-        return `<div class="item ${under ? 'under' : ''}${rcls(it)}"><span class="ic">${itemIcon(id, it.icon)}</span><span>${rname(it, esc(it.nameTh))}${have ? ` <span class="meta">(มี ${have})</span>` : ''}${job}${bonus}${food}${under ? ' <span class="need-lv">🔒 ต้อง Lv.' + it.lv + '</span>' : ''}</span>
+        return `<div class="item ${under ? 'under' : ''}${rcls(it)}" data-tip-item="${id}"><span class="ic">${itemIcon(id, it.icon)}</span><span>${rname(it, esc(it.nameTh))}${have ? ` <span class="meta">(มี ${have})</span>` : ''}${job}${bonus}${food}${under ? ' <span class="need-lv">🔒 ต้อง Lv.' + it.lv + '</span>' : ''}</span>
           <span class="price">${prev}฿${(it.price * n).toLocaleString()}</span>
           <button data-buy="${id}" data-n="${n}" ${owned || c.gold < it.price ? 'disabled' : ''}>${owned ? 'มีแล้ว' : n > 1 ? `ซื้อ x${n}` : 'ซื้อ'}</button></div>`;
       }).join('');
@@ -905,7 +896,7 @@ export class UI {
         <span class="meta">🔒 = ล็อกไว้ ไม่ถูกขาย</span></div>`;
       html = qtyBar + bulk + (sellable.length ? sellable.map((s) => {
         const it = ITEMS[s.id], lock = Inv.isLocked(c, s.id), n = Math.min(q, s.qty);
-        return `<div class="item ${lock ? 'locked' : ''}"><span class="ic">${itemIcon(s.id, it.icon)}</span><span>${lock ? '🔒 ' : ''}${esc(it.nameTh)} <span class="meta">x${s.qty}</span></span>
+        return `<div class="item ${lock ? 'locked' : ''}" data-tip-item="${s.id}"><span class="ic">${itemIcon(s.id, it.icon)}</span><span>${lock ? '🔒 ' : ''}${esc(it.nameTh)} <span class="meta">x${s.qty}</span></span>
           <span class="price">฿${(sellPrice(s.id) * n).toLocaleString()}</span><button data-sell="${s.id}" data-n="${n}" ${lock ? 'disabled' : ''}>${n > 1 ? `ขาย x${n}` : 'ขาย'}</button></div>`;
       }).join('') : '<div class="empty">ไม่มีของให้ขาย</div>');
     }
