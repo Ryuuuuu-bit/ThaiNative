@@ -14,7 +14,8 @@ export const DIRS = ['south', 'south-east', 'east', 'north-east', 'north', 'nort
 export const TURN = ['south', 'south-west', 'west', 'north-west', 'north', 'north-east', 'east', 'south-east'];
 const RATE = { idle: 5, walk: 10, attack: 14, slash: 16, shoot: 14, cast: 13, die: 8 };
 /** ท่าโจมตีจริงตามอาวุธ (ดาบ = ฟัน · ธนู = ยิง · ไม้เท้า = ร่าย · มือเปล่า = ต่อย) — แบบเดียวกับในเกม */
-const ACTION = { swordman: 'slash', archer: 'shoot', mage: 'cast', boxer: 'attack' };
+// นักเวทย์: ท่า 'spell' (ร่ายเวทถือไม้เท้า) ถ้ายังไม่มีสไปรต์ → ยืน idle + วงเวท/ประกายแทน (ท่า cast เดิมเป็นท่าวิ่งปาลูกไฟ ไม่เหมาะกับหน้าสร้างตัว)
+const ACTION = { swordman: 'slash', archer: 'shoot', mage: 'spell', boxer: 'attack' };
 const BORROW = { attack: 'walk', die: 'idle' };
 
 let metaP = null, meta = {};
@@ -70,7 +71,8 @@ export class HeroView {
     const id = heroId(this.a), m = meta[id];
     if (m) {
       const want = this.anim === 'attack' ? ACTION[this.job] || 'attack' : this.anim;
-      let anim = m.anims.includes(want) ? want : m.anims.includes(this.anim) ? this.anim : BORROW[this.anim];
+      let glow = false;
+      let anim = m.anims.includes(want) ? want : want === 'spell' ? ((glow = true), 'idle') : m.anims.includes(this.anim) ? this.anim : BORROW[this.anim];
       if (!anim || !m.anims.includes(anim)) anim = 'idle';
       const im = heroImg(id, anim);
       if (!im.complete || !im.naturalWidth) return null;
@@ -80,7 +82,7 @@ export class HeroView {
       const ms = ms0, el = now - this.t0;
       let i = Math.floor(el / ms);
       i = loopable ? i % n : (i % (n + 6) >= n ? n - 1 : i % (n + 6));      // ท่าไม่วน: เล่นจบแล้วค้างครู่หนึ่งก่อนเล่นซ้ำ
-      return { src: im, sx: i * fw, sy: DIRS.indexOf(this.dir) * fh, sw: fw, sh: fh, hero: true };
+      return { src: im, sx: i * fw, sy: DIRS.indexOf(this.dir) * fh, sw: fw, sh: fh, hero: true, glow };
     }
     // สำรอง: สไปรต์ด้านข้าง (พลิกซ้าย/ขวาตามทิศ)
     if (!this.scene) return null;
@@ -118,8 +120,10 @@ export class HeroView {
       ctx.beginPath(); ctx.ellipse(W / 2, H * 0.9, W * 0.2, H * 0.05, 0, 0, Math.PI * 2); ctx.fill();
     }
     if (f.hero) {
-      const s = this.scale * 72 / f.sw;
+      const s = this.scale * 72 / f.sw, el = (now - this.t0) / 1000;
+      if (f.glow) spellFx(ctx, W, H, el, false);
       ctx.drawImage(f.src, f.sx, f.sy, f.sw, f.sh, (W - f.sw * s) / 2, H * 0.97 - f.sh * s, f.sw * s, f.sh * s);
+      if (f.glow) spellFx(ctx, W, H, el, true);
     } else {
       const s = Math.max(1, Math.floor((H * 0.62) / f.sh * 2) / 2);
       const dw = f.sw * s, dh = f.sh * s;
@@ -132,6 +136,37 @@ export class HeroView {
   }
 
   destroy() { views.delete(this); }
+}
+
+/** เอฟเฟกต์ร่ายเวท: วงเวทใต้เท้า (back) + ประกายลอยวนรอบตัว (front) */
+function spellFx(ctx, W, H, t, front) {
+  t = Math.max(0, t); const k = Math.max(0.01, Math.min(1, t / 0.35)), cx = W / 2, cy = H * 0.9, pulse = 0.75 + 0.25 * Math.sin(t * 9);
+  ctx.save();
+  if (!front) {
+    ctx.globalAlpha = 0.85 * k;
+    ctx.strokeStyle = '#c39bff'; ctx.lineWidth = Math.max(1.5, W * 0.008);
+    ctx.shadowColor = '#b388ff'; ctx.shadowBlur = W * 0.04;
+    const rx = W * 0.26 * k, ry = H * 0.065 * k;
+    ctx.beginPath(); ctx.ellipse(cx, cy, rx, ry, 0, 0, Math.PI * 2); ctx.stroke();
+    ctx.beginPath(); ctx.ellipse(cx, cy, rx * 0.7, ry * 0.7, 0, 0, Math.PI * 2); ctx.stroke();
+    for (let i = 0; i < 6; i++) {                     // รูนหมุนบนวง
+      const a = t * 1.6 + i * Math.PI / 3;
+      ctx.fillStyle = '#e1ccff'; ctx.fillRect(cx + Math.cos(a) * rx * 0.85 - 2, cy + Math.sin(a) * ry * 0.85 - 2, 4, 4);
+    }
+    const g = ctx.createRadialGradient(cx, H * 0.55, 0, cx, H * 0.55, W * 0.4);
+    g.addColorStop(0, `rgba(179,136,255,${0.4 * pulse * k})`); g.addColorStop(1, 'rgba(179,136,255,0)');
+    ctx.globalAlpha = 1; ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
+  } else {
+    for (let i = 0; i < 9; i++) {                     // ประกายลอยขึ้นเป็นเกลียว
+      const ph = (t * 0.55 + i / 9) % 1, a = t * 2.2 + i * 2.1;
+      const x = cx + Math.cos(a) * W * 0.2 * (1 - ph * 0.4), y = cy - ph * H * 0.75;
+      if (Math.sin(a) < 0) continue;                  // ครึ่งหลังถูกตัวบัง
+      ctx.globalAlpha = (1 - ph) * k; ctx.fillStyle = i % 3 ? '#d7b8ff' : '#fff6c2';
+      const sz = Math.max(3, W * 0.02) * (1 - ph * 0.5);
+      ctx.fillRect(x - sz / 2, y - sz / 2, sz, sz);
+    }
+  }
+  ctx.restore();
 }
 
 /** ลบทุกวิว (ตอนออกจากหน้า) */

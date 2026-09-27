@@ -17,7 +17,7 @@ import { HeroView, loadHeroMeta, clearHeroViews } from '../systems/HeroPreview.j
 const $ = (s) => document.querySelector(s);
 /** อาวุธเริ่มต้นให้เลือก (ได้ทั้งหมดในกระเป๋า เปลี่ยนถือได้ตลอด) */
 const START_WEAPONS = [
-  { id: null, icon: '🥊', art: 'it_gx_boxer_gloves_1', job: 'boxer' },
+  { id: null, icon: '🥊', art: 'it_g_boxer_w01', job: 'boxer' },
   { id: 'wood_sword', icon: '⚔️', art: 'it_wood_sword', job: 'swordman' },
   { id: 'oak_staff', icon: '🔮', art: 'it_oak_staff', job: 'mage' },
   { id: 'bamboo_bow', icon: '🏹', art: 'it_bamboo_bow', job: 'archer' },
