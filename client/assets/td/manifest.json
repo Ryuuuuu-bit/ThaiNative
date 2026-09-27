@@ -235,10 +235,14 @@
   "mob_khamot": {
    "anims": [
     "idle",
+    "attack",
+    "die",
     "walk"
    ],
    "frames": {
     "idle": 4,
+    "attack": 6,
+    "die": 7,
     "walk": 6
    },
    "frame": 72,
@@ -247,10 +251,12 @@
   "mob_nang_takhian": {
    "anims": [
     "idle",
+    "attack",
     "walk"
    ],
    "frames": {
     "idle": 4,
+    "attack": 6,
     "walk": 6
    },
    "frame": 72,
@@ -259,10 +265,14 @@
   "mob_phi_phrai": {
    "anims": [
     "idle",
+    "attack",
+    "die",
     "walk"
    ],
    "frames": {
     "idle": 4,
+    "attack": 6,
+    "die": 7,
     "walk": 6
    },
    "frame": 72,
@@ -271,10 +281,14 @@
   "mob_phi_chamot": {
    "anims": [
     "idle",
+    "attack",
+    "die",
     "walk"
    ],
    "frames": {
     "idle": 4,
+    "attack": 6,
+    "die": 7,
     "walk": 6
    },
    "frame": 72,
@@ -283,10 +297,14 @@
   "mob_mae_nak": {
    "anims": [
     "idle",
+    "attack",
+    "die",
     "walk"
    ],
    "frames": {
     "idle": 4,
+    "attack": 6,
+    "die": 7,
     "walk": 6
    },
    "frame": 72,
@@ -295,10 +313,14 @@
   "mob_pu_som": {
    "anims": [
     "idle",
+    "attack",
+    "die",
     "walk"
    ],
    "frames": {
     "idle": 4,
+    "attack": 6,
+    "die": 7,
     "walk": 6
    },
    "frame": 72,
