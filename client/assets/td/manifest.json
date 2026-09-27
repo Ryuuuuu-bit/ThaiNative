@@ -15,10 +15,14 @@
   "mob_nang_tani": {
    "anims": [
     "idle",
+    "attack",
+    "die",
     "walk"
    ],
    "frames": {
     "idle": 4,
+    "attack": 6,
+    "die": 7,
     "walk": 6
    },
    "frame": 72,
@@ -43,10 +47,14 @@
   "hero_female_ruenton": {
    "anims": [
     "idle",
+    "attack",
+    "die",
     "walk"
    ],
    "frames": {
     "idle": 4,
+    "attack": 6,
+    "die": 7,
     "walk": 6
    },
    "frame": 72,
