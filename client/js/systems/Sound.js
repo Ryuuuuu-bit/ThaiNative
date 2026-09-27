@@ -198,6 +198,22 @@ const TRACKS = {
     drums: { klong: 'x..x..x.x..x..x.', thon: '..x...x...x.x.xx', chap: 'x.......x.......', ching: '.x.x.x.x.x.x.x.x' },
     amb: 'boss',
   },
+  // เช้าตรู่ (05:00–08:00 ในหมู่บ้าน) – ฆ้องวงไล่โน้ตช้า ๆ ปี่ทอดยาว นกร้อง ไม่มีกลอง
+  dawn: {
+    bpm: 84,
+    layers: [
+      { inst: 'khong', vol: 0.085, notes: [60, _, 64, _, 67, _, 72, _, 69, _, 67, _, 64, _, _, _, 62, _, 64, _, 67, _, 69, _, 67, _, 64, _, 60, _, _, _,
+                                           64, _, 67, _, 72, _, 76, _, 74, _, 72, _, 69, _, _, _, 67, _, 69, _, 72, _, 69, _, 67, _, 64, _, 62, _, _, _] },
+      { inst: 'pi', vol: 0.055, notes: [_, _, _, _, _, _, _, _, 76, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, 74, _, _, _, _, _, _, _,
+                                        _, _, _, _, _, _, _, _, 79, _, _, _, _, _, _, _, 76, _, _, _, _, _, _, _, 72, _, _, _, _, _, _, _] },
+      { inst: 'ranat', vol: 0.07, notes: [_, _, _, _, _, _, _, _, _, _, _, _, 84, 81, 79, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _,
+                                          _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, 79, 81, 84, _, _, _, _, _] },
+      { inst: 'pad', vol: 0.04, notes: [48, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, 50, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _,
+                                        52, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, 55, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _] },
+    ],
+    drums: { ching: '........x.......' },
+    amb: 'dawn',
+  },
 };
 
 export class Sound {
@@ -209,6 +225,7 @@ export class Sound {
     this.wanted = null;
     this.step = 0;
     this.nextTime = 0;
+    this.mood = { lowHp: false, boss: 0 };   // สถานการณ์ที่ทำให้เพลงเปลี่ยน (ดู setMood)
 
     // เบราว์เซอร์อนุญาตให้เปิดเสียงหลังผู้เล่นคลิก/กดปุ่มครั้งแรกเท่านั้น
     const unlock = () => { this.init(); window.removeEventListener('pointerdown', unlock); window.removeEventListener('keydown', unlock); };
@@ -241,11 +258,16 @@ export class Sound {
     this.verb.connect(this.master);
     // ช่องซ้าย-ขวาของแต่ละเครื่อง (วงปี่พาทย์นั่งเรียงหน้ากระดาน)
     this.pan = {};
+    // ทำนอง (melBus) กับกลอง (drumBus) แยกช่องไว้ให้หรี่ได้ตอน HP ต่ำ; ฉิ่ง/pad/bass ไปตรง
+    this.melBus = ctx.createGain(); this.melBus.connect(this.musicBus);
+    this.drumBus = ctx.createGain(); this.drumBus.connect(this.musicBus);
+    const MEL = new Set(['ranat', 'khong', 'pi', 'saw', 'ghost']), DRM = new Set(['thon', 'klong', 'chap']);
     for (const [k, v] of Object.entries({ ranat: -0.35, khong: 0.4, pi: 0.18, saw: -0.15, pad: 0, bass: 0, ghost: 0.5, thon: -0.1, klong: 0.05, ching: 0.45, chap: -0.45 })) {
       const p = ctx.createStereoPanner ? ctx.createStereoPanner() : ctx.createGain();
       if (p.pan) p.pan.value = v;
-      p.connect(this.musicBus); this.pan[k] = p;
+      p.connect(MEL.has(k) ? this.melBus : DRM.has(k) ? this.drumBus : this.musicBus); this.pan[k] = p;
     }
+    this.applyMood(true);
 
     // noise buffer ใช้ร่วมกัน
     const len = ctx.sampleRate;
@@ -474,7 +496,12 @@ export class Sound {
   /** เสียงบรรยากาศ: นก/จิ้งหรีด (หมู่บ้าน), ลม/นกฮูก (ป่า), ฟ้าร้อง (เรด) */
   ambience(kind, delay, bus) {
     const r = Math.random();
-    if (kind === 'town' && r < 0.05) {          // นกร้อง
+    if (kind === 'dawn') {                      // เช้าตรู่: นกร้องถี่ + ไก่ขันไกล ๆ นาน ๆ ที
+      if (r < 0.1) { const f = 2400 + Math.random() * 1400;
+        for (let k = 0; k < 2 + Math.floor(Math.random() * 3); k++) this.tone(f + k * 140, 0.06, { type: 'sine', to: f + 500, vol: 0.022, delay: delay + k * 0.09, bus }); }
+      else if (r < 0.108) { this.tone(660, 0.18, { type: 'sawtooth', to: 880, vol: 0.012, delay, bus, lp: 1800, attack: 0.03 });
+        this.tone(880, 0.32, { type: 'sawtooth', to: 700, vol: 0.012, delay: delay + 0.2, bus, lp: 1800, attack: 0.02, vibrato: 8 }); }
+    } else if (kind === 'town' && r < 0.05) {          // นกร้อง
       const f = 2200 + Math.random() * 1200;
       for (let k = 0; k < 3; k++) this.tone(f + k * 180, 0.07, { type: 'sine', to: f + 600, vol: 0.02, delay: delay + k * 0.1, bus });
     } else if (kind === 'wild') {
@@ -510,21 +537,62 @@ export class Sound {
     }
   }
 
+  // ------------------------------------------------------------
+  //  เพลงเปลี่ยนตามสถานการณ์
+  //  lowHp: HP ต่ำ → ทำนอง/กลองเบาลง เหลือเสียงหัวใจเต้น
+  //  boss 0/1/2: บอสเหลือ ≥50% / <50% / <25% → จังหวะเร็วขึ้น กลองถี่ขึ้น
+  // ------------------------------------------------------------
+  setMood({ lowHp = false, boss = 0 } = {}) {
+    boss = Math.max(0, Math.min(2, boss | 0));
+    if (lowHp === this.mood.lowHp && boss === this.mood.boss) return;
+    const bossUp = boss > this.mood.boss;
+    this.mood = { lowHp, boss };
+    this.applyMood();
+    if (bossUp && this.ctx && !this.muted && this.cfg?.bgmOn !== false) {   // เข้าเฟสใหม่: ฆ้องใหญ่ + กลองรัว
+      this.khong(midi(boss === 2 ? 43 : 48), 0, 0.22, this.sfxBus);
+      for (let i = 0; i < (boss === 2 ? 6 : 3); i++) this.klong(0.12 + i * 0.09, 0.3, this.sfxBus);
+    }
+  }
+
+  applyMood(now = false) {
+    if (!this.ctx) return;
+    const t = this.ctx.currentTime, k = now ? 0.001 : 0.9;
+    const { lowHp } = this.mood;
+    this.melBus.gain.setTargetAtTime(lowHp ? 0.22 : 1, t, k);
+    this.drumBus.gain.setTargetAtTime(lowHp ? 0.12 : 1, t, k);
+  }
+
+  /** ตัวคูณจังหวะจากเฟสบอส */
+  get tempoMul() { return [1, 1.08, 1.18][this.mood.boss] || 1; }
+
   /** เล่น 1 ช่วงจังหวะของเพลง (ใช้ทั้งตอนเล่นสดและตอน render ไฟล์ตัวอย่าง) */
   stepTrack(tr, step, delay, stepDur) {
-    const bus = this.musicBus;
+    const bus = this.musicBus, { lowHp, boss } = this.mood;
     for (const L of tr.layers) {
       const n = L.notes[step % L.notes.length];
       if (n) this.playNote(L.inst, n, L.vol, delay, stepDur, bus);
     }
     for (const [kind, pat] of Object.entries(tr.drums || {})) if (pat[step % pat.length] === 'x') this.drum(kind, delay, bus);
     if (tr.wail && step % 64 === 44) this.tone(midi(81), 1.6, { type: 'sine', to: midi(69), vol: 0.05, delay, bus, attack: 0.4, vibrato: 12 });
+    // HP ต่ำ: หัวใจเต้น "ตุบ-ตับ" ทุก 4 จังหวะ (ผ่าน musicBus ตรง ไม่โดนหรี่)
+    if (lowHp && (step % 8 === 0 || step % 8 === 2)) {
+      const v = step % 8 === 0 ? 0.32 : 0.22;
+      this.tone(58, 0.16, { type: 'sine', to: 40, vol: v, delay, bus, attack: 0.004 });
+      this.noise(0.05, { type: 'lowpass', freq: 220, vol: v * 0.5, delay, bus });
+    }
+    // บอสเหลือน้อย: กลองทัดเสริมจังหวะยก + ฉับถี่ขึ้น
+    if (boss >= 1 && step % 4 === 2) this.klong(delay, 0.3, this.drumBus);
+    if (boss >= 2) {
+      if (step % 2 === 1) this.ching(delay, 0.04, this.musicBus, false);
+      if (step % 4 === 0) this.klong(delay, 0.26, this.drumBus);
+      if (step % 16 === 15) this.thon(delay, 0.3, this.drumBus);
+    }
   }
 
   schedule() {
     const tr = TRACKS[this.track];
     if (!tr || this.muted || this.cfg?.bgmOn === false) { if (this.ctx) this.nextTime = this.ctx.currentTime + 0.1; return; }
-    const stepDur = 60 / tr.bpm / 2;
+    const stepDur = 60 / tr.bpm / 2 / this.tempoMul;
     while (this.nextTime < this.ctx.currentTime + 0.12) {
       const delay = Math.max(0, this.nextTime - this.ctx.currentTime);
       this.stepTrack(tr, this.step, delay, stepDur);

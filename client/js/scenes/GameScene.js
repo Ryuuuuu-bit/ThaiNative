@@ -602,12 +602,23 @@ export class GameScene extends Phaser.Scene {
     const zone = mp.id === 'village' ? (px < FISH_SPOT.to + 40 ? 'ท่าน้ำบางผี' : 'หมู่บ้านบางผี')
       : mp.boss ? 'ลานพญายักษ์' : mp.dungeon ? 'สุสานใต้ดิน' : `${mp.no}. ${mp.nameTh}`;
     if (zone !== this.zone) { this.ui.setZone(zone, !!this.zone); this.zone = zone; }
-    const night = this.clock.light < 0.35;
+    const night = this.clock.light < 0.35, hour = (this.clock.phase * 24 + 6) % 24;
     this.sfx.music(
       mp.boss && this.boss.alive ? 'boss'
         : mp.dungeon ? (this.dungeon.bossPhase ? 'boss' : 'r4')
-        : mp.id === 'village' ? (night ? 'townNight' : 'town')
+        : mp.id === 'village' ? (night ? 'townNight' : hour >= 5 && hour < 8 ? 'dawn' : 'town')
         : REGIONS[mp.region]?.music || 'wild');
+    if (time - (this.moodAt || 0) > 250) { this.moodAt = time; this.sfx.setMood(this.musicMood(mp)); }
+  }
+
+  /** สถานการณ์ที่ทำให้เพลงเปลี่ยน: HP ต่ำ / บอสที่กำลังสู้เหลือเลือดน้อย */
+  musicMood(mp) {
+    const c = this.player.char, lowHp = this.player.alive && c.hp / Math.max(1, this.player.derived.maxHp) < 0.25;
+    let frac = null;
+    if (mp.boss && this.boss?.alive) frac = this.boss.hp / this.boss.maxHp;
+    else if (mp.dungeon && this.dungeon.bossPhase) { for (const m of this.dungeon.mobs.values()) if (m.boss && m.state !== 'dead') frac = m.hp / m.def.hp; }
+    else { const rb = this.mobByGi.find((m) => m.isRegionBoss && m.alive && Math.abs(m.x - this.player.x) < 700); if (rb) frac = rb.hp / rb.def.hp; }
+    return { lowHp, boss: frac == null ? 0 : frac < 0.25 ? 2 : frac < 0.5 ? 1 : 0 };
   }
 
   /** ประกายน้ำในแม่น้ำ */
