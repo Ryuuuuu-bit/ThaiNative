@@ -127,10 +127,14 @@
   "mob_phi_pob": {
    "anims": [
     "idle",
+    "attack",
+    "die",
     "walk"
    ],
    "frames": {
     "idle": 4,
+    "attack": 6,
+    "die": 7,
     "walk": 6
    },
    "frame": 72,
@@ -345,10 +349,14 @@
   "mob_chalawan": {
    "anims": [
     "idle",
+    "attack",
+    "die",
     "walk"
    ],
    "frames": {
     "idle": 4,
+    "attack": 6,
+    "die": 7,
     "walk": 6
    },
    "frame": 72,
