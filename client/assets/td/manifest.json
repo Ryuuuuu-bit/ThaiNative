@@ -99,6 +99,54 @@
    },
    "frame": 72,
    "scale": 0.667
+  },
+  "hero_male_chaona": {
+   "anims": [
+    "idle",
+    "walk"
+   ],
+   "frames": {
+    "idle": 4,
+    "walk": 6
+   },
+   "frame": 72,
+   "scale": 0.667
+  },
+  "hero_male_silk": {
+   "anims": [
+    "idle",
+    "walk"
+   ],
+   "frames": {
+    "idle": 4,
+    "walk": 6
+   },
+   "frame": 72,
+   "scale": 0.667
+  },
+  "hero_male_warrior": {
+   "anims": [
+    "idle",
+    "walk"
+   ],
+   "frames": {
+    "idle": 4,
+    "walk": 6
+   },
+   "frame": 72,
+   "scale": 0.667
+  },
+  "hero_male_hunter": {
+   "anims": [
+    "idle",
+    "walk"
+   ],
+   "frames": {
+    "idle": 4,
+    "walk": 6
+   },
+   "frame": 72,
+   "scale": 0.667
   }
  },
  "images": [
@@ -213,5 +261,15 @@
   "env/p_firewood",
   "env/p_oven",
   "env/p_mortar"
+ ],
+ "tilesets": [
+  "water__grass",
+  "grass__brick",
+  "grass__road",
+  "paddy__grass",
+  "sand__grass",
+  "grass__stone",
+  "grass__tall",
+  "stone__brick"
  ]
 }

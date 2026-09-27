@@ -58,6 +58,8 @@ export class TopDownScene extends Phaser.Scene {
         for (const anim of meta.anims) this.load.image(texKey(id, anim), `/assets/td/${id}/${anim}.png`);
       }
       for (const id of data?.images || []) this.load.image(id, `/assets/td/${id}.png`);
+      for (const id of data?.tilesets || []) this.load.image(`ts_${id}`, `/assets/td/tiles/${id}.png`);
+      this.tilesets = data?.tilesets || [];
     });
     this.load.on('loaderror', () => {});
   }
@@ -150,7 +152,7 @@ export class TopDownScene extends Phaser.Scene {
   // ------------------------------------------------------------
   buildMap() {
     const { ground, solid } = this.layout;
-    const g = bakeGround(this, ground);            // พื้นทั้งแมพ (ขอบนุ่ม + ของตกแต่งเล็ก)
+    const g = bakeGround(this, ground, this.tilesets || []);            // พื้นทั้งแมพ (ขอบนุ่ม + ของตกแต่งเล็ก)
     this.groundMini = g.mini;
     this.water = makeWater(this, this.layout.ground);
     this.solid = solid;

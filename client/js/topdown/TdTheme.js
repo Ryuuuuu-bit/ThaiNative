@@ -20,7 +20,7 @@ const WATER_COLS = ['#3f7fb5', '#4a8cc2', '#3a74a6'];
 // ------------------------------------------------------------
 //  พื้น: วาดทั้งแมพเป็นภาพ (แบ่งก้อน 960×896)
 // ------------------------------------------------------------
-export function bakeGround(scene, ground) {
+export function bakeGround(scene, ground, tilesets = []) {
   const src = scene.textures.get('td_tiles').getSourceImage();
   const W = MAP_W * TILE, H = MAP_H * TILE;
   const big = document.createElement('canvas'); big.width = W; big.height = H;
@@ -94,6 +94,44 @@ export function bakeGround(scene, ground) {
       px(X + rnd() * 12, Y + rnd() * 12, 2, 1, '#c98a3a'); px(X + rnd() * 12, Y + rnd() * 12, 1, 2, '#a86a2a');
     }
   }
+  // 4.5) พื้นจาก tileset ของ PixelLab (Wang 16 ไทล์ วาดแบบ dual-grid: ไทล์แสดงผลเลื่อนครึ่งช่อง มุมทั้ง 4 = ไทล์ในผัง 4 ช่องรอบจุดนั้น)
+  if (tilesets.length) {
+    const sets = new Map(); const full = new Map();
+    for (const id of tilesets) {
+      const key = `ts_${id}`; if (!scene.textures.exists(key)) continue;
+      const [lo, up] = id.split('__'); const img = scene.textures.get(key).getSourceImage();
+      sets.set(`${lo}|${up}`, { img, lo, up });
+      if (!full.has(lo)) full.set(lo, { img, m: 0 }); if (!full.has(up)) full.set(up, { img, m: 15 });
+    }
+    const PRI = { water: 8, stone: 7, brick: 6, road: 5, sand: 4, paddy: 3, tall: 2, grass: 1 };
+    const isWaterT = (t) => t === T.WATER || t === T.WATER2;
+    const terr = (x, y) => {
+      const t = at(Math.max(0, Math.min(MAP_W - 1, x)), Math.max(0, Math.min(MAP_H - 1, y)));
+      if (isWaterT(t)) return 'water';
+      if (t === T.WOOD) return [[1, 0], [-1, 0], [0, 1], [0, -1]].some(([dx, dy]) => isWaterT(at(x + dx, y + dy))) ? 'water' : 'stone';
+      return { [T.STONE]: 'stone', [T.BRICK]: 'brick', [T.ROAD]: 'road', [T.PADDY]: 'paddy', [T.TALL]: 'tall', [T.SAND]: 'sand' }[t] || 'grass';
+    };
+    const drawFull = (name, X, Y) => { const f = full.get(name); if (!f) return false; ctx.drawImage(f.img, f.m * TILE, 0, TILE, TILE, X, Y, TILE, TILE); return true; };
+    for (let y = 0; y <= MAP_H; y++) for (let x = 0; x <= MAP_W; x++) {
+      const c = [terr(x - 1, y - 1), terr(x, y - 1), terr(x - 1, y), terr(x, y)];
+      const X = x * TILE - TILE / 2, Y = y * TILE - TILE / 2;
+      const kinds = [...new Set(c)];
+      if (kinds.length === 1) { drawFull(kinds[0], X, Y); continue; }
+      // เลือกคู่ที่มี tileset: สองชนิดที่พบบ่อยสุด (เสมอกัน → ความสำคัญสูงกว่า) ที่เหลือแทนด้วยชนิดที่พบบ่อยสุด
+      const cnt = {}; for (const k of c) cnt[k] = (cnt[k] || 0) + 1;
+      kinds.sort((p, q) => cnt[q] - cnt[p] || PRI[q] - PRI[p]);
+      let [p1, p2] = kinds; const cc = c.map((k) => (k === p1 || k === p2 ? k : p1));
+      let set = sets.get(`${p1}|${p2}`) || sets.get(`${p2}|${p1}`);
+      if (!set) { if (!drawFull(p1, X, Y)) continue; continue; }
+      const m = cc.reduce((acc, k, i) => acc | (k === set.up ? 1 << i : 0), 0);
+      ctx.drawImage(set.img, m * TILE, 0, TILE, TILE, X, Y, TILE, TILE);
+    }
+    // กำแพง/สะพานไม้ วาดทับด้วยไทล์เดิม
+    for (let y = 0; y < MAP_H; y++) for (let x = 0; x < MAP_W; x++) {
+      const t = ground[y][x];
+      if (t === T.WALL || t === T.WALLTOP || t === T.WOOD) ctx.drawImage(src, t * TILE, 0, TILE, TILE, x * TILE, y * TILE, TILE, TILE);
+    }
+  }
   // 5) บัวในแม่น้ำ
   const wt = waterTiles(ground);
   for (let i = 0; i < 60 && wt.length; i++) {
@@ -142,8 +180,8 @@ export function makeWater(scene, ground) {
   const layers = [];
   for (const r of rects) {
     const X = r.x0 * TILE, Y = r.y0 * TILE, W = (r.x1 - r.x0 + 1) * TILE, H = (r.y1 - r.y0 + 1) * TILE;
-    const a = scene.add.tileSprite(X, Y, W, H, 'td_water').setOrigin(0).setDepth(0.2).setTilePosition(X, Y);
-    const b = scene.add.tileSprite(X, Y, W, H, 'td_water').setOrigin(0).setDepth(0.21).setAlpha(0.35).setBlendMode(Phaser.BlendModes.ADD);
+    const a = scene.add.tileSprite(X, Y, W, H, 'td_water').setOrigin(0).setDepth(0.2).setTilePosition(X, Y).setVisible(!scene.tilesets?.length);
+    const b = scene.add.tileSprite(X + 3, Y + 3, Math.max(1, W - 6), Math.max(1, H - 6), 'td_water').setOrigin(0).setDepth(0.21).setAlpha(scene.tilesets?.length ? 0.12 : 0.35).setBlendMode(Phaser.BlendModes.ADD);
     layers.push([a, b, X, Y]);
   }
   return { update(t) { for (const [a, b, X, Y] of layers) { a.tilePositionX = X + t * 0.008; a.tilePositionY = Y; b.tilePositionX = X - t * 0.013; b.tilePositionY = Y + Math.sin(t / 900) * 3; } } };

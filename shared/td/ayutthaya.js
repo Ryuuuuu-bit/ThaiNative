@@ -44,7 +44,7 @@ export function buildLayout() {
   for (let y = 0; y < MAP_H; y++) for (let x = 0; x < MAP_W; x++) if (isMoat(x, y)) set(x, y, rnd() < 0.5 ? T.WATER : T.WATER2);
   for (let y = 0; y < MAP_H; y++) for (let x = 0; x < MAP_W; x++) {
     if (isMoat(x, y) || isIsland(x, y)) continue;
-    if ([[1, 0], [-1, 0], [0, 1], [0, -1]].some(([dx, dy]) => isMoat(x + dx, y + dy))) set(x, y, T.SAND);
+    // (ตลิ่งทรายวาดจาก tileset น้ำ→หญ้าแล้ว)
   }
   // ---- กำแพงเมือง (แถบ 2 ไทล์ตามขอบเกาะ) ----
   const wallBand = (x, y) => isIsland(x, y) && [[-2, 0], [2, 0], [0, -2], [0, 2], [-1, -1], [1, 1], [-1, 1], [1, -1], [-1, 0], [1, 0], [0, -1], [0, 1]].some(([dx, dy]) => !isIsland(x + dx, y + dy));
