@@ -21,6 +21,7 @@ import { STAT_KEYS, expToNext, MAX_LEVEL } from './stats.js';
 import { SKILL_BY_ID } from './data/skills.js';
 import { gainExp, resetStats, resetSkills, syncAppearance, learnSkill, assignHotbar, allocateStat, allocPassive, resetPassives, addLifeXp, lifeLv, addMastery, recomputePath } from './charmodel.js';
 import { HERB_SPOTS } from './td/ayutthaya.js';
+import { CARDS, CARD_BY_ID, SLOT_CARD, CARD_SLOT_TH, socketCount, cardRemoveCost } from './data/cards.js';
 
 const OK = (msg, extra = {}) => ({ ok: true, msg, ...extra });
 const NO = (msg) => ({ ok: false, msg });
@@ -36,6 +37,7 @@ export function addItem(c, id, qty = 1) {
   if (!ITEMS[id] || !(qty > 0)) return;
   const slot = c.inventory.find((s) => s.id === id);
   if (slot) slot.qty += qty; else c.inventory.push({ id, qty });
+  if (CARD_BY_ID[id]) { c.cardBook ||= {}; c.cardBook[id] = (c.cardBook[id] || 0) + qty; }   // สมุดสะสมการ์ด
 }
 export function removeItem(c, id, qty = 1) {
   const slot = c.inventory.find((s) => s.id === id);
@@ -200,6 +202,7 @@ function use(c, { id }) {
   if (it.type === 'herb') return NO(`${it.nameTh}: ให้ยายติ๋มปรุงยา หรือป้าสาทำอาหาร`);
   if (it.type === 'fish') return NO(`${it.nameTh}: นำไปให้ป้าสาทำอาหาร หรือขายได้`);
   if (it.type === 'offering') return NO(`${it.nameTh}: นำไปถวายที่ศาลพระภูมิ (ยืนหน้าศาลแล้วกด F)`);
+  if (it.type === 'card') return NO(`${it.nameTh}: เปิดสมุดการ์ด (O) แล้วกดช่องการ์ดของ${CARD_SLOT_TH[it.cardSlot]}เพื่อใส่`);
   if (['weapon', 'armor', 'accessory'].includes(it.type)) return equip(c, { id });
   return NO('ใช้ไอเทมนี้ไม่ได้');
 }
@@ -535,10 +538,58 @@ function gm(c, { cmd = 'help', a1, a2 }, ctx) {
 }
 
 // ------------------------------------------------------------
+//  การ์ดผี (ใส่/ถอด/แลก)
+// ------------------------------------------------------------
+/** ใส่การ์ดในช่องการ์ดว่างของช่องสวมใส่ */
+function cardIn(c, { slot, id }) {
+  const cd = CARD_BY_ID[id];
+  if (!cd || !SLOT_CARD[slot]) return NO('การ์ดหรือช่องไม่ถูกต้อง');
+  if (cd.slot !== SLOT_CARD[slot]) return NO(`${cd.nameTh} ใส่ได้เฉพาะ${CARD_SLOT_TH[cd.slot]}`);
+  if (!count(c, id)) return NO('ไม่มีการ์ดใบนี้ในกระเป๋า');
+  c.cards ||= {};
+  const list = (c.cards[slot] ||= []), max = socketCount(slot, c.enhance?.[slot] || 0);
+  if (list.length >= max) return NO(max < 2 && (slot === 'weapon' || slot === 'armor') ? 'ช่องการ์ดเต็ม · ตีบวกถึง +7 เพื่อเปิดช่องที่ 2' : 'ช่องการ์ดเต็ม');
+  removeItem(c, id);
+  list.push(id);
+  clampHp(c);
+  return OK(`🃏 ใส่${cd.nameTh}ใน${CARD_SLOT_TH[cd.slot]}แล้ว`, { card: id });
+}
+/** ถอดการ์ดคืนกระเป๋า (เสียเงิน) */
+function cardOut(c, { slot, idx = 0 }) {
+  const list = c.cards?.[slot];
+  const i = int(idx, 0, 1, 0), id = list?.[i];
+  if (!id) return NO('ช่องนี้ไม่มีการ์ด');
+  const cost = cardRemoveCost(id);
+  if (c.gold < cost) return NO(`ถอดการ์ดต้องใช้ ฿${cost.toLocaleString()}`);
+  c.gold -= cost;
+  list.splice(i, 1);
+  addItem(c, id);
+  c.cardBook[id] = Math.max(1, (c.cardBook[id] || 1) - 1);        // ถอดคืน ไม่นับเป็นการได้ใหม่
+  clampHp(c);
+  return OK(`ถอด${CARD_BY_ID[id].nameTh}คืนกระเป๋า (-฿${cost.toLocaleString()})`);
+}
+/** แลกการ์ด 3 ใบ → สุ่มการ์ดใหม่ 1 ใบ (ไม่รวมการ์ดผีหัวหน้า) ที่ร้านยายติ๋ม */
+function cardTrade(c, { ids }, ctx) {
+  if (!Array.isArray(ids) || ids.length !== 3) return NO('เลือกการ์ด 3 ใบ');
+  const need = {};
+  for (const id of ids) { if (!CARD_BY_ID[id]) return NO('การ์ดไม่ถูกต้อง'); need[id] = (need[id] || 0) + 1; }
+  for (const [id, n] of Object.entries(need)) {
+    if (count(c, id) < n) return NO(`${CARD_BY_ID[id].nameTh} ไม่พอ`);
+    if (isLocked(c, id)) return NO(`${CARD_BY_ID[id].nameTh} ถูกล็อกไว้`);
+  }
+  for (const [id, n] of Object.entries(need)) removeItem(c, id, n);
+  const pool = CARDS.filter((x) => !x.elite);
+  const got = pool[Math.floor(ctx.rnd() * pool.length)];
+  const isNew = !c.cardBook?.[got.id];
+  addItem(c, got.id);
+  return OK(`🃏 แลกได้ ${got.nameTh}!${isNew ? ' (ใบใหม่ในสมุด)' : ''}`, { card: got.id, isNew });
+}
+
+// ------------------------------------------------------------
 export const ACTIONS = {
   use, equip, unequip, cosOff, buy, sell, sellMany, lock, offer, siamsi, craft, enhance,
   qAccept, qDrop, qClaim, path, passive, passiveReset, bounty, fishBite, fishLand, fishLose, gather, chest,
-  alloc, learn, hotbar, recall, dye, title, friendDel, gm,
+  alloc, learn, hotbar, recall, dye, title, friendDel, gm, cardIn, cardOut, cardTrade,
 };
 /** ระหว่างเทรด ห้ามทำสิ่งที่แตะกระเป๋า/เงิน (กันของซ้ำ) */
 const TRADE_SAFE = new Set(['lock', 'qAccept', 'qDrop', 'hotbar', 'title', 'friendDel', 'fishBite', 'fishLand', 'fishLose', 'gather', 'chest', 'learn', 'alloc', 'passive']);

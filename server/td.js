@@ -11,6 +11,7 @@ import { rollDamage } from '../shared/stats.js';
 import { combatDerived, attackSpec, blessingsOf, attackGate } from '../shared/character.js';
 import { dayPhase, dayIndex, moonOf, nightMods, isNight } from '../shared/data/world.js';
 import { rollGearDrop } from '../shared/data/gear.js';
+import { rollCard, CARD_BY_ID } from '../shared/data/cards.js';
 import { grantKill } from '../shared/economy.js';
 import { NPC_BY_ID } from '../shared/data/npcs.js';
 import { buildLayout, TILE, MAP_W, MAP_H, SPAWN, inTownXY, T } from '../shared/td/ayutthaya.js';
@@ -137,6 +138,12 @@ export function setupTD(io, players, opts = {}) {
         out.items = (d.drops || []).filter((dr) => Math.random() < dr.chance * bl.dropMul).map((dr) => ({ id: dr.item, qty: 1 }));
         const gear = rollGearDrop(d.level, bl.dropMul);
         if (gear) out.items.push({ id: gear, qty: 1, rare: true });
+        const card = rollCard(m.id, bl.dropMul);                                   // การ์ดผี (0.5% · หัวหน้า 5%)
+        if (card) {
+          out.items.push({ id: card, qty: 1, rare: true, card: true });
+          out.cardNew = !p.save.cardBook?.[card];
+          io.emit('chat', { id: null, name: '🃏 การ์ด', text: `${p.name} ได้รับ ${CARD_BY_ID[card].nameTh}!` });
+        }
       }
       Object.assign(out, grantKill(p.save, out));
       refresh(p); queueSync(p);

@@ -599,7 +599,9 @@ export class TopDownScene extends Phaser.Scene {
     const y = (r.y ?? this.player.y) - 30;
     popupNumber(this, r.x ?? this.player.x, y, `+${r.exp} EXP${r.gold ? ` ฿${r.gold}` : ''}`, r.night ? 'night' : 'exp');
     if (r.gold) this.sfx.play('coin');
-    for (const it of r.items || []) this.ui.loot?.(`${it.rare ? '✨ ' : ''}ได้ ${ITEMS[it.id]?.nameTh || it.id} x${it.qty || 1}`);
+    for (const it of r.items || []) this.ui.loot?.(`${it.card ? '🃏 ' : it.rare ? '✨ ' : ''}ได้ ${ITEMS[it.id]?.nameTh || it.id} x${it.qty || 1}`);
+    const card = (r.items || []).find((it) => it.card);
+    if (card) this.ui.cards.showGet(card.id, r.cardNew);
     if (r.quests?.length || r.titles?.length) this.ui.result({ ok: true, quests: r.quests, titles: r.titles });
     if (r.ups && !this.econ.server) this.combat.levelUpFx(r.ups);
     if (r.mastery) this.ui.toast(`${JOBS[r.mastery.job]?.icon || '⚔️'} ความชำนาญ${JOBS[r.mastery.job]?.weaponTh || 'อาวุธ'} Lv.${r.mastery.lv} (โจมตี +${r.mastery.lv}%)`, 'ok', 2500);
@@ -796,6 +798,7 @@ export class TopDownScene extends Phaser.Scene {
     kb.on('keydown-I', () => this.ui.toggle('inv-panel'));
     kb.on('keydown-C', () => this.ui.toggle('stats-panel'));
     kb.on('keydown-K', () => this.ui.toggle('skill-panel'));
+    kb.on('keydown-O', () => (document.querySelector('#card-panel').classList.contains('hidden') ? this.ui.cards.open() : this.ui.toggle('card-panel', false)));
     kb.on('keydown-J', () => this.village.openQuests());
     kb.on('keydown-H', () => this.ui.toggle('help-panel'));
     kb.on('keydown-M', () => this.world.toggleMap());

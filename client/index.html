@@ -34,7 +34,7 @@
       <div class="td-target" id="td-target"></div>
       <div class="td-toast hidden" id="td-toast"></div>
       <button class="td-act hidden" id="td-act"></button>
-      <div class="td-bottom"><span class="t-hint">👆 แตะพื้น = เดิน · แตะผี / ปุ่ม ⚔️ = ตี · แตะช่องสกิล = ร่าย · ⚡ = ออโต้ (ตีเอง) · จอยซ้าย = เดิน</span><span class="k-hint">🖱️ คลิกพื้น = เดิน · คลิกผี = โจมตี · คลิก NPC = ร้าน/เควส · ลูกศร เดิน · 1–0 Hotbar (สกิล/ไอเทม) · A ออโต้ (ตีผีทั้งจอ · Shift+A เลือกผี) · B ยันต์คืนถิ่น · I กระเป๋า · C สถานะ · K สกิล · J เควส · คลิกขวาที่ผี = ตี</span></div>
+      <div class="td-bottom"><span class="t-hint">👆 แตะพื้น = เดิน · แตะผี / ปุ่ม ⚔️ = ตี · แตะช่องสกิล = ร่าย · ⚡ = ออโต้ (ตีเอง) · จอยซ้าย = เดิน</span><span class="k-hint">🖱️ คลิกพื้น = เดิน · คลิกผี = โจมตี · คลิก NPC = ร้าน/เควส · ลูกศร เดิน · 1–0 Hotbar (สกิล/ไอเทม) · A ออโต้ (ตีผีทั้งจอ · Shift+A เลือกผี) · O การ์ดผี · B ยันต์คืนถิ่น · I กระเป๋า · C สถานะ · K สกิล · J เควส · คลิกขวาที่ผี = ตี</span></div>
     </div>
     <div id="game"></div>
 
@@ -179,6 +179,7 @@
             <button data-open="stats-panel" title="สถานะ (C)">📊<small>C</small></button>
             <button data-open="inv-panel" title="กระเป๋า (I)">🎒<small>I</small></button>
             <button data-open="skill-panel" title="สกิล (K)">📖<small>K</small></button>
+            <button data-open="card-panel" title="การ์ดผี (O)">🃏<small>O</small></button>
             <button data-open="map-panel" title="แผนที่ (M)">🗺️<small>M</small></button>
             <button data-open="social-panel" title="ปาร์ตี้ & ผู้เล่น (P)">👥<small>P</small></button>
             <button data-open="quest-panel" title="สมุดเควส (J)">📋<small>J</small></button>
@@ -404,7 +405,7 @@
           <div>💍 เครื่องประดับใส่ได้ 2 ชิ้น · อุปกรณ์มีเลเวลขั้นต่ำ</div><div>✦ <b>โบนัสชุด</b>: ใส่ของสายเดียวกัน 2/3/4 ชิ้น ได้โบนัสเพิ่ม (ดูในกระเป๋า)</div>
           <div>🕯️ <b>สุสานใต้ดิน</b> (หลวงพ่อทอง ข้างศาลา): ดันเจี้ยนปาร์ตี้ 1–4 คน 3 ระดับ</div><div>👑 <b>บอสประจำภาค</b> เกิดแมพสุดท้ายของแต่ละภาคทุก 20 นาที (แจ้งในแชท/แผนที่)</div>
           <div>⚒️ <b>โรงหลอมลุงดำ</b>: หลอมอุปกรณ์ Lv.22–30 จากของดรอปภาค 3–5</div><div>🎨 แม่ช้อย: ย้อมสีผม/ชุด · กด 👁 ในร้านเพื่อลองใส่ก่อนซื้อ</div>
-          <div>🏅 <b>ฉายา</b> ปลดล็อกจากความสำเร็จ เลือกใช้ที่แผงสังคม (P)</div><div>💚 <b>เพื่อน</b>: เพิ่มจากรายชื่อผู้เล่น · <kbd>B</kbd> ในหมู่บ้าน = กลับจุดล่าล่าสุด</div>
+          <div>🃏 <b>การ์ดผี</b> (O): ผีดรอป 0.5% (หัวหน้า 5%) · ใส่ในช่องการ์ดของอาวุธ/เสื้อ/เครื่องประดับ · สะสมครบได้โบนัส · แลก 3→1 ที่ยายติ๋ม</div><div>🏅 <b>ฉายา</b> ปลดล็อกจากความสำเร็จ เลือกใช้ที่แผงสังคม (P)</div><div>💚 <b>เพื่อน</b>: เพิ่มจากรายชื่อผู้เล่น · <kbd>B</kbd> ในหมู่บ้าน = กลับจุดล่าล่าสุด</div>
         </div>
       </section>
 
@@ -415,6 +416,13 @@
         <div id="st-list"></div>
         <div id="st-actions" class="st-actions"></div>
         <div id="st-derived" class="derived"></div>
+      </section>
+
+      <!-- การ์ดผี -->
+      <section id="card-panel" class="panel window wide hidden">
+        <header>🃏 การ์ดผี <button class="close">✕</button></header>
+        <div class="tabs" id="card-tabs"><button data-ct="sockets" class="active">ช่องการ์ด</button><button data-ct="book">สมุดสะสม</button></div>
+        <div id="card-body"></div>
       </section>
 
       <!-- กระเป๋า -->

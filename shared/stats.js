@@ -51,11 +51,11 @@ export function computeDerived(s, job, level, bonus = {}) {
     maxMp: Math.round((job.baseMp + INT * 6 + level * 4 + (bonus.mp || 0)) * M('mpMul')),
     patk: Math.round((STR * 2 + level * 1.5 + (bonus.atk || 0)) * M('patkMul')),   // STR
     matk: Math.round((INT * 2.5 + level * 1.5 + (bonus.matk || 0)) * M('matkMul')), // INT
-    accuracy: 85 + DEX * 1.0,                                           // DEX (%)
+    accuracy: 85 + DEX * 1.0 + (bonus.acc || 0),                                           // DEX (%)
     critRate: clamp(0.05 + DEX * 0.004 + (job.critBonus || 0) + (bonus.crit || 0), 0, 0.75), // DEX
-    critDmg: 1.5 + CRI * 0.02,                                          // CRI
+    critDmg: 1.5 + CRI * 0.02 + (bonus.critDmg || 0),                                          // CRI
     def: Math.round(VIT * 0.5 + (bonus.def || 0)),
-    eva: Math.round(DEX * 0.3),
+    eva: Math.round(DEX * 0.3 + (bonus.eva || 0)),
   };
 }
 

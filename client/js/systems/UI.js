@@ -27,6 +27,8 @@ import { ENHANCE } from '/shared/data/village.js';
 import { itemIcon, skillIcon, uiIcon } from './util.js';
 import { bindAccountSettings } from './AuthScreen.js';
 import { account } from '../net/Account.js';
+import { CardUI } from './Cards.js';
+import { CARD_BY_ID } from '/shared/data/cards.js';
 
 const $ = (s) => document.querySelector(s);
 const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -47,6 +49,7 @@ export class UI {
     this.shopId = null;
     this.hudCache = '';
 
+    this.cards = new CardUI(this);
     $('#hud').classList.remove('hidden');
     $('#chat').classList.remove('hidden');
 
@@ -245,7 +248,7 @@ export class UI {
     if (gold && uiIcon('gold') && !gold.querySelector('.px-ico')) gold.innerHTML = `${uiIcon('gold')} <b id="hud-gold">${$('#hud-gold').textContent}</b>`;
     // ปุ่มเมนูขวาบน: ไอคอนชุดเดียวกัน (PixelLab ui_menu_*)
     const MENU = { 'stats-panel': 'menu_stats', 'inv-panel': 'menu_bag', 'skill-panel': 'menu_skill', 'map-panel': 'menu_map',
-      'social-panel': 'menu_party', 'quest-panel': 'menu_quest', 'help-panel': 'menu_help', 'settings-panel': 'menu_settings' };
+      'social-panel': 'menu_party', 'quest-panel': 'menu_quest', 'help-panel': 'menu_help', 'settings-panel': 'menu_settings', 'card-panel': 'menu_card' };
     for (const [panel, key] of Object.entries(MENU)) {
       const b = document.querySelector(`.hud-buttons [data-open="${panel}"]`), ic = uiIcon(key);
       if (b && ic) b.innerHTML = `${ic}${b.querySelector('small')?.outerHTML || ''}`;
@@ -641,6 +644,7 @@ export class UI {
     if (!$('#shop-panel').classList.contains('hidden')) this.renderShop();
     if (!$('#skill-panel').classList.contains('hidden')) this.renderSkillTree();
     if (!$('#map-panel').classList.contains('hidden')) this.renderMap();
+    if (!$('#card-panel').classList.contains('hidden')) this.cards.render();
     this.updateHud();
   }
 
@@ -713,7 +717,7 @@ export class UI {
   renderInventory() {
     const c = this.char;
     $('#inv-equip').innerHTML = Object.entries(c.equipment).map(([slot, id]) => `
-      <div class="eq"><small>${SLOT_TH[slot]}</small>${id ? `${itemIcon(id, ITEMS[id].icon)} ${ITEMS[id].nameTh}${c.enhance?.[slot] ? ` <b class="enh t${ENHANCE.auraTier(c.enhance[slot])}">+${c.enhance[slot]}</b>` : ''} <button class="close" data-unequip="${slot}">✕</button>` : '—'}</div>`).join('');
+      <div class="eq"><small>${SLOT_TH[slot]}</small>${id ? `${itemIcon(id, ITEMS[id].icon)} ${ITEMS[id].nameTh}${c.enhance?.[slot] ? ` <b class="enh t${ENHANCE.auraTier(c.enhance[slot])}">+${c.enhance[slot]}</b>` : ''}${(c.cards?.[slot] || []).map((x) => CARD_BY_ID[x] ? `<span class="eq-card" title="${esc(CARD_BY_ID[x].nameTh)}">${itemIcon(x)}</span>` : '').join('')} <button class="close" data-unequip="${slot}">✕</button>` : '—'}</div>`).join('');
     const COS_TH = { head: 'หมวก/มงกุฎ', face: 'หน้ากาก', back: 'ของหลัง', outfit: 'ชุดแต่งตัว' };
     $('#inv-equip').innerHTML += `<div class="eq-cos">${Object.entries(COS_TH).map(([slot, th]) => { const id = c.costume?.[slot];
       return `<div class="eq cos"><small>${th}</small>${id ? `${itemIcon(id, ITEMS[id].icon)} ${ITEMS[id].nameTh} <button class="close" data-uncos="${slot}">✕</button>` : '—'}</div>`; }).join('')}</div>`;
@@ -731,8 +735,8 @@ export class UI {
     // แท็บกรอง + เรียงลำดับ
     const CAT = { all: ['ทั้งหมด', () => true], gear: ['อุปกรณ์', (t) => ['weapon', 'armor', 'accessory'].includes(t)], cos: ['ชุดแต่งตัว', (t) => t === 'costume'],
       use: ['ยา/อาหาร', (t) => ['consumable', 'home', 'food', 'reset', 'skin', 'offering'].includes(t)],
-      mat: ['วัตถุดิบ', (t) => ['material', 'herb', 'fish'].includes(t)] };
-    const ORDER = ['weapon', 'armor', 'accessory', 'costume', 'home', 'consumable', 'food', 'reset', 'skin', 'offering', 'herb', 'fish', 'material'];
+      mat: ['วัตถุดิบ', (t) => ['material', 'herb', 'fish'].includes(t)], card: ['การ์ด', (t) => t === 'card'] };
+    const ORDER = ['card', 'weapon', 'armor', 'accessory', 'costume', 'home', 'consumable', 'food', 'reset', 'skin', 'offering', 'herb', 'fish', 'material'];
     const cat = this.invCat || 'all', sort = this.invSort || 'type';
     const list = c.inventory.filter((s) => CAT[cat][1](ITEMS[s.id].type)).sort((a, b) => {
       const A = ITEMS[a.id], B = ITEMS[b.id];
@@ -755,7 +759,7 @@ export class UI {
     };
     $('#inv-list').innerHTML = tabs + (list.length ? list.map((s) => {
       const it = ITEMS[s.id], lock = Inv.isLocked(c, s.id);
-      const action = { home: 'ใช้', consumable: 'ใช้', food: 'กิน', offering: 'ถวาย', weapon: 'ถือ', armor: 'สวม', accessory: 'สวม', costume: 'แต่ง', reset: 'ใช้', skin: c.path === it.job ? 'ใช้อยู่' : 'เปลี่ยนสาย' }[it.type];
+      const action = { home: 'ใช้', consumable: 'ใช้', food: 'กิน', offering: 'ถวาย', weapon: 'ถือ', armor: 'สวม', accessory: 'สวม', costume: 'แต่ง', reset: 'ใช้', card: 'ใส่', skin: c.path === it.job ? 'ใช้อยู่' : 'เปลี่ยนสาย' }[it.type];
       const job = itemTag(it) || (it.type === 'costume' ? ` · ชุดแต่งตัว${it.rare ? ' ✨หายาก' : ''}` : '');
       const hb = hotbarItemOk(s.id);
       return `<div class="item inv${rcls(it)}"${hb ? ` draggable="true" data-hbitem="${s.id}" title="ลากไปวางที่ Hotbar (1–0)"` : ''}><span class="ic">${itemIcon(s.id, it.icon)}</span>
@@ -773,7 +777,7 @@ export class UI {
         this.scene.sfx.play('click'); this.renderInventory(); this.scene.saveSoon();
       });
     }));
-    $('#inv-list').querySelectorAll('[data-use]').forEach((b) => (b.onclick = () => this.result(this.scene.econ.act('use', { id: b.dataset.use }))));
+    $('#inv-list').querySelectorAll('[data-use]').forEach((b) => (b.onclick = () => (CARD_BY_ID[b.dataset.use] ? this.cards.open('sockets', b.dataset.use) : this.result(this.scene.econ.act('use', { id: b.dataset.use })))));
     $('#inv-list').querySelectorAll('[data-hbadd]').forEach((b) => (b.onclick = () => this.assignFirstFree(b.dataset.hbadd)));
     $('#inv-list').querySelectorAll('[data-hbitem]').forEach((el) => el.addEventListener('dragstart', (e) => { e.dataTransfer.setData('text/item', el.dataset.hbitem); e.dataTransfer.effectAllowed = 'copy'; }));
   }
@@ -784,7 +788,7 @@ export class UI {
     const shop = SHOPS[shopId];
     $('#shop-title').textContent = shop.nameTh;
     $('#shop-greet').textContent = `“${shop.greeting}”`;
-    const TAB_TH = { buy: 'ซื้อ', sell: 'ขาย', enhance: `${uiIcon('anvil', '🔨')} ตีบวก`, cook: `${uiIcon('soup', '🍳')} ทำอาหาร`, brew: `${uiIcon('herb', '🌿')} ปรุงยา`, forge: '⚒️ หลอมอุปกรณ์', dye: '🎨 ย้อมสี' };
+    const TAB_TH = { buy: 'ซื้อ', sell: 'ขาย', enhance: `${uiIcon('anvil', '🔨')} ตีบวก`, cook: `${uiIcon('soup', '🍳')} ทำอาหาร`, brew: `${uiIcon('herb', '🌿')} ปรุงยา`, forge: '⚒️ หลอมอุปกรณ์', dye: '🎨 ย้อมสี', cards: '🃏 แลกการ์ด' };
     const tabs = shop.tabs || ['buy', 'sell'];
     this.shopTab = tabs[0];
     $('#shop-tabs').innerHTML = tabs.map((t, i) => `<button data-tab="${t}" class="${i ? '' : 'active'}">${TAB_TH[t]}</button>`).join('');
@@ -797,6 +801,7 @@ export class UI {
     $('#shop-gold').textContent = c.gold.toLocaleString();
     let html;
     if (this.shopTab === 'enhance') return this.scene.village.renderEnhance($('#shop-list'));
+    if (this.shopTab === 'cards') return this.cards.renderTrade($('#shop-list'));
     if (this.shopTab === 'cook') return this.scene.village.renderCook($('#shop-list'));
     if (this.shopTab === 'brew') return this.scene.village.renderBrew($('#shop-list'));
     if (this.shopTab === 'forge') return this.scene.village.renderForge($('#shop-list'));

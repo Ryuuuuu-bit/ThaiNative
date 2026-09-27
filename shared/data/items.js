@@ -4,6 +4,7 @@
 //  ราคาขายคืน = 50% ของราคาซื้อ (หรือ sell ที่กำหนดไว้)
 // ============================================================
 import { GEAR, gearShopStock } from './gear.js';
+import { CARD_ITEMS } from './cards.js';
 
 export const ITEMS = {
   // ---------- ยาฟื้นฟู ----------
@@ -160,6 +161,8 @@ export const ITEMS = {
 
 // อุปกรณ์ตามอาชีพ 200 ชิ้น (shared/data/gear.js)
 Object.assign(ITEMS, GEAR);
+// การ์ดผี 20 ใบ (shared/data/cards.js)
+Object.assign(ITEMS, CARD_ITEMS);
 
 export function sellPrice(id) {
   const it = ITEMS[id];
@@ -174,7 +177,7 @@ export const SHOPS = {
     greeting: 'มาจ้ะหลาน ยาดีของยาย ผีหลอกก็ไม่กลัว!',
     stock: ['hp_s', 'hp_m', 'mp_s', 'mp_m', 'yant_home', 'garland', 'nam_daeng', 'khai_tom', 'hua_mu',
       'reset_water', 'skin_swordman'],
-    tabs: ['buy', 'sell', 'brew'],
+    tabs: ['buy', 'sell', 'cards', 'brew'],
   },
   lung_dam: {
     nameTh: 'ลุงดำ โรงตีเหล็ก',

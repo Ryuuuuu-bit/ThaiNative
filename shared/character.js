@@ -11,6 +11,7 @@ import { combineBlessings } from './data/blessings.js';
 import { setInfo } from './data/gear.js';
 import { passiveBonus } from './data/passives.js';
 import { masteryLevel } from './data/life.js';
+import { cardBonus } from './data/cards.js';
 
 /** ช่องสวมใส่ (เครื่องประดับ 2 ข้าง) → ชนิดไอเทมที่ใส่ได้ */
 export const EQUIP_SLOTS = ['weapon', 'armor', 'accessory', 'accessory2'];
@@ -34,6 +35,7 @@ export function equipmentBonus(c) {
 export function getDerived(c) {
   const bonus = equipmentBonus(c);
   for (const [k, v] of Object.entries(passiveBonus(c.passives))) bonus[k] = (bonus[k] || 0) + v;   // ต้นไม้พรสวรรค์
+  for (const [k, v] of Object.entries(cardBonus(c).bonus)) bonus[k] = (bonus[k] || 0) + v;          // การ์ด + สมุดสะสม
   const m = masteryLevel(c.wm?.[c.appearance?.job] || 0).lv;                                         // ความชำนาญอาวุธที่ถือ
   if (m) { bonus.patkMul = (bonus.patkMul || 0) + m * 0.01; bonus.matkMul = (bonus.matkMul || 0) + m * 0.01; }
   return computeDerived(c.stats, VILLAGER, c.level, bonus);
@@ -112,6 +114,8 @@ export function sanitizeChar(raw, now = Date.now()) {
 export function blessingsOf(c, now = Date.now()) {
   const r = combineBlessings(c.blessings || [], now);
   for (const k of Object.keys(BLESS_CAP)) r[k] = Math.min(r[k], BLESS_CAP[k]);
+  const e = cardBonus(c).econ;                         // การ์ด: EXP/เงิน/ดรอป เพิ่ม % (นอกเพดานพร)
+  r.expMul *= 1 + (e.exp || 0) / 100; r.goldMul *= 1 + (e.gold || 0) / 100; r.dropMul *= 1 + (e.drop || 0) / 100;
   return r;
 }
 

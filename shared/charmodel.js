@@ -11,6 +11,7 @@ import { getDerived } from './character.js';
 import { SKILL_SLOTS, OLD_SKILL_SLOTS, SP_PER_LEVEL, START_SP, SKILL_BY_ID, canLearn, isItemSlot, slotItemId, skillCap } from './data/skills.js';
 import { PASSIVES, KEYSTONE, canAllocate, branchPoints, totalPassivePoints } from './data/passives.js';
 import { LIFE, LIFE_IDS, lifeLevel, masteryLevel } from './data/life.js';
+import { fixCards } from './data/cards.js';
 
 export const SAVE_VERSION = 2;          // v2 = ตัวละครแบบเดียว + สายหลัก + แนวต่อสู้ตามอาวุธ
 
@@ -52,7 +53,7 @@ export function newCharacter(name, appearance = {}) {
     sp: START_SP, skills: {}, hotbar: emptyHotbar(),
     quests: { active: {}, done: [] }, enhance: {}, costume: {},
     rec: {}, titles: [], friends: [],
-    passives: ['root'], life: {}, wm: {},
+    passives: ['root'], life: {}, wm: {}, cards: {}, cardBook: {},
   };
   const d = getDerived(c);
   c.hp = d.maxHp; c.mp = d.maxMp;
@@ -283,6 +284,7 @@ export function migrate(c) {
   c.inventory = c.inventory.filter((s) => s && ITEMS[s.id] && s.qty > 0).map((s) => ({ id: s.id, qty: Math.floor(s.qty) }));
   if (!c.costume || typeof c.costume !== 'object') c.costume = {};
   if (!c.enhance || typeof c.enhance !== 'object') c.enhance = {};
+  fixCards(c);                                                   // การ์ดในช่องสวมใส่ + สมุดสะสม
   for (const k of Object.keys(c.equipment)) if (c.equipment[k] && !ITEMS[c.equipment[k]]) c.equipment[k] = null;
   if (!c.quests) c.quests = { active: {}, done: [] };
   if (!c.rec) c.rec = {};
