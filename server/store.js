@@ -67,6 +67,9 @@ class PgStore {
         END IF;
       END $$;`);
     // ชื่อตัวละครห้ามซ้ำ (ไม่สนตัวพิมพ์เล็ก/ใหญ่) · ถ้ามีข้อมูลเก่าที่ซ้ำอยู่แล้วจะสร้าง index ไม่ได้ → ข้าม (ยังกันซ้ำตอนสร้างตัวใหม่)
+    // รูปแบบเลขกันชื่อซ้ำเดิม "Ryuu#001" → "Ryuu #001"
+    try { await this.pool.query("UPDATE characters SET data = jsonb_set(data, '{name}', to_jsonb(regexp_replace(data->>'name', '\\s*#([0-9]{3})$', ' #\\1'))) WHERE data->>'name' ~ '[^ ]#[0-9]{3}$'"); }
+    catch (e) { console.error('[store] name tag format:', e.message); }
     try { await this.pool.query("CREATE UNIQUE INDEX IF NOT EXISTS characters_name_lower ON characters (lower(data->>'name'))"); }
     catch (e) { console.error('[store] unique name index:', e.message); }
     // ล้างข้อมูลผู้เล่นทั้งหมด (ครั้งเดียวต่อค่า): ตั้ง env RESET_ALL_DATA=<รหัสใหม่> แล้ว deploy
@@ -139,7 +142,7 @@ class PgStore {
   async namesLike(base) {
     const esc = base.toLowerCase().replace(/[\\%_]/g, (m) => '\\' + m);
     const { rows } = await this.pool.query(
-      "SELECT lower(data->>'name') AS n FROM characters WHERE lower(data->>'name') = $1 OR lower(data->>'name') LIKE $2 ESCAPE '\\'", [base.toLowerCase(), `${esc}#%`]);
+      "SELECT lower(data->>'name') AS n FROM characters WHERE lower(data->>'name') = $1 OR lower(data->>'name') LIKE $2 ESCAPE '\\'", [base.toLowerCase(), `${esc} #%`]);
     return rows.map((r) => r.n);
   }
   async deleteCharacter(accountId, slot) {
@@ -181,7 +184,7 @@ class MemoryStore {
   async getCharacter(id, slot = 0) { return this.chars.get(`${id}:${slotOf(slot)}`) || null; }
   async saveCharacter(id, slot, data) { this.chars.set(`${id}:${slotOf(slot)}`, data); }
   async deleteCharacter(id, slot) { this.chars.delete(`${id}:${slotOf(slot)}`); }
-  async namesLike(base) { const b = base.toLowerCase(); return [...this.chars.values()].map((c) => String(c.name).toLowerCase()).filter((n) => n === b || n.startsWith(`${b}#`)); }
+  async namesLike(base) { const b = base.toLowerCase(); return [...this.chars.values()].map((c) => String(c.name).toLowerCase()).filter((n) => n === b || n.startsWith(`${b} #`)); }
   async topCharacters(limit = 300) {
     return [...this.chars.values()].sort((a, b) => (b.level || 0) - (a.level || 0) || (b.exp || 0) - (a.exp || 0)).slice(0, limit)
       .map((d) => ({ name: d.name, level: d.level, exp: d.exp, enhance: d.enhance, path: d.path, equipment: d.equipment }));

@@ -267,7 +267,7 @@ export function choosePath(c, path) {
 /** แปลงเซฟเก่า/ซ่อมโครงสร้าง → ตัวละครที่ใช้ได้ */
 export function migrate(c) {
   if (!c || typeof c !== 'object') return null;
-  c.name = String(c.name || '').replace(/[<>]/g, '').trim().slice(0, 21) || 'ผู้กล้า';
+  c.name = String(c.name || '').replace(/[<>]/g, '').replace(/\s*#(\d{3})$/, ' #$1').trim().slice(0, 21) || 'ผู้กล้า';   // เลขกันชื่อซ้ำ: "Ryuu #001"
   c.appearance = sanitizeAppearance(c.appearance || {});
   c.level = Number.isFinite(+c.level) ? Math.max(1, Math.min(MAX_LEVEL, Math.floor(+c.level))) : 1;
   c.exp = Number.isFinite(+c.exp) ? Math.max(0, Math.floor(+c.exp)) : 0;

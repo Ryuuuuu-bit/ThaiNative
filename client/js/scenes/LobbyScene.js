@@ -56,7 +56,7 @@ export class LobbyScene extends Phaser.Scene {
 
   bindDom() {
     const acc = account.account;
-    $('#lb-acc').innerHTML = acc ? `บัญชี <b>${esc(acc.display)}</b>${acc.guest ? ' <small class="acc-badge guest">Guest</small>' : ''}` : 'โหมดออฟไลน์ · เซฟในเครื่อง';
+    $('#lb-acc').innerHTML = acc ? (acc.guest ? 'บัญชี <b>Guest</b> <small class="acc-badge guest">ยังไม่เชื่อม ID</small>' : `บัญชี <b>${esc(acc.display)}</b>`) : 'โหมดออฟไลน์ · เซฟในเครื่อง';
     $('#lb-logout').classList.toggle('hidden', !acc);
     $('#lb-logout').onclick = async () => {
       if (account.isGuest && !confirm('บัญชี Guest ยังไม่ได้เชื่อม ID — ถ้าออกจากระบบจะกลับมาเล่นตัวละครในบัญชีนี้ไม่ได้อีก ต้องการออกจริงไหม?')) return;

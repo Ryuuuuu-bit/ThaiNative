@@ -120,9 +120,9 @@ export function setupAuth(app, hooks = {}) {
       const taken = new Set(await req.store.namesLike(base));
       if (taken.has(base.toLowerCase())) {
         let n = 1;
-        while (n < 1000 && taken.has(`${base}#${String(n).padStart(3, '0')}`.toLowerCase())) n++;
+        while (n < 1000 && taken.has(`${base} #${String(n).padStart(3, '0')}`.toLowerCase())) n++;
         if (n >= 1000) return res.status(409).json({ error: 'ชื่อนี้มีคนใช้เยอะเกินไป ลองชื่ออื่น' });
-        c.name = `${base}#${String(n).padStart(3, '0')}`;
+        c.name = `${base} #${String(n).padStart(3, '0')}`;           // แสดงเป็น "Ryuu #001"
       } else c.name = base;
       try { await req.store.saveCharacter(req.account.id, slot, c); break; }
       catch (e) { if (e.code !== '23505' || attempt >= 3) throw e; }          // มีคนเอาชื่อนี้ไปพร้อมกัน → ลองเลขถัดไป
