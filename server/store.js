@@ -66,6 +66,17 @@ class PgStore {
           ALTER TABLE characters ADD PRIMARY KEY (account_id, slot);
         END IF;
       END $$;`);
+    // ล้างข้อมูลผู้เล่นทั้งหมด (ครั้งเดียวต่อค่า): ตั้ง env RESET_ALL_DATA=<รหัสใหม่> แล้ว deploy
+    const reset = String(process.env.RESET_ALL_DATA || '').trim();
+    if (reset) {
+      await this.pool.query('CREATE TABLE IF NOT EXISTS meta (key TEXT PRIMARY KEY, value TEXT)');
+      const { rows } = await this.pool.query("SELECT value FROM meta WHERE key = 'reset'");
+      if (rows[0]?.value !== reset) {
+        await this.pool.query('TRUNCATE characters, sessions, accounts RESTART IDENTITY CASCADE');
+        await this.pool.query("INSERT INTO meta (key, value) VALUES ('reset', $1) ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value", [reset]);
+        console.log(`[store] RESET_ALL_DATA=${reset} → ล้างบัญชี/ตัวละคร/เซสชันทั้งหมดแล้ว`);
+      }
+    }
     return this;
   }
 

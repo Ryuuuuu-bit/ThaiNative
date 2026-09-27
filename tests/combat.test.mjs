@@ -76,16 +76,17 @@ assert.equal(canLearn({ ...ch, sp: 0 }, 'mage_akom').ok, false, 'no SP');
 assert.equal(canLearn({ ...ch, skills: { mage_akom: 1 } }, 'mage_akom').ok, false, 'lv2 needs char lv3');
 assert.equal(reqCharLevel(SKILL_BY_ID.mage_akom, 2), 3);
 
-// 6b) สายหลัก/สายรอง: ชาวบ้านอัปได้ถึง Lv.2 · สายหลักถึง 5 · ท่าไม้ตายเฉพาะสายหลัก
+// 6b) ต้นไม้พรสวรรค์: เพดานสกิล = 2 + แต้มกิ่ง÷2 · ท่าไม้ตายต้องมีคีย์สโตน
 {
-  const v = { path: null, level: 20, sp: 10, skills: { sword_twin: 2 } };
-  assert.equal(canLearn(v, 'sword_twin').ok, false, 'villager capped at 2');
-  assert.equal(canLearn(v, 'sword_pikat').ok, false, 'villager no ultimate');
-  const m = { ...v, path: 'swordman' };
-  assert.equal(canLearn(m, 'sword_twin').ok, true, 'main path to 5');
-  assert.equal(canLearn(m, 'sword_pikat').ok, true, 'main path ultimate');
-  assert.equal(canLearn({ ...m, skills: { arch_quick: 2 } }, 'arch_quick').ok, false, 'sub path capped');
-  assert.equal(canLearn(m, 'arch_rain').ok, false, 'sub path ultimate locked');
+  const v = { passives: ['root'], level: 20, sp: 10, skills: { sword_twin: 2 } };
+  assert.equal(canLearn(v, 'sword_twin').ok, false, 'no branch points → capped at 2');
+  assert.equal(canLearn(v, 'sword_pikat').ok, false, 'no keystone → no ultimate');
+  const m = { ...v, passives: ['root', ...Array.from({ length: 9 }, (_, i) => `swordman_${i}`)] };
+  assert.equal(canLearn(m, 'sword_twin').ok, true, 'branch points raise cap');
+  assert.equal(canLearn(m, 'sword_pikat').ok, true, 'keystone unlocks ultimate');
+  assert.equal(skillCap(m, SKILL_BY_ID.sword_twin), 5);
+  assert.equal(canLearn({ ...m, skills: { arch_quick: 2 } }, 'arch_quick').ok, false, 'other branch capped');
+  assert.equal(canLearn(m, 'arch_rain').ok, false, 'other keystone missing');
   assert.equal(skillCap(m, SKILL_BY_ID.arch_quick), 2);
 }
 // 6c) แนวต่อสู้มาจากอาวุธ (server ไม่เชื่อ job จาก client)
