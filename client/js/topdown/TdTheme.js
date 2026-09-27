@@ -145,6 +145,8 @@ export class TdAtmosphere {
     this.lights = [];
     const light = (x, y, r, col = 0xffc46b, k = 1) => this.lights.push({ img: s.add.image(x, y, 'fx_glow').setDepth(50002).setBlendMode(Phaser.BlendModes.ADD).setTint(col).setDisplaySize(r * 2, r * 1.4).setAlpha(0), k, ph: Math.random() * 6 });
     for (const p of layout.props) {
+      if (!p.drawn) continue;
+      if (p.glow) { const [dy, r, col, k] = p.glow; light(p.x, p.y + dy * (p.scale || 1), r, col, k); continue; }
       if (p.key === 'td_pillar') light(p.x, p.y - 30, 42);
       else if (p.key === 'house') { light(p.x - 16, p.y - 30, 26, 0xffd27a, 0.8); light(p.x + 16, p.y - 30, 26, 0xffd27a, 0.8); }
       else if (p.key === 'stall' || p.key === 'food_stall') light(p.x, p.y - 20, 40, 0xffb35c, 0.9);

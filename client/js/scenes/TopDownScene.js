@@ -21,7 +21,7 @@ import { Econ } from '../net/Econ.js';
 import { Network } from '../net/Network.js';
 import { account } from '../net/Account.js';
 import { count } from '../systems/Inventory.js';
-import { TILE, MAP_W, MAP_H, T, RIVER, bakeTileset, bakeProps, buildLayout } from '../topdown/AyutthayaMap.js';
+import { TILE, MAP_W, MAP_H, T, RIVER, TOWN, GATE, bakeTileset, bakeProps, buildLayout } from '../topdown/AyutthayaMap.js';
 import { dirFromVector, playDir, registerDir8, texKey } from '../topdown/Dir8.js';
 import { TdSkills } from '../topdown/TdSkills.js';
 import { WeaponOverlay } from '../topdown/WeaponOverlay.js';
@@ -166,6 +166,10 @@ export class TopDownScene extends Phaser.Scene {
         x = x1 + 1;
       }
     }
+    // ใบเสมาเรียงบนกำแพงเมือง (ตกแต่ง ไม่ชนกัน)
+    { const { x0, y0, x1, y1 } = TOWN, sema = (x, y) => this.add.image(x, y, 'td_sema').setOrigin(0.5, 1).setDepth(y);
+      for (let x = x0; x <= x1; x++) { sema(x * TILE + 8, (y0 + 1) * TILE + 2); if (x < GATE.x0 || x > GATE.x1) sema(x * TILE + 8, y1 * TILE + 2); }
+      for (let y = y0 + 2; y < y1 - 1; y++) { sema(x0 * TILE + 16, (y + 1) * TILE); sema(x1 * TILE, (y + 1) * TILE); } }
     // สะพานไม้ทับแม่น้ำ (วาดเหนือชั้นน้ำ)
     const bx0 = 57 * TILE, by0 = (RIVER.y0 - 1) * TILE, bw = 6 * TILE, bh = (RIVER.y1 - RIVER.y0 + 3) * TILE;
     this.add.tileSprite(bx0, by0, bw, bh, 'td_tiles', T.WOOD).setOrigin(0).setDepth(0.3);
@@ -178,11 +182,16 @@ export class TopDownScene extends Phaser.Scene {
 
   buildProps() {
     for (const p of this.layout.props) {
-      if (!this.textures.exists(p.key)) continue;
-      const img = this.add.image(p.x, p.y, p.key).setOrigin(0.5, 1).setDepth(p.depth ?? p.y);
+      // ภาพ PixelLab (env/…) ถ้ามี · ไม่มี → ภาพสำรอง (alt) ที่วาดด้วยโค้ด
+      let key = p.key, scale = p.scale;
+      if (!this.textures.exists(key)) { key = p.alt; scale = p.altScale ?? p.scale; }
+      if (!key || !this.textures.exists(key)) continue;
+      p.drawn = true;
+      const img = this.add.image(p.x, p.y, key).setOrigin(0.5, 1).setDepth(p.depth ?? p.y);
       if (p.flip) img.setFlipX(true);
-      if (p.scale) img.setScale(p.scale);
-      if (p.key !== 'boat' && p.key !== 'pr_reeds') this.add.ellipse(p.x, p.y - 1, img.displayWidth * 0.8, 7, 0x000000, 0.25).setDepth(0.6);
+      if (scale) img.setScale(scale);
+      const env = key.startsWith('env/');
+      if (p.foot?.[0] && key !== 'boat') this.add.ellipse(p.x, p.y - 1, img.displayWidth * (env ? 0.7 : 0.8), env ? Math.min(12, img.displayWidth * 0.18) : 7, 0x000000, 0.22).setDepth(0.6);
       if (p.label) makeText(this, p.x, p.y - img.displayHeight - 3, p.label, { fontSize: '6px', color: '#f7dc6f' }).setOrigin(0.5, 1).setDepth(p.y + 1);
       if (p.warp) this.warpGate = { x: p.x, y: p.y };
     }

@@ -90,6 +90,12 @@ export function bakeProps(scene) {
     for (let y = 4; y < 22; y += 4) for (let x = 0; x < 48; x += 8) { const o = (y / 4) % 2 ? 4 : 0; if (rnd() < 0.85 || y > 12) { px((x + o) % 48, y, 7, 3, '#9d5840'); px((x + o) % 48, y + 3, 8, 1, '#5b2e1e'); } }
     px(0, 4, 48, 1, '#c07a5c'); px(10, 0, 12, 4, '#8c4a34'); px(30, 2, 8, 2, '#8c4a34');
   });
+  // ใบเสมาบนสันกำแพงเมือง (ปูนขาว ยอดแหลมมน)
+  mk('td_sema', 14, 14, (ctx, px) => {
+    px(1, 10, 12, 4, '#cfc3a8'); px(1, 13, 12, 1, '#8a7a5c');
+    for (let y = 0; y < 10; y++) { const w = Math.round(4 + 6 * Math.sin(Math.min(1, (y + 1) / 7) * Math.PI / 2)); px(7 - w / 2, y + 1, w, 1, y < 2 ? '#fffaf0' : '#efe6d2'); }
+    px(10, 4, 2, 7, '#c9bc9e'); px(3, 3, 1, 6, '#ffffff'); px(6, 0, 2, 2, '#d8cbad');
+  });
   // ศาลาท่าน้ำเล็ก / เสาหลักเมือง
   mk('td_pillar', 16, 40, (ctx, px) => { px(4, 30, 8, 10, '#8d7455'); px(5, 6, 6, 24, '#e9dcc0'); px(5, 6, 2, 24, '#fff7e6'); px(3, 2, 10, 4, '#d4a93c'); px(6, 0, 4, 2, '#f4d03f'); });
 }

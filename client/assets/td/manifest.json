@@ -63,7 +63,105 @@
    },
    "frame": 72,
    "scale": 0.667
+  },
+  "hero_male_ruenton": {
+   "anims": [
+    "idle",
+    "walk"
+   ],
+   "frames": {
+    "idle": 4,
+    "walk": 6
+   },
+   "frame": 72,
+   "scale": 0.667
+  },
+  "hero_male_jongkraben": {
+   "anims": [
+    "idle",
+    "walk"
+   ],
+   "frames": {
+    "idle": 4,
+    "walk": 6
+   },
+   "frame": 72,
+   "scale": 0.667
+  },
+  "hero_male_rajpatan": {
+   "anims": [
+    "idle",
+    "walk"
+   ],
+   "frames": {
+    "idle": 4,
+    "walk": 6
+   },
+   "frame": 72,
+   "scale": 0.667
   }
  },
- "images": []
+ "images": [
+  "env/b_wat",
+  "env/b_viharn",
+  "env/b_ruenthai",
+  "env/b_sala",
+  "env/b_wat2",
+  "env/b_chediruin",
+  "env/b_village",
+  "env/b_hamlet",
+  "env/b_ubosot",
+  "env/b_sala2",
+  "env/b_house2",
+  "env/b_prang",
+  "env/t_tamarind",
+  "env/t_palm",
+  "env/t_golden",
+  "env/t_bamboo",
+  "env/m_prangbig",
+  "env/m_chedi",
+  "env/m_compound",
+  "env/m_mondop",
+  "env/p_jar",
+  "env/p_table",
+  "env/p_chest",
+  "env/p_candle",
+  "env/p_tray",
+  "env/p_offering",
+  "env/p_plants",
+  "env/p_lion",
+  "env/p_drum",
+  "env/p_spirit",
+  "env/p_gong",
+  "env/p_stall",
+  "env/p_lantern",
+  "env/p_torch",
+  "env/p_fence",
+  "env/p_pots",
+  "env/p_cart",
+  "env/p_haystack",
+  "env/p_bamboo",
+  "env/p_frangipani",
+  "env/p_lotus",
+  "env/p_buddha",
+  "env/p_ruin",
+  "env/p_buddhahead",
+  "env/p_bench",
+  "env/p_shrub",
+  "env/p_well",
+  "env/p_torch2",
+  "env/p_fence2",
+  "env/p_pots2",
+  "env/p_cart2",
+  "env/p_haystack2",
+  "env/p_bamboo2",
+  "env/p_frangipani2",
+  "env/p_lotus2",
+  "env/p_buddha2",
+  "env/p_ruin2",
+  "env/p_buddhahead2",
+  "env/p_bench2",
+  "env/p_shrub2",
+  "env/p_well2"
+ ]
 }
