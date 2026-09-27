@@ -114,6 +114,17 @@ const ITEMS_BASE = {
   rib_bone:     { nameTh: 'ซี่โครงผีหลังกลวง',  type: 'material', icon: '🦴', sell: 50 },
   chamot_scale: { nameTh: 'เกล็ดผีจะมอด',       type: 'material', icon: '🐊', sell: 55 },
   asura_horn:   { nameTh: 'เขาเปรตอสุรกาย',     type: 'material', icon: '🦬', sell: 220 },
+  // ---- วัตถุดิบจากแมพต่างแดน (Lv.30–99) ----
+  himma_fur:    { nameTh: 'ขนสัตว์หิมพานต์',     type: 'material', icon: '🦁', sell: 140 },
+  himma_feather:{ nameTh: 'ขนนกหัสดีลิงค์',      type: 'material', icon: '🪶', sell: 180 },
+  makka_fruit:  { nameTh: 'ผลมักกะลีผล',        type: 'material', icon: '🍑', sell: 210 },
+  giant_tusk:   { nameTh: 'งากุมภกรรณ',          type: 'material', icon: '🦣', sell: 1200 },
+  naga_scale:   { nameTh: 'เกล็ดนาคพราย',        type: 'material', icon: '🐍', sell: 260 },
+  pearl_ghost:  { nameTh: 'ไข่มุกเงือกผี',         type: 'material', icon: '🦪', sell: 320 },
+  naga_gem:     { nameTh: 'แก้วมณีนาคราช',       type: 'material', icon: '💎', sell: 2500 },
+  hell_ember:   { nameTh: 'ถ่านไฟนรก',           type: 'material', icon: '🔥', sell: 380 },
+  ngiw_thorn:   { nameTh: 'หนามต้นงิ้ว',          type: 'material', icon: '🌵', sell: 430 },
+  yama_seal:    { nameTh: 'ตราพญายม',           type: 'material', icon: '⚖️', sell: 5000 },
 
   // ---------- ปลา (ตกที่ท่าน้ำ ซ้ายสุดของหมู่บ้าน) – ขายป้าสา หรือให้ป้าสาทำอาหาร ----------
   pla_nin:     { nameTh: 'ปลานิล',            type: 'fish', icon: '🐟', sell: 6 },
@@ -182,10 +193,16 @@ const FLASK_DEF = [
   ['mp', 1, 'ขวดน้ำมะพร้าวเล็ก', 40, 3, 150], ['mp', 8, 'ขวดชาดอกอัญชัน', 100, 3, 1200], ['mp', 14, 'คนโทน้ำจันทร์', 180, 4, 3500],
   ['mp', 20, 'คนโทน้ำค้างทิพย์', 280, 4, 7000], ['mp', 26, 'น้ำมนต์เจ็ดป่าช้า', 400, 5, 0], ['mp', 30, 'น้ำอมฤตจันทรา', 550, 5, 0],
 ];
-FLASK_DEF.forEach(([kind, lv, nameTh, heal, max, price], i) => {
-  const n = (i % 6) + 1;
+// ขวดยาขั้นสูง (แมพต่างแดน · ดรอปเท่านั้น) — รหัส flask_hp7..10 / flask_mp7..10
+FLASK_DEF.push(
+  ['hp', 40, 'น้ำทิพย์หิมพานต์', 1900, 5, 0], ['hp', 55, 'อมฤตนาคา', 2700, 6, 0], ['hp', 70, 'น้ำมนต์มณีนาคราช', 3600, 6, 0], ['hp', 85, 'อมฤตดับไฟนรก', 4600, 6, 0],
+  ['mp', 40, 'น้ำค้างดอกบัวหิมพานต์', 780, 5, 0], ['mp', 55, 'น้ำมนต์บาดาล', 1050, 6, 0], ['mp', 70, 'น้ำอมฤตพระจันทร์เต็มดวง', 1350, 6, 0], ['mp', 85, 'น้ำมนต์ยมโลก', 1700, 6, 0],
+);
+const FLASK_N = { hp: 0, mp: 0 };
+FLASK_DEF.forEach(([kind, lv, nameTh, heal, max, price]) => {
+  const n = ++FLASK_N[kind];
   ITEMS[`flask_${kind}${n}`] = { nameTh, type: 'flask', icon: kind === 'hp' ? '🧪' : '🫙', lv, ...(price ? { price } : { sell: 1500 + lv * 60 }),
-    flask: { kind, heal, max }, art: `flask_${kind}_${n}`,
+    flask: { kind, heal, max }, art: `flask_${kind}_${Math.min(6, n)}`,
     desc: `ขวดยา${kind === 'hp' ? 'ฟื้น HP' : 'ฟื้น MP'} +${heal} · ดื่มได้ ${max} ครั้ง · ฆ่าผีเติมกลับ · ใส่ช่องขวดยา (Q/E)` };
 });
 

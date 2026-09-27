@@ -20,8 +20,9 @@ const WATER_COLS = ['#3f7fb5', '#4a8cc2', '#3a74a6'];
 // ------------------------------------------------------------
 //  พื้น: วาดทั้งแมพเป็นภาพ (แบ่งก้อน 960×896)
 // ------------------------------------------------------------
-export function bakeGround(scene, ground, tilesets = []) {
+export function bakeGround(scene, ground, tilesets = [], style = {}) {
   const src = scene.textures.get('td_tiles').getSourceImage();
+  const MAP_W = ground[0].length, MAP_H = ground.length;               // ขนาดตามแมพที่โหลด (อยุธยา/แมพต่างแดน)
   const W = MAP_W * TILE, H = MAP_H * TILE;
   const big = document.createElement('canvas'); big.width = W; big.height = H;
   const ctx = big.getContext('2d');
@@ -141,6 +142,13 @@ export function bakeGround(scene, ground, tilesets = []) {
     px(X, Y, 6, 4, '#2f8a4a'); px(X + 1, Y, 4, 1, '#56b86c'); px(X + 3, Y + 1, 1, 2, '#1f6a3a');
     if (rnd() < 0.4) { px(X + 2, Y - 2, 3, 2, '#f7a8c8'); px(X + 3, Y - 3, 1, 1, '#ffe0ee'); }
   }
+  // 6) โทนสีประจำแมพ (ใต้บาดาล = ฟ้า · นรก = แดงหม่น) + น้ำเป็นลาวา
+  if (style.overlay) { ctx.fillStyle = style.overlay; ctx.fillRect(0, 0, W, H); }
+  if (style.water) {
+    ctx.fillStyle = style.water;
+    for (const [x, y] of waterTiles(ground)) ctx.fillRect(x * TILE, y * TILE, TILE, TILE);
+    if (style.lava) for (const [x, y] of waterTiles(ground)) if (rnd() < 0.3) { ctx.fillStyle = rnd() < 0.5 ? 'rgba(255,220,120,0.8)' : 'rgba(90,10,0,0.45)'; ctx.fillRect(x * TILE + rnd() * 10, y * TILE + rnd() * 12, 3 + rnd() * 4, 2); }
+  }
   // → texture ก้อนละ 960×896
   const CW = 960, CH = 896, parts = [];
   for (let cy = 0; cy < H; cy += CH) for (let cx = 0; cx < W; cx += CW) {
@@ -158,7 +166,7 @@ export function bakeGround(scene, ground, tilesets = []) {
 }
 
 /** ชั้นน้ำเคลื่อนไหว (ลายคลื่นเลื่อน) */
-export function makeWater(scene, ground) {
+export function makeWater(scene, ground, style = {}) {
   if (!scene.textures.exists('td_water')) {
     const c = document.createElement('canvas'); c.width = 64; c.height = 32; const g = c.getContext('2d');
     g.fillStyle = '#3f7fb5'; g.fillRect(0, 0, 64, 32);
@@ -182,6 +190,7 @@ export function makeWater(scene, ground) {
     const X = r.x0 * TILE, Y = r.y0 * TILE, W = (r.x1 - r.x0 + 1) * TILE, H = (r.y1 - r.y0 + 1) * TILE;
     const a = scene.add.tileSprite(X, Y, W, H, 'td_water').setOrigin(0).setDepth(0.2).setTilePosition(X, Y).setVisible(!scene.tilesets?.length);
     const b = scene.add.tileSprite(X + 3, Y + 3, Math.max(1, W - 6), Math.max(1, H - 6), 'td_water').setOrigin(0).setDepth(0.21).setAlpha(scene.tilesets?.length ? 0.12 : 0.35).setBlendMode(Phaser.BlendModes.ADD);
+    if (style.waterTint) { a.setTint(style.waterTint); b.setTint(style.waterTint).setAlpha(style.lava ? 0.4 : 0.25); if (style.lava) a.setVisible(false); }
     layers.push([a, b, X, Y]);
   }
   return { update(t) { for (const [a, b, X, Y] of layers) { a.tilePositionX = X + t * 0.008; a.tilePositionY = Y; b.tilePositionX = X - t * 0.013; b.tilePositionY = Y + Math.sin(t / 900) * 3; } } };
@@ -194,11 +203,39 @@ export class TdAtmosphere {
   constructor(scene, layout, dayMs = 20 * 60 * 1000) {
     this.s = scene; this.dayMs = dayMs; this.offset = 0;
     const s = scene, cam = s.cameras.main;
+    this.layout = layout;
     this.wt = waterTiles(layout.ground);
     // ม่านสีกลางคืน (อยู่เหนือโลก ใต้ UI) – ใช้ MULTIPLY ให้สีมืดลงแบบยังเห็นรายละเอียด
     this.night = s.add.rectangle(0, 0, 4000, 4000, 0x3a3f9a, 1).setScrollFactor(0).setDepth(50000).setBlendMode(Phaser.BlendModes.MULTIPLY).setAlpha(0);
     this.dusk = s.add.rectangle(0, 0, 4000, 4000, 0xff9a4a, 1).setScrollFactor(0).setDepth(50001).setBlendMode(Phaser.BlendModes.ADD).setAlpha(0);
     // แสงโคม (ADD) ที่เสาหลัก/บ้าน/ร้าน/กองไฟ
+    this.lights = [];
+    this.buildLights(layout);
+    // อนุภาค: หิ่งห้อย (กลางคืนนอกเมือง) / กลีบดอกลีลาวดีร่วง (กลางวันในเมือง)
+    this.flies = s.add.particles(0, 0, 'fx_spark', {
+      x: { min: -480, max: 480 }, y: { min: -270, max: 270 }, lifespan: 3200, speedX: { min: -8, max: 8 }, speedY: { min: -10, max: 4 },
+      scale: { start: 0.18, end: 0 }, alpha: { start: 0.9, end: 0 }, tint: [0xf9e79f, 0xabebc6], frequency: 90, blendMode: 'ADD',
+    }).setDepth(50003); this.flies.stop();
+    this.petals = s.add.particles(0, 0, 'fx_spark', {
+      x: { min: -520, max: 520 }, y: -300, lifespan: 6000, speedX: { min: 6, max: 22 }, speedY: { min: 18, max: 34 },
+      scale: { start: 0.14, end: 0.1 }, alpha: { start: 0.85, end: 0 }, tint: [0xfff4f8, 0xffd6e8, 0xfff0b0], frequency: 260, rotate: { min: 0, max: 360 },
+    }).setDepth(49990); this.petals.stop();
+    // เงาเมฆลอยผ่านพื้น
+    this.clouds = [];
+    for (let i = 0; i < 5; i++) this.clouds.push(s.add.image(Math.random() * layout.ground[0].length * TILE, Math.random() * layout.ground.length * TILE, 'fx_glow').setTint(0x000000).setAlpha(0.1).setDisplaySize(260 + Math.random() * 200, 140 + Math.random() * 80).setDepth(49980));
+    // ประกายน้ำ + ปลากระโดด
+    this.sparkle = s.add.particles(0, 0, 'fx_spark', {
+      emitZone: { type: 'random', source: { getRandomPoint: (v) => { const [x, y] = this.wt[Math.floor(Math.random() * this.wt.length)] || [0, 0]; v.x = x * TILE + Math.random() * TILE; v.y = y * TILE + Math.random() * TILE; return v; } } }, lifespan: 700, scale: { start: 0.2, end: 0 }, alpha: { start: 0.9, end: 0 },
+      tint: 0xe8f8ff, frequency: 45, blendMode: 'ADD',
+    }).setDepth(0.25);
+    this.nextFish = 0;
+    cam.on('followupdate', () => {});
+  }
+
+  /** แสงโคม/ไฟ ตามของประกอบฉากของแมพ */
+  buildLights(layout) {
+    const s = this.s;
+    for (const l of this.lights) l.img.destroy();
     this.lights = [];
     const light = (x, y, r, col = 0xffc46b, k = 1) => this.lights.push({ img: s.add.image(x, y, 'fx_glow').setDepth(50002).setBlendMode(Phaser.BlendModes.ADD).setTint(col).setDisplaySize(r * 2, r * 1.4).setAlpha(0), k, ph: Math.random() * 6 });
     for (const p of layout.props) {
@@ -212,25 +249,16 @@ export class TdAtmosphere {
       else if (p.key === 'td_chedi') light(p.x, p.y - 40, 60, 0xfff0c0, 0.5);
     }
     for (const n of layout.npcs) light(n.x, n.y - 16, 22, 0xfff2c8, 0.35);
-    // อนุภาค: หิ่งห้อย (กลางคืนนอกเมือง) / กลีบดอกลีลาวดีร่วง (กลางวันในเมือง)
-    this.flies = s.add.particles(0, 0, 'fx_spark', {
-      x: { min: -480, max: 480 }, y: { min: -270, max: 270 }, lifespan: 3200, speedX: { min: -8, max: 8 }, speedY: { min: -10, max: 4 },
-      scale: { start: 0.18, end: 0 }, alpha: { start: 0.9, end: 0 }, tint: [0xf9e79f, 0xabebc6], frequency: 90, blendMode: 'ADD',
-    }).setDepth(50003); this.flies.stop();
-    this.petals = s.add.particles(0, 0, 'fx_spark', {
-      x: { min: -520, max: 520 }, y: -300, lifespan: 6000, speedX: { min: 6, max: 22 }, speedY: { min: 18, max: 34 },
-      scale: { start: 0.14, end: 0.1 }, alpha: { start: 0.85, end: 0 }, tint: [0xfff4f8, 0xffd6e8, 0xfff0b0], frequency: 260, rotate: { min: 0, max: 360 },
-    }).setDepth(49990); this.petals.stop();
-    // เงาเมฆลอยผ่านพื้น
-    this.clouds = [];
-    for (let i = 0; i < 5; i++) this.clouds.push(s.add.image(Math.random() * MAP_W * TILE, Math.random() * MAP_H * TILE, 'fx_glow').setTint(0x000000).setAlpha(0.1).setDisplaySize(260 + Math.random() * 200, 140 + Math.random() * 80).setDepth(49980));
-    // ประกายน้ำ + ปลากระโดด
-    this.sparkle = s.add.particles(0, 0, 'fx_spark', {
-      emitZone: { type: 'random', source: { getRandomPoint: (v) => { const [x, y] = this.wt[Math.floor(Math.random() * this.wt.length)] || [0, 0]; v.x = x * TILE + Math.random() * TILE; v.y = y * TILE + Math.random() * TILE; return v; } } }, lifespan: 700, scale: { start: 0.2, end: 0 }, alpha: { start: 0.9, end: 0 },
-      tint: 0xe8f8ff, frequency: 45, blendMode: 'ADD',
-    }).setDepth(0.25);
-    this.nextFish = 0;
-    cam.on('followupdate', () => {});
+  }
+
+  /** เปลี่ยนแมพ: แสงใหม่ · ไทล์น้ำใหม่ · ขอบเขตเมฆ */
+  setLayout(layout, style = {}) {
+    this.layout = layout; this.style = style;
+    this.wt = waterTiles(layout.ground);
+    this.buildLights(layout);
+    const W = layout.ground[0].length * TILE, H = layout.ground.length * TILE;
+    for (const c of this.clouds) { c.x = Math.random() * W; c.y = Math.random() * H; }
+    this.sparkle.setVisible(!style.lava);
   }
 
   /** เวลาในเกม: ใช้ Date.now() + ค่าชดเชยจาก server */
@@ -251,9 +279,9 @@ export class TdAtmosphere {
     const wantFlies = dark > 0.5 && !inTown, wantPetals = L > 0.6 && inTown;
     if (wantFlies !== this.flies.emitting) wantFlies ? this.flies.start() : this.flies.stop();
     if (wantPetals !== this.petals.emitting) wantPetals ? this.petals.start() : this.petals.stop();
-    for (const c of this.clouds) { c.x += 0.18; c.y += 0.05; if (c.x > MAP_W * TILE + 300) { c.x = -300; c.y = Math.random() * MAP_H * TILE; } c.setAlpha(0.1 * L); }
+    for (const c of this.clouds) { c.x += 0.18; c.y += 0.05; if (c.x > this.layout.ground[0].length * TILE + 300) { c.x = -300; c.y = Math.random() * this.layout.ground.length * TILE; } c.setAlpha(0.1 * L); }
     // ปลากระโดดเป็นระยะ (เฉพาะใกล้กล้อง)
-    if (time > this.nextFish) {
+    if (time > this.nextFish && !this.style?.lava) {
       this.nextFish = time + 2500 + Math.random() * 4000;
       const near = this.wt.filter(([x, y]) => Math.abs(x * TILE - cx) < 260 && Math.abs(y * TILE - cy) < 200);
       const pick = near[Math.floor(Math.random() * near.length)];
@@ -398,6 +426,8 @@ export class TdMinimap {
     el.width = 150; el.height = 110; this.el = el; this.ctx = el.getContext('2d'); this.ctx.imageSmoothingEnabled = false;
     this.at = 0;
   }
+
+  setBase(miniCanvas) { this.base = miniCanvas; this.at = 0; }
 
   update(time, s) {
     this.el.hidden = s.settings?.minimap === false;

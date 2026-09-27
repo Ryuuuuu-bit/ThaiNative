@@ -259,6 +259,7 @@ function buildTown() {
     { id: 'kru_mage',  key: 'npc_kru_mage',   x: 38, y: 40, nameTh: 'หลวงตาเผือก', role: 'หมอธรรม·อาคม', color: '#bb8fce', lines: ['คาถาอาคมต้องฝึกทุกวัน ใจต้องนิ่ง', 'ผีกระสือกลัวหนามพุทรานะ จำไว้'] },
     { id: 'kru_archer',key: 'npc_kru_archer', x: 30, y: 44, nameTh: 'พรานแก้ว', role: 'ค่ายพรานไพร', color: '#82e0aa', lines: ['ธนูไม้ไผ่ของข้ายิงไกลกว่าใครในกรุง', 'ยิงจากระยะไกล อย่าให้ผีเข้าประชิด'] },
     { id: 'kru_boxer', key: 'npc_kru_boxer',  x: 34, y: 57, nameTh: 'ครูแดง', role: 'ค่ายมวย', color: '#f5b041', lines: ['มวยไทยคือศิลปะแม่ไม้ของบรรพบุรุษ', 'หมัด ศอก เข่า เท้า ใช้ให้ครบ!'] },
+    { id: 'warp',      key: 'npc_kru_mage',   x: 55, y: 57, nameTh: 'ฤๅษีเฝ้าประตูมิติ', role: 'วาร์ปต่างแดน', color: '#d2b4de', lines: ['ประตูมิติหิมพานต์อยู่กลางบึงผีพรายทางใต้ ต้อง Lv.30 ขึ้นไปจึงผ่านได้', 'แดนใดที่เจ้าเคยเหยียบแล้ว ข้าส่งไปให้ได้ทันที'] },
 ].map((n) => ({ ...n, x: n.x * TILE, y: n.y * TILE }));
 
   // ---- จุดเกิดผี (ทุ่งนอกประตูใต้) ----
@@ -417,6 +418,11 @@ export function buildLayout() {
   BOSS('chalawan', OX + 60, 187);
   P('env/p_spirit', OX + 54, 181, { foot: [2, 1], scale: 1.1, label: 'ศาลพญาชาละวัน', glow: [-20, 50, 0x85c1e9, 1] });
   for (const [x, y] of [[OX + 53, 184], [OX + 67, 184], [OX + 53, 191], [OX + 67, 191]]) small('p_torch', x, y, { glow: TORCH });
+  // ประตูมิติ → ป่าหิมพานต์ (Lv.30+) ริมทางไม้กลางบึง
+  const portals = [{ to: 'himmaphan', x: 132 * TILE, y: 186 * TILE, r: 26 }];
+  disc(132, 186, 3.5, T.BRICK); disc(132, 186, 4.5, T.STONE); disc(132, 186, 3.5, T.BRICK); path([[132, 168], [132, 182]], 3, T.WOOD); reserveDisc(132, 184, 6);
+  for (let k = 0; k <= 30; k++) reserveDisc(132, Math.round(168 + k * 14 / 30), 2);
+  for (const [dx, dy] of [[-3, -2], [3, -2]]) small('p_torch2', 132 + dx, 186 + dy, { glow: [-22, 46, 0xb266ff, 1.1] });
   // บัว/เรือ/ต้นไม้ริมบึง
   for (const [cx, cy, r] of ponds) for (let i = 0; i < r; i++) { const a = rnd() * 6.28, d = rnd() * (r - 1); deco(rnd() < 0.5 ? 'p_lotus' : 'p_lotus2', Math.round(cx + Math.cos(a) * d), Math.round(cy + Math.sin(a) * d), { depth: 1 }); }
   for (let y = SY; y < MAP_H - 1; y += 3) for (let x = 1; x < MAP_W - 1; x += 3) {
@@ -431,5 +437,5 @@ export function buildLayout() {
   // ---- ตารางชน ----
   const solid = ground.map((row) => row.map((t) => SOLID.has(t)));
   for (const p of props) { const [fw, fh] = p.foot || [0, 0]; if (!fw) continue; const tx = Math.round(p.x / TILE) - Math.floor(fw / 2), ty = Math.round(p.y / TILE) - fh; for (let y = ty; y < ty + fh; y++) for (let x = tx; x < tx + fw; x++) if (solid[y]?.[x] !== undefined) solid[y][x] = true; }
-  return { ground, solid, props, npcs, spawns };
+  return { ground, solid, props, npcs, spawns, portals, labels: [] };
 }

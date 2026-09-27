@@ -342,7 +342,7 @@ export class TdSkills {
 
   solidAt(x, y) {
     const tx = Math.floor(x / TILE), ty = Math.floor(y / TILE);
-    return tx < 0 || ty < 0 || tx >= MAP_W || ty >= MAP_H || !!this.s.solid?.[ty]?.[tx];
+    return tx < 0 || ty < 0 || tx >= (this.s.mapW || MAP_W) || ty >= (this.s.mapH || MAP_H) || !!this.s.solid?.[ty]?.[tx];
   }
 
   // ---------------- เลือกเป้า / ทิศ ----------------

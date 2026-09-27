@@ -3,6 +3,8 @@
 //  ▸ server เป็นเจ้าของข้อมูลจริงตอนออนไลน์ · client ใช้ตอนเล่นออฟไลน์
 // ============================================================
 import { baseItemId } from './data/affixes.js';
+/** รหัสที่ใช้วาดบนตัว (ของแมพต่างแดนยืมภาพของชิ้นขั้นสูงเดิม) */
+const lookOf = (id) => { const b = baseItemId(id); return (b && ITEMS[b]?.lookAs) || b; };
 import { ENHANCE } from './data/village.js';
 import { JOBS, VILLAGER, PATH_LV, SUB_CAP } from './data/classes.js';
 import { ITEMS, STARTING_GOLD, STARTING_ITEMS, STARTER_WEAPON } from './data/items.js';
@@ -67,7 +69,7 @@ export function syncAppearance(c) {
   const before = JSON.stringify(c.appearance), oldStyle = c.appearance?.job;
   const e = c.enhance || {};
   const top = Math.max(0, ...Object.entries(e).filter(([slot]) => c.equipment[slot]).map(([, v]) => v || 0));
-  c.appearance = sanitizeAppearance({ ...c.appearance, weapon: baseItemId(c.equipment.weapon), armor: baseItemId(c.equipment.armor), path: c.path, aura: ENHANCE.auraTier(top), costume: c.costume,
+  c.appearance = sanitizeAppearance({ ...c.appearance, weapon: lookOf(c.equipment.weapon), armor: lookOf(c.equipment.armor), path: c.path, aura: ENHANCE.auraTier(top), costume: c.costume,
     wenh: c.equipment.weapon ? e.weapon || 0 : 0, aenh: c.equipment.armor ? e.armor || 0 : 0, title: c.title || null });
   if (oldStyle && oldStyle !== c.appearance.job) swapHotbar(c, oldStyle, c.appearance.job);
   return before !== JSON.stringify(c.appearance);

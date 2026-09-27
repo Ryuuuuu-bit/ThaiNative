@@ -41,7 +41,14 @@ export class TdLife {
     return n;
   }
 
-  ready(n) { return this.s.time.now >= n.readyAt; }
+  ready(n) { return this.on !== false && this.s.time.now >= n.readyAt; }
+
+  /** เปลี่ยนแมพ: จุดเก็บเกี่ยวมีเฉพาะกรุงศรีฯ · ลาวานรกตกปลาไม่ได้ */
+  setMap(M) {
+    this.on = M.id === 'ayutthaya'; this.noFish = !!M.noFish;
+    if (this.fish) this.stop();
+    for (const n of this.nodes) { n.spr.setVisible(this.on); n.glow.setVisible(this.on && this.s.time.now >= n.readyAt); this.on ? n.hit.setInteractive() : n.hit.disableInteractive(); }
+  }
 
   nearNode(r = GATHER_R) {
     const p = this.s.player;
@@ -69,7 +76,7 @@ export class TdLife {
       s.sfx.play('coin');
       n.readyAt = s.time.now + (r.respawn || 90000);
       n.spr.setAlpha(0.15); n.glow.setVisible(false);
-      s.time.delayedCall(r.respawn || 90000, () => { n.spr.setAlpha(1); n.glow.setVisible(true); });
+      s.time.delayedCall(r.respawn || 90000, () => { n.spr.setAlpha(1); n.glow.setVisible(this.on !== false); });
       const it = ITEMS[r.item];
       s.combat.popupText(n.x, n.y - 16, `+${it?.icon || ''}${it?.nameTh || r.item}${r.qty > 1 ? ` x${r.qty}` : ''}`);
       this.lifeUp(r.life);
@@ -88,6 +95,7 @@ export class TdLife {
   // ---------------- ตกปลา ----------------
   /** ช่องน้ำที่ใกล้ที่สุดภายใน 2 ช่อง (ใช้วางทุ่น) */
   waterNear() {
+    if (this.noFish) return null;
     const p = this.s.player, g = this.s.layout.ground;
     const tx = Math.floor(p.x / TILE), ty = Math.floor(p.y / TILE);
     let best = null, bd = 99;

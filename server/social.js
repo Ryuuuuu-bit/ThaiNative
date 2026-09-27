@@ -20,7 +20,7 @@ const int = (v, lo, hi) => clamp(Math.floor(Number(v) || 0), lo, hi);
 const MAX_FRIENDS = 50;
 let seq = 1;
 
-import { ZONES, zoneAt } from '../shared/td/ayutthaya.js';
+import { getMap } from '../shared/td/maps.js';
 export function setupSocial(io, players, H = {}) {
   const { queueSync = () => {}, refresh = () => {}, hurtPlayer = () => {}, byAcc = new Map() } = H;
   const sock = (id) => io.sockets.sockets.get(id);
@@ -28,7 +28,7 @@ export function setupSocial(io, players, H = {}) {
   const sys = (id, text) => emitTo(id, 'chat', { id: null, name: '📢 ระบบ', text });
   /** ตำแหน่งผู้เล่น (โลกอยุธยา top-down ใช้ tx/ty · โลกเดิมใช้ x อย่างเดียว) */
   const pos = (p) => (p.world === 'td' ? { x: p.tx, y: p.ty } : { x: p.x, y: 0 });
-  const apart = (a, b) => { if ((a.world === 'td') !== (b.world === 'td')) return Infinity; const A = pos(a), B = pos(b); return Math.hypot(A.x - B.x, A.y - B.y); };
+  const apart = (a, b) => { if ((a.world === 'td') !== (b.world === 'td') || (a.world === 'td' && (a.tmap || 'ayutthaya') !== (b.tmap || 'ayutthaya'))) return Infinity; const A = pos(a), B = pos(b); return Math.hypot(A.x - B.x, A.y - B.y); };
 
   // ===================== ปาร์ตี้ =====================
   const parties = new Map();              // partyId → { id, leader, members:Set }
@@ -305,7 +305,7 @@ export function setupSocial(io, players, H = {}) {
     return (p.save.friends || []).map((f) => {
       const q = players.get(byAcc.get(f.acc));
       if (q) f.name = q.name;
-      return { acc: f.acc, name: f.name, online: !!q, id: q?.id || null, level: q?.level || null, map: q ? (q.world === 'td' ? (ZONES[zoneAt(q.tx, q.ty)]?.nameTh || 'กรุงศรีอยุธยา') : mapAt(q.x).nameTh) : null, job: q?.appearance?.path || null };
+      return { acc: f.acc, name: f.name, online: !!q, id: q?.id || null, level: q?.level || null, map: q ? (q.world === 'td' ? (() => { const M = getMap(q.tmap); const z = M.ZONES[M.zoneAt(q.tx, q.ty)]?.nameTh; return M.realm ? `${M.nameTh}${z && z !== M.nameTh ? ` · ${z}` : ''}` : z || M.nameTh; })() : mapAt(q.x).nameTh) : null, job: q?.appearance?.path || null };
     });
   }
   function pushFriends(p) { emitTo(p.id, 'friends:state', friendsState(p)); }

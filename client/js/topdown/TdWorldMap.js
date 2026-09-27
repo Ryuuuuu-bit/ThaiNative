@@ -3,17 +3,20 @@
 //  โซน + เลเวล · บอส (มีชีวิต/รอเกิด) · NPC · แหล่งผี · ตัวเรา/เพื่อน
 //  คลิกบนแผนที่ = เดินไปจุดนั้นอัตโนมัติ
 // ============================================================
-import { TILE, MAP_W, MAP_H, ZONES, zoneAtTile, SPAWN } from '/shared/td/ayutthaya.js';
+import { TILE } from '/shared/td/ayutthaya.js';
+import { TD_MAPS } from '/shared/td/maps.js';
 import { MONSTERS } from '/shared/data/monsters.js';
 
 const $ = (s) => document.querySelector(s);
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const SCALE = 2;                     // groundMini: 1 ไทล์ = 2px
+let MAP_W = 232, MAP_H = 200;         // ขนาดแมพปัจจุบัน (ตั้งใน constructor)
 
 export class TdWorldMap {
   constructor(scene) {
     this.s = scene;
     this.panel = $('#map-panel');
+    this.M = scene.M; MAP_W = this.M.W; MAP_H = this.M.H;
     this.zoneLabels = this.computeZones();
     this.camps = this.computeCamps();
     this.timer = null;
@@ -21,6 +24,9 @@ export class TdWorldMap {
 
   /** จุดกึ่งกลางของแต่ละโซน (ไว้วางป้ายชื่อ) */
   computeZones() {
+    const M = this.M;
+    if (M.realm) return (this.s.layout.labels || []).map(([tx, ty, text], i) => ({ id: `l${i}`, tx, ty, nameTh: text, sub: i === 0 ? 'Safe Zone' : '', color: i === 0 ? '#f7dc6f' : M.color }));
+    const { zoneAtTile, ZONES } = M, SPAWN = M.spawn;
     const acc = {};
     for (let y = 0; y < MAP_H; y += 2) for (let x = 0; x < MAP_W; x += 2) {
       const z = zoneAtTile(x, y); const a = (acc[z] ||= { x: 0, y: 0, n: 0 }); a.x += x; a.y += y; a.n++;
@@ -53,7 +59,9 @@ export class TdWorldMap {
   }
 
   render() {
-    this.panel.querySelector('header').innerHTML = 'แผนที่ · กรุงศรีอยุธยา <span class="wm-hint">คลิกบนแผนที่เพื่อเดินไป · M ปิด</span> <button class="close">✕</button>';
+    MAP_W = this.M.W; MAP_H = this.M.H;
+    const { zoneAtTile, ZONES } = this.M;
+    this.panel.querySelector('header').innerHTML = `แผนที่ · ${esc(this.M.nameTh)} <span class="wm-hint">คลิกบนแผนที่เพื่อเดินไป · M ปิด</span> <button class="close">✕</button>`;
     this.panel.querySelector('header .close').onclick = () => this.panel.classList.add('hidden');
     const W = MAP_W * SCALE, H = MAP_H * SCALE;
     $('#world-map').className = 'world-map td-wm';
@@ -64,7 +72,9 @@ export class TdWorldMap {
         <div class="wm-tags"></div>
         <div class="wm-tip hidden"></div>
       </div>
-      <div class="wm-legend"><span><i class="me"></i>ตัวเรา</span><span><i class="ally"></i>ผู้เล่นอื่น</span><span><i class="npc"></i>NPC</span><span><i class="boss"></i>บอส</span><span><i class="camp"></i>แหล่งผี</span></div>`;
+      <div class="wm-realms">${Object.values(TD_MAPS).map((m) => { const been = (this.s.visitedMaps || ['ayutthaya']).includes(m.id), here = m.id === this.M.id;
+        return `<span class="${here ? 'here' : been ? 'been' : 'lock'}" title="${esc(m.sub)}">${m.icon} ${esc(m.nameTh)} <em>Lv.${m.lv[0]}–${m.lv[1]}</em>${here ? ' 📍' : been ? '' : ' 🔒'}</span>`; }).join('<b>›</b>')}</div>
+      <div class="wm-legend"><span><i class="me"></i>ตัวเรา</span><span><i class="ally"></i>ผู้เล่นอื่น</span><span><i class="npc"></i>NPC</span><span><i class="boss"></i>บอส</span><span><i class="camp"></i>แหล่งผี</span><span>🌀 ประตูมิติ</span></div>`;
     const g = this.panel.querySelector('.wm-base').getContext('2d');
     g.imageSmoothingEnabled = false;
     if (this.s.groundMini) g.drawImage(this.s.groundMini, 0, 0, W, H);
@@ -76,7 +86,7 @@ export class TdWorldMap {
     // คลิก = เดินไป · ชี้ = บอกโซน
     const stage = this.panel.querySelector('.wm-stage'), tip = this.panel.querySelector('.wm-tip');
     const toWorld = (e) => { const r = stage.getBoundingClientRect(); return { x: (e.clientX - r.left) / r.width * MAP_W * TILE, y: (e.clientY - r.top) / r.height * MAP_H * TILE, px: e.clientX - r.left, py: e.clientY - r.top }; };
-    stage.onmousemove = (e) => { const w = toWorld(e), z = ZONES[zoneAtTile(Math.floor(w.x / TILE), Math.floor(w.y / TILE))]; tip.classList.remove('hidden'); tip.style.left = `${w.px + 12}px`; tip.style.top = `${w.py + 8}px`; const nb = this.nearest(w.x, w.y); tip.innerHTML = `<b>${esc(z?.nameTh || '')}</b><br><small>${esc(z?.sub || '')}</small>${nb ? `<br>${esc(nb)}` : ''}`; };
+    stage.onmousemove = (e) => { const w = toWorld(e), z = this.M.ZONES[this.M.zoneAtTile(Math.floor(w.x / TILE), Math.floor(w.y / TILE))]; tip.classList.remove('hidden'); tip.style.left = `${w.px + 12}px`; tip.style.top = `${w.py + 8}px`; const nb = this.nearest(w.x, w.y); tip.innerHTML = `<b>${esc(z?.nameTh || '')}</b><br><small>${esc(z?.sub || '')}</small>${nb ? `<br>${esc(nb)}` : ''}`; };
     stage.onmouseleave = () => tip.classList.add('hidden');
     stage.onclick = (e) => {
       const w = toWorld(e), p = this.s.player;
@@ -98,6 +108,7 @@ export class TdWorldMap {
       const m = MONSTERS[c.id]; if (!m) continue;
       tags.push(`<div class="wm-camp" style="${P(c.x, c.y)}"><i></i><span><em>${m.level}</em></span></div>`);
     }
+    for (const pt of this.s.layout.portals || []) { const T2 = TD_MAPS[pt.to]; if (T2) tags.push(`<div class="wm-boss wm-portal" style="${P(pt.x, pt.y)}"><i>🌀</i><span>${esc(T2.nameTh)} <em>Lv.${T2.reqLv}+</em></span></div>`); }
     for (const n of this.s.layout.npcs || []) tags.push(`<div class="wm-npc" style="${P(n.x, n.y)}" title="${esc(n.nameTh)} · ${esc(n.role || '')}"><i></i></div>`);
     for (const sp of (this.s.layout.spawns || []).filter((q) => q.boss)) {
       const m = MONSTERS[sp.id]; if (!m) continue;
@@ -122,6 +133,7 @@ export class TdWorldMap {
     for (const sp of this.s.layout.spawns || []) { if (!sp.boss) continue; const d = Math.hypot(sp.x - wx, sp.y - wy); if (d < bd) { bd = d; best = `👑 ${MONSTERS[sp.id]?.nameTh} Lv.${MONSTERS[sp.id]?.level}`; } }
     for (const c of this.camps) { const d = Math.hypot(c.x - wx, c.y - wy); if (d < bd) { bd = d; best = `👻 ${MONSTERS[c.id]?.nameTh} Lv.${MONSTERS[c.id]?.level}`; } }
     for (const n of this.s.layout.npcs || []) { const d = Math.hypot(n.x - wx, n.y - wy); if (d < bd * 0.6) { bd = d / 0.6; best = `🧑 ${n.nameTh} · ${n.role || ''}`; } }
+    for (const pt of this.s.layout.portals || []) { const d = Math.hypot(pt.x - wx, pt.y - wy); if (d < bd) { bd = d; best = `🌀 ประตูมิติ → ${TD_MAPS[pt.to]?.nameTh} (Lv.${TD_MAPS[pt.to]?.reqLv}+)`; } }
     return best;
   }
 
@@ -141,7 +153,7 @@ export class TdWorldMap {
     g.beginPath(); g.arc(p.x * k, p.y * k, 8 + t * 10, 0, Math.PI * 2); g.strokeStyle = `rgba(255,255,255,${1 - t})`; g.lineWidth = 2; g.stroke();
     dot(p.x, p.y, 7, '#2ecc71', '#fff');
     // บอส: มีชีวิต / รอเกิด
-    for (const el of this.panel.querySelectorAll('.wm-boss')) {
+    for (const el of this.panel.querySelectorAll('.wm-boss[data-boss]')) {
       const m = (this.s.mobs || []).find((q) => q.def?.boss && q.spawn?.id === el.dataset.boss);
       const alive = !!m?.alive;
       el.classList.toggle('dead', !alive);

@@ -14,8 +14,8 @@
   <meta name="theme-color" content="#5a1611" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link href="https://fonts.googleapis.com/css2?family=Mitr:wght@400;500;600&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="css/style.css?v=hud8" />
-  <link rel="stylesheet" href="css/hud.css?v=hud8" />
+  <link rel="stylesheet" href="css/style.css?v=hud9" />
+  <link rel="stylesheet" href="css/hud.css?v=hud9" />
 </head>
 <body>
   <!-- วอลเปเปอร์หน้าเข้าเกม (สุ่มฉาก + เอฟเฟกต์ขยับได้) -->
@@ -353,7 +353,14 @@
       <section id="map-panel" class="panel window wide hidden">
         <header>แผนที่ · ดินแดนบางผี <button class="close">✕</button></header>
         <div id="world-map" class="world-map"></div>
-        <p class="hint">แต่ละแมพมีผีชนิดเดียว เลเวลไต่ขึ้นทีละแมพ · เดินไปประตูขวาสุดของแมพเพื่อไปแมพถัดไป · ประตูซ้าย/หมู่บ้าน = เลือกวาร์ปไปแมพที่เลเวลถึง · 🌙 = ผีกลางคืน ดุและให้รางวัลเพิ่มตอนกลางคืน</p>
+        <p class="hint">คลิกบนแผนที่เพื่อเดินไป · 🌀 ประตูมิติพาไปแดนถัดไป (ต้องถึงเลเวลที่กำหนด) · ฤๅษีเฝ้าประตูมิติ (ในเมือง/ค่ายพัก) วาร์ปไปแดนที่เคยไปแล้วได้ทันที · 🌙 = ผีกลางคืน</p>
+      </section>
+
+      <!-- วาร์ปต่างแดน (NPC ฤๅษีเฝ้าประตูมิติ) -->
+      <section id="warp-panel" class="panel window hidden">
+        <header>🌀 ประตูมิติ · วาร์ปต่างแดน <button class="close">✕</button></header>
+        <div id="warp-list" class="warp-list"></div>
+        <p class="hint">วาร์ปได้เฉพาะแดนที่เคยเดินผ่านประตูมิติไปแล้ว · ค่ายพักทุกแดนเป็น Safe Zone ขวดยาเติมเต็ม</p>
       </section>
 
       <!-- ตั้งค่า (ESC) -->

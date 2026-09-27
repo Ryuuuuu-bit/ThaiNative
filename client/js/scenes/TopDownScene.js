@@ -22,7 +22,9 @@ import { Econ } from '../net/Econ.js';
 import { Network } from '../net/Network.js';
 import { account } from '../net/Account.js';
 import { count } from '../systems/Inventory.js';
-import { TILE, MAP_W, MAP_H, T, SPAWN as TD_SPAWN, inTownXY, isIsland, bakeTileset, bakeProps, buildLayout, OX, ZONES, zoneAt } from '../topdown/AyutthayaMap.js';
+import { TILE, T, SPAWN as TD_SPAWN, isIsland, bakeTileset, bakeProps, OX } from '../topdown/AyutthayaMap.js';
+import { TD_MAPS, getMap, validMap, arrivalPoint } from '/shared/td/maps.js';
+import { hasDir8 } from '../topdown/Dir8.js';
 import { dirFromVector, stableDir, playDir, registerDir8, texKey } from '../topdown/Dir8.js';
 import { TdSkills } from '../topdown/TdSkills.js';
 import { GEAR_TYPES, FLASK_SLOTS } from '/shared/data/slots.js';
@@ -43,7 +45,7 @@ const SPEED = 92;
 /** ระบบ Auto: หาผีเองในรัศมีนี้รอบตัว (px ≈ 10 ช่อง) */
 const AUTO_MARGIN = 24;                                    // Auto: ตีผีทุกตัวที่อยู่ในหน้าจอ (ขอบจอเผื่อไว้นิดหน่อย)
 const AUTO_GIVEUP = 6000;                                  // ไล่เป้า Auto นานเกินนี้โดยไม่ได้ตี (ทางตัน) → ข้ามไปตัวอื่นชั่วคราว                                   // ความเร็วเดิน (px/วิ) – ตรงกับ server/td.js
-const SPAWN = TD_SPAWN;
+const AYT_SPAWN = TD_SPAWN;                                 // ลานน้ำพุกลางกรุงศรีฯ (ยันต์คืนถิ่น)
 const HP_POTS = ['hp_s', 'hp_m', 'pot_aloe', 'pot_turmeric'];
 const MP_POTS = ['mp_s', 'mp_m', 'pot_anchan'];
 /** NPC → หน้าต่างบริการ (ชุดเดียวกับโลกเดิม) */
@@ -94,11 +96,11 @@ export class TopDownScene extends Phaser.Scene {
     { const cam = this.cameras.main, shake = cam.shake.bind(cam), flash = cam.flash.bind(cam);
       cam.shake = (d, i, ...r) => (this.settings?.fxShake === false ? cam : shake(d, i, ...r));
       cam.flash = (d, rr, g, b, ...r) => (this.settings?.fxFlash === 'off' ? cam : flash(this.settings?.fxFlash === 'soft' ? d * 0.4 : d, rr, g, b, ...r)); }
-    this.layout = buildLayout();
+    this.visitedMaps = Array.isArray(char.tdMaps) && char.tdMaps.length ? [...char.tdMaps] : ['ayutthaya'];
+    this.setMapDef(validMap(char.tdMap));
     this.remotes = new Map();
     this.shadows = [];
-    this.buildMap();
-    this.buildProps();
+    this.mapObjs = this.track(() => { this.buildMap(); this.buildProps(); });
     this.buildPlayer(char);
     this.buildAdapters();
     this.econ = new Econ(this);
@@ -114,14 +116,14 @@ export class TopDownScene extends Phaser.Scene {
         document.addEventListener('pointerdown', (e) => { if (!e.target.closest('#dock-toggle, .hud-buttons.dock')) hb.classList.remove('open'); }); } } }
     { const tb = document.querySelector('#td-hud .td-bottom'); if (tb) { tb.classList.remove('fade'); clearTimeout(this._hintT); this._hintT = setTimeout(() => tb.classList.add('fade'), 15000); } }
     document.querySelector('.minimap')?.classList.add('hidden');
-    this.buildNpcs();
-    this.buildMonsters();
+    this.mapObjs.push(...this.track(() => { this.buildNpcs(); this.buildMonsters(); this.buildPortals(); }));
     this.buildInput();
     $('#td-hud').classList.remove('hidden');
 
     const cam = this.cameras.main;
-    cam.setBounds(0, 0, MAP_W * TILE, MAP_H * TILE).setZoom(1.5).startFollow(this.player, false, 0.14, 0.14).setRoundPixels(false);
-    this.atmo = new TdAtmosphere(this, this.layout);
+    cam.setBounds(0, 0, this.mapW * TILE, this.mapH * TILE).setZoom(1.5).startFollow(this.player, false, 0.14, 0.14).setRoundPixels(false);
+    this.atmo = new TdAtmosphere(this, this.layout); this.atmo.setLayout(this.layout, this.M.style);
+    this.life.setMap(this.M);
     this.vfx = new TdVfx(this);
     this.skills = new TdSkills(this);
     this.weapons = new WeaponOverlay(this);
@@ -132,7 +134,7 @@ export class TopDownScene extends Phaser.Scene {
     this.ui.updateHud();
     this.setupNetwork();
     if (this.econ.server) this.social = new TdSocial(this);           // ปาร์ตี้ · เทรด · เพื่อน · อันดับ · ฉายา (ต้องออนไลน์)
-    this.ui.toast('🏯 ยินดีต้อนรับสู่กรุงศรีอยุธยา · คลิกพื้นเพื่อเดิน คลิกผีเพื่อโจมตี · คลิก NPC เพื่อเปิดร้าน', '', 6000);
+    this.ui.toast(this.M.realm ? `${this.M.icon} ${this.M.nameTh} · ${this.M.sub}` : '🏯 ยินดีต้อนรับสู่กรุงศรีอยุธยา · คลิกพื้นเพื่อเดิน คลิกผีเพื่อโจมตี · คลิก NPC เพื่อเปิดร้าน', '', 6000);
     if (!this.econ.server) this.time.addEvent({ delay: 5000, loop: true, callback: () => this.saveSoon() });
     // ฟื้น MP ทุกวินาที (ในเมืองเร็วกว่า) – MP เป็นของ client ทั้งออนไลน์/ออฟไลน์ · HP ออนไลน์ server ฟื้นให้
     this.time.addEvent({ delay: 1000, loop: true, callback: () => {
@@ -147,7 +149,7 @@ export class TopDownScene extends Phaser.Scene {
   // ------------------------------------------------------------
   buildAdapters() {
     const s = this;
-    this.map = { id: 'ayutthaya', no: 0, nameTh: 'กรุงศรีอยุธยา', minX: 0, maxX: MAP_W * TILE, gates: [], region: 'r1', get safe() { return s.inTown(); } };
+    this.map = { id: 'ayutthaya', no: 0, nameTh: 'กรุงศรีอยุธยา', minX: 0, get maxX() { return s.mapW * TILE; }, gates: [], region: 'r1', get safe() { return s.inTown(); } };
     this.worldMap = new TdWorldMap(this);
     this.world = { toggleMap: () => this.worldMap.toggle() };
     this.combat = {
@@ -175,7 +177,7 @@ export class TopDownScene extends Phaser.Scene {
       const p = this.player;
       if (!p.alive || this.recalling) return;
       if (count(p.char, 'yant_home') <= 0) return this.ui.toast('ไม่มียันต์คืนถิ่น (ซื้อได้ที่ร้านยายติ๋ม)', 'warn');
-      if (this.inTown()) return this.ui.toast('อยู่ในเมืองอยู่แล้ว', '', 1800);
+      if (this.M.id === 'ayutthaya' && this.inTown()) return this.ui.toast('อยู่ในเมืองอยู่แล้ว', '', 1800);
       const start = { x: p.x, y: p.y }, hurt = p.hurtAt || 0;
       p.path = []; p.target = null;
       this.recalling = true;
@@ -186,24 +188,124 @@ export class TopDownScene extends Phaser.Scene {
         if (!p.alive || dist(p, start) > 6 || (p.hurtAt || 0) !== hurt) return this.ui.toast('การร่ายถูกขัดจังหวะ', 'warn');
         const r = await this.econ.act('recall', {});
         if (!r.ok) return this.ui.result(r);
-        p.setPosition(SPAWN.x, SPAWN.y); p.path = []; this.sfx.play('levelup');
-        yantCircle(this, SPAWN.x, SPAWN.y, { tint: 0x9fe0ff, size: 70, ms: 900, rise: true });
+        if (this.M.id !== 'ayutthaya') this.loadMap('ayutthaya', AYT_SPAWN);    // ออนไลน์: server ส่ง td:warp มาก่อนแล้ว (ซ้ำได้ ไม่มีผล)
+        p.setPosition(AYT_SPAWN.x, AYT_SPAWN.y); p.path = []; this.sfx.play('levelup');
+        yantCircle(this, AYT_SPAWN.x, AYT_SPAWN.y, { tint: 0x9fe0ff, size: 70, ms: 900, rise: true });
         this.ui.toast('กลับถึงลานน้ำพุกลางเมือง', 'ok', 2200);
       });
     };
     this.nearNpc = (id) => this.npcs?.some((n) => n.id === id && dist(n, this.player) < 60);
   }
 
-  inTown() { return !!this.player && inTownXY(this.player.x, this.player.y); }
+  inTown() { return !!this.player && this.M.inSafe(this.player.x, this.player.y); }
+
+  // ------------------------------------------------------------
+  //  หลายแมพ: กรุงศรีฯ + แมพต่างแดน (สลับในฉากเดิม ไม่โหลดหน้าใหม่)
+  // ------------------------------------------------------------
+  setMapDef(id) {
+    this.M = getMap(id); this.layout = this.M.layout(); this.mapW = this.M.W; this.mapH = this.M.H;
+    if (!this.visitedMaps.includes(this.M.id)) this.visitedMaps.push(this.M.id);
+  }
+
+  /** เรียก fn แล้วคืนรายการวัตถุในฉากที่ถูกสร้างขึ้นระหว่างนั้น (ไว้ลบตอนเปลี่ยนแมพ) */
+  track(fn) { const before = new Set(this.children.list); fn(); return this.children.list.filter((o) => !before.has(o)); }
+
+  /** เปลี่ยนแมพ: ลบของแมพเก่า (พื้น/น้ำ/ของประกอบฉาก/NPC/ผี/ประตู) → สร้างแมพใหม่ → วางผู้เล่นที่ pos */
+  loadMap(id, pos) {
+    id = validMap(id);
+    const p = this.player;
+    if (id === this.M.id) { if (pos) { p.setPosition(pos.x, pos.y); p.path = []; } return; }
+    this.life?.stop?.('เปลี่ยนแมพ');
+    p.target = null; p.autoTarget = null; p.path = []; p.setVelocity(0, 0); this.pendingTalk = null; this.hovered = null;
+    this.ui.setTarget?.(null); this.ui.closeAll?.();
+    for (const o of this.mapObjs) { this.tweens.killTweensOf(o); o.destroy(); }
+    this.blocks.clear(true, true); this.blocks.destroy(); this.monsters?.clear(false, false); this.monsters?.destroy();
+    this.shadows = this.shadows.filter((sh) => { if (sh.obj.scene) return true; sh.img.destroy(); return false; });
+    this.remotes.forEach((r) => r.destroy()); this.remotes.clear();
+    this.setMapDef(id);
+    this.mapObjs = this.track(() => { this.buildMap(); this.buildProps(); this.buildNpcs(); this.buildMonsters(); this.buildPortals(); });
+    this.blockCollider?.destroy(); this.blockCollider = this.physics.add.collider(p, this.blocks);
+    const at = pos && !this.solid[Math.floor((pos.y - 2) / TILE)]?.[Math.floor(pos.x / TILE)] ? pos : this.M.spawn;
+    p.setPosition(at.x, at.y); p.char.tdMap = id; p.char.tdPos = { x: Math.round(at.x), y: Math.round(at.y) }; p.char.tdMaps = [...this.visitedMaps];
+    this.cameras.main.setBounds(0, 0, this.mapW * TILE, this.mapH * TILE).centerOn(at.x, at.y);
+    this.atmo.setLayout(this.layout, this.M.style);
+    this.minimap.setBase(this.groundMini);
+    this.life?.setMap(this.M);
+    this.worldMap = new TdWorldMap(this);
+    this.area = undefined; this.portalArmed = false;
+    this.ui.setOnline?.(this.net?.online, 0);
+    this.ui.banner(`${this.M.icon} ${this.M.nameTh}`, this.M.sub);
+    this.sfx.play('blessing');
+    yantCircle(this, at.x, at.y, { tint: 0xc39bd3, size: 80, ms: 1100, rise: true });
+    this.cameras.main.flash(260, 200, 170, 255);
+    if (!this.econ.server) this.saveSoon();
+  }
+
+  /** ประตูมิติ: วงแสงหมุน + ป้ายปลายทาง · เดินเข้า = วาร์ป */
+  buildPortals() {
+    this.portals = (this.layout.portals || []).map((pt) => {
+      const T2 = TD_MAPS[pt.to], col = pt.to === 'ayutthaya' ? 0xffd27a : T2.style?.waterTint || 0xc39bd3;
+      const base = this.add.ellipse(pt.x, pt.y, 60, 26, col, 0.25).setDepth(0.8).setStrokeStyle(2, col, 0.9);
+      const ring = this.add.image(pt.x, pt.y - 22, 'fx_ring').setDepth(pt.y - 1).setTint(col).setScale(0.9, 1.3).setAlpha(0.85).setBlendMode(Phaser.BlendModes.ADD);
+      const core = this.add.image(pt.x, pt.y - 22, 'fx_glow').setDepth(pt.y - 2).setTint(col).setDisplaySize(46, 64).setAlpha(0.55).setBlendMode(Phaser.BlendModes.ADD);
+      this.tweens.add({ targets: ring, angle: 360, duration: 3200, repeat: -1 });
+      this.tweens.add({ targets: core, alpha: 0.25, duration: 900, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
+      this.add.particles(pt.x, pt.y - 20, 'fx_spark', { speedY: { min: -40, max: -15 }, speedX: { min: -12, max: 12 }, lifespan: 1100, scale: { start: 0.25, end: 0 }, alpha: { start: 0.9, end: 0 }, tint: col, frequency: 70, blendMode: 'ADD', x: { min: -16, max: 16 } }).setDepth(pt.y);
+      const lock = (this.player?.char.level || 1) < T2.reqLv;
+      makeText(this, pt.x, pt.y - 62, `🌀 ${T2.nameTh}\nLv.${T2.reqLv}+${lock ? ' 🔒' : ''}`, { fontSize: '7px', color: lock ? '#f5b7b1' : '#ffe9a6', align: 'center' }).setOrigin(0.5, 1).setDepth(99990);
+      const hit = this.add.zone(pt.x, pt.y - 22, 48, 60).setInteractive({ useHandCursor: true }).setDepth(pt.y);
+      hit.on('pointerdown', (ptr) => { ptr.event.stopPropagation(); this.player.target = null; this.moveTo(pt.x, pt.y); });
+      return pt;
+    });
+  }
+
+  /** ขอวาร์ป (ผ่านประตู หรือ NPC) · ออฟไลน์ = ย้ายเองทันที */
+  warpTo(to, via = 'portal') {
+    const T2 = TD_MAPS[to], p = this.player;
+    if (!T2 || this.warping || !p.alive) return;
+    if (p.char.level < T2.reqLv) { this.ui.toast(`🔒 ${T2.nameTh} ต้อง Lv.${T2.reqLv} ขึ้นไป (ตอนนี้ Lv.${p.char.level})`, 'warn', 2400); return false; }
+    if (via === 'npc' && !this.visitedMaps.includes(to)) { this.ui.toast(`ยังไม่เคยไป${T2.nameTh} · ต้องเดินผ่านประตูมิติก่อน 1 ครั้ง`, 'warn', 2600); return false; }
+    this.warping = true; this.time.delayedCall(3000, () => { this.warping = false; });
+    if (this.econ.server) { this.net.send('td:warp', { to, via }); return true; }
+    const pos = via === 'portal' ? arrivalPoint(this.M.id, to) : { ...T2.spawn };
+    this.loadMap(to, pos); this.warping = false;
+    return true;
+  }
+
+  /** เดินเข้าวงประตูมิติ → วาร์ป (ต้องเดินออกห่างประตูก่อนหนึ่งครั้งหลังมาถึง กันเด้งไปมา) */
+  checkPortals() {
+    const p = this.player; if (!p.alive || !this.portals?.length) return;
+    let near = null, far = true;
+    for (const pt of this.portals) { const d = Math.hypot(pt.x - p.x, pt.y - p.y); if (d < 70) far = false; if (d < 18) near = pt; }
+    if (far) this.portalArmed = true;
+    if (near && this.portalArmed) { this.portalArmed = false; p.path = []; this.warpTo(near.to, 'portal'); }
+  }
+
+  /** หน้าต่างวาร์ป (คุยกับฤๅษีเฝ้าประตูมิติ) */
+  openWarp() {
+    const box = document.querySelector('#warp-list'), panel = document.querySelector('#warp-panel');
+    if (!box || !panel) return;
+    const lv = this.player.char.level;
+    box.innerHTML = Object.values(TD_MAPS).map((m) => {
+      const here = m.id === this.M.id, been = this.visitedMaps.includes(m.id), low = lv < m.reqLv;
+      const why = here ? 'อยู่ที่นี่' : low ? `ต้อง Lv.${m.reqLv}` : !been ? 'ยังไม่เคยไป' : '';
+      return `<div class="warp-card ${here ? 'here' : why ? 'lock' : ''}"><span class="wc-ic">${m.icon}</span>
+        <span><b>${m.nameTh}</b><small>${m.sub}${!been && !low ? ' · เดินผ่านประตูมิติ 🌀 เพื่อปลดล็อก' : ''}</small></span>
+        <button class="btn" data-warp="${m.id}" ${why ? 'disabled' : ''}>${why || 'วาร์ป'}</button></div>`;
+    }).join('');
+    box.querySelectorAll('[data-warp]').forEach((b) => (b.onclick = () => { if (this.warpTo(b.dataset.warp, 'npc')) panel.classList.add('hidden'); }));
+    this.ui.closeAll?.(); panel.classList.remove('hidden'); this.sfx.play('open');
+  }
 
   // ------------------------------------------------------------
   //  แมพ
   // ------------------------------------------------------------
   buildMap() {
     const { ground, solid } = this.layout;
-    const g = bakeGround(this, ground, this.tilesets || []);            // พื้นทั้งแมพ (ขอบนุ่ม + ของตกแต่งเล็ก)
+    const MAP_W = this.mapW, MAP_H = this.mapH;
+    const g = bakeGround(this, ground, this.tilesets || [], this.M.style);   // พื้นทั้งแมพ (ขอบนุ่ม + ของตกแต่งเล็ก + โทนสีประจำแมพ)
     this.groundMini = g.mini;
-    this.water = makeWater(this, this.layout.ground);
+    this.water = makeWater(this, this.layout.ground, this.M.style);
     this.solid = solid;
     this.blocks = this.physics.add.staticGroup();
     for (let y = 0; y < MAP_H; y++) {
@@ -249,15 +351,17 @@ export class TopDownScene extends Phaser.Scene {
       const img = this.add.image(p.x, p.y, key).setOrigin(0.5, 1).setDepth(p.depth ?? p.y);
       if (p.flip) img.setFlipX(true);
       if (scale) img.setScale(scale);
+      if (p.tint) img.setTint(p.tint);
       const env = key.startsWith('env/');
       if (p.foot?.[0] && key !== 'boat') this.add.ellipse(p.x, p.y - 1, img.displayWidth * (env ? 0.7 : 0.8), env ? Math.min(12, img.displayWidth * 0.18) : 7, 0x000000, 0.22).setDepth(0.6);
       if (p.label) makeText(this, p.x, p.y - img.displayHeight - 3, p.label, { fontSize: '6px', color: '#f7dc6f' }).setOrigin(0.5, 1).setDepth(p.y + 1);
       if (p.warp) this.warpGate = { x: p.x, y: p.y };
     }
+    const bigLabel = (x, y, text, color) => makeText(this, x * TILE, y * TILE, text, { fontSize: '10px', color }).setOrigin(0.5).setDepth(9000).setAlpha(0.8);
+    if (this.M.realm) { for (const [x, y, text] of this.layout.labels || []) bigLabel(x, y, text, '#ffe9a6'); return; }
     const zoneLabel = (tx, ty, text) => makeText(this, (tx + OX) * TILE, ty * TILE, text, { fontSize: '8px', color: '#ffe9a6' }).setOrigin(0.5).setDepth(9000).setAlpha(0.85);
     zoneLabel(86, 16, '✦ วัดพระศรีสรรเพชญ์ ✦'); zoneLabel(33, 14, '✦ วัดไชยวัฒนาราม ✦'); zoneLabel(60, 42, '⛲ ลานเมือง'); zoneLabel(60, 84, '⚔ ประตูเมืองใต้'); zoneLabel(60, 106, '🌾 ทุ่งนาบางปะอิน'); zoneLabel(60, 62, '🧺 ตลาดหัวรอ'); zoneLabel(30, 50, '🥊 สำนักดาบ·มวย'); zoneLabel(92, 50, '🔨 ย่านช่างน้ำพี้');
-    const bigLabel = (x, y, text, color) => makeText(this, x * TILE, y * TILE, text, { fontSize: '10px', color }).setOrigin(0.5).setDepth(9000).setAlpha(0.8);
-    bigLabel(28, 60, '🎋 ป่าไผ่ปู่โสม', '#b9f6ca'); bigLabel(204, 58, '🪦 ป่าช้าวัดร้าง', '#e8daef'); bigLabel(OX + 60, 150, '🪷 บึงผีพราย', '#d6eaf8');
+    bigLabel(28, 60, '🎋 ป่าไผ่ปู่โสม', '#b9f6ca'); bigLabel(204, 58, '🪦 ป่าช้าวัดร้าง', '#e8daef'); bigLabel(OX + 60, 150, '🪷 บึงผีพราย', '#d6eaf8'); bigLabel(132, 176, '🌀 ประตูมิติหิมพานต์', '#e8daef');
   }
 
   /** เงาวงรีใต้เท้า */
@@ -272,10 +376,10 @@ export class TopDownScene extends Phaser.Scene {
   // ------------------------------------------------------------
   buildPlayer(char) {
     const key = bakeCharacter(this, char.appearance);
-    const okPos = (q) => q && Number.isFinite(q.x) && !this.solid?.[Math.floor((q.y - 2) / TILE)]?.[Math.floor(q.x / TILE)] && q.y < MAP_H * TILE;
+    const okPos = (q) => q && Number.isFinite(q.x) && !this.solid?.[Math.floor((q.y - 2) / TILE)]?.[Math.floor(q.x / TILE)] && q.y < this.mapH * TILE && q.x < this.mapW * TILE;
     if (char.tdPos && (char.tdMapV || 1) < 2) char.tdPos = { x: char.tdPos.x + OX * TILE, y: char.tdPos.y };   // เซฟก่อนขยายแผนที่
     char.tdMapV = 2;
-    const pos = okPos(char.tdPos) ? char.tdPos : SPAWN;
+    const pos = okPos(char.tdPos) ? char.tdPos : this.M.spawn;
     const p = this.physics.add.sprite(pos.x, pos.y, key, 'idle_0').setOrigin(0.5, 1).setDepth(pos.y);
     p.body.setSize(12, 8).setOffset((p.width - 12) / 2, p.height - 8); p.bodyFoot = [12, 8];
     Object.assign(p, { char, texKey: key, legacyKey: key, d8id: heroId(char.appearance), dir: 'south', facing: 1, st: 'idle', path: [], target: null, nextAtk: 0, buffs: [], dead: false });
@@ -287,7 +391,7 @@ export class TopDownScene extends Phaser.Scene {
     p.holdAttack = () => p.char.appearance.job !== 'boxer';
     p.actionAnim = () => ACTION_ANIM[p.char.appearance.job];      // ดาบ/ไม้เท้า/ธนู ใช้ท่ายืน + อาวุธเหวี่ยง · มวยใช้ท่าต่อยจริง (ถ้ามี)
     this.player = p;
-    this.physics.add.collider(p, this.blocks);
+    this.blockCollider = this.physics.add.collider(p, this.blocks);
     this.nameTag = makeText(this, 0, 0, char.name, { fontSize: '7px', color: '#fff3c4', align: 'center' }).setOrigin(0.5, 1).setDepth(99999);
     this.refreshNameTag();
     p.on('animationcomplete', (anim) => { if (/:(attack|cast|hit|slash|shoot)(:|$)/.test(anim.key) && p.alive) p.st = 'idle'; });
@@ -342,6 +446,7 @@ export class TopDownScene extends Phaser.Scene {
     this.pendingTalk = null;
     this.sfx.play('npc');
     if (n.id === 'quest') return this.village.openQuests();
+    if (n.id === 'warp') return this.openWarp();
     if (NPC_OPEN[n.id]) return this.ui.openShop(NPC_OPEN[n.id]);
     this.ui.toast(`💬 ${n.nameTh}: “${n.lines[n.line++ % n.lines.length]}”`, '', 4500);
   }
@@ -356,13 +461,16 @@ export class TopDownScene extends Phaser.Scene {
   }
 
   spawnMonster(s, mid) {
-    const def = MONSTERS[s.id], key = `mon_${def.art || s.id}`;
+    const def = MONSTERS[s.id];
+    // ผีแมพต่างแดนที่ยังไม่มีภาพจริง → ยืมสไปรต์ 8 ทิศของผีเดิม (def.d8) + ย้อมสี (def.tint)
+    const own = hasDir8(this, `mob_${s.id}`, 'idle'), art = own ? s.id : def.d8 || s.id, key = `mon_${def.art || art}`;
     const m = this.physics.add.sprite(s.x, s.y, this.textures.exists(key) ? key : 'npc_maekha', 'walk_0').setOrigin(0.5, 1);
+    if (!own && def.tint) { const ct = m.clearTint.bind(m); m.clearTint = () => { ct(); m.setTint(def.tint); return m; }; m.setTint(def.tint); }
     this.monsters.add(m);
     const scale = def.scale || 1; m.setScale(scale); m.scaleMul = def.boss ? def.scale || 1.6 : 1;
     m.body.setSize(14 / scale, 8 / scale).setOffset((m.width - 14 / scale) / 2, m.height - 8 / scale); m.bodyFoot = [14, 8];
     Object.assign(m, { mid, def, spawn: s, hp: def.hp, maxHp: def.hp, alive: true, mode: 'wander', nextThink: 0, nextAtk: 0, dir: 'south', sx: s.x, sy: s.y });
-    m.legacyKey = m.texture.key; m.d8id = `mob_${s.id}`; playDir(m, 'walk', 'south');
+    m.legacyKey = m.texture.key; m.d8id = `mob_${art}`; playDir(m, 'walk', 'south');
     this.addShadow(m, Math.max(14, m.displayWidth * 0.7));
     m.label = makeText(this, m.x, m.y, `${def.boss ? '👑 ' : ''}Lv.${def.level} ${def.nameTh}`, { fontSize: def.boss ? '8px' : '6px', color: def.boss ? '#ffd76a' : '#f5b7b1' }).setOrigin(0.5, 1);
     m.barW = def.boss ? 48 : 22;
@@ -678,10 +786,10 @@ export class TopDownScene extends Phaser.Scene {
     if (p.dead) return;
     p.dead = true; p.char.hp = 0; p.target = null; p.path = []; p.setVelocity(0, 0);
     this.playerAnim('die', true); this.sfx.play('die');
-    this.ui.banner('💀 คุณสลบไป…', 'ฟื้นที่ประตูเมืองใน 3 วินาที');
+    this.ui.banner('💀 คุณสลบไป…', this.M.realm ? `ฟื้นที่${this.M.ZONES.hub.nameTh}ใน 3 วินาที` : 'ฟื้นที่ประตูเมืองใน 3 วินาที');
     this.time.delayedCall(3000, () => {
       if (this.econ.server) return this.net.send('td:respawn');
-      this.onRespawn({ x: SPAWN.x, y: SPAWN.y, hp: p.derived.maxHp });
+      this.onRespawn({ x: this.M.spawn.x, y: this.M.spawn.y, hp: p.derived.maxHp });
     });
   }
 
@@ -790,12 +898,23 @@ export class TopDownScene extends Phaser.Scene {
       .on('pl:die', () => this.playerDie())
       .on('pl:hp', ({ hp }) => { if (Number.isFinite(hp)) { this.player.char.hp = hp; this.ui.hudCache = ''; } })
       .on('chat', (m) => this.ui.chat(m))
-      .on('td:init', ({ x, y, players }) => {
+      .on('td:init', ({ map, maps, x, y, players }) => {
+        if (Array.isArray(maps)) this.visitedMaps = [...new Set([...this.visitedMaps, ...maps])];
+        if (map && map !== this.M.id) this.loadMap(map, { x, y });
         this.player.setPosition(x, y); this.cameras.main.centerOn(x, y);
         players.forEach((q) => this.addRemote(q));
         this.ui.setOnline(true, this.remotes.size);
       })
-      .on('td:joined', (q) => { this.addRemote(q); this.ui.chat({ name: '📢 ระบบ', text: `${q.name} เข้าสู่กรุงศรีอยุธยา` }); this.ui.setOnline(true, this.remotes.size); })
+      .on('td:joined', (q) => { this.addRemote(q); this.ui.chat({ name: '📢 ระบบ', text: `${q.name} เข้าสู่${this.M.nameTh}` }); this.ui.setOnline(true, this.remotes.size); })
+      .on('td:warp', ({ map, maps, x, y, players, how }) => {
+        this.warping = false;
+        if (Array.isArray(maps)) this.visitedMaps = [...new Set([...this.visitedMaps, ...maps])];
+        this.loadMap(map, { x, y });
+        (players || []).forEach((q) => this.addRemote(q));
+        this.ui.setOnline(true, this.remotes.size);
+        if (how === 'portal' && maps?.length && this.M.realm) this.ui.toast(`🌀 ปลดล็อกวาร์ป: ${this.M.nameTh} (คุยกับฤๅษีเฝ้าประตูมิติเพื่อกลับมาได้ทันที)`, 'ok', 3200);
+      })
+      .on('td:warpFail', ({ msg }) => { this.warping = false; this.ui.toast(msg || 'วาร์ปไม่สำเร็จ', 'warn', 2400); })
       .on('td:left', (id) => this.removeRemote(id))
       .on('skill', (d) => { const r = this.remotes.get(d.id); if (r) this.skills.remote(d, r); })
       .on('td:state', (s) => this.applyState(s))
@@ -812,7 +931,8 @@ export class TopDownScene extends Phaser.Scene {
     net.connect(this.player.char.name, () => ({ token: account.token, slot: account.slot }));
   }
 
-  applyState({ p: ps, m: ms }) {
+  applyState({ map, p: ps, m: ms }) {
+    if (map && map !== this.M.id) return;                          // แพ็กเก็ตค้างจากแมพเก่า (ระหว่างวาร์ป)
     for (const [mid, x, y, dirI, hp] of ms) {
       const m = this.mobs[mid];
       if (!m) continue;
@@ -943,6 +1063,7 @@ export class TopDownScene extends Phaser.Scene {
   findPath(sx, sy, tx, ty) {
     const solid = this.solid;
     const s = [Math.floor(sx / TILE), Math.floor(sy / TILE)], t = [Math.floor(tx / TILE), Math.floor(ty / TILE)];
+    const MAP_W = this.mapW, MAP_H = this.mapH;
     const inb = (x, y) => x >= 0 && y >= 0 && x < MAP_W && y < MAP_H;
     if (!inb(t[0], t[1])) return [];
     if (solid[t[1]][t[0]]) {
@@ -1071,7 +1192,7 @@ export class TopDownScene extends Phaser.Scene {
     }
     // ส่งตำแหน่ง ~10 ครั้ง/วิ
     if (this.net?.online && time - (this.sentAt || 0) > 100) {
-      const st = { x: Math.round(p.x), y: Math.round(p.y), dir: p.dir, anim: p.alive ? (p.st === 'walk' ? 'walk' : p.st === 'attack' ? 'attack' : 'idle') : 'die' };
+      const st = { map: this.M.id, x: Math.round(p.x), y: Math.round(p.y), dir: p.dir, anim: p.alive ? (p.st === 'walk' ? 'walk' : p.st === 'attack' ? 'attack' : 'idle') : 'die' };
       const sig = JSON.stringify(st);
       st.mp = Math.round(p.char.mp);
       if (sig !== this.sentSig || time - this.sentAt > 1000) { this.sentAt = time; this.sentSig = sig; this.net.send('td:move', st); }
@@ -1084,15 +1205,16 @@ export class TopDownScene extends Phaser.Scene {
       const t = this.layout.ground[Math.floor(p.y / TILE)]?.[Math.floor(p.x / TILE)];
       this.sfx.play(t === T.WOOD ? 'step_wood' : t === T.BRICK || t === T.STONE ? 'step_stone' : t === T.SAND || t === T.ROAD ? 'step_sand' : 'step_grass');
     }
-    const area = zoneAt(p.x, p.y);
+    const area = this.M.zoneAt(p.x, p.y);
     if (area !== this.area) {
       const was = this.area; this.area = area;
-      const Z = ZONES[area] || ZONES.outskirts;
+      const ZN = this.M.ZONES, Z = ZN[area] || ZN.outskirts || ZN.wild;
       if (was !== undefined && !(area === 'outskirts' && was === 'town') && !(area === 'town' && was === 'outskirts')) this.ui.banner(Z.nameTh, Z.sub);
-      $('#zone-name').textContent = area === 'town' ? 'กรุงศรีอยุธยา' : Z.nameTh;
-      const ICON = { town: '🏯', outskirts: '🌳', field: '🌾', bamboo: '🎋', graveyard: '🪦', swamp: '🪷' };
-      $('#td-zone').textContent = `${ICON[area] || ''} ${area === 'town' ? 'เกาะเมือง (Safe Zone)' : `${Z.nameTh} · ${Z.sub.split(' · ')[0]}`}`;
+      $('#zone-name').textContent = area === 'town' ? 'กรุงศรีอยุธยา' : this.M.realm ? this.M.nameTh : Z.nameTh;
+      const ICON = { town: '🏯', outskirts: '🌳', field: '🌾', bamboo: '🎋', graveyard: '🪦', swamp: '🪷', hub: '⛺', wild: this.M.icon, lair: '👑' };
+      $('#td-zone').textContent = `${ICON[area] || ''} ${area === 'town' ? 'เกาะเมือง (Safe Zone)' : area === 'hub' ? `${Z.nameTh} (Safe Zone)` : `${Z.nameTh} · ${Z.sub.split(' · ')[0]}`}`;
     }
+    this.checkPortals();
     if (zone !== this.zone) this.zone = zone;
     this.sfx.setMood({ lowHp: p.alive && p.char.hp / p.derived.maxHp < 0.25, boss: this.mobs.some((m) => m.def.boss && m.alive && dist(m, p) < 320) ? 1 : 0 });
     this.ui.updateHud();

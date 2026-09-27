@@ -15,7 +15,7 @@ export const STAT_INFO = {
 };
 
 export const POINTS_PER_LEVEL = 5;
-export const MAX_LEVEL = 30;           // เลเวลตัน
+export const MAX_LEVEL = 99;           // เลเวลตัน (ขยายจาก 30 → 99 · แมพต่างแดน 3 แมพ)
 
 export const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
 

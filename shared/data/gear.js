@@ -8,7 +8,12 @@ import { baseItemId } from './affixes.js';
 import { GEAR_ART } from './gear_art.js';
 
 export const GEAR_TIERS = [1, 2, 4, 6, 8, 10, 12, 14, 16, 18, 20, 22, 24, 26, 28, 30];
-export const SHOP_MAX_LV = 20;          // ครูอาชีพขายถึง Lv.20 · สูงกว่านั้นต้องล่า
+export const SHOP_MAX_LV = 20;
+/** ขั้นแมพต่างแดน (ต่อจาก Lv.30): ป่าหิมพานต์ 35–50 · นาคพิภพ 55–75 · นรกภูมิ 80–95 */
+export const HIGH_TIERS = [35, 40, 45, 50, 55, 60, 65, 70, 75, 80, 85, 90, 95];
+export const HIGH_PART_TIERS = [35, 45, 55, 65, 75, 85, 95];
+const HIGH_WORD = ['กินนร', 'คชสีห์', 'หัสดีลิงค์', 'ไกรสร', 'นาคพราย', 'มัจฉาทอง', 'เกล็ดนาค', 'มณีนาคา', 'อนันตนาค', 'นิรยบาล', 'ต้นงิ้ว', 'ยมทูต', 'ยมราช'];
+const HIGH_NOUN = { swordman: ['ดาบ', 'เกราะ', 'ตะกรุด'], mage: ['คทา', 'ชุดอาคม', 'จี้ยันต์'], archer: ['ธนู', 'ชุดพราน', 'สร้อย'], boxer: ['สนับมือ', 'ชุดมวย', 'ประเจียด'] };          // ครูอาชีพขายถึง Lv.20 · สูงกว่านั้นต้องล่า
 
 const NAMES = {
   swordman: {
@@ -115,7 +120,7 @@ function partBonus(slot, job, lv) {
     if (job === 'mage') return { ...b, def: R(b.def * 0.7), mp: R(5 + lv * 2) };
     return b;
   }
-  const b = { hp: R(15 + lv * 5), flaskPct: 5 + lv };                     // เข็มขัด: เลือด + ขวดยาฟื้นแรงขึ้น %
+  const b = { hp: R(15 + lv * 5), flaskPct: 5 + Math.min(lv, 45) };                     // เข็มขัด: เลือด + ขวดยาฟื้นแรงขึ้น %
   if (job === 'mage') return { hp: R(b.hp * 0.7), mp: R(10 + lv * 3), flaskPct: b.flaskPct };
   if (job === 'swordman') return { ...b, def: R(1 + lv / 5) };
   return b;
@@ -141,6 +146,22 @@ function build() {
           type: slot, icon: PART_ICON[slot], art: `gx_${k}_${slot}_${lv >= 16 ? 2 : 1}`, bonus: partBonus(slot, job, lv) };
       });
     }
+    // ---- อุปกรณ์แมพต่างแดน Lv.35–95 (ดรอปเท่านั้น) · ใช้ภาพของชิ้นขั้นสูงเดิม (art/lookAs) จนกว่าจะมีภาพใหม่ ----
+    HIGH_TIERS.forEach((lv, i) => {
+      const n = String(GEAR_TIERS.length + i + 1).padStart(2, '0'), ref = String(12 + (i % 5)).padStart(2, '0'), sfx = HIGH_WORD[i];
+      const hi = (code, extra) => { const rid = `g_${k}_${code}${ref}`; return { sell: R(gearPrice(lv) * 0.3), lv, job, tier: GEAR_TIERS.length + i + 1, drop: true, realm: true, ...(GEAR_ART[rid] || {}), art: rid, lookAs: rid, ...extra }; };
+      out[`g_${k}_w${n}`] = hi('w', { nameTh: `${HIGH_NOUN[job][0]}${sfx}`, type: 'weapon', icon: iw, wtype: WTYPE[job], bonus: weaponBonus(job, lv) });
+      out[`g_${k}_a${n}`] = hi('a', { nameTh: `${HIGH_NOUN[job][1]}${sfx}`, type: 'armor', icon: ia, bonus: armorBonus(job, lv) });
+      out[`g_${k}_c${n}`] = hi('c', { nameTh: `${HIGH_NOUN[job][2]}${sfx}`, type: 'accessory', icon: ic, bonus: accBonus(job, lv) });
+    });
+    HIGH_PART_TIERS.forEach((lv, i) => {
+      const n = String(PART_TIERS.length + i + 1).padStart(2, '0'), sfx = HIGH_WORD[HIGH_TIERS.indexOf(lv)];
+      for (const slot of ['helm', 'gloves', 'boots', 'belt']) {
+        const id = `g_${k}_${PART_CODE[slot]}${n}`, price = R(gearPrice(lv) * 0.6 / 10) * 10;
+        out[id] = { sell: R(price * 0.3), lv, job, tier: PART_TIERS.length + i + 1, drop: true, realm: true, nameTh: `${PART_NOUN[job][slot]}${sfx}`,
+          type: slot, icon: PART_ICON[slot], art: `gx_${k}_${slot}_2`, bonus: partBonus(slot, job, lv) };
+      }
+    });
     const leg = (id, extra) => ({ lv: 30, job, tier: 17, legend: true, sell: 5000, ...extra, ...(GEAR_ART[id] || {}) });
     out[`g_${k}_wleg`] = leg(`g_${k}_wleg`, { nameTh: `✦ ${N.wl}`, type: 'weapon', icon: iw, wtype: WTYPE[job], bonus: weaponBonus(job, 30, true) });
     out[`g_${k}_cleg`] = leg(`g_${k}_cleg`, { nameTh: `✦ ${N.cl}`, type: 'accessory', icon: ic, bonus: accBonus(job, 30, true) });
@@ -160,7 +181,8 @@ const GEAR_ORDER = ['weapon', 'helm', 'armor', 'gloves', 'boots', 'belt', 'acces
 export function rollGearDrop(monLevel, dropMul = 1, rnd = Math.random) {
   if (rnd() > 0.02 * dropMul) return null;                       // 2% ต่อตัว (ของมีค่าสุ่มจาก affixes.js)
   // ผีดรอปได้ทั้งของร้าน (มักมีค่าสุ่มติดมา) และของดรอปล้วน · ไม่รวมของตำนาน
-  const pool = GEAR_IDS.filter((id) => !GEAR[id].legend && GEAR[id].lv >= monLevel - 4 && GEAR[id].lv <= monLevel + 2);
+  const L = Math.min(monLevel, 97);                              // บอส Lv.99 (+6) ยังดรอปของขั้นสูงสุด Lv.95 ได้
+  const pool = GEAR_IDS.filter((id) => !GEAR[id].legend && GEAR[id].lv >= L - 4 && GEAR[id].lv <= L + 2);
   return pool.length ? pool[F(rnd() * pool.length)] : null;
 }
 

@@ -234,3 +234,47 @@ for (const [id, L] of Object.entries(TD_LEVELS)) {
     gold: m.gold.map((g) => Math.round(g * k ** 1.2)),
   });
 }
+
+// ------------------------------------------------------------
+//  ผีแมพต่างแดน (Lv.30–99) · 3 แมพ × 4 แหล่งผี + บอส 1
+//  ค่าพลังคิดจากสูตรเลเวล (ต่อเนื่องจากบึงผีพราย Lv.27) · EXP ≈ ต้องฆ่า 18→45 ตัว/เลเวล
+//  ภาพ: d8 = ใช้สไปรต์ 8 ทิศของผีเดิม + tint ย้อมสี (รอภาพจริงจาก PixelLab)
+// ------------------------------------------------------------
+const xpNeed = (L) => Math.floor(40 * Math.pow(L, 1.6));      // = expToNext (stats.js) · ไม่ import เพื่อกันวงจร
+function realmMob(L, o) {
+  const boss = !!o.boss;
+  const base = {
+    level: L, _scaled: true, realm: true,
+    hp: Math.round(46 * L * (1 + (L - 30) / 150) * (o.hpK || 1)), atk: Math.round(3.3 * L * (o.atkK || 1)), def: Math.round(0.6 * L), eva: Math.round(8 + L * 0.15 + (o.evaK || 0)),
+    acc: Math.round(100 + L * 0.5), speed: 55, behavior: 'walker', attackRange: 22, attackCooldown: 1100,
+    exp: Math.round(xpNeed(L) / (18 + (L - 30) * 0.4)), gold: [L * 4, L * 8],
+    frame: { w: 32, h: 44 },
+  };
+  if (boss) Object.assign(base, {
+    boss: true, count: 1, scale: o.scale || 1.9, respawnMs: 1200000, attackRange: 46, attackCooldown: 1500, speed: 38,
+    hp: Math.round(base.hp * 32), atk: Math.round(base.atk * 1.35), def: Math.round(base.def * 1.5),
+    exp: Math.round(xpNeed(L) * 0.9), gold: [L * 60, L * 120],
+  });
+  return { ...base, ...o, level: L, drops: [...(o.drops || []), { item: 'black_iron', chance: boss ? 1 : 0.06 }] };   // แร่เหล็กไหลสำหรับหลอมของขั้นสูง
+}
+Object.assign(MONSTERS, {
+  // ===== ป่าหิมพานต์ Lv.30–50 =====
+  kumphan: realmMob(32, { nameTh: 'ยักษ์กุมภัณฑ์', nameEn: 'Kumphan Giant', desc: 'ยักษ์ผิวคล้ำเฝ้าชายป่าหิมพานต์ ถือกระบองหินฟาดทีเดียวดินสะเทือน', d8: 'pret_asura', tint: 0x7fb3ff, scale: 0.85, hpK: 1.2, speed: 45, drops: [{ item: 'himma_fur', chance: 0.4 }, { item: 'hp_m', chance: 0.25 }] }),
+  khotchasi: realmMob(37, { nameTh: 'คชสีห์คลั่ง', nameEn: 'Mad Khotchasi', desc: 'สัตว์หิมพานต์ร่างสิงห์หัวช้าง คลั่งเพราะถูกคำสาปของกุมภกรรณ', d8: 'saming', tint: 0xf8d568, scale: 1.15, speed: 70, attackCooldown: 950, drops: [{ item: 'himma_fur', chance: 0.45 }, { item: 'flask_hp7', chance: 0.004 }] }),
+  hatsadiling: realmMob(42, { nameTh: 'นกหัสดีลิงค์', nameEn: 'Hatsadiling Bird', desc: 'นกยักษ์หัวช้างงวงยาว บินวนแล้วพ่นลมพายุจากระยะไกล', d8: 'phi_ha', tint: 0xffc46b, behavior: 'ranged', projectile: 'film', attackRange: 150, attackCooldown: 1600, hpK: 0.85, evaK: 6, drops: [{ item: 'himma_feather', chance: 0.4 }, { item: 'mp_m', chance: 0.25 }] }),
+  makkaliphon: realmMob(46, { nameTh: 'มักกะลีผลพราย', nameEn: 'Makkaliphon Wraith', desc: 'นารีผลที่หล่นจากต้นแล้วกลายเป็นผี ร่ายมนต์หลงเสน่ห์จากกิ่งไม้', d8: 'nang_tani', tint: 0xff9ad5, behavior: 'ranged', projectile: 'film', attackRange: 140, attackCooldown: 1500, hpK: 0.9, drops: [{ item: 'makka_fruit', chance: 0.35 }, { item: 'flask_mp7', chance: 0.004 }] }),
+  kumphakan: realmMob(50, { nameTh: 'กุมภกรรณ', nameEn: 'Kumphakan', boss: true, desc: 'ยักษ์ผู้หลับพันปีใต้เขาหิมพานต์ ตื่นขึ้นมาพร้อมหอกโมกขศักดิ์ (บอสป่าหิมพานต์)', d8: 'pu_som', tint: 0x6f8ff5, scale: 1.95, aoe: { cd: 6500, r: 110, mult: 1.5, nameTh: 'หอกโมกขศักดิ์' }, drops: [{ item: 'giant_tusk', chance: 1 }, { item: 'flask_hp7', chance: 0.25 }, { item: 'flask_mp7', chance: 0.2 }, { item: 'yant_guard', chance: 0.4 }] }),
+  // ===== เมืองบาดาลนาคพิภพ Lv.50–75 =====
+  nak_phrai: realmMob(52, { nameTh: 'นาคพราย', nameEn: 'Naga Wraith', desc: 'นาคที่ตายแล้ววิญญาณไม่ไปไหน เลื้อยวนตามซากเจดีย์ใต้บาดาล', d8: 'phi_chamot', tint: 0x66e0ff, frame: { w: 44, h: 26 }, speed: 75, drops: [{ item: 'naga_scale', chance: 0.4 }, { item: 'flask_hp8', chance: 0.004 }] }),
+  ngueak_phi: realmMob(57, { nameTh: 'เงือกผี', nameEn: 'Ghost Mermaid', desc: 'เงือกสาวผมยาวที่ร้องเพลงล่อคนลงน้ำ ปาไข่มุกคำสาปจากไกล', d8: 'phi_phrai', tint: 0x7fffd4, behavior: 'ranged', projectile: 'film', attackRange: 150, attackCooldown: 1500, hpK: 0.9, drops: [{ item: 'pearl_ghost', chance: 0.35 }, { item: 'mp_m', chance: 0.3 }] }),
+  pla_khiao: realmMob(62, { nameTh: 'ปลาผีเขี้ยวแก้ว', nameEn: 'Glassfang Fish', desc: 'ปลาผีเรืองแสงว่ายกลางอากาศใต้บาดาล ฝูงใหญ่ กัดเร็วมาก', d8: 'khamot', tint: 0x9fe8ff, behavior: 'flyer', speed: 85, attackCooldown: 850, hpK: 0.8, evaK: 8, drops: [{ item: 'naga_scale', chance: 0.35 }, { item: 'flask_mp8', chance: 0.004 }] }),
+  tahan_nak: realmMob(68, { nameTh: 'ทหารนาคเกล็ดเงิน', nameEn: 'Silver-scale Naga Guard', elite: true, desc: 'ทหารองครักษ์ของพญานาค สวมเกราะเกล็ดเงิน ถือทวนสามง่าม', d8: 'saming', tint: 0x9fb8ff, scale: 1.2, hpK: 1.35, atkK: 1.1, drops: [{ item: 'naga_scale', chance: 0.5 }, { item: 'flask_hp9', chance: 0.003 }] }),
+  anantanak: realmMob(75, { nameTh: 'พญาอนันตนาคราช', nameEn: 'Ananta Nagaraja', boss: true, desc: 'ราชาแห่งนาคพิภพ เจ็ดเศียรเกล็ดมรกต ฟาดหางทีเดียวบาดาลสั่น (บอสเมืองบาดาล)', d8: 'chalawan', tint: 0x5dade2, scale: 2.05, aoe: { cd: 6000, r: 120, mult: 1.55, nameTh: 'เจ็ดเศียรพ่นพิษ' }, drops: [{ item: 'naga_gem', chance: 1 }, { item: 'flask_hp9', chance: 0.25 }, { item: 'flask_mp9', chance: 0.2 }, { item: 'naga_statue', chance: 0.4 }] }),
+  // ===== นรกภูมิ Lv.75–99 =====
+  niraiyaban: realmMob(78, { nameTh: 'นายนิรยบาล', nameEn: 'Hell Warden', desc: 'ผู้คุมนรกร่างยักษ์ ถือหอกเหล็กเผาไฟ ลากวิญญาณบาปไปลงกระทะทองแดง', d8: 'pret_asura', tint: 0xff6a4d, scale: 0.9, hpK: 1.2, speed: 48, drops: [{ item: 'hell_ember', chance: 0.4 }, { item: 'flask_hp10', chance: 0.003 }] }),
+  pret_khem: realmMob(84, { nameTh: 'เปรตปากเข็ม', nameEn: 'Needle-mouth Preta', desc: 'เปรตตัวสูงเท่าต้นตาล ปากเท่ารูเข็ม หิวโหยชั่วกัลป์ ดูดพลังชีวิตคนเป็น', d8: 'pret', tint: 0xc39bd3, scale: 1.1, hpK: 1.05, drops: [{ item: 'hell_ember', chance: 0.4 }, { item: 'mp_m', chance: 0.3 }] }),
+  phi_ton_ngiw: realmMob(89, { nameTh: 'ผีต้นงิ้ว', nameEn: 'Ngiw Thorn Spirit', desc: 'วิญญาณคนผิดศีลที่ถูกลงโทษให้ปีนต้นงิ้วหนามเหล็ก กลายเป็นส่วนหนึ่งของต้นไม้', d8: 'nang_takhian', tint: 0xc0392b, hpK: 1.15, atkK: 1.05, drops: [{ item: 'ngiw_thorn', chance: 0.4 }, { item: 'flask_mp10', chance: 0.003 }] }),
+  yommathut: realmMob(94, { nameTh: 'ยมทูตเงา', nameEn: 'Shadow Yamaduta', elite: true, desc: 'ทูตแห่งพญายม มาในเงามืด ขว้างบ่วงบาศคล้องวิญญาณจากระยะไกล', d8: 'tai_hong', tint: 0x6c7a89, behavior: 'ranged', projectile: 'film', attackRange: 160, attackCooldown: 1400, hpK: 1.0, atkK: 1.1, drops: [{ item: 'ngiw_thorn', chance: 0.4 }, { item: 'flask_hp10', chance: 0.004 }] }),
+  phaya_yom: realmMob(99, { nameTh: 'พญายมราช', nameEn: 'Phaya Yom', boss: true, desc: 'เจ้าแห่งยมโลก ถือบัญชีบุญบาปของทุกดวงวิญญาณ ตัดสินด้วยคทาเพลิง (บอสนรกภูมิ)', d8: 'pret_asura', tint: 0x9b59b6, scale: 2.15, aoe: { cd: 5500, r: 130, mult: 1.6, nameTh: 'คำพิพากษายมโลก' }, drops: [{ item: 'yama_seal', chance: 1 }, { item: 'flask_hp10', chance: 0.3 }, { item: 'flask_mp10', chance: 0.25 }] }),
+});
+export const REALM_MOB_IDS = Object.keys(MONSTERS).filter((id) => MONSTERS[id].realm);

@@ -112,6 +112,7 @@ const mobs = setupMobs(io, players, { dayMs: DAY_MS, shareExp: social.shareExp, 
 const dungeon = setupDungeon(io, players, { social, ...helpers });
 /** โลก New Version (top-down อยุธยา) */
 const td = setupTD(io, players, { dayMs: DAY_MS, shareExp: social.shareExp, ...helpers });
+const tdSys = td;                                   // (ในตัวจัดการสกิล ชื่อ td ถูกใช้เป็นธงโลก top-down)
 
 function publicPlayer(p) {
   return {
@@ -256,7 +257,7 @@ io.on('connection', (socket) => {
     if (p.world === 'td' && a === 'recall' && d.to === 'hunt') return done({ r: { ok: false, msg: 'ในโลกใหม่ใช้ได้เฉพาะวาร์ปกลับเมือง' } });
     // MP เป็นของ client: รับค่าล่าสุดมาก่อนรันคำสั่ง (เช่น ดื่มยา MP) แล้วส่งค่าหลังรันกลับไป
     if (Number.isFinite(+d.mp)) p.save.mp = clamp(+d.mp, 0, 99999);
-    const tdCtx = p.world === 'td' ? { td: true, tdPos: { x: p.tx, y: p.ty }, tdFish: td.nearWater(p) } : {};
+    const tdCtx = p.world === 'td' ? { td: true, tdPos: td.mapOf(p) === 'ayutthaya' ? { x: p.tx, y: p.ty } : { x: -1e6, y: -1e6 }, tdFish: td.nearWater(p) } : {};   // สมุนไพรมีเฉพาะกรุงศรีฯ
     const r = runAction(p.save, a, d, { rnd: Math.random, now, x: ex, night: nightNow(), admin: p.admin, trade: !!p.tradeId, sess: p.sess, ...tdCtx });
     if (r.warp && r.ok && p.world !== 'td') {
       if (r.warp === 'home') warpTo(p, MAPS.village, MAPS.village.arriveX);
@@ -264,8 +265,8 @@ io.on('connection', (socket) => {
       if (mapAt(p.x).id !== 'dungeon') dungeon.leave(p, 'recall');
       r.x = Math.round(p.x);
     }
-    if (r.warp === 'home' && r.ok && p.world === 'td') td.warpHome(p);   // ยันต์คืนถิ่นในโลกใหม่ → ลานน้ำพุกลางเมือง
-    if (r.ok && (r.potion || r.ate || r.flask) && p.world === 'td') socket.broadcast.emit('td:fx', { id: p.id, kind: r.kind, big: !!r.flask });   // คนอื่นเห็นเอฟเฟกต์ดื่มยา
+    if (r.warp === 'home' && r.ok && p.world === 'td') td.warpHome(p, socket);   // ยันต์คืนถิ่นในโลกใหม่ → ลานน้ำพุกลางเมือง
+    if (r.ok && (r.potion || r.ate || r.flask) && p.world === 'td') socket.to(td.room(p)).emit('td:fx', { id: p.id, kind: r.kind, big: !!r.flask });   // คนอื่นเห็นเอฟเฟกต์ดื่มยา
     if (a === 'title' && r.ok) io.emit('td:title', { id: p.id, title: p.save.title || null });   // ฉายาเหนือชื่อ → ทุกคนเห็นทันที
     if (a === 'enhance' && r.slot && r.lv >= 10 && r.success) io.emit('chat', { id: null, name: '🔨 ลุงดำ', text: `${p.name} ตีบวกสำเร็จ +${r.lv}!` });
     refresh(p);
@@ -298,7 +299,7 @@ io.on('connection', (socket) => {
       const party = social.partyOf(p);
       const list = [p, ...(party ? [...party.members].filter((id) => id !== p.id).map((id) => players.get(id)).filter(Boolean) : [])];
       for (const m of list) {
-        if (m.dead || (m.world || 'td') !== (p.world || 'td')) continue;
+        if (m.dead || (m.world || 'td') !== (p.world || 'td') || (td && tdSys.mapOf(m) !== tdSys.mapOf(p))) continue;
         const mx = td ? m.tx : m.x, my = td ? m.ty : m.y;
         if (m !== p && Math.hypot(mx - x, my - y) > (sk.radius || 220) + 40) continue;
         m.buffs = (m.buffs || []).filter((b) => b.until > now && b.sk !== base.id);
@@ -307,7 +308,7 @@ io.on('connection', (socket) => {
         if (m !== p) io.to(m.id).emit('td:pbuff', { from: p.name, fromId: p.id, skillId: base.id, lv: clamp(lv, 1, MAX_SKILL_LV) });
       }
     } else if (sk.type === 'dash') p.invulnUntil = Math.max(p.invulnUntil || 0, now + 320);
-    (td ? socket.to('td') : socket.broadcast).emit('skill:cast', {
+    (td ? socket.to(tdSys.room(p)) : socket.broadcast).emit('skill:cast', {
       id: p.id, skillId: base.id, lv: clamp(lv, 1, MAX_SKILL_LV),
       x: Math.round(x), y: Math.round(y), dir: d.dir === -1 ? -1 : 1,
       tx: Number.isFinite(d.tx) ? Math.round(d.tx) : null, ty: Number.isFinite(d.ty) ? Math.round(d.ty) : null,
