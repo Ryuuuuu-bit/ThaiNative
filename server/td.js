@@ -174,6 +174,7 @@ export function setupTD(io, players, opts = {}) {
     if (d > max || solidAt(cx, cy - 2)) socket.emit('td:correct', { x: Math.round(p.tx), y: Math.round(p.ty) });
     p.tdir = DIRS.includes(s.dir) ? s.dir : p.tdir;
     p.tanim = ANIMS.includes(s.anim) ? s.anim : 'idle';
+    if (Number.isFinite(+s.mp)) p.save.mp = Math.max(0, Math.min(99999, +s.mp));   // MP ยังเป็นของ client (ร่ายสกิล/ฟื้นเอง) – เก็บไว้เซฟ
     if (now - (p.tdSaveAt || 0) > 3000) { p.tdSaveAt = now; p.save.tdPos = { x: Math.round(p.tx), y: Math.round(p.ty) }; p.dirty = true; }
   }
 
@@ -207,6 +208,7 @@ export function setupTD(io, players, opts = {}) {
 
   return {
     tick, econX,
+    warpHome(p) { p.tx = TD_SPAWN.x; p.ty = TD_SPAWN.y; p.tdLast = Date.now(); p.save.tdPos = { ...TD_SPAWN }; p.dirty = true; },
     inTown: (p) => inTown(p.tx, p.ty),
     onConnection(socket) {
       socket.on('td:enter', () => { const p = players.get(socket.id); if (p) enter(socket, p); });

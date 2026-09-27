@@ -31,24 +31,27 @@ export class Econ {
     return new Promise((resolve) => {
       let done = false;
       const t = setTimeout(() => { if (done) return; done = true; this.pending--; resolve({ ok: false, msg: 'เซิร์ฟเวอร์ไม่ตอบสนอง ลองใหม่อีกครั้ง' }); }, 7000);
-      s.net.socket.emit('econ', { ...args, a }, (resp) => {
+      const sentMp = this.char.mp;
+      s.net.socket.emit('econ', { ...args, a, mp: sentMp }, (resp) => {
         if (done) return;
         done = true; clearTimeout(t); this.pending--;
-        if (resp?.s) this.apply(resp.s);
+        if (resp?.s) this.apply(resp.s, Number.isFinite(resp.mp) && Number.isFinite(sentMp) ? resp.mp - sentMp : 0);
         resolve(resp?.r || { ok: false, msg: '' });
       });
     });
   }
 
   /** รับสถานะตัวละครจาก server → แทนที่ข้อมูลในเครื่อง (MP ยังเป็นของ client) */
-  apply(s) {
+  apply(s, mpDelta = 0) {
     const c = this.char, sc = this.scene;
     if (!c || !s) return;
     const before = { level: c.level, app: JSON.stringify(c.appearance), titles: (c.titles || []).length };
     const mp = c.mp;
     Object.assign(c, s);
     const d = getDerived(c);
-    c.mp = Math.min(Number.isFinite(mp) ? mp : d.maxMp, d.maxMp);
+    // MP ยังเป็นของ client · คำสั่งที่เปลี่ยน MP บน server (เช่น ดื่มยา MP) ส่งผลต่างกลับมา → บวกกับค่าปัจจุบัน
+    const m = (Number.isFinite(mp) ? mp : d.maxMp) + (mpDelta || 0);
+    c.mp = Math.max(0, Math.min(m, d.maxMp));
     if (c.level > before.level) sc.combat?.levelUpFx(c.level - before.level);
     if (JSON.stringify(c.appearance) !== before.app) sc.onAppearanceChanged?.(true);
     sc.ui && (sc.ui.hudCache = '');

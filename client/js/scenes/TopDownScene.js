@@ -113,6 +113,12 @@ export class TopDownScene extends Phaser.Scene {
     this.setupNetwork();
     this.ui.toast('🏯 ยินดีต้อนรับสู่กรุงศรีอยุธยา · คลิกพื้นเพื่อเดิน คลิกผีเพื่อโจมตี · คลิก NPC เพื่อเปิดร้าน', '', 6000);
     if (!this.econ.server) this.time.addEvent({ delay: 5000, loop: true, callback: () => this.saveSoon() });
+    // ฟื้น MP ทุกวินาที (ในเมืองเร็วกว่า) – MP เป็นของ client ทั้งออนไลน์/ออฟไลน์ · HP ออนไลน์ server ฟื้นให้
+    this.time.addEvent({ delay: 1000, loop: true, callback: () => {
+      const p = this.player; if (!p?.alive) return;
+      const c = p.char, d = getDerived(c), safe = this.inTown();
+      c.mp = Math.min(d.maxMp, (Number.isFinite(c.mp) ? c.mp : d.maxMp) + 1 + d.maxMp * (safe ? 0.06 : 0.02));
+    } });
   }
 
   // ------------------------------------------------------------
@@ -141,7 +147,27 @@ export class TopDownScene extends Phaser.Scene {
       this.playerAnim('idle', true);
     };
     this.saveSoon = () => { if (!this.econ?.server) saveCharacter(this.player.char); };
-    this.recall = () => this.ui.toast('ในโลกใหม่ให้เดินกลับเข้าประตูเมือง (ทางเหนือของสะพาน)', '', 3000);
+    // ยันต์คืนถิ่น: ร่าย 2.5 วิ (ขยับ/โดนตี = ยกเลิก) แล้ววาร์ปกลับลานน้ำพุกลางเมือง
+    this.recall = () => {
+      const p = this.player;
+      if (!p.alive || this.recalling) return;
+      if (count(p.char, 'yant_home') <= 0) return this.ui.toast('ไม่มียันต์คืนถิ่น (ซื้อได้ที่ร้านยายติ๋ม)', 'warn');
+      if (this.inTown()) return this.ui.toast('อยู่ในเมืองอยู่แล้ว', '', 1800);
+      const start = { x: p.x, y: p.y }, hurt = p.hurtAt || 0;
+      p.path = []; p.target = null;
+      this.recalling = true;
+      yantCircle(this, p.x, p.y, { tint: 0x9fe0ff, size: 60, ms: 2500 });
+      this.ui.toast('🏠 กำลังร่ายยันต์คืนถิ่น… (อย่าขยับ)', '', 2500);
+      this.time.delayedCall(2500, async () => {
+        this.recalling = false;
+        if (!p.alive || dist(p, start) > 6 || (p.hurtAt || 0) !== hurt) return this.ui.toast('การร่ายถูกขัดจังหวะ', 'warn');
+        const r = await this.econ.act('recall', {});
+        if (!r.ok) return this.ui.result(r);
+        p.setPosition(SPAWN.x, SPAWN.y); p.path = []; this.sfx.play('levelup');
+        yantCircle(this, SPAWN.x, SPAWN.y, { tint: 0x9fe0ff, size: 70, ms: 900, rise: true });
+        this.ui.toast('กลับถึงลานน้ำพุกลางเมือง', 'ok', 2200);
+      });
+    };
     this.nearNpc = (id) => this.npcs?.some((n) => n.id === id && dist(n, this.player) < 60);
   }
 
@@ -455,6 +481,7 @@ export class TopDownScene extends Phaser.Scene {
 
   onPlayerHit(d) {
     const p = this.player;
+    p.hurtAt = Date.now();
     if (!d.hit) { popupNumber(this, p.x, p.y - 34, 'MISS', 'miss'); return; }
     if (Number.isFinite(d.hp)) p.char.hp = d.hp;
     popupNumber(this, p.x, p.y - 34, `-${d.dmg}`, 'taken');
@@ -587,6 +614,7 @@ export class TopDownScene extends Phaser.Scene {
     for (const k of ['Q', 'W', 'E', 'R', 'T']) kb.on(`keydown-${k}`, () => this.skills.cast(k));
     kb.on('keydown-ONE', () => this.quickUse(HP_POTS));
     kb.on('keydown-TWO', () => this.quickUse(MP_POTS));
+    kb.on('keydown-B', () => this.recall());
     kb.on('keydown-I', () => this.ui.toggle('inv-panel'));
     kb.on('keydown-C', () => this.ui.toggle('stats-panel'));
     kb.on('keydown-K', () => this.ui.toggle('skill-panel'));
@@ -703,6 +731,7 @@ export class TopDownScene extends Phaser.Scene {
     if (this.net?.online && time - (this.sentAt || 0) > 100) {
       const st = { x: Math.round(p.x), y: Math.round(p.y), dir: p.dir, anim: p.alive ? (p.st === 'walk' ? 'walk' : p.st === 'attack' ? 'attack' : 'idle') : 'die' };
       const sig = JSON.stringify(st);
+      st.mp = Math.round(p.char.mp);
       if (sig !== this.sentSig || time - this.sentAt > 1000) { this.sentAt = time; this.sentSig = sig; this.net.send('td:move', st); }
     }
     const zone = this.inTown() ? 'town' : 'field', night = this.atmo.light < 0.35;

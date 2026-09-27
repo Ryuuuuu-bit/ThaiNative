@@ -248,7 +248,9 @@ io.on('connection', (socket) => {
     if (p.dead && !['lock', 'hotbar', 'title', 'qDrop', 'friendDel'].includes(a)) return done({ r: { ok: false, msg: 'ตายอยู่ – รอฟื้นก่อน' } });
     // โลก top-down: ร้าน/NPC ตรวจจากตำแหน่ง NPC ในอยุธยา (แปลงเป็นพิกัดหมู่บ้านเดิม) · ไม่ใกล้ใคร = นอกหมู่บ้าน
     const ex = p.world === 'td' ? (td.econX(p) ?? MAPS.m1.minX + 300) : p.x;
-    if (p.world === 'td' && a === 'recall') return done({ r: { ok: false, msg: 'ใช้ในโลกใหม่ไม่ได้ (เดินกลับประตูเมืองแทน)' } });
+    if (p.world === 'td' && a === 'recall' && d.to === 'hunt') return done({ r: { ok: false, msg: 'ในโลกใหม่ใช้ได้เฉพาะวาร์ปกลับเมือง' } });
+    // MP เป็นของ client: รับค่าล่าสุดมาก่อนรันคำสั่ง (เช่น ดื่มยา MP) แล้วส่งค่าหลังรันกลับไป
+    if (Number.isFinite(+d.mp)) p.save.mp = clamp(+d.mp, 0, 99999);
     const r = runAction(p.save, a, d, { rnd: Math.random, now, x: ex, night: nightNow(), admin: p.admin, trade: !!p.tradeId, sess: p.sess });
     if (r.warp && r.ok && p.world !== 'td') {
       if (r.warp === 'home') warpTo(p, MAPS.village, MAPS.village.arriveX);
@@ -256,10 +258,11 @@ io.on('connection', (socket) => {
       if (mapAt(p.x).id !== 'dungeon') dungeon.leave(p, 'recall');
       r.x = Math.round(p.x);
     }
+    if (r.warp === 'home' && r.ok && p.world === 'td') td.warpHome(p);   // ยันต์คืนถิ่นในโลกใหม่ → ลานน้ำพุกลางเมือง
     if (a === 'enhance' && r.slot && r.lv >= 10 && r.success) io.emit('chat', { id: null, name: '🔨 ลุงดำ', text: `${p.name} ตีบวกสำเร็จ +${r.lv}!` });
     refresh(p);
     p.syncDue = false;
-    done({ r, s: packChar(p.save) });
+    done({ r, s: packChar(p.save), mp: p.save.mp });
     if (r.titles?.length) social.announceTitles(p, r.titles);
   });
 
