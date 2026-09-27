@@ -50,6 +50,7 @@ export class UI {
     this.hudCache = '';
 
     this.cards = new CardUI(this);
+    this.setupLayoutGuard();
     $('#hud').classList.remove('hidden');
     $('#chat').classList.remove('hidden');
 
@@ -725,6 +726,28 @@ export class UI {
     }).join('')
       + `<div class="path-line"><span>อาชีพ (พรสวรรค์ + อาวุธ)</span><b>${classTitle(c)} · แต้มพรสวรรค์เหลือ ${passiveFree(c)} (K)</b></div>`
       + `<div class="path-line"><span>แนวต่อสู้ (ตามอาวุธ)</span><b>${JOBS[c.appearance.job].icon} ${JOBS[c.appearance.job].nameTh}</b></div>`;
+  }
+
+  /** กันทับ: ชิ้น HUD ใดที่อยู่ใต้หน้าต่างที่เปิด → ซ่อนชั่วคราว (หน้าต่างอยู่ช่วงกลาง ไม่บังแถบสกิล) */
+  setupLayoutGuard() {
+    if (this._guard) return;
+    const HUD = '.pf, #party-frames, #target, #boss-bar, #dg-bar, #boss-warn, #banner, #prompt, .hud-right, #td-minimap, #td-zone, #quest-track, #loot-log, #chat, #hud > .hud-buttons, #td-act, #dock-toggle, .t-stick, .t-atk, .t-fs';
+    const run = () => {
+      const wins = [...document.querySelectorAll('#ui .window:not(.hidden)')];
+      document.body.classList.toggle('win-open', wins.length > 0);
+      const rs = wins.map((w) => w.getBoundingClientRect());
+      for (const el of document.querySelectorAll(HUD)) {
+        const r = el.getBoundingClientRect();
+        const under = r.width > 0 && rs.some((w) => r.left < w.right - 1 && r.right > w.left + 1 && r.top < w.bottom - 1 && r.bottom > w.top + 1);
+        el.classList.toggle('hud-under', under);
+      }
+    };
+    this._guard = run;
+    const mo = new MutationObserver(() => requestAnimationFrame(run));
+    document.querySelectorAll('#ui .window').forEach((w) => mo.observe(w, { attributes: true, attributeFilter: ['class'] }));
+    window.addEventListener('resize', () => requestAnimationFrame(run));
+    setInterval(run, 700);        // ชิ้น HUD ที่โผล่ขึ้นมาใหม่ระหว่างเปิดหน้าต่าง (บอส/เตือน)
+    run();
   }
 
   // ---------------- กระเป๋า ----------------

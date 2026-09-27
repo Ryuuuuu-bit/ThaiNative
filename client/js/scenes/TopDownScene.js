@@ -105,7 +105,12 @@ export class TopDownScene extends Phaser.Scene {
     this.village = new Village(this);
     this.life = new TdLife(this);
     // HUD: ย้ายปุ่มเมนูลงมุมขวาล่าง (ข้าง Hotbar) · ซ่อนแถบคำแนะนำหลัง 15 วิ
-    { const hb = document.querySelector('.hud-buttons'); if (hb) { hb.classList.add('dock'); $('#hud').appendChild(hb); } }
+    { const hb = document.querySelector('.hud-buttons'); if (hb) { hb.classList.add('dock'); $('#hud').appendChild(hb);
+      // จอสัมผัส: เมนูพับเป็นปุ่ม ☰ (กดแล้วกางเป็นตาราง · กดเมนูใดก็พับกลับ)
+      if (!$('#dock-toggle')) { const t = document.createElement('button'); t.id = 'dock-toggle'; t.title = 'เมนู'; t.textContent = '☰'; $('#hud').appendChild(t);
+        t.onclick = (e) => { e.stopPropagation(); hb.classList.toggle('open'); };
+        hb.addEventListener('click', () => hb.classList.remove('open'));
+        document.addEventListener('pointerdown', (e) => { if (!e.target.closest('#dock-toggle, .hud-buttons.dock')) hb.classList.remove('open'); }); } } }
     { const tb = document.querySelector('#td-hud .td-bottom'); if (tb) { tb.classList.remove('fade'); clearTimeout(this._hintT); this._hintT = setTimeout(() => tb.classList.add('fade'), 15000); } }
     document.querySelector('.minimap')?.classList.add('hidden');
     this.buildNpcs();

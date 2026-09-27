@@ -1,0 +1,160 @@
+/* ============================================================
+   ThaiNative HUD v3 — จัดวางใหม่ทั้งหมด (ห้ามทับกัน)
+   ทุกตำแหน่งใช้หน่วย cqh (1cqh = 1% ความสูงจอเกม 16:9 → กว้าง 177.8cqh)
+   โซน:  ซ้ายบน = ผู้เล่น/ปาร์ตี้ · กลางบน = บอส/เป้าหมาย/แจ้งเตือน
+         ขวาบน = เขต+นาฬิกา → มินิแมพ → ชื่อพื้นที่ → เควส
+         ซ้ายล่าง = แชท · กลางล่าง = ขวดยา+สกิล+ออโต้ · ขวาล่าง = ของที่ได้ → เมนู
+         ขอบล่างสุด = EXP (ตัวเลขอยู่ในแถบ)
+   ============================================================ */
+body.td-mode {
+  --hud-pad: 1.6cqh;            /* ระยะจากขอบจอ */
+  --hud-col: 34cqh;             /* ความกว้างคอลัมน์ขวา */
+  --hud-gap: 1cqh;
+  --hud-bg: linear-gradient(180deg, rgba(46,26,58,.94), rgba(18,9,24,.94));
+  --hud-line: rgba(232,199,102,.85);
+  --hud-shadow: 0 0 0 .25cqh rgba(0,0,0,.55), 0 .6cqh 1.6cqh rgba(0,0,0,.45);
+  --hud-r: 1.4cqh;
+}
+
+/* ---------- กรอบมาตรฐานของทุกชิ้นบน HUD ---------- */
+body.td-mode .pf, body.td-mode .hud-right .zone, body.td-mode .target, body.td-mode .party-frames .pm,
+body.td-mode .quest-track div, body.td-mode #td-hud .td-zone, body.td-mode #hud > .hud-buttons.dock,
+body.td-mode #td-minimap {
+  background: var(--hud-bg) !important; border: .25cqh solid var(--hud-line) !important; border-radius: var(--hud-r) !important;
+  box-shadow: var(--hud-shadow) !important;
+}
+
+/* ---------- ซ้ายบน: ผู้เล่น ---------- */
+body.td-mode .pf { top: var(--hud-pad) !important; left: var(--hud-pad) !important; width: 44cqh !important; height: 15.5cqh; padding: 1cqh 1.2cqh !important;
+  gap: 1.2cqh !important; align-items: center; font-size: 2.6cqh; }
+body.td-mode .pf-portrait { width: 10cqh; height: 10cqh; }
+body.td-mode .pf-info { display: flex; flex-direction: column; gap: .5cqh; }
+body.td-mode .pf-name { margin: 0; }
+body.td-mode .pf .bar { height: 2.6cqh; margin: 0; }
+body.td-mode .pf .bar span { font-size: 1.7cqh; line-height: 2.6cqh; }
+body.td-mode .pf .buffs { min-height: 0; margin: 0; }
+body.td-mode .pf .buffs:empty { display: none; }
+/* เงิน: อยู่ในกรอบ (มุมขวาล่าง) ไม่ห้อยออกนอกกรอบแล้ว */
+body.td-mode .pf .gold { position: absolute !important; left: auto !important; right: 1.2cqh !important; bottom: -1.6cqh !important; top: auto !important;
+  font-size: 1.8cqh !important; line-height: 2.8cqh !important; padding: 0 1.2cqh !important; border-radius: 2cqh !important;
+  background: linear-gradient(180deg, #4a2c14, #24130a) !important; border: .2cqh solid var(--hud-line) !important; box-shadow: 0 .3cqh .8cqh rgba(0,0,0,.6) !important; }
+body.td-mode .party-frames { top: calc(var(--hud-pad) + 19cqh) !important; left: var(--hud-pad) !important; width: 30cqh !important; font-size: 2.3cqh; gap: .6cqh !important; }
+
+/* ---------- กลางบน: บอส / ดันเจี้ยน / เป้าหมาย / แจ้งเตือน ---------- */
+body.td-mode .boss-bar { top: var(--hud-pad) !important; width: 64cqh !important; max-width: none !important; }
+body.td-mode .target { top: var(--hud-pad) !important; width: 44cqh !important; font-size: 2.4cqh; }
+body.td-mode #hud:has(#boss-bar:not(.hidden)) .target,
+body.td-mode #hud:has(#dg-bar:not(.hidden)) .target { top: calc(var(--hud-pad) + 10cqh) !important; }
+body.td-mode #hud:has(#boss-bar:not(.hidden)) .target, body.td-mode #hud:has(#dg-bar:not(.hidden)) .target { top: calc(var(--hud-pad) + 10cqh) !important; }
+/* ลำดับกลางจอบน: บอส(1.6–11) → เป้าหมาย(11.6–18) → ประกาศใหญ่(19–27) → แจ้งเตือนสั้น(28↓) */
+body.td-mode .banner { top: 19cqh !important; font-size: 4cqh !important; max-width: 90cqh; }
+body.td-mode #toasts { top: 30.5cqh !important; max-width: 80cqh; font-size: 2.3cqh; }
+body.td-mode #toasts .toast { max-width: 80cqh; white-space: normal; text-align: center; }
+/* เตือนสกิลบอส: ใต้ตัวละคร เหนือแถบสกิล */
+body.td-mode .boss-warn { top: 60cqh !important; }
+body.td-mode #td-hud .td-toast { top: 30.5cqh !important; }
+
+/* ---------- ขวาบน: เขต + นาฬิกา ---------- */
+body.td-mode .hud-right { top: var(--hud-pad) !important; right: var(--hud-pad) !important; width: var(--hud-col) !important; gap: 0 !important; font-size: 2.4cqh; }
+body.td-mode .hud-right .zone { height: 5cqh; padding: 0 1.4cqh !important; font-size: 2.2cqh !important; }
+body.td-mode .hud-right .zone b { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+body.td-mode .hud-right .net { font-size: 1.8cqh; white-space: nowrap; margin-left: 1cqh; }
+body.td-mode .hud-right .clock { position: absolute; top: 5.6cqh; right: 1cqh; margin: 0 !important; font-size: 1.9cqh !important; line-height: 2.6cqh; }
+/* มินิแมพ → ป้ายพื้นที่ติดใต้แมพ */
+body.td-mode #td-minimap { top: calc(var(--hud-pad) + 8.6cqh) !important; right: var(--hud-pad) !important; width: var(--hud-col) !important;
+  height: calc(var(--hud-col) * 110 / 150) !important; aspect-ratio: auto !important; border-radius: var(--hud-r) var(--hud-r) 0 0 !important; }
+body.td-mode #td-hud .td-zone { top: calc(var(--hud-pad) + 8.6cqh + var(--hud-col) * 110 / 150) !important; right: var(--hud-pad) !important;
+  width: var(--hud-col) !important; height: 4cqh; line-height: 3.5cqh; padding: 0 1cqh !important; font-size: 1.9cqh !important;
+  border-top: none !important; border-radius: 0 0 var(--hud-r) var(--hud-r) !important; background: linear-gradient(#6e1f17, #3e110c) !important;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; text-align: center; }
+/* เควสที่ติดตาม: ใต้ป้ายพื้นที่ */
+body.td-mode .quest-track { top: calc(var(--hud-pad) + 14cqh + var(--hud-col) * 110 / 150) !important; right: var(--hud-pad) !important;
+  width: var(--hud-col) !important; max-height: 23cqh; overflow: hidden; font-size: 1.9cqh !important; }
+body.td-mode .quest-track div { padding: .5cqh 1cqh !important; margin-bottom: .6cqh !important; border-left: .6cqh solid var(--gold) !important; }
+
+/* ---------- ขวาล่าง: เมนู (2 แถว x 5) + ของที่ได้ ---------- */
+body.td-mode:not(.touch) #hud > .hud-buttons.dock { top: auto !important; bottom: calc(2.6cqh + var(--hud-pad)) !important; right: var(--hud-pad) !important;
+  width: var(--hud-col) !important; display: grid !important; grid-template-columns: repeat(5, 1fr) !important; gap: .8cqh !important; padding: .9cqh !important; font-size: 2.4cqh; }
+body.td-mode:not(.touch) #hud > .hud-buttons.dock button { width: 100% !important; height: 5.4cqh !important; border-width: .2cqh; border-radius: 1cqh; }
+body.td-mode:not(.touch) #hud > .hud-buttons.dock button .px-ico { width: 4.2cqh; height: 4.2cqh; }
+body.td-mode:not(.touch) #hud > .hud-buttons.dock button small { font-size: 1.3cqh; bottom: -.5cqh; right: -.4cqh; }
+body.td-mode .loot-log { right: var(--hud-pad) !important; bottom: calc(2.6cqh + var(--hud-pad) + 15.5cqh) !important; width: var(--hud-col);
+  max-height: 14cqh; overflow: hidden; justify-content: flex-end; font-size: 1.8cqh !important; }
+
+/* ---------- กลางล่าง: แถบแอ็กชัน ---------- */
+body.td-mode .actionbar { bottom: calc(2.6cqh + 1.2cqh) !important; font-size: 2.4cqh; }
+body.td-mode .actionbar .slots { gap: .8cqh; }
+body.td-mode #skillbar { gap: .6cqh; }
+body.td-mode .actionbar .skill, body.td-mode .actionbar .slot { width: 7.2cqh !important; height: 7.2cqh !important; border-radius: 1.2cqh; }
+body.td-mode #flask-bar { gap: .6cqh; margin-right: .6cqh; }
+body.td-mode .flask-btn { width: 5.6cqh; height: 7.2cqh; font-size: 2.4cqh; }
+body.td-mode #td-hud .td-act { bottom: 15cqh !important; }
+body.td-mode .prompt { top: auto !important; bottom: 19.5cqh; }
+
+/* ---------- ซ้ายล่าง: แชท (จบก่อนแถบแอ็กชัน) ---------- */
+body.td-mode:not(.touch) #chat { left: var(--hud-pad) !important; bottom: calc(2.6cqh + var(--hud-pad)) !important; width: 33cqh !important; font-size: 1.8cqh !important; }
+body.td-mode #chat-log { max-height: 18cqh !important; }
+body.td-mode #chat-toggle { top: -3.6cqh; }
+
+/* ---------- ขอบล่าง: EXP ---------- */
+body.td-mode .expbar { height: 2.6cqh !important; min-height: 0 !important; }
+body.td-mode .expbar span { bottom: auto !important; top: 0; right: 0 !important; left: 0; text-align: center; font-size: 1.7cqh !important; line-height: 2.6cqh; }
+
+/* คำแนะนำปุ่มยาวๆ (แถบวิ่ง) → ย้ายไปอยู่ในหน้าวิธีเล่น (H) · บนจอสัมผัสยังแสดงชั่วครู่ */
+body.td-mode:not(.touch) #td-hud .td-bottom { display: none !important; }
+body.td-mode.touch #td-hud .td-bottom { bottom: 22cqh !important; max-width: 90%; white-space: normal; text-align: center; }
+
+/* ---------- หน้าต่าง: อยู่ในพื้นที่ปลอดภัย ไม่ล้นจอ ---------- */
+
+/* ---------- เปิดหน้าต่าง: หน้าต่างอยู่ช่วง 10–87cqh (ไม่บังแถบสกิล) · แจ้งเตือนย้ายขึ้นแถบบนสุด ---------- */
+body.td-mode #ui .window { top: 10cqh !important; max-height: 77.5cqh !important; }
+body.td-mode .hud-under { visibility: hidden !important; pointer-events: none !important; }
+body.td-mode.win-open #toasts { top: 1.6cqh !important; max-height: 7.8cqh; overflow: hidden; flex-direction: column-reverse; justify-content: flex-start; z-index: 30; }
+body.td-mode.win-open .banner { display: none !important; }
+
+/* คำแนะนำปุ่มแบบแถบ: ซ่อนทุกโหมด (ดูได้ในหน้า "วิธีเล่น" H) */
+body.td-mode #td-hud .td-bottom { display: none !important; }
+#dock-toggle { display: none; }
+
+/* ============================================================
+   จอสัมผัส (มือถือแนวนอน) — จอยซ้ายล่าง · ปุ่มตีขวา · เมนูพับ ☰
+   ============================================================ */
+body.td-mode.touch #dock-toggle { display: grid; place-items: center; position: absolute; top: var(--hud-pad); right: calc(var(--hud-pad) + var(--hud-col) + 1.2cqh);
+  width: 8cqh; height: 8cqh; padding: 0; font-size: 4.6cqh; color: #fff3c4; background: var(--hud-bg); border: .25cqh solid var(--hud-line); border-radius: var(--hud-r); box-shadow: var(--hud-shadow); }
+body.td-mode.touch #hud > .hud-buttons.dock { display: none !important; }
+body.td-mode.touch #hud > .hud-buttons.dock.open { display: grid !important; position: absolute !important; top: calc(var(--hud-pad) + 9cqh) !important; bottom: auto !important;
+  right: calc(var(--hud-pad) + var(--hud-col) + 1.2cqh) !important; left: auto !important; width: 50cqh !important; grid-template-columns: repeat(5, 1fr) !important;
+  gap: 1cqh !important; padding: 1.2cqh !important; z-index: 40; background: var(--hud-bg) !important; border: .25cqh solid var(--hud-line) !important; border-radius: var(--hud-r) !important; box-shadow: var(--hud-shadow) !important; }
+body.td-mode.touch #hud > .hud-buttons.dock.open button { width: 100% !important; height: 8cqh !important; }
+body.td-mode.touch #hud > .hud-buttons.dock.open button .px-ico { width: 6cqh; height: 6cqh; }
+/* ซ้าย: ผู้เล่น → ปาร์ตี้ → แชท (เหนือจอย) */
+body.td-mode.touch #chat { top: 44.5cqh !important; bottom: auto !important; left: var(--hud-pad) !important; width: 40cqh !important; font-size: 2cqh !important; }
+body.td-mode.touch #chat-log { max-height: 10cqh !important; }
+body.td-mode.touch #chat-input { display: none; }
+body.td-mode.touch #chat:focus-within #chat-input { display: block; }
+body.td-mode.touch #chat-toggle { top: 0; right: -4cqh; }
+body.td-mode.touch .t-stick { bottom: 6cqh !important; left: calc(var(--hud-pad) + 1cqh + env(safe-area-inset-left, 0px)) !important; width: 32cqh !important; height: 32cqh !important; }
+/* ขวา: เขต/แมพ → เควส (สั้นลง) → ปุ่มตี · ของที่ได้ อยู่ซ้ายปุ่มตี */
+body.td-mode.touch #td-minimap { width: var(--hud-col) !important; }
+body.td-mode.touch #td-hud .td-zone { width: var(--hud-col) !important; }
+body.td-mode.touch .quest-track { max-height: 10cqh !important; }
+body.td-mode.touch .t-atk { right: calc(var(--hud-pad) + 2cqh + env(safe-area-inset-right, 0px)) !important; bottom: 24cqh !important; width: 25cqh !important; height: 25cqh !important; font-size: 11cqh; }
+body.td-mode.touch .t-fs { right: calc(var(--hud-pad) + 2cqh + env(safe-area-inset-right, 0px)) !important; bottom: 7cqh !important; width: 11cqh !important; height: 11cqh !important; }
+body.td-mode.touch .loot-log { right: calc(var(--hud-pad) + 30cqh) !important; bottom: 32cqh !important; top: auto !important; width: 30cqh !important; max-height: 14cqh; }
+/* ล่าง: แถบสกิลเล็กลงให้พ้นจอยและปุ่มจอ */
+body.td-mode.touch .actionbar { bottom: calc(2.6cqh + .8cqh) !important; }
+body.td-mode.touch .actionbar .skill, body.td-mode.touch .actionbar .slot { width: 6.2cqh !important; height: 6.2cqh !important; }
+body.td-mode.touch .flask-btn { width: 5cqh; height: 6.2cqh; }
+body.td-mode.touch #td-hud .td-act { bottom: 13cqh !important; }
+
+/* ไม่ให้ข้อความโดนตัดครึ่งบรรทัด: จำกัดจำนวนแทนการตัดขอบ */
+body.td-mode .quest-track div:nth-child(n+4) { display: none !important; }
+body.td-mode.touch .quest-track div:nth-child(n+2) { display: none !important; }
+body.td-mode .loot-log div:nth-last-child(n+5) { display: none !important; }
+body.td-mode.touch .loot-log div:nth-last-child(n+4) { display: none !important; }
+body.td-mode .quest-track, body.td-mode .loot-log { max-height: none !important; overflow: visible !important; }
+body.td-mode #chat-log { background: none !important; }
+body.td-mode #chat-log div { background: rgba(14,7,20,.55) !important; border-radius: .6cqh; }
+body.td-mode #chat-log { max-height: none !important; }
+body.td-mode #chat-log div:nth-last-child(n+7) { display: none; }
+body.td-mode.touch #chat-log div:nth-last-child(n+3) { display: none; }
