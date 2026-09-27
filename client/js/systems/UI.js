@@ -328,19 +328,24 @@ export class UI {
         const id = slotItemId(v), it = ITEMS[id], n = Inv.count(c, id);
         const worn = Object.values(c.equipment || {}).includes(id);
         const verb = { weapon: 'ถือ', armor: 'สวม', accessory: 'สวม', helm: 'สวม', gloves: 'สวม', boots: 'สวม', belt: 'คาด', flask: 'ใส่', home: 'ร่ายยันต์', food: 'กิน' }[it.type] || 'ใช้';
-        return `<div class="skill item-slot${n || worn ? '' : ' empty-item'}${worn ? ' worn' : ''}" data-key="${key}" data-item="${id}" draggable="true"><span class="k">${key}</span><span class="ic">${itemIcon(id, it.icon)}</span><span class="n">${worn ? '✔' : n}</span>
-          <div class="tip"><b>${esc(it.nameTh)}</b> (${key})<br>กด ${key} = ${verb}${worn ? ' · ใส่อยู่' : ` · เหลือ ${n}`}<br><small>คลิกขวาเพื่อถอดออกจากช่อง</small></div></div>`;
+        return `<div class="skill item-slot${n || worn ? '' : ' empty-item'}${worn ? ' worn' : ''}" data-key="${key}" data-item="${id}" draggable="true"><span class="k">${key}</span><button class="hb-x" data-hbx="${key}" title="เอาออกจากช่อง" aria-label="เอาออก">✕</button><span class="ic">${itemIcon(id, it.icon)}</span><span class="n">${worn ? '✔' : n}</span>
+          <div class="tip"><b>${esc(it.nameTh)}</b> (${key})<br>กด ${key} = ${verb}${worn ? ' · ใส่อยู่' : ` · เหลือ ${n}`}<br><small>กด ✕ หรือคลิกขวาเพื่อเอาออกจากช่อง</small></div></div>`;
       }
       const id = v, lv = c.skills[id] || 0;
       if (!id || !lv) return `<div class="skill empty" data-key="${key}"><span class="k">${key}</span><span class="ic">＋</span>
         <div class="tip">ช่อง ${key} ว่าง – ลากสกิล (K) หรือไอเทม (I) มาวาง</div></div>`;
       const st = skillStats(SKILL_BY_ID[id], lv);
       const off = SKILL_BY_ID[id].job !== c.appearance.job;
-      return `<div class="skill${off ? ' noweapon' : ''}" data-key="${key}" data-id="${id}" draggable="true"><span class="k">${key}</span><span class="ic">${skillIcon(id, st.icon)}</span><span class="mp">${st.mp}</span>
+      return `<div class="skill${off ? ' noweapon' : ''}" data-key="${key}" data-id="${id}" draggable="true"><span class="k">${key}</span><button class="hb-x" data-hbx="${key}" title="เอาออกจากช่อง" aria-label="เอาออก">✕</button><span class="ic">${skillIcon(id, st.icon)}</span><span class="mp">${st.mp}</span>
         <div class="cd"></div><div class="cdt"></div>
         <div class="tip"><b>${st.nameTh}</b> Lv.${lv} (${key})<br>MP ${st.mp} · CD ${(st.cd / 1000).toFixed(1)}s${st.mult ? ` · ดาเมจ x${st.mult}` : ''}<br>${st.desc}${off ? `<br><span style="color:#f5b041">ต้องถือ${JOBS[SKILL_BY_ID[id].job].weaponTh}</span>` : ''}</div></div>`;
     }).join('');
     this.skillEls = [...document.querySelectorAll('#skillbar .skill')];
+    document.querySelectorAll('#skillbar .hb-x').forEach((b) => {
+      const off = (e) => { e.preventDefault(); e.stopPropagation(); };
+      b.addEventListener('pointerdown', off); b.addEventListener('mousedown', off);
+      b.addEventListener('click', (e) => { off(e); this.assign(b.dataset.hbx, null); });
+    });
     this.skillEls.forEach((el) => {
       this.makeDropSlot(el, el.dataset.key);
       el.addEventListener('dragstart', (e) => { const v = this.char.hotbar[el.dataset.key]; if (!v) return e.preventDefault(); e.dataTransfer.setData('text/slot', v); e.dataTransfer.effectAllowed = 'move'; });

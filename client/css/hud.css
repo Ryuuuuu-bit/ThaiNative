@@ -158,3 +158,11 @@ body.td-mode #chat-log div { background: rgba(14,7,20,.55) !important; border-ra
 body.td-mode #chat-log { max-height: none !important; }
 body.td-mode #chat-log div:nth-last-child(n+7) { display: none; }
 body.td-mode.touch #chat-log div:nth-last-child(n+3) { display: none; }
+
+/* Hotbar: ปุ่ม ✕ เอาไอเทม/สกิลออกจากช่อง (เห็นตอนชี้เมาส์ · บนจอสัมผัสเห็นตลอด) */
+#skillbar .skill .hb-x { position: absolute; top: .2cqh; right: .2cqh; z-index: 3; width: 2.4cqh; height: 2.4cqh; padding: 0; border-radius: 50%;
+  display: grid; place-items: center; font-size: 1.5cqh; line-height: 1; color: #fff; background: rgba(150,30,24,.92); border: .15cqh solid #f3d98b;
+  box-shadow: 0 .2cqh .5cqh rgba(0,0,0,.6); opacity: 0; transition: opacity .12s, transform .12s; cursor: pointer; }
+#skillbar .skill:hover .hb-x { opacity: 1; }
+#skillbar .skill .hb-x:hover { transform: scale(1.2); background: #c0392b; }
+body.touch #skillbar .skill .hb-x { opacity: .85; width: 2.8cqh; height: 2.8cqh; }

@@ -911,7 +911,7 @@ export class TopDownScene extends Phaser.Scene {
     const d = Math.hypot(bx - ax, by - ay), n = Math.ceil(d / 4), solid = this.solid;
     for (let i = 1; i <= n; i++) {
       const x = ax + (bx - ax) * i / n, y = ay + (by - ay) * i / n;
-      for (const ox of [-5, 5]) { const tx = Math.floor((x + ox) / TILE), ty = Math.floor(y / TILE); if (solid[ty]?.[tx] !== false) return false; }
+      for (const ox of [-7, 7]) for (const oy of [-7, 3]) { const tx = Math.floor((x + ox) / TILE), ty = Math.floor((y + oy) / TILE); if (solid[ty]?.[tx] !== false) return false; }   // ครอบเท้าเต็มกล่อง (12x8) + เผื่อ 1px
     }
     return true;
   }
@@ -954,6 +954,29 @@ export class TopDownScene extends Phaser.Scene {
 
   moveTo(x, y) { const p = this.player; if (p.alive) p.path = this.findPath(p.x, p.y - 2, x, y); }
 
+  /**
+   * กันติดสิ่งก่อสร้าง: เดินตามทาง (คลิก/Auto) แต่ตำแหน่งไม่ขยับเกิน 0.45 วิ
+   * → ปิดทางลัดชั่วคราว · กลับไปกลางช่องที่ยืน แล้วหาทางใหม่ · ติดซ้ำ 3 ครั้งตอน Auto → เปลี่ยนเป้า
+   */
+  unstick(p, time, manual) {
+    if (manual || !p.path.length || p.st !== 'walk') { p.stuck = null; if (!p.path.length) p.stuckN = 0; return; }
+    const r = p.stuck;
+    if (!r || Math.hypot(p.x - r.x, p.y - r.y) > 3) { p.stuck = { x: p.x, y: p.y, t: time }; return; }
+    if (time - r.t < 450) return;
+    p.stuck = { x: p.x, y: p.y, t: time };
+    p.stuckN = (p.stuckN || 0) + 1;
+    p.noShortcut = time + 2500;
+    if (p.stuckN >= 3 && p.autoTarget) {
+      const m = p.autoTarget; m.autoSkip = time + 8000; p.target = null; p.autoTarget = null; p.path = []; p.stuckN = 0;
+      return;
+    }
+    const goal = p.path[p.path.length - 1];
+    const cx = Math.floor(p.x / TILE) * TILE + TILE / 2, cy = Math.floor((p.y - 2) / TILE) * TILE + TILE / 2;
+    const path = this.findPath(cx, cy, goal.x, goal.y);
+    p.path = this.solid[Math.floor(cy / TILE)]?.[Math.floor(cx / TILE)] ? path : [{ x: cx, y: cy }, ...path];
+    p.nextPath = time + 1200;                       // ให้เวลาเดินหลุดก่อนหาทางใหม่อีกรอบ
+  }
+
   // ------------------------------------------------------------
   //  update
   // ------------------------------------------------------------
@@ -972,7 +995,10 @@ export class TopDownScene extends Phaser.Scene {
           const dd = dist(p, m), range = this.attackRange();
           if (dd > range) {
             if (p.autoTarget === m && time - (p.autoSince || time) > AUTO_GIVEUP) { m.autoSkip = time + 8000; p.target = null; p.autoTarget = null; p.path = []; }   // ไปไม่ถึง → ข้ามชั่วคราว
-            else if (!p.path.length || time > (p.nextPath || 0)) { p.nextPath = time + 400; p.path = this.findPath(p.x, p.y - 2, m.x, m.y); }
+            else if (!p.path.length || time > (p.nextPath || 0)) {
+              p.nextPath = time + 400; p.path = this.findPath(p.x, p.y - 2, m.x, m.y);
+              if (!p.path.length && p.autoTarget === m) { m.autoSkip = time + 8000; p.target = null; p.autoTarget = null; }   // หาทางไปไม่ได้ → ข้ามทันที ไม่ยืนนิ่ง
+            }
           } else { p.path = []; p.autoSince = time; if (time >= p.nextAtk && p.st !== 'attack') this.playerAttack(m, time); }
         }
       } else if (this.settings.autoSkill && !p.path.length && !this.recalling && time > (p.nextAuto || 0)) {
@@ -983,7 +1009,7 @@ export class TopDownScene extends Phaser.Scene {
       }
       if (!vx && !vy && p.path.length) {
         // ทางลัด: ถ้ามองเห็นจุดถัดไปตรง ๆ ข้ามจุดกลางทาง → เดินเป็นเส้นตรง ไม่ซิกแซกตามช่องตาราง
-        while (p.path.length > 1 && this.lineClear(p.x, p.y - 2, p.path[1].x, p.path[1].y)) p.path.shift();
+        while (time > (p.noShortcut || 0) && p.path.length > 1 && this.lineClear(p.x, p.y - 2, p.path[1].x, p.path[1].y)) p.path.shift();
         const n = p.path[0], dx = n.x - p.x, dy = n.y - (p.y - 2), d = Math.hypot(dx, dy);
         if (d < 5) p.path.shift(); else { vx = dx / d; vy = dy / d; }
         if (!p.path.length && this.pendingTalk) { const n2 = this.pendingTalk; this.pendingTalk = null; this.talk(n2); }
@@ -994,6 +1020,7 @@ export class TopDownScene extends Phaser.Scene {
         p.setVelocity(vx / len * SPEED, vy / len * SPEED);
         p.dir = stableDir(vx, vy, p.dir); p.st = 'walk'; this.playerAnim('walk');
       } else { p.setVelocity(0, 0); p.st = 'idle'; this.playerAnim('idle'); }
+      this.unstick(p, time, !!(k.RIGHT.isDown || k.LEFT.isDown || k.DOWN.isDown || k.UP.isDown || this.touch?.vec));
       if (!this.econ.server && this.inTown() && p.char.hp < p.derived.maxHp) p.char.hp = Math.min(p.derived.maxHp, p.char.hp + p.derived.maxHp * 0.04 * dt);
     } else p.setVelocity(0, 0);
     p.setDepth(p.y);
