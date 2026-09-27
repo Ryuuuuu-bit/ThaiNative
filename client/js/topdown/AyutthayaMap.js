@@ -24,8 +24,8 @@ export function bakeTileset(scene) {
   // ถนนดิน
   fill(T.ROAD, '#b08a5a'); speckle(T.ROAD, 12, ['#a67f50', '#bd9866', '#9c7648']); px(T.ROAD, 0, 0, TILE, 1, '#a17a4d');
   // ลานอิฐวัด
-  fill(T.BRICK, '#a85a3c'); for (let y = 0; y < TILE; y += 4) for (let x = 0; x < TILE; x += 8) { const o = (y / 4) % 2 ? 4 : 0; px(T.BRICK, (x + o) % TILE, y, 7, 3, '#b8674a'); px(T.BRICK, (x + o) % TILE, y + 3, 8, 1, '#7d3f28'); px(T.BRICK, (x + o + 7) % TILE, y, 1, 3, '#7d3f28'); }
-  speckle(T.BRICK, 5, ['#c6796a', '#8f4a33']);
+  fill(T.BRICK, '#a8643e'); for (let y = 0; y < TILE; y += 4) for (let x = 0; x < TILE; x += 8) { const o = (y / 4) % 2 ? 4 : 0; px(T.BRICK, (x + o) % TILE, y, 7, 3, rnd() < 0.3 ? '#c4834f' : '#b9744a'); px(T.BRICK, (x + o) % TILE, y + 3, 8, 1, '#7a4a2c'); px(T.BRICK, (x + o + 7) % TILE, y, 1, 3, '#7a4a2c'); }
+  speckle(T.BRICK, 7, ['#d29a64', '#8f5433', '#6f8a4a']);
   // ทราย/ตลิ่ง
   fill(T.SAND, '#d9c27e'); speckle(T.SAND, 10, ['#cdb46f', '#e6d193']);
   // น้ำ 2 เฟรม
@@ -37,7 +37,7 @@ export function bakeTileset(scene) {
   // นาข้าว
   fill(T.PADDY, '#4e8d3a'); for (let y = 2; y < TILE; y += 5) for (let x = 1; x < TILE; x += 4) { px(T.PADDY, x, y, 1, 3, '#8ac75e'); px(T.PADDY, x + 1, y + 1, 1, 2, '#a5d97a'); } px(T.PADDY, 0, 0, TILE, 1, '#3e7a8a');
   // ทางหิน
-  fill(T.STONE, '#9a9585'); for (let y = 0; y < TILE; y += 5) for (let x = 0; x < TILE; x += 6) px(T.STONE, x + (y / 5) % 2 * 3, y, 5, 4, '#aaa596'); speckle(T.STONE, 6, ['#8a8575', '#b7b2a2']);
+  fill(T.STONE, '#8f8672'); for (let y = 0; y < TILE; y += 5) for (let x = 0; x < TILE; x += 6) { px(T.STONE, x + (y / 5) % 2 * 3, y, 5, 4, rnd() < 0.3 ? '#bdb296' : '#b0a488'); px(T.STONE, x + (y / 5) % 2 * 3, y, 5, 1, '#cfc5a8'); } speckle(T.STONE, 6, ['#9a8f76', '#c9bf9f']);
   // หญ้าสูง (เดินได้)
   fill(T.TALL, '#4f8b3d'); for (let x = 0; x < TILE; x += 3) { const h = 6 + Math.floor(rnd() * 8); px(T.TALL, x, TILE - h, 1, h, '#2f6b28'); px(T.TALL, x + 1, TILE - h + 3, 1, h - 3, '#79b85f'); }
   // ไม้กระดาน (สะพาน)

@@ -162,6 +162,9 @@
   "env/p_buddhahead2",
   "env/p_bench2",
   "env/p_shrub2",
-  "env/p_well2"
+  "env/p_well2",
+  "env/b_prang_l",
+  "env/m_prangbig_l",
+  "env/m_chedi_l"
  ]
 }

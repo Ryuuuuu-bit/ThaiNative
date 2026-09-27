@@ -44,12 +44,18 @@ export function buildLayout() {
   rect(GATE.x0, y1 - 1, GATE.x1, y1, T.STONE);                 // ประตูเมือง
 
   // ถนนหลัก N-S จากประตูขึ้นไปวัด + ถนน E-W (ตลาด) + ถนนลงสะพาน
-  rect(58, 10, 61, y1 + 3, T.ROAD); rect(12, 50, 107, 52, T.ROAD); rect(58, y1 + 1, 61, RIVER.y0 - 2, T.ROAD);
+  // ถนนในเมืองปูหิน (แบบเมือง RO) · นอกกำแพงเป็นถนนดิน
+  rect(58, 10, 61, y1, T.STONE); rect(12, 50, 107, 52, T.STONE); rect(58, y1 + 1, 61, RIVER.y0 - 2, T.ROAD);
+  rect(52, 45, 67, 57, T.STONE);                               // ลานเมืองกลางสี่แยก (จุดนัดพบ)
   rect(58, RIVER.y1 + 2, 61, 96, T.ROAD);                      // ถนนในทุ่ง
   // ลานอิฐวัดหลวง + ทางหินรอบปรางค์
-  rect(38, 16, 82, 44, T.BRICK); rect(58, 16, 61, 44, T.STONE); rect(38, 28, 82, 29, T.STONE);
+  // วัดพระศรีสรรเพชญ์: สนามหญ้า + ฐานศิลาแลงใต้เจดีย์ + ทางเดินอิฐ (แบบภาพอยุธยาจริง)
+  rect(40, 20, 80, 27, T.BRICK); rect(53, 35, 67, 42, T.BRICK); rect(58, 16, 61, 44, T.STONE); rect(38, 28, 82, 29, T.STONE);
   // นาข้าว + หญ้าสูงนอกเมือง
-  rect(14, 78, 44, 92, T.PADDY); rect(76, 80, 108, 94, T.PADDY);
+  rect(14, 78, 44, 92, T.PADDY); rect(66, 86, 78, 94, T.PADDY);
+  // วัดไชยวัฒนาราม (ริมน้ำฝั่งทุ่ง): สนามหญ้า · ระเบียงคดศิลาแลง · ฐานประธาน · ทางอิฐจากถนนทุ่ง
+  rect(82, 76, 102, 93, T.GRASS); rect(82, 76, 102, 76, T.BRICK); rect(82, 93, 102, 93, T.BRICK); rect(82, 76, 82, 93, T.BRICK); rect(102, 76, 102, 93, T.BRICK);
+  rect(87, 80, 97, 88, T.BRICK); rect(62, 84, 87, 85, T.BRICK);
   rect(20, 96, 50, 106, T.TALL); rect(70, 98, 104, 108, T.TALL);
   // แนวอิฐริมสะพานฝั่งทุ่ง
   rect(50, RIVER.y1 + 2, 69, RIVER.y1 + 2, T.STONE);
@@ -73,9 +79,9 @@ export function buildLayout() {
 
   // === วัดพระศรีสรรเพชญ์ (ลานอิฐกลางเมือง) ===
   // เจดีย์ประธาน 3 องค์ (ภาพ PixelLab ทรงระฆังอิฐเก่า · สำรอง = เจดีย์ขาววาดด้วยโค้ด)
-  for (const [x, y, sc] of [[44, 25, 1.55], [60, 24, 1.9], [76, 25, 1.55]]) P('env/m_chedi', x, y, { foot: [sc > 1.7 ? 8 : 7, 3], scale: sc, alt: 'td_chedi', altScale: sc > 1.7 ? 2.3 : 2, glow: [-60, 70, 0xfff0c0, 0.5] });
+  for (const [x, y, sc] of [[44, 25, 1.55], [60, 24, 1.9], [76, 25, 1.55]]) P('env/m_chedi_l', x, y, { foot: [sc > 1.7 ? 8 : 7, 3], scale: sc, alt: 'td_chedi', altScale: sc > 1.7 ? 2.3 : 2, glow: [-60, 70, 0xfff0c0, 0.5] });
   P('env/b_wat', 60, 41, { foot: [8, 3], scale: 1.35, alt: 'td_prang', altScale: 1.8, label: 'พระมณฑป', glow: [-50, 90, 0xffe1a0, 0.7] });
-  for (const [x, y] of [[46, 38], [74, 38], [41, 41], [79, 41]]) P('env/m_chedi', x, y, { foot: [3, 2], scale: x % 2 ? 0.55 : 0.7 });   // เจดีย์ราย
+  for (const [x, y] of [[46, 38], [74, 38], [41, 41], [79, 41]]) P('env/m_chedi_l', x, y, { foot: [3, 2], scale: x % 2 ? 0.55 : 0.7 });   // เจดีย์ราย
   for (let x = 40; x <= 80; x += 4) if (x < 56 || x > 64) P('td_ruin', x, 31, { foot: [3, 1], scale: 1.4 });    // ซากระเบียงคด
   for (let x = 40; x <= 80; x += 4) if (x < 54 || x > 66) P('td_ruin', x, 43, { foot: [3, 1], scale: 1.4 });
   for (let x = 40; x <= 80; x += 3) if (x < 55 || x > 64) small('p_buddha', x, 19, { glow: [-8, 16, 0xffe9a0, 0.35] });   // พระพุทธรูปเรียงแถว (แบบวัดใหญ่ชัยมงคล)
@@ -125,6 +131,12 @@ export function buildLayout() {
   small('p_lion', 55, 61, { scale: 1.2 }); small('p_lion', 64, 61, { scale: 1.2, flip: true });
   [[28, 44], [92, 44], [50, 58], [70, 58]].forEach(([x, y]) => P('td_pillar', x, y, { foot: [1, 1], glow: [-30, 42, 0xffc46b, 1] }));
 
+  // ลานเมือง: อ่างบัวสี่มุม + กระถางไม้ดอก (จุดนัดพบกลางเมืองแบบ RO)
+  for (const [x, y] of [[53, 46], [66, 46], [53, 57], [66, 57]]) small('p_lotus', x, y, { scale: 1.3 });
+  for (const [x, y] of [[55, 46], [64, 46]]) deco('p_plants', x, y);
+  // แนวต้นไม้หนาริมกำแพงด้านใน (กรอบเมืองให้ดูแน่น)
+  for (let x = 13; x <= 107; x += 6) if (x < 50 || x > 70) tree(x, 10, ['tamarind', 'golden', 'palm'][x % 3], 0.95);
+  for (let y = 14; y <= 58; y += 7) { tree(12, y, y % 2 ? 'palm' : 'tamarind', 0.9); tree(108, y, y % 2 ? 'tamarind' : 'palm', 0.9); }
   // === ต้นไม้ในเมือง (ริมกำแพง/สวน) ===
   [[14, 14], [24, 12], [100, 12], [108, 20], [14, 22], [110, 36], [12, 38], [40, 46], [80, 46], [34, 12], [86, 12], [50, 11], [70, 11], [108, 44], [12, 50]]
     .forEach(([x, y], i) => tree(x, y, ['tamarind', 'golden', 'palm', 'tamarind'][i % 4], 1));
@@ -145,12 +157,20 @@ export function buildLayout() {
 
   // === ทุ่งนาบางปะอิน (ต้นตาลริมคันนา · ฟาง · ซากวัดร้าง) ===
   for (let x = 14; x <= 44; x += 5) tree(x, 77, 'palm', 1 + (x % 3) * 0.08);
-  for (let x = 76; x <= 108; x += 5) if (x < 85 || x > 99) tree(x, 79, 'palm', 1 + (x % 3) * 0.08);
-  for (const [x, y] of [[18, 84], [30, 90], [40, 82], [80, 86], [92, 92], [102, 84]]) small('p_haystack', x, y);
+  for (let x = 66; x <= 110; x += 5) if (x < 78 || x > 106) tree(x, 79, 'palm', 1 + (x % 3) * 0.08);
+  for (const [x, y] of [[18, 84], [30, 90], [40, 82], [70, 90], [75, 93], [108, 84]]) small('p_haystack', x, y);
   P('campfire', 60, 82, { foot: [1, 1], label: 'ค่ายพัก', glow: [-10, 80, 0xff8a3c, 1.3] });
   small('p_torch', 57, 80, { glow: TORCH }); small('p_torch', 63, 80, { glow: TORCH }); small('p_cart', 64, 84, { scale: 1.2 }); small('p_haystack', 56, 85);
   small('p_spirit', 52, 76, { label: 'ศาลตายาย' });
-  P('env/m_prangbig', 92, 79, { foot: [8, 3], scale: 1.35, label: 'วัดไชยวัฒนาราม', glow: [-60, 90, 0xffe1a0, 0.6] });
+  // --- วัดไชยวัฒนาราม: ปรางค์ประธาน + ปรางค์ทิศ/เมรุทิศรายรอบ + ระเบียงคด + พระพุทธรูปเรียงรอบ ---
+  P('env/m_prangbig_l', 92, 87, { foot: [6, 3], scale: 1.6, alt: 'env/m_prangbig', label: 'วัดไชยวัฒนาราม', glow: [-80, 110, 0xffe1a0, 0.7] });
+  for (const [x, y, sc] of [[85, 80, 0.95], [99, 80, 0.95], [85, 91, 1], [99, 91, 1], [85, 86, 0.8], [99, 86, 0.8], [92, 79, 0.75]]) P('env/b_prang_l', x, y, { foot: [2, 2], scale: sc, alt: 'env/b_prang', flip: x > 92 });
+  for (let x = 84; x <= 100; x += 3) if (x < 90 || x > 94) P('td_ruin', x, 77, { foot: [3, 1], scale: 1.3 });   // ระเบียงคดด้านเหนือ
+  for (let x = 84; x <= 100; x += 3) if (x < 90 || x > 94) P('td_ruin', x, 94, { foot: [3, 1], scale: 1.3 });   // ด้านใต้
+  for (let y = 79; y <= 92; y += 2) { if (y < 83 || y > 86) small('p_ruin', 82, y, { scale: 1.1 }); small('p_ruin', 102, y, { scale: 1.1 }); }
+  for (let x = 86; x <= 98; x += 2) small('p_buddha', x, 78, { glow: [-8, 14, 0xffe9a0, 0.3] });
+  small('p_torch', 88, 84, { glow: TORCH }); small('p_torch', 88, 87, { glow: TORCH });
+  tree(80, 75, 'tamarind', 1.2); tree(104, 75, 'tamarind', 1.1); tree(105, 95, 'golden', 1); tree(79, 95, 'tamarind', 1);
   P('env/m_mondop', 77, 96, { foot: [6, 3], label: 'มณฑปร้าง' });
   // วัดร้างในทุ่งหญ้าสูง (ผีชุม)
   for (const [x, y] of [[24, 102], [30, 106], [38, 100], [88, 104], [96, 100], [100, 108]]) small('p_ruin', x, y, { scale: 1.2, alt: 'td_ruin' });
