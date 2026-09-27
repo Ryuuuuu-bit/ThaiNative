@@ -60,7 +60,9 @@ export class Network {
       'raid:state', 'raid:spawn', 'raid:attack', 'raid:impact', 'raid:dmg', 'raid:reward', 'raid:defeated',
       'char:load', 'char:sync', 'pl:hit', 'pl:die', 'pl:hp', 'friends:state', 'title:new',
       'rboss:spawn', 'rboss:list', 'rboss:down', 'rboss:slam', 'rboss:reward',
-      'dg:start', 'dg:state', 'dg:wave', 'dg:cleared', 'dg:dmg', 'dg:die', 'dg:exp', 'dg:slam', 'dg:end', 'dg:exit']) {
+      'dg:start', 'dg:state', 'dg:wave', 'dg:cleared', 'dg:dmg', 'dg:die', 'dg:exp', 'dg:slam', 'dg:end', 'dg:exit',
+      // โลก New Version (top-down)
+      'td:init', 'td:state', 'td:joined', 'td:left', 'td:dmg', 'td:die', 'td:matk', 'td:reward', 'td:respawn', 'td:correct']) {
       s.on(ev, (d) => this.emitLocal(ev, d));
     }
     s.on('player:rejected', (d) => this.emitLocal('rejected', d));

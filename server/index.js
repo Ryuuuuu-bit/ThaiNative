@@ -19,6 +19,7 @@ import { DAY_MS_DEFAULT, dayPhase, isNight } from '../shared/data/world.js';
 import { setupSocial } from './social.js';
 import { setupMobs } from './mobs.js';
 import { setupDungeon } from './dungeon.js';
+import { setupTD } from './td.js';
 import { setupAuth, isAdmin } from './auth.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -105,6 +106,8 @@ const social = setupSocial(io, players, helpers);
 const mobs = setupMobs(io, players, { dayMs: DAY_MS, shareExp: social.shareExp, ...helpers });
 /** ดันเจี้ยนปาร์ตี้ (ห้องแยก) */
 const dungeon = setupDungeon(io, players, { social, ...helpers });
+/** โลก New Version (top-down อยุธยา) */
+const td = setupTD(io, players, { dayMs: DAY_MS, shareExp: social.shareExp, ...helpers });
 
 function publicPlayer(p) {
   return {
@@ -141,6 +144,8 @@ io.on('connection', (socket) => {
   social.onConnection(socket);
   mobs.onConnection(socket);
   dungeon.onConnection(socket);
+  td.onConnection(socket);
+  socket.on('td:enter', () => { const p = players.get(socket.id); if (p) socket.broadcast.emit('player:left', p.id); });   // ออกจากสายตาผู้เล่นโลกเดิม
   const me = () => players.get(socket.id);
 
   // 1) เข้าโลก: ยืนยันตัวตนด้วย token → โหลดตัวละครจากฐานข้อมูล (server ถือข้อมูลจริง)
@@ -179,7 +184,7 @@ io.on('connection', (socket) => {
       socket.emit('char:load', packChar(save));
       socket.emit('world:init', {
         selfId: socket.id, serverTime: Date.now(), dayMs: DAY_MS, admin: p.admin,
-        players: [...players.values()].filter((q) => q.id !== socket.id).map(publicPlayer),
+        players: [...players.values()].filter((q) => q.id !== socket.id && q.world !== 'td').map(publicPlayer),
       });
       socket.broadcast.emit('player:joined', publicPlayer(p));
       social.onJoin(p);
@@ -241,8 +246,11 @@ io.on('connection', (socket) => {
     if (++p.econN > 25) return done({ r: { ok: false, msg: 'ทำรายการถี่เกินไป' } });
     const a = String(d.a || '');
     if (p.dead && !['lock', 'hotbar', 'title', 'qDrop', 'friendDel'].includes(a)) return done({ r: { ok: false, msg: 'ตายอยู่ – รอฟื้นก่อน' } });
-    const r = runAction(p.save, a, d, { rnd: Math.random, now, x: p.x, night: nightNow(), admin: p.admin, trade: !!p.tradeId, sess: p.sess });
-    if (r.warp && r.ok) {
+    // โลก top-down: ร้าน/NPC ตรวจจากตำแหน่ง NPC ในอยุธยา (แปลงเป็นพิกัดหมู่บ้านเดิม) · ไม่ใกล้ใคร = นอกหมู่บ้าน
+    const ex = p.world === 'td' ? (td.econX(p) ?? MAPS.m1.minX + 300) : p.x;
+    if (p.world === 'td' && a === 'recall') return done({ r: { ok: false, msg: 'ใช้ในโลกใหม่ไม่ได้ (เดินกลับประตูเมืองแทน)' } });
+    const r = runAction(p.save, a, d, { rnd: Math.random, now, x: ex, night: nightNow(), admin: p.admin, trade: !!p.tradeId, sess: p.sess });
+    if (r.warp && r.ok && p.world !== 'td') {
       if (r.warp === 'home') warpTo(p, MAPS.village, MAPS.village.arriveX);
       else if (r.warp === 'return') warpTo(p, MAPS[r.to], MAPS[r.to].respawnX);
       if (mapAt(p.x).id !== 'dungeon') dungeon.leave(p, 'recall');
@@ -320,6 +328,7 @@ async function leave(id) {
   if (!p) return;
   social.onDisconnect(id);
   dungeon.onDisconnect(id);
+  td.onLeave(p);
   players.delete(id);
   if (byAcc.get(p.acc) === id) byAcc.delete(p.acc);
   io.emit('player:left', id);
@@ -330,12 +339,14 @@ async function leave(id) {
 // ============================================================
 //  Game loop: snapshot · ผี · ฟื้น HP · ส่งสถานะ · เซฟอัตโนมัติ
 // ============================================================
+let tdTick = 0;
 setInterval(() => {
   social.tick();
   dungeon.tick();
   if (players.size === 0) return;
   mobs.tick();
-  const snapshot = [...players.values()].map((p) => ({
+  if (++tdTick % 3 !== 0) td.tick();   // ~10 ครั้ง/วิ
+  const snapshot = [...players.values()].filter((p) => p.world !== 'td').map((p) => ({
     id: p.id, x: Math.round(p.x), y: Math.round(p.y), anim: p.anim, flipX: p.flipX,
     hp: Math.round(p.hp), maxHp: p.maxHp, level: p.level, party: p.partyId, wp: p.wp || 0, inst: p.inst || 0,
   }));
@@ -351,7 +362,7 @@ setInterval(() => {
   const now = Date.now();
   for (const p of players.values()) {
     if (p.dead || p.hp >= p.maxHp) continue;
-    const m = mapAt(p.x), safe = m.safe || (m.fireX != null && Math.abs(p.x - m.fireX) < 70);
+    const m = mapAt(p.x), safe = p.world === 'td' ? td.inTown(p) : m.safe || (m.fireX != null && Math.abs(p.x - m.fireX) < 70);
     if (safe) healPlayer(p, p.maxHp * 0.05);
     else if (now - (p.lastHurt || 0) > 8000) healPlayer(p, p.maxHp * 0.01);
   }

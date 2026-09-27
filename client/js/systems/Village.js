@@ -362,7 +362,7 @@ export class Village {
   drop(id) { this.econ.act('qDrop', { id }).then(() => this.afterChange()); }
 
   /** ยืนอยู่ใกล้ผู้ใหญ่ชัย (หมู่บ้าน x520) */
-  nearChai() { return this.scene.map?.id === 'village' && Math.abs(this.scene.player.x - 520) < 140; }
+  nearChai() { if (this.scene.td) return this.scene.nearNpc('quest'); return this.scene.map?.id === 'village' && Math.abs(this.scene.player.x - 520) < 140; }
 
   claim(id) {
     const q = QUEST_BY_ID[id];
