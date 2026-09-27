@@ -991,3 +991,8 @@ canvas.px { image-rendering: pixelated; image-rendering: crisp-edges; }
   .lb-slots { gap: .8em; } .lb-card { width: 8em; } .lb-stage { width: 7em; height: 7em; }
   .lb-bottom { flex-direction: column; } .lb-actions { width: 100%; flex-direction: row; }
 }
+
+/* ตราเกม */
+.emblem { width: 4.2em; height: 4.2em; image-rendering: pixelated; filter: drop-shadow(0 0 .6em rgba(255,190,90,.55)) drop-shadow(0 .2em .3em rgba(0,0,0,.7)); animation: crest 4s ease-in-out infinite; }
+@keyframes crest { 50% { transform: translateY(-.15em); filter: drop-shadow(0 0 1em rgba(255,200,110,.85)) drop-shadow(0 .2em .3em rgba(0,0,0,.7)); } }
+.emblem-sm { width: 1.15em; height: 1.15em; image-rendering: pixelated; vertical-align: -.15em; margin-right: .3em; filter: drop-shadow(0 0 .3em rgba(255,190,90,.5)); }
