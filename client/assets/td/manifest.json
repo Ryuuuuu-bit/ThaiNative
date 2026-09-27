@@ -147,6 +147,30 @@
    },
    "frame": 72,
    "scale": 0.667
+  },
+  "hero_male_isan": {
+   "anims": [
+    "idle",
+    "walk"
+   ],
+   "frames": {
+    "idle": 4,
+    "walk": 6
+   },
+   "frame": 72,
+   "scale": 0.667
+  },
+  "hero_male_mahadlek": {
+   "anims": [
+    "idle",
+    "walk"
+   ],
+   "frames": {
+    "idle": 4,
+    "walk": 6
+   },
+   "frame": 72,
+   "scale": 0.667
   }
  },
  "images": [
