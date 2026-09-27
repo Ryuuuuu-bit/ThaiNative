@@ -102,7 +102,7 @@ const ITEMS_BASE = {
   saming_fang:  { nameTh: 'เขี้ยวเสือสมิง',     type: 'material', icon: '🦷', sell: 24 },
   dark_mist:    { nameTh: 'หมอกดำผีห่า',      type: 'material', icon: '🌫️', sell: 30 },
   yak_fang:     { nameTh: 'เขี้ยวพญายักษ์',     type: 'material', icon: '🐗', sell: 120 },
-  ha_essence:   { nameTh: 'แก่นวิญญาณผีห่า',    type: 'material', icon: '🔥', sell: 60 },
+  ha_essence:   { nameTh: 'แก่นวิญญาณผีห่า',    type: 'material', icon: '🔥', sell: 60, desc: 'ดรอปจากผีห่า (ป่าช้าวัดร้าง) · ยายติ๋มใช้ปรุงยาอายุวัฒนะ' },
   // ป่าช้าผีตายโหง
   rice_basket:  { nameTh: 'กระด้งผีกระหัง',     type: 'material', icon: '🧺', sell: 34 },
   wisp_ember:   { nameTh: 'ประกายไฟผีโขมด',     type: 'material', icon: '✴️', sell: 34 },
@@ -202,7 +202,7 @@ const FLASK_N = { hp: 0, mp: 0 };
 FLASK_DEF.forEach(([kind, lv, nameTh, heal, max, price]) => {
   const n = ++FLASK_N[kind];
   ITEMS[`flask_${kind}${n}`] = { nameTh, type: 'flask', icon: kind === 'hp' ? '🧪' : '🫙', lv, ...(price ? { price } : { sell: 1500 + lv * 60 }),
-    flask: { kind, heal, max }, art: `flask_${kind}_${Math.min(6, n)}`,
+    flask: { kind, heal, max }, art: kind === 'hp' && n >= 7 ? 'flask_hp_7' : `flask_${kind}_${Math.min(6, n)}`,
     desc: `ขวดยา${kind === 'hp' ? 'ฟื้น HP' : 'ฟื้น MP'} +${heal} · ดื่มได้ ${max} ครั้ง · ฆ่าผีเติมกลับ · ใส่ช่องขวดยา (Q/E)` };
 });
 

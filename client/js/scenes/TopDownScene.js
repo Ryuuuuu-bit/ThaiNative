@@ -11,7 +11,7 @@ import { getDerived } from '/shared/character.js';
 import { gainExp } from '/shared/charmodel.js';
 import { bakeCharacter } from '../gfx/SpriteFactory.js';
 import { bakeFx, popupNumber, hitSpark, yantCircle, squash } from '../gfx/Fx.js';
-import { makeText } from '../systems/util.js';
+import { makeText, uiIcon } from '../systems/util.js';
 import { sound } from '../systems/Sound.js';
 import { loadSettings, saveSettings } from '../systems/Settings.js';
 import { saveCharacter } from '../systems/Character.js';
@@ -289,7 +289,7 @@ export class TopDownScene extends Phaser.Scene {
     box.innerHTML = Object.values(TD_MAPS).map((m) => {
       const here = m.id === this.M.id, been = this.visitedMaps.includes(m.id), low = lv < m.reqLv;
       const why = here ? 'อยู่ที่นี่' : low ? `ต้อง Lv.${m.reqLv}` : !been ? 'ยังไม่เคยไป' : '';
-      return `<div class="warp-card ${here ? 'here' : why ? 'lock' : ''}"><span class="wc-ic">${m.icon}</span>
+      return `<div class="warp-card ${here ? 'here' : why ? 'lock' : ''}"><span class="wc-ic">${uiIcon(`realm_${m.id}`, m.icon)}</span>
         <span><b>${m.nameTh}</b><small>${m.sub}${!been && !low ? ' · เดินผ่านประตูมิติ 🌀 เพื่อปลดล็อก' : ''}</small></span>
         <button class="btn" data-warp="${m.id}" ${why ? 'disabled' : ''}>${why || 'วาร์ป'}</button></div>`;
     }).join('');

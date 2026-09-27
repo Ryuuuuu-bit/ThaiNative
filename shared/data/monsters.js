@@ -94,7 +94,7 @@ export const MONSTERS = {
     frame: { w: 32, h: 32 }, zone: [3080, 3530],
     palette: { main: '#4a235a', dark: '#17202a', glow: '#a569bd' },
     projectile: 'miasma',
-    drops: [{ item: 'dark_mist', chance: 0.5 }, { item: 'mp_m', chance: 0.2 }],
+    drops: [{ item: 'dark_mist', chance: 0.5 }, { item: 'mp_m', chance: 0.2 }, { item: 'ha_essence', chance: 0.12 }],
   },
   // ---------------- ป่าช้าผีตายโหง (X 3650–4950) : Lv.11–18 ----------------
   krahang: {

@@ -256,3 +256,5 @@ body.touch #skillbar .skill .hb-x { opacity: .85; width: 2.8cqh; height: 2.8cqh;
 .warp-card.lock { opacity: .6; }
 .warp-card.lock button { cursor: not-allowed; }
 body.td-mode.win-open #boss-bar { visibility: hidden; }   /* เปิดหน้าต่างอยู่ → ซ่อนแถบบอสชั่วคราว (ข้อความแจ้งเตือนใช้ที่ด้านบนแทน) */
+.warp-card .wc-ic .px-ico { width: 4.4cqh; height: 4.4cqh; }
+.td-wm .wm-realms .px-ico { width: 1.9cqh; height: 1.9cqh; vertical-align: -.35cqh; }

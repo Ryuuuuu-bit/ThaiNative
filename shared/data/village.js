@@ -40,6 +40,7 @@ export const BREWS = [
   { out: 'pot_turmeric', need: { herb_turmeric: 2, herb_aloe: 1 }, fee: 25 },
   { out: 'pot_anchan',   need: { herb_anchan: 2, herb_lemongrass: 1 }, fee: 25 },
   { out: 'elixir_ghost', need: { herb_mushroom: 1, herb_honey: 1, herb_turmeric: 1 }, fee: 60 },
+  { out: 'elixir_ghost', need: { ha_essence: 2, herb_honey: 1 }, fee: 40 },
 ];
 
 // ============================================================

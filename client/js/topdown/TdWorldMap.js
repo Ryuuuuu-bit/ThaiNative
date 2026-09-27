@@ -5,6 +5,7 @@
 // ============================================================
 import { TILE } from '/shared/td/ayutthaya.js';
 import { TD_MAPS } from '/shared/td/maps.js';
+import { uiIcon } from '../systems/util.js';
 import { MONSTERS } from '/shared/data/monsters.js';
 
 const $ = (s) => document.querySelector(s);
@@ -73,7 +74,7 @@ export class TdWorldMap {
         <div class="wm-tip hidden"></div>
       </div>
       <div class="wm-realms">${Object.values(TD_MAPS).map((m) => { const been = (this.s.visitedMaps || ['ayutthaya']).includes(m.id), here = m.id === this.M.id;
-        return `<span class="${here ? 'here' : been ? 'been' : 'lock'}" title="${esc(m.sub)}">${m.icon} ${esc(m.nameTh)} <em>Lv.${m.lv[0]}–${m.lv[1]}</em>${here ? ' 📍' : been ? '' : ' 🔒'}</span>`; }).join('<b>›</b>')}</div>
+        return `<span class="${here ? 'here' : been ? 'been' : 'lock'}" title="${esc(m.sub)}">${uiIcon(`realm_${m.id}`, m.icon)} ${esc(m.nameTh)} <em>Lv.${m.lv[0]}–${m.lv[1]}</em>${here ? ' 📍' : been ? '' : ' 🔒'}</span>`; }).join('<b>›</b>')}</div>
       <div class="wm-legend"><span><i class="me"></i>ตัวเรา</span><span><i class="ally"></i>ผู้เล่นอื่น</span><span><i class="npc"></i>NPC</span><span><i class="boss"></i>บอส</span><span><i class="camp"></i>แหล่งผี</span><span>🌀 ประตูมิติ</span></div>`;
     const g = this.panel.querySelector('.wm-base').getContext('2d');
     g.imageSmoothingEnabled = false;
