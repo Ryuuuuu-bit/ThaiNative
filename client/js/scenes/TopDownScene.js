@@ -25,6 +25,7 @@ import { TILE, MAP_W, MAP_H, T, RIVER, bakeTileset, bakeProps, buildLayout } fro
 import { dirFromVector, playDir, registerDir8, texKey } from '../topdown/Dir8.js';
 import { TdSkills } from '../topdown/TdSkills.js';
 import { WeaponOverlay } from '../topdown/WeaponOverlay.js';
+import { TouchControls } from '../topdown/TouchControls.js';
 import { ALL_ASSETS } from '/shared/data/td_assets.js';
 import { bakeGround, makeWater, TdAtmosphere, bakeTdFx, TdVfx, TdMinimap } from '../topdown/TdTheme.js';
 
@@ -102,6 +103,7 @@ export class TopDownScene extends Phaser.Scene {
     this.vfx = new TdVfx(this);
     this.skills = new TdSkills(this);
     this.weapons = new WeaponOverlay(this);
+    this.touch = new TouchControls(this);
     this.weapons.attach(this.player, () => this.player.char.appearance, () => ({ anim: this.player.st }));
     this.minimap = new TdMinimap(this.groundMini);
     this.zone = null;
@@ -546,13 +548,21 @@ export class TopDownScene extends Phaser.Scene {
   buildInput() {
     const kb = this.input.keyboard;
     this.keys = kb.addKeys('UP,LEFT,DOWN,RIGHT', false);
-    this.input.on('pointerdown', (ptr) => {
-      if (ptr.rightButtonDown()) return;
+    this.input.mouse?.disableContextMenu();                    // คลิกขวาไม่เปิดเมนูของเบราว์เซอร์
+    this.input.on('pointerdown', (ptr, over) => {
+      if (this.touch?.owns(ptr)) return;                        // นิ้วที่กำลังใช้จอยสติ๊ก/ปุ่มบนจอ
       const w = this.cameras.main.getWorldPoint(ptr.x, ptr.y);
+      const hitMob = over.find((o) => o.mid != null && o.alive) || this.mobAt(w.x, w.y, this.touch?.on ? 30 : 14);
+      // คลิกขวา = โจมตีผีที่ชี้ (หรือตัวที่ใกล้จุดคลิกที่สุด) · ไม่มีผีก็ไม่เดิน
+      if (ptr.rightButtonDown()) { if (hitMob) this.setTarget(hitMob); return; }
+      if (hitMob) { this.setTarget(hitMob); return; }           // คลิกซ้าย/แตะโดนผี = โจมตี
+      if (over.length) return;                                   // NPC/ของที่มีคำสั่งของตัวเอง
       this.player.target = null;
       this.moveTo(w.x, w.y);
       this.clickMark(w.x, w.y);
     });
+    // แตะ/คลิกช่องสกิลในแถบล่าง = ร่ายสกิล (มือถือไม่มีคีย์บอร์ด)
+    $('#skillbar')?.addEventListener('click', (e) => { const k = e.target.closest('.skill')?.dataset.key; if (k) this.skills.cast(k); });
     kb.on('keydown-F', () => { const n = this.nearestNpc(60); if (n) this.talk(n); });
     for (const k of ['Q', 'W', 'E', 'R', 'T']) kb.on(`keydown-${k}`, () => this.skills.cast(k));
     kb.on('keydown-ONE', () => this.quickUse(HP_POTS));
@@ -572,6 +582,17 @@ export class TopDownScene extends Phaser.Scene {
   clickMark(x, y) {
     const r = this.add.image(x, y, 'fx_ring').setDepth(99999).setScale(0.25).setAlpha(0.9).setTint(0xffe27a);
     this.tweens.add({ targets: r, scale: 0.6, alpha: 0, duration: 380, onComplete: () => r.destroy() });
+  }
+
+  /** ผีที่อยู่ใกล้จุด (x,y) ที่สุดภายในรัศมี r (วัดจากกลางตัว) */
+  mobAt(x, y, r) {
+    let best = null, bd = r;
+    for (const m of this.mobs) {
+      if (!m.alive || m.visible === false) continue;
+      const d = Math.hypot(m.x - x, m.y - m.displayHeight * 0.45 - y);
+      if (d < bd + m.displayWidth * 0.3) { bd = d; best = m; }
+    }
+    return best;
   }
 
   nearestNpc(r) {
@@ -628,6 +649,7 @@ export class TopDownScene extends Phaser.Scene {
     if (p.alive) {
       let vx = typing ? 0 : k.RIGHT.isDown - k.LEFT.isDown;
       let vy = typing ? 0 : k.DOWN.isDown - k.UP.isDown;
+      if (this.touch?.vec) { vx += this.touch.vec.x; vy += this.touch.vec.y; }   // จอยสติ๊กบนมือถือ
       if (vx || vy) { p.path = []; p.target = null; this.pendingTalk = null; }
       else if (p.target) {
         const m = p.target;
