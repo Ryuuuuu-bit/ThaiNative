@@ -167,6 +167,13 @@ button { font-family: inherit; cursor: pointer; }
 .slot .ic, .skill .ic { font-size: 1.35em; }
 .slot .k, .skill .k { position: absolute; top: 1px; left: 4px; font-size: .7em; font-weight: 600; color: var(--gold-soft); }
 .slot .n { position: absolute; bottom: 1px; right: 4px; font-size: .7em; }
+/* ปุ่ม Auto Skill */
+.auto-skill { cursor: pointer; font: inherit; color: #cfc3a8; background: linear-gradient(180deg, rgba(40,40,52,.92), rgba(16,14,22,.95)); border: 2px solid #6b6252; border-radius: 10px; box-shadow: 0 0 0 2px rgba(0,0,0,.55); }
+.auto-skill .ic { filter: grayscale(1) brightness(.8); }
+.auto-skill .lbl { position: absolute; bottom: 1px; left: 0; right: 0; text-align: center; font-size: .5em; font-weight: 700; letter-spacing: .05em; }
+.auto-skill.on { color: #fff3c4; border-color: #ffd35c; background: linear-gradient(180deg, rgba(120,84,20,.95), rgba(58,34,6,.95)); box-shadow: 0 0 0 2px rgba(0,0,0,.55), 0 0 12px rgba(255,211,92,.75); animation: autoPulse 1.6s ease-in-out infinite; }
+.auto-skill.on .ic { filter: none; }
+@keyframes autoPulse { 50% { box-shadow: 0 0 0 2px rgba(0,0,0,.55), 0 0 20px rgba(255,211,92,1); } }
 .skill { background: linear-gradient(180deg, rgba(61,39,87,.95), rgba(20,11,29,.95)); border: 2px solid var(--gold); border-radius: 10px;
   box-shadow: 0 0 0 2px rgba(0,0,0,.55); }
 .skill .mp { position: absolute; bottom: 1px; right: 4px; font-size: .55em; color: #85c1e9; }

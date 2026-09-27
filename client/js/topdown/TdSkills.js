@@ -247,6 +247,39 @@ export class TdSkills {
     if (m.hp <= 0) { s.onMobDie(m); s.localReward(m); }
   }
 
+  // ---------------- Auto Skill (แบบบอทร่ายสกิลตามลำดับ Q→T) ----------------
+  /** ระยะที่สกิลนี้ถึงเป้า */
+  reachOf(sk) { return sk.type === 'projectile' || sk.type === 'strike' ? sk.range : sk.type === 'aoe' ? (sk.offset ? 220 : sk.radius + 40) : sk.type === 'dash' ? sk.distance + 30 : 60; }
+
+  /** สกิลช่อง key ร่ายได้ทันทีไหม (เงียบ ไม่แจ้งเตือน) → { id, sk } | null */
+  ready(key, time) {
+    const p = this.s.player, c = p.char, id = c.hotbar?.[key];
+    if (!id) return null;
+    const lv = c.skills?.[id] || 0, base = SKILL_BY_ID[id];
+    if (!lv || !base || base.job !== c.appearance.job) return null;
+    const sk = skillStats(base, lv);
+    if (p.cooldownLeft(id, time) > 0 || c.mp < sk.mp) return null;
+    return { id, sk };
+  }
+
+  /** เรียกทุกเฟรม: ถ้าเปิด Auto Skill และกำลังตีเป้า → ร่ายสกิลแรกที่พร้อม (บัฟเมื่อหมดฤทธิ์ · สกิลโจมตีเมื่อเป้าอยู่ในระยะ) */
+  autoTick(time) {
+    const s = this.s, p = s.player;
+    if (!s.settings?.autoSkill || !p.alive || s.recalling || s.ui.anyOpen?.() || time < (this.autoAt || 0)) return;
+    const t = p.target;
+    if (!t?.alive || dist(t, p) > 260) return;
+    this.autoAt = time + 250;
+    for (const key of ['Q', 'W', 'E', 'R', 'T']) {
+      const r = this.ready(key, time);
+      if (!r) continue;
+      if (r.sk.type === 'buff') { if ((p.buffs || []).some((b) => b.sk === r.id && b.until > time)) continue; }
+      else if (dist(t, p) > this.reachOf(r.sk)) continue;
+      this.cast(key, time);
+      this.autoAt = time + 600;          // เว้นจังหวะให้ท่าร่ายเล่นจบ
+      return;
+    }
+  }
+
   // ---------------- ร่ายจากปุ่ม Q W E R T ----------------
   cast(key, time = this.s.time.now) {
     const s = this.s, p = s.player, c = p.char, ui = s.ui;
@@ -263,7 +296,7 @@ export class TdSkills {
     if (p.cooldownLeft(id, time) > 0) return;
     if (c.mp < sk.mp) { ui.toast('MP ไม่พอ!', 'warn'); s.sfx.play('error'); p.cooldowns[id] = time + 400; return; }
     c.mp -= sk.mp; p.cooldowns[id] = time + sk.cd;
-    const reach = sk.type === 'projectile' || sk.type === 'strike' ? sk.range : sk.type === 'aoe' ? (sk.offset ? 220 : sk.radius + 40) : sk.type === 'dash' ? sk.distance + 30 : 60;
+    const reach = this.reachOf(sk);
     const aim = this.aim(reach);
     p.dir = dirFromVector(aim.ux, aim.uy, p.dir); p.setVelocity(0, 0); p.path = []; p.st = 'attack';
     s.playerAnim(sk.type === 'buff' || sk.kind === 'magic' ? 'cast' : 'attack', true) || s.playerAnim('attack', true);

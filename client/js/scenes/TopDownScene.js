@@ -13,7 +13,7 @@ import { bakeCharacter } from '../gfx/SpriteFactory.js';
 import { bakeFx, popupNumber, hitSpark, yantCircle, squash } from '../gfx/Fx.js';
 import { makeText } from '../systems/util.js';
 import { sound } from '../systems/Sound.js';
-import { loadSettings } from '../systems/Settings.js';
+import { loadSettings, saveSettings } from '../systems/Settings.js';
 import { saveCharacter } from '../systems/Character.js';
 import { UI } from '../systems/UI.js';
 import { Village } from '../systems/Village.js';
@@ -510,11 +510,34 @@ export class TopDownScene extends Phaser.Scene {
     this.ui.hudCache = '';
   }
 
-  quickUse(ids) {
+  quickUse(ids, quiet = false) {
     const c = this.player.char, id = ids.find((i) => count(c, i) > 0);
-    if (!id) return this.ui.toast('ไม่มียาเหลือแล้ว', 'warn');
+    if (!id) return quiet ? null : this.ui.toast('ไม่มียาเหลือแล้ว', 'warn');
     if (!this.player.alive) return;
-    this.econ.act('use', { id }).then((r) => { if (r.ok) this.sfx.play('potion'); this.ui.result(r); });
+    this.econ.act('use', { id }).then((r) => {
+      if (r.ok) this.sfx.play('potion');
+      if (quiet && r.ok) this.ui.loot?.(`🧪 กินยาอัตโนมัติ: ${ITEMS[id].nameTh}`);
+      if (!quiet || r.ok) this.ui.result(r);
+    });
+  }
+
+  /** กินยาอัตโนมัติเมื่อ HP/MP ต่ำกว่า % ที่ตั้งไว้ (ตั้งค่า → การต่อสู้) */
+  autoPotion(time) {
+    const p = this.player, set = this.settings || {};
+    if (!p.alive || time < (this.nextAutoPot || 0) || this.econ.pending) return;
+    const c = p.char, d = getDerived(c);
+    const hp = set.autoHp && c.hp / d.maxHp * 100 < set.autoHp && HP_POTS.some((i) => count(c, i));
+    const mp = !hp && set.autoMp && c.mp / d.maxMp * 100 < set.autoMp && MP_POTS.some((i) => count(c, i));
+    if (!hp && !mp) return;
+    this.nextAutoPot = time + 1500;
+    this.quickUse(hp ? HP_POTS : MP_POTS, true);
+  }
+
+  /** เปิด/ปิด Auto Skill (ปุ่ม A หรือปุ่ม AUTO ข้างแถบสกิล) */
+  toggleAutoSkill(on = !this.settings.autoSkill) {
+    this.settings.autoSkill = on; saveSettings(this.settings);
+    $('#auto-skill')?.classList.toggle('on', on);
+    this.ui.toast(on ? '⚡ Auto Skill: เปิด — ร่ายสกิลในแถบ Q–T อัตโนมัติระหว่างตีเป้า' : 'Auto Skill: ปิด', on ? 'ok' : '', 1800);
   }
 
   // ------------------------------------------------------------
@@ -615,6 +638,8 @@ export class TopDownScene extends Phaser.Scene {
     kb.on('keydown-ONE', () => this.quickUse(HP_POTS));
     kb.on('keydown-TWO', () => this.quickUse(MP_POTS));
     kb.on('keydown-B', () => this.recall());
+    kb.on('keydown-A', () => { if (!this.ui.anyOpen?.()) this.toggleAutoSkill(); });
+    { const bt = $('#auto-skill'); if (bt) { bt.classList.toggle('on', !!this.settings.autoSkill); bt.onclick = () => this.toggleAutoSkill(); } }
     kb.on('keydown-I', () => this.ui.toggle('inv-panel'));
     kb.on('keydown-C', () => this.ui.toggle('stats-panel'));
     kb.on('keydown-K', () => this.ui.toggle('skill-panel'));
@@ -727,6 +752,8 @@ export class TopDownScene extends Phaser.Scene {
     for (const m of this.mobs) { if (this.econ.server) this.updateMobOnline(m, dt); else this.updateMobLocal(m, time); this.drawMob(m); }
     this.remotes.forEach((r) => r.update(dt));
     this.weapons?.update(time);
+    this.skills?.autoTick(time);
+    this.autoPotion(time);
     // ส่งตำแหน่ง ~10 ครั้ง/วิ
     if (this.net?.online && time - (this.sentAt || 0) > 100) {
       const st = { x: Math.round(p.x), y: Math.round(p.y), dir: p.dir, anim: p.alive ? (p.st === 'walk' ? 'walk' : p.st === 'attack' ? 'attack' : 'idle') : 'die' };
