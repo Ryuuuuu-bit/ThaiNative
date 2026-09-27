@@ -24,6 +24,7 @@ import { count } from '../systems/Inventory.js';
 import { TILE, MAP_W, MAP_H, T, RIVER, bakeTileset, bakeProps, buildLayout } from '../topdown/AyutthayaMap.js';
 import { dirFromVector, playDir, registerDir8, texKey } from '../topdown/Dir8.js';
 import { TdSkills } from '../topdown/TdSkills.js';
+import { WeaponOverlay } from '../topdown/WeaponOverlay.js';
 import { ALL_ASSETS } from '/shared/data/td_assets.js';
 import { bakeGround, makeWater, TdAtmosphere, bakeTdFx, TdVfx, TdMinimap } from '../topdown/TdTheme.js';
 
@@ -100,6 +101,8 @@ export class TopDownScene extends Phaser.Scene {
     this.atmo = new TdAtmosphere(this, this.layout);
     this.vfx = new TdVfx(this);
     this.skills = new TdSkills(this);
+    this.weapons = new WeaponOverlay(this);
+    this.weapons.attach(this.player, () => this.player.char.appearance, () => ({ anim: this.player.st }));
     this.minimap = new TdMinimap(this.groundMini);
     this.zone = null;
     this.ui.updateHud();
@@ -519,6 +522,7 @@ export class TopDownScene extends Phaser.Scene {
     const key = bakeCharacter(this, q.appearance);
     const s = this.add.sprite(q.x, q.y, key, 'idle_0').setOrigin(0.5, 1).setDepth(q.y);
     s.legacyKey = key; s.d8id = heroId(q.appearance);
+    this.weapons?.attach(s, () => q.appearance, () => ({ anim: r.anim }));
     const tag = makeText(this, q.x, q.y, `${q.name} Lv.${q.level}`, { fontSize: '7px', color: '#aed6f1' }).setOrigin(0.5, 1);
     const sh = this.addShadow(s, 22);
     const r = {
@@ -530,7 +534,7 @@ export class TopDownScene extends Phaser.Scene {
         s.setDepth(s.y); tag.setPosition(s.x, s.y - s.displayHeight - 3).setDepth(s.y + 1);
         playDir(s, this.anim, this.dir);
       },
-      destroy: () => { s.destroy(); tag.destroy(); sh.destroy(); this.shadows = this.shadows.filter((x) => x.obj !== s); },
+      destroy: () => { this.weapons?.detach(s); s.destroy(); tag.destroy(); sh.destroy(); this.shadows = this.shadows.filter((x) => x.obj !== s); },
       get x() { return s.x; }, get y() { return s.y; },
     };
     this.remotes.set(q.id, r);
@@ -652,6 +656,7 @@ export class TopDownScene extends Phaser.Scene {
     for (const sh of this.shadows) sh.img.setPosition(sh.obj.x, sh.obj.y + 1).setVisible(sh.obj.visible && sh.obj.alpha > 0.2);
     for (const m of this.mobs) { if (this.econ.server) this.updateMobOnline(m, dt); else this.updateMobLocal(m, time); this.drawMob(m); }
     this.remotes.forEach((r) => r.update(dt));
+    this.weapons?.update(time);
     // ส่งตำแหน่ง ~10 ครั้ง/วิ
     if (this.net?.online && time - (this.sentAt || 0) > 100) {
       const st = { x: Math.round(p.x), y: Math.round(p.y), dir: p.dir, anim: p.alive ? (p.st === 'walk' ? 'walk' : p.st === 'attack' ? 'attack' : 'idle') : 'die' };
