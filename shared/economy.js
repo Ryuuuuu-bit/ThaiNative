@@ -107,6 +107,7 @@ export function grantKill(c, r, day) {
   rec(c, 'kills');
   const mastery = addMastery(c, 1);
   chargeFlasks(c, r.boss ? 99 : FLASK_PER_KILL);
+  if (r.boss && r.mon) { c.rec ||= {}; (c.rec.tdBoss ||= {})[r.mon] = (c.rec.tdBoss[r.mon] || 0) + 1; }   // บอสประจำโซน (ฉายา)
   const quests = questEvent(c, 'kill', r.mon), bounty = bountyKill(c, r.mon, day);
   return { ups, quests, bounty, mastery, titles: checkTitles(c) };
 }

@@ -222,7 +222,16 @@ export const TD_LEVELS = {
   phi_pob: 7, phi_jang_nang: 8, pret: 10, saming: 12, pu_som: 15,
   phi_ha: 14, phi_dip: 16, tai_hong: 18, phi_lang_kluang: 20, pret_asura: 23,
   khamot: 21, nang_takhian: 23, phi_phrai: 25, phi_chamot: 27, chalawan: 30,
+  kong_koi: 12, phi_phong: 19, krahang: 24,                      // ผีเดิมที่นำกลับมา (แหล่งเสริมในแต่ละโซน)
 };
+/** ผีที่ยังไม่มีภาพ 8 ทิศของตัวเอง → ยืมภาพผีอื่น + ย้อมสี */
+Object.assign(MONSTERS.kong_koi, { d8: 'phi_pob', tint: 0x9ccc65 });
+Object.assign(MONSTERS.phi_phong, { d8: 'phi_dip', tint: 0xffb74d });
+Object.assign(MONSTERS.krahang, { d8: 'khamot', tint: 0xd7a86e });
+// เขี้ยวพญายักษ์ (ตีบวก +16 ขึ้นไป / หลอม Lv.30): ดรอปจากบอสประจำโซนแทนเรดบอสเดิม
+MONSTERS.chalawan.drops.push({ item: 'yak_fang', chance: 0.35 });
+MONSTERS.pret_asura.drops.push({ item: 'yak_fang', chance: 0.2 });
+MONSTERS.pu_som.drops.push({ item: 'yak_fang', chance: 0.1 });
 for (const [id, L] of Object.entries(TD_LEVELS)) {
   const m = MONSTERS[id];
   if (!m || m._scaled) continue;

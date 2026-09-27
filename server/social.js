@@ -182,7 +182,7 @@ export function setupSocial(io, players, H = {}) {
       if (!p || q.left <= 0) boss.poison = null;
     }
     if (!boss.alive) {
-      if (now >= boss.respawnAt && [...players.values()].some((q) => q.world !== 'td')) spawnBoss();   // โลกเดิมเท่านั้น (โลก top-down มีบอสประจำโซนของตัวเอง)
+      if (now >= boss.respawnAt && [...players.values()].some((q) => q.world === 'side')) spawnBoss();   // เรดบอสโลกเดิม: ปิดแล้ว (ทุกคนอยู่โลก top-down ซึ่งมีบอสประจำโซนของตัวเอง)
       return;
     }
     const fighters = [...players.values()].filter(inArena);

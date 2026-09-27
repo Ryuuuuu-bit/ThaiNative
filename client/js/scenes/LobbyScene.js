@@ -14,6 +14,7 @@ import { sound } from '../systems/Sound.js';
 import { titleScreen } from '../systems/TitleScreen.js';
 import { loadSettings } from '../systems/Settings.js';
 import { HeroView, loadHeroMeta, clearHeroViews } from '../systems/HeroPreview.js';
+import { getMap } from '/shared/td/maps.js';
 
 const $ = (s) => document.querySelector(s);
 const LAST_SLOT = 'thainative_last_slot';
@@ -114,10 +115,11 @@ export class LobbyScene extends Phaser.Scene {
     document.querySelectorAll('.lb-card').forEach((el) => el.classList.toggle('sel', +el.dataset.i === i));
     this.views.forEach((v, k) => {
       if (!v) return;
-      if (k === i) { v.set(this.chars[k].appearance, 'walk', v.dir); v.spin = 900; }
-      else { v.spin = 0; v.set(this.chars[k].appearance, 'idle', 'south'); }
+      if (k === i) v.set(this.chars[k].appearance, 'idle', 'south').setShowcase(true);
+      else v.setShowcase(false).set(this.chars[k].appearance, 'idle', 'south');
     });
-    $('#lb-start').textContent = c ? '⚔️ เข้าสู่กรุงศรีฯ' : '✨ สร้างตัวละคร';
+    const M = c ? getMap(c.tdMap) : null;
+    $('#lb-start').innerHTML = c ? `<img class="btn-ico" src="assets/icons/ui_swords.png" alt=""> เริ่มผจญภัย<small class="lb-where">${M.icon} ${esc(M.nameTh)}</small>` : '<img class="btn-ico" src="assets/icons/ui_lantern.png" alt=""> สร้างตัวละคร';
     $('#lb-delete').classList.toggle('hidden', !c || !this.online);
     $('#lb-info').innerHTML = c ? this.infoHtml(c) : `<div class="lb-empty-info"><b>ช่องที่ ${i + 1} ว่างอยู่</b><br>สร้างตัวละครใหม่ได้เลย — ทุกคนเริ่มเป็นชาวบ้านแห่งกรุงศรีฯ ลองอาวุธได้ทุกแบบ แล้วปั้นอาชีพจากอาวุธที่ใช้และต้นไม้พรสวรรค์</div>`;
     if (!silent) try { localStorage.setItem(LAST_SLOT, String(i)); } catch { /* ignore */ }
@@ -168,7 +170,7 @@ export class LobbyScene extends Phaser.Scene {
     account.slot = i;
     sound.play('blessing');
     titleScreen.stop();
-    this.scene.start('ayutthaya', { char: reviveCharacter(c) });   // เกมมีโลกเดียว: กรุงศรีอยุธยา (top-down)
+    this.scene.start('ayutthaya', { char: reviveCharacter(c) });   // ฉากเกม top-down (โหลดแมพตามที่ตัวละครอยู่ล่าสุด)
   }
 
   askDelete() {

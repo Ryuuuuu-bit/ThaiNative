@@ -17,10 +17,10 @@ import { HeroView, loadHeroMeta, clearHeroViews } from '../systems/HeroPreview.j
 const $ = (s) => document.querySelector(s);
 /** อาวุธเริ่มต้นให้เลือก (ได้ทั้งหมดในกระเป๋า เปลี่ยนถือได้ตลอด) */
 const START_WEAPONS = [
-  { id: null, icon: '🥊', job: 'boxer' },
-  { id: 'wood_sword', icon: '⚔️', job: 'swordman' },
-  { id: 'oak_staff', icon: '🔮', job: 'mage' },
-  { id: 'bamboo_bow', icon: '🏹', job: 'archer' },
+  { id: null, icon: '🥊', art: 'it_gx_boxer_gloves_1', job: 'boxer' },
+  { id: 'wood_sword', icon: '⚔️', art: 'it_wood_sword', job: 'swordman' },
+  { id: 'oak_staff', icon: '🔮', art: 'it_oak_staff', job: 'mage' },
+  { id: 'bamboo_bow', icon: '🏹', art: 'it_bamboo_bow', job: 'archer' },
 ];
 const NAMES = { male: ['ขุนแผน', 'ไอ้ขวัญ', 'นายขนมต้ม', 'พระไวย', 'ไอ้เสือ', 'ทองดี'], female: ['วันทอง', 'อีเรียม', 'แม่พลอย', 'บุษบา', 'สร้อยฟ้า', 'จันทร์เจ้า'] };
 
@@ -58,7 +58,7 @@ export class CreateScene extends Phaser.Scene {
 
     $('#cc-genders').querySelectorAll('.cc-gcard').forEach((b) => (b.onclick = () => { if (this.a.gender === b.dataset.v) return; this.a.gender = b.dataset.v; this.anim = 'walk'; this.refresh(); }));
 
-    $('#cc-jobs').innerHTML = START_WEAPONS.map((w, i) => `<button class="job" data-w="${i}"><b>${w.icon}</b>${w.id ? ITEMS[w.id].nameTh : 'มือเปล่า'}</button>`).join('');
+    $('#cc-jobs').innerHTML = START_WEAPONS.map((w, i) => `<button class="job" data-w="${i}"><b><img class="job-ico" src="assets/icons/${w.art}.png" alt="" onerror="this.replaceWith(document.createTextNode('${w.icon}'))"></b><span>${w.id ? ITEMS[w.id].nameTh : 'มือเปล่า'}</span><small>${JOBS[w.job].nameTh}</small></button>`).join('');
     $('#cc-jobs').querySelectorAll('.job').forEach((b) => (b.onclick = () => { this.a.weapon = START_WEAPONS[b.dataset.w].id; this.anim = 'attack'; this.refresh(); }));
 
     document.querySelectorAll('#create-screen .preview-anims button').forEach((b) => (b.onclick = () => { this.anim = b.dataset.anim; this.refresh(); }));
@@ -122,7 +122,7 @@ export class CreateScene extends Phaser.Scene {
     const a = this.a;
     a.outfit = startOutfit(a.gender);
     document.querySelectorAll('#cc-genders .cc-gcard').forEach((b) => b.classList.toggle('active', b.dataset.v === a.gender));
-    (this.gviews || []).forEach((v, i) => { const g = ['male', 'female'][i]; v.set({ ...a, gender: g, outfit: startOutfit(g), weapon: null }, g === a.gender ? 'walk' : 'idle', 'south'); v.spin = g === a.gender ? 800 : 0; });
+    (this.gviews || []).forEach((v, i) => { const g = ['male', 'female'][i]; v.setShowcase(false).set({ ...a, gender: g, outfit: startOutfit(g), weapon: null, job: 'boxer' }, 'idle', 'south'); });
     const wi = Math.max(0, START_WEAPONS.findIndex((w) => w.id === (a.weapon || null)));
     document.querySelectorAll('#cc-jobs .job').forEach((b) => b.classList.toggle('active', +b.dataset.w === wi));
     const job = JOBS[START_WEAPONS[wi].job];

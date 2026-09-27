@@ -29,6 +29,12 @@ export const HERB_SPOTS = [
   [82, 108, 'rice_sheaf'], [94, 114, 'rice_sheaf'], [104, 111, 'rice_sheaf'], [100, 119, 'rice_sheaf'],
   [48, 126, 'herb_aloe'], [64, 130, 'herb_aloe'], [18, 124, 'herb_lemongrass'], [74, 124, 'herb_lemongrass'],
   [90, 126, 'herb_aloe'], [67, 114, 'herb_lemongrass'],
+  // สมุนไพรหายาก (ใช้ปรุงยา/อาหารขั้นสูง) · พิกัดท้องถิ่น (ค่าติดลบ = ป่าไผ่ทางตะวันตก)
+  [-20, 64, 'herb_bamboo'], [-34, 86, 'herb_bamboo'], [-20, 110, 'herb_bamboo'],
+  [-20, 30, 'herb_honey'], [-32, 46, 'herb_honey'],
+  [-36, 122, 'herb_mushroom'], [158, 100, 'herb_mushroom'], [130, 110, 'herb_mushroom'],
+  [52, 108, 'herb_turmeric'], [66, 104, 'herb_turmeric'],
+  [14, 160, 'herb_anchan'], [94, 175, 'herb_anchan'],
 ].map(([x, y, item], i) => ({ i, x: (x + OX) * TILE + 8, y: y * TILE + 8, item }));
 export const GATES = { south: { x0: 58 + OX, x1: 61 + OX }, west: { y0: 48, y1: 51 }, east: { y0: 48, y1: 51 } };
 
@@ -323,6 +329,7 @@ export function buildLayout() {
   const reserveDisc = (cx, cy, r) => reserve(cx - r, cy - r, cx + r, cy + r);
   const free = (x, y, r = 1) => { for (let yy = y - r; yy <= y; yy++) for (let xx = x - r; xx <= x + r; xx++) if (!inMap(xx, yy) || occ[yy][xx] || !isGrass(ground[yy][xx])) return false; return true; };
   for (let y = 0; y < LH; y++) for (let x = OX; x < OX + LW; x++) occ[y][x] = true;               // ผังเดิมจัดไว้แล้ว
+  for (const h of HERB_SPOTS) reserveDisc(Math.floor(h.x / TILE), Math.floor(h.y / TILE), 1);       // จุดเก็บสมุนไพร: ห้ามต้นไม้ทับ
   const S = (id, tx, ty, r = 4, n = 1) => { for (let i = 0; i < n; i++) spawns.push({ id, x: tx * TILE, y: ty * TILE, r: r * TILE }); reserveDisc(tx, ty, Math.min(r, 5)); };
   const clearing = (cx, cy, r, t = T.GRASS2) => { disc(cx, cy, r, t); reserveDisc(cx, cy, r + 1); };
   const BOSS = (id, tx, ty) => { spawns.push({ id, x: tx * TILE, y: ty * TILE, r: 2 * TILE, boss: true }); reserveDisc(tx, ty, 6); };
@@ -342,6 +349,7 @@ export function buildLayout() {
   clearing(14, 26, 6); path([[14, 26], [28, 44]], 2, T.SAND); S('phi_jang_nang', 14, 26, 4, 3);
   clearing(44, 86, 6); path([[30, 84], [44, 86]], 2, T.SAND); S('pret', 44, 86, 4, 3);
   clearing(14, 102, 6); path([[14, 102], [30, 100]], 2, T.SAND); S('saming', 14, 102, 4, 3);
+  clearing(12, 66, 5); path([[12, 66], [29, 66]], 2, T.SAND); S('kong_koi', 12, 66, 4, 3);
   // ลานศาลปู่โสม (บอส)
   disc(14, 132, 8, T.GRASS2); disc(14, 132, 5, T.BRICK); path([[14, 132], [26, 124]], 2, T.SAND); reserveDisc(14, 132, 9);
   BOSS('pu_som', 14, 131);
@@ -368,6 +376,7 @@ export function buildLayout() {
   clearing(222, 66, 6, T.BRICK); path([[206, 68], [222, 66]], 2, T.STONE); S('phi_dip', 222, 66, 4, 4);
   clearing(188, 96, 6, T.STONE); path([[188, 96], [202, 96]], 2, T.STONE); S('tai_hong', 188, 96, 4, 3);
   clearing(222, 114, 6, T.BRICK); path([[208, 118], [222, 114]], 2, T.STONE); S('phi_lang_kluang', 222, 114, 4, 3);
+  clearing(188, 78, 5, T.STONE); path([[188, 78], [204, 80]], 2, T.STONE); S('phi_phong', 188, 78, 4, 3);
   // วัดร้างใหญ่ (บอส เปรตอสุรกาย)
   disc(214, 134, 9, T.BRICK); path([[204, 128], [214, 134]], 3, T.STONE); reserveDisc(214, 134, 10);
   BOSS('pret_asura', 214, 135);
@@ -413,6 +422,7 @@ export function buildLayout() {
   clearing(92, 156, 5); path([[92, 156], [92, 168]], 2, T.WOOD); S('nang_takhian', 92, 156, 4, 3);
   clearing(160, 184, 6, T.SAND); path([[160, 168], [160, 184]], 2, T.WOOD); S('phi_phrai', 160, 184, 4, 3);
   clearing(196, 184, 6); path([[196, 168], [196, 184]], 2, T.WOOD); S('phi_chamot', 196, 184, 4, 3);
+  clearing(112, 150, 5); path([[112, 150], [112, 168]], 2, T.WOOD); S('krahang', 112, 150, 4, 3);
   // ลานพญาชาละวัน (ริมบึงใหญ่)
   disc(OX + 60, 186, 7, T.SAND); reserveDisc(OX + 60, 186, 8);
   BOSS('chalawan', OX + 60, 187);

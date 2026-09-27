@@ -14,8 +14,8 @@
   <meta name="theme-color" content="#5a1611" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link href="https://fonts.googleapis.com/css2?family=Mitr:wght@400;500;600&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="css/style.css?v=hud9" />
-  <link rel="stylesheet" href="css/hud.css?v=hud9" />
+  <link rel="stylesheet" href="css/style.css?v=hud10" />
+  <link rel="stylesheet" href="css/hud.css?v=hud10" />
 </head>
 <body>
   <!-- วอลเปเปอร์หน้าเข้าเกม (สุ่มฉาก + เอฟเฟกต์ขยับได้) -->
@@ -60,7 +60,7 @@
             <button id="auth-submit" type="submit" class="btn primary big">เข้าสู่ระบบ ▶</button>
           </form>
           <div class="auth-or"><span>หรือ</span></div>
-          <button id="auth-guest" class="btn ghost">🏮 เล่นแบบ Guest (ไม่ต้องสมัคร)</button>
+          <button id="auth-guest" class="btn ghost"><img class="btn-ico" src="assets/icons/ui_lantern.png" alt=""> เล่นแบบ Guest (ไม่ต้องสมัคร)</button>
           <p class="hint">Guest เล่นได้ทันที ความคืบหน้าเก็บบน server · ตั้งชื่อผู้ใช้ภายหลังได้ที่ ⚙️ ตั้งค่า → “เชื่อม ID”</p>
           <div class="srv-status" id="srv-status"><i></i><span>กำลังตรวจสอบเซิร์ฟเวอร์…</span></div>
         </div>
@@ -77,7 +77,7 @@
         <div class="lb-bottom">
           <div class="lb-info panel thai-frame" id="lb-info"></div>
           <div class="lb-actions">
-            <button id="lb-start" class="btn primary big">⚔️ เข้าสู่กรุงศรีฯ</button>
+            <button id="lb-start" class="btn primary big"><img class="btn-ico" src="assets/icons/ui_swords.png" alt=""> เริ่มผจญภัย</button>
             <button id="lb-delete" class="btn ghost sm danger">🗑 ลบตัวละคร</button>
           </div>
         </div>
@@ -185,7 +185,7 @@
             <button data-open="social-panel" title="ปาร์ตี้ & ผู้เล่น (P)">👥<small>P</small></button>
             <button data-open="quest-panel" title="สมุดเควส (J)">📋<small>J</small></button>
             <button data-open="help-panel" title="วิธีเล่น (H)">❔<small>H</small></button>
-            <button id="btn-home" title="ยันต์คืนถิ่น · กลับหมู่บ้าน (B)">🏠<small>B</small></button>
+            <button id="btn-home" title="ยันต์คืนถิ่น · กลับกรุงศรีฯ (B)">🏠<small>B</small></button>
             <button data-open="settings-panel" title="ตั้งค่า (ESC)">⚙️<small>Esc</small></button>
           </div>
         </div>
@@ -230,8 +230,8 @@
 
       <!-- เควสผู้ใหญ่ชัย (J) -->
       <section id="quest-panel" class="panel window wide hidden">
-        <header>📋 เควสผู้ใหญ่ชัย · หมู่บ้านบางผี <button class="close">✕</button></header>
-        <p class="greet">“หมู่บ้านเรามีแต่เรื่องผี ๆ ช่วยลุงหน่อยนะหลาน ทำเสร็จแล้วกลับมารับรางวัลที่ลุง”</p>
+        <header>📋 เควสผู้ใหญ่ชัย · กรุงศรีอยุธยา <button class="close">✕</button></header>
+        <p class="greet">“รอบกรุงศรีฯ มีแต่เรื่องผี ๆ ช่วยลุงหน่อยนะหลาน ทำเสร็จแล้วกลับมารับรางวัลที่ลุง”</p>
         <div id="quest-list" class="quest-list"></div>
         <p id="quest-note" class="hint"></p>
       </section>
@@ -351,7 +351,7 @@
 
       <!-- แผนที่โลก (M) -->
       <section id="map-panel" class="panel window wide hidden">
-        <header>แผนที่ · ดินแดนบางผี <button class="close">✕</button></header>
+        <header>แผนที่ <button class="close">✕</button></header>
         <div id="world-map" class="world-map"></div>
         <p class="hint">คลิกบนแผนที่เพื่อเดินไป · 🌀 ประตูมิติพาไปแดนถัดไป (ต้องถึงเลเวลที่กำหนด) · ฤๅษีเฝ้าประตูมิติ (ในเมือง/ค่ายพัก) วาร์ปไปแดนที่เคยไปแล้วได้ทันที · 🌙 = ผีกลางคืน</p>
       </section>
@@ -400,21 +400,16 @@
       <section id="help-panel" class="panel window hidden">
         <header>วิธีเล่น <button class="close">✕</button></header>
         <div class="keys">
-          <div><kbd>←</kbd><kbd>→</kbd> เดิน</div><div><kbd>↑</kbd> กระโดด · <kbd>↓</kbd> ลงจากแพลตฟอร์ม</div>
-          <div><kbd>Space</kbd> โจมตีปกติ (กดค้างได้)</div><div><kbd>Q</kbd><kbd>W</kbd><kbd>E</kbd><kbd>R</kbd><kbd>T</kbd> สกิลใน Hotbar</div>
-          <div><kbd>F</kbd> คุยกับชาวบ้าน · ตกปลา · วาร์ป · เซียมซี · ศาลพระภูมิ</div><div><kbd>K</kbd> คัมภีร์สกิล</div>
-          <div><kbd>M</kbd> แผนที่โลก</div><div><kbd>Esc</kbd> ตั้งค่า / ปิดหน้าต่าง</div>
-          <div><kbd>P</kbd> ปาร์ตี้ / เทรด · คลิกที่ผู้เล่นอื่น</div><div>ลานพญายักษ์ (ตะวันออกสุด) = <b>เรดบอส</b></div>
-          <div><kbd>J</kbd> สมุดเควส (รับเควสที่ผู้ใหญ่ชัย)</div><div>🗺️ 20 แมพล่าผี 5 ภาค: แมพละผี 1 ชนิด · ประตูขวา = แมพถัดไป · ประตูซ้าย = เลือกวาร์ป · กองไฟ = จุดพัก/ฟื้น</div><div>🌿 เก็บสมุนไพร (F) · หีบสมบัติ · ค่าหัวพรานบุญ (Map 1)</div><div>🎣 ท่าน้ำซ้ายสุดของหมู่บ้าน: กด F ตกปลา → ป้าสาทำอาหาร</div>
-          <div>⚔️ แนวต่อสู้ = อาวุธที่ถือ (ดาบ / ไม้เท้า / ธนู / มือเปล่า) · สกิลใช้ได้เมื่อถืออาวุธตรงแนว</div><div>🌳 <kbd>K</kbd> ต้นไม้พรสวรรค์ (1 แต้ม/เลเวล) + ความชำนาญอาวุธ = อาชีพ/ฉายา · กิ่งอาวุธปลดเลเวลสกิล · คีย์สโตนปลดท่าไม้ตาย ★ · 🎣🌾 ทักษะชีวิต: ตกปลาริมน้ำ / เก็บเกี่ยวในทุ่ง (กด F)</div>
-          <div><kbd>1</kbd><kbd>2</kbd> ยา HP / MP</div><div><kbd>C</kbd> สถานะ · <kbd>I</kbd> กระเป๋า · <kbd>Enter</kbd> แชท</div>
-          <div><kbd>B</kbd> ยันต์คืนถิ่น (ร่าย 2.5 วิ กลับหมู่บ้าน)</div><div><kbd>Tab</kbd> สลับอาวุธ</div>
-          <div>💬 <b>/w ชื่อ ข้อความ</b> กระซิบ · <b>/r ข้อความ</b> ตอบกลับ · <b>/p</b> แชทปาร์ตี้</div><div>🏆 ตารางอันดับอยู่ในหน้าต่างผู้เล่น (P)</div>
-          <div>⚔️ ลานฝึกวิชา (ซ้ายของวัด): ครูประจำ 4 อาชีพขายอาวุธ/ชุด/เครื่องประดับ Lv.1–20</div><div>✨ อุปกรณ์ Lv.22–30 ดรอปจากผีตามเลเวลแมพ/หีบสมบัติ · ✦ชิ้นตำนานจากพญายักษ์</div>
-          <div>💍 เครื่องประดับใส่ได้ 2 ชิ้น · อุปกรณ์มีเลเวลขั้นต่ำ</div><div>✦ <b>โบนัสชุด</b>: ใส่ของสายเดียวกัน 2/3/4 ชิ้น ได้โบนัสเพิ่ม (ดูในกระเป๋า)</div>
-          <div>🕯️ <b>สุสานใต้ดิน</b> (หลวงพ่อทอง ข้างศาลา): ดันเจี้ยนปาร์ตี้ 1–4 คน 3 ระดับ</div><div>👑 <b>บอสประจำภาค</b> เกิดแมพสุดท้ายของแต่ละภาคทุก 20 นาที (แจ้งในแชท/แผนที่)</div>
-          <div>⚒️ <b>โรงหลอมลุงดำ</b>: หลอมอุปกรณ์ Lv.22–30 จากของดรอปภาค 3–5</div><div>🎨 แม่ช้อย: ย้อมสีผม/ชุด · กด 👁 ในร้านเพื่อลองใส่ก่อนซื้อ</div>
-          <div>🃏 <b>การ์ดผี</b> (O): ผีดรอป 0.5% (หัวหน้า 5%) · ใส่ในช่องการ์ดของอาวุธ/เสื้อ/เครื่องประดับ · สะสมครบได้โบนัส · แลก 3→1 ที่ยายติ๋ม</div><div>🏅 <b>ฉายา</b> ปลดล็อกจากความสำเร็จ เลือกใช้ที่แผงสังคม (P)</div><div>💚 <b>เพื่อน</b>: เพิ่มจากรายชื่อผู้เล่น · <kbd>B</kbd> ในหมู่บ้าน = กลับจุดล่าล่าสุด</div>
+          <div>🖱️ <b>คลิกพื้น</b> = เดินไปจุดนั้น · <b>คลิกผี</b> = โจมตี · คลิก NPC = คุย/เปิดร้าน</div><div><kbd>←</kbd><kbd>↑</kbd><kbd>↓</kbd><kbd>→</kbd> เดินเอง · มือถือ: จอยสติ๊กซ้ายล่าง</div>
+          <div><kbd>1</kbd>–<kbd>0</kbd> สกิล/ไอเทมใน Hotbar (ลากสกิลจาก <kbd>K</kbd> มาใส่)</div><div><kbd>Q</kbd> <kbd>E</kbd> ดื่มขวดยา 2 ช่อง · ฆ่าผีเติมประจุ · กลับเมือง/ค่ายพัก = เต็ม</div>
+          <div><kbd>A</kbd> Auto ตีผีในจอ + ร่ายสกิล · <kbd>Shift</kbd>+<kbd>A</kbd> เลือกชนิดผี</div><div><kbd>F</kbd> คุย NPC · เก็บสมุนไพร (ประกายวิบวับ) · ตกปลาริมน้ำ</div>
+          <div><kbd>M</kbd> แผนที่ (คลิกบนแผนที่ = เดินไป) · <kbd>B</kbd> ยันต์คืนถิ่น กลับกรุงศรีฯ</div><div><kbd>I</kbd> กระเป๋า · <kbd>C</kbd> สถานะ · <kbd>K</kbd> สกิล/พรสวรรค์ · <kbd>J</kbd> เควส · <kbd>O</kbd> การ์ดผี · <kbd>P</kbd> สังคม · <kbd>Enter</kbd> แชท · <kbd>Esc</kbd> ตั้งค่า</div>
+          <div>🏯 <b>กรุงศรีอยุธยา Lv.1–30</b>: ทุ่งนา (ใต้) → ป่าไผ่ (ตะวันตก) → ป่าช้าวัดร้าง (ตะวันออก) → บึงผีพราย (ใต้สุด)</div><div>🌀 <b>แดนต่าง ๆ</b>: ประตูมิติกลางบึงผีพราย → ป่าหิมพานต์ Lv.30 → เมืองบาดาล Lv.50 → นรกภูมิ Lv.75–99</div>
+          <div>🧙 <b>ฤๅษีเฝ้าประตูมิติ</b> (ข้างน้ำพุ/ในค่ายพัก) วาร์ปไปแดนที่เคยไปแล้วได้ทันที</div><div>👑 <b>บอสประจำโซน</b> 7 ตัว เกิดใหม่ทุก 20 นาที · ทุกคนที่ช่วยตีได้รางวัล · ปราบแล้วได้ฉายา</div>
+          <div>⚔️ แนวต่อสู้ = อาวุธที่ถือ (ดาบ/ไม้เท้า/ธนู/มือเปล่า) · สกิลใช้ได้เมื่อถืออาวุธตรงแนว</div><div>🌳 ต้นไม้พรสวรรค์ 1 แต้ม/เลเวล · ความชำนาญอาวุธ · คีย์สโตนปลดท่าไม้ตาย ★</div>
+          <div>🛒 ครูประจำอาชีพขายของ Lv.1–20 · ของ Lv.22–95 ดรอปจากผี หรือหลอมที่ลุงดำ</div><div>✦ <b>โบนัสชุด</b> ใส่ของสายเดียวกันหลายชิ้น · 💎 ค่าสุ่มบนของดรอป (สีม่วง = ดี)</div>
+          <div>🃏 <b>การ์ดผี</b>: ผีดรอป 0.5% (บอส 5%) · ใส่ช่องการ์ด · สะสมครบได้โบนัส · แลก 3→1 ที่ยายติ๋ม</div><div>🍲 ป้าสาทำอาหารจากปลา · ยายติ๋มปรุงยาจากสมุนไพร</div>
+          <div>💬 <b>/w ชื่อ ข้อความ</b> กระซิบ · <b>/r</b> ตอบกลับ · <b>/p</b> แชทปาร์ตี้</div><div>🏅 ฉายา / 🏆 อันดับ / 💚 เพื่อน / 👥 ปาร์ตี้ อยู่ในหน้าต่างสังคม (P)</div>
         </div>
       </section>
 

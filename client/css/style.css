@@ -508,8 +508,11 @@ kbd { display: inline-block; min-width: 1.6em; text-align: center; padding: 0 .3
 #title-caption:hover { background: rgba(40,20,60,.8); }
 #title-sound { position: fixed; right: 1.2vw; top: 1.4vh; z-index: 5; font-size: clamp(14px, 2.2vh, 22px); width: 2.2em; height: 2.2em; border-radius: 50%;
   color: #fff; background: rgba(10,5,20,.55); border: 1px solid rgba(212,175,55,.5); }
-#title-sound.hint::after { content: 'คลิกเพื่อเปิดเสียง'; position: absolute; right: 115%; top: 50%; transform: translateY(-50%); white-space: nowrap;
-  font-size: .6em; color: #f5e6b8; background: rgba(10,5,20,.7); padding: .2em .6em; border-radius: 6px; animation: blink 1.6s infinite; }
+/* ยังไม่เปิดเสียง: วงแสงเต้นรอบปุ่ม (ไม่มีข้อความลอย → ไม่ทับกรอบหน้าต่าง) · ชี้เมาส์ = คำอธิบาย */
+#title-sound.hint { animation: sndPulse 1.6s ease-out infinite; }
+#title-sound.hint:hover::after { content: 'คลิกเพื่อเปิดเสียง'; position: absolute; right: 0; top: 115%; white-space: nowrap;
+  font-size: .55em; color: #f5e6b8; background: rgba(10,5,20,.9); padding: .2em .6em; border-radius: 6px; }
+@keyframes sndPulse { 0% { box-shadow: 0 0 0 0 rgba(255,210,110,.7); } 100% { box-shadow: 0 0 0 .8em rgba(255,210,110,0); } }
 @keyframes blink { 50% { opacity: .45; } }
 .pf .gold .px-ico { width: 1.3em; height: 1.3em; margin: -.2em 0; }
 
@@ -1231,3 +1234,50 @@ body.td-mode #chat-log { max-height: 6.5em; }
 .flask-btn .key { position: absolute; top: 0; left: 2px; font-size: .6em; color: var(--gold-soft); }
 .flask-btn .n { position: absolute; bottom: 0; right: 2px; font-size: .62em; text-shadow: 0 0 3px #000; }
 .flask-btn.none { opacity: .35; } .flask-btn.dry { filter: grayscale(.8); }
+
+
+/* ---------- หน้าก่อนเข้าเกม (ปรับปรุง) ---------- */
+.btn-ico { width: 1.35em; height: 1.35em; image-rendering: pixelated; vertical-align: -.28em; margin-right: .25em; filter: drop-shadow(0 1px 0 rgba(0,0,0,.6)); }
+.job-ico { width: 2.1em; height: 2.1em; image-rendering: pixelated; display: block; margin: 0 auto .1em; filter: drop-shadow(0 1px 0 rgba(0,0,0,.6)); }
+.create-panel .jobs .job { display: flex; flex-direction: column; align-items: center; gap: .05em; }
+.create-panel .jobs .job span { font-size: .95em; line-height: 1.2; }
+.create-panel .jobs .job small { font-size: .7em; color: var(--muted); }
+.create-panel .jobs .job.active small { color: var(--gold-soft); }
+.create-panel .jobs .job:hover { border-color: rgba(232,199,102,.5); }
+/* ปุ่มล่างติดขอบล่างของกรอบเสมอ (เนื้อหาเลื่อนได้ ปุ่มไม่หลุดกรอบ) */
+.create-panel { overflow-y: auto; scrollbar-width: thin; scrollbar-color: var(--gold) transparent; }
+.create-panel .cc-actions { position: sticky; bottom: -1em; margin: auto -1.2em -1em; padding: .55em 1.2em .8em; z-index: 2;
+  background: linear-gradient(180deg, rgba(26,14,36,0), rgba(26,14,36,.96) 30%); }
+.lb-toast { top: 5.5em; }
+@media (max-height: 760px) {
+  .create-panel { gap: .3em; padding: .8em 1em; font-size: .92em; }
+  .create-panel .cc-actions { margin: auto -1em -.8em; padding: .45em 1em .6em; bottom: -.8em; }
+  .cc-gcard canvas { width: 5em; height: 5em; }
+  .create-panel .job-desc { min-height: 2.4em; }
+  .job-ico { width: 1.8em; height: 1.8em; }
+}
+@media (max-height: 480px) {
+  .create-panel { font-size: .78em; }
+  .cc-gcard canvas { width: 3.6em; height: 3.6em; }
+  .cc-outfit-note, .cc-hint { display: none; }
+  #cc-title { font-size: .95em; }
+  .cc-rotate { font-size: .85em; }
+  #lobby-screen { gap: .35em; padding-top: .8%; }
+  .lb-head .logo { font-size: 1.3em; }
+  .lb-plaque { font-size: .95em; }
+  .lb-card { width: 7.4em; padding: .35em .4em .45em; } .lb-stage { width: 6.2em; height: 6.2em; }
+  .lb-card.sel { transform: translateY(-3px) scale(1.04); }
+  .lb-info { font-size: .74em; padding: .55em 1.1em; min-height: 0; }
+  .lb-actions { width: 10em; } .lb-actions .btn.big { padding: .55em .4em; font-size: .9em; }
+  .lb-keys { display: none; }
+  .lb-toast { top: 3.6em; font-size: 12px; }
+}
+.lb-where { display: block; font-size: .62em; font-weight: 400; opacity: .85; margin-top: .15em; letter-spacing: .02em; }
+@media (max-height: 480px) {
+  .lb-i-stats { display: none; }
+  .lb-i-grid { gap: .5em; } .lb-i-grid .bar { height: .95em; margin: .1em 0; }
+  .lb-i-head b { font-size: 1em; }
+  #title-caption { display: none; }
+}
+@media (max-height: 480px) { .lb-info { padding: 1.1em 2em 1em; font-size: .8em; } }
+@media (max-height: 480px) { .lb-i-grid .bar.exp, .lb-i-list div:nth-child(3) { display: none; } }

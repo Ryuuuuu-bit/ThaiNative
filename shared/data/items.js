@@ -14,7 +14,7 @@ const ITEMS_BASE = {
   hp_m:  { nameTh: 'ยาดมสมุนไพร (HP +180)', type: 'consumable', icon: '🌿', price: 70,  effect: { hp: 180 } },
   mp_s:  { nameTh: 'น้ำมะพร้าว (MP +30)',   type: 'consumable', icon: '🥥', price: 20,  effect: { mp: 30 } },
   mp_m:  { nameTh: 'ชาตะไคร้ (MP +90)',    type: 'consumable', icon: '🍵', price: 60,  effect: { mp: 90 } },
-  yant_home: { nameTh: 'ยันต์คืนถิ่น (วาร์ปกลับหมู่บ้าน)', type: 'home', icon: '🏠', price: 40, desc: 'ร่าย 2.5 วิ (ห้ามขยับ/โดนตี) แล้ววาร์ปกลับหมู่บ้าน · ปุ่ม B' },
+  yant_home: { nameTh: 'ยันต์คืนถิ่น (วาร์ปกลับกรุงศรีฯ)', type: 'home', icon: '🏠', price: 40, desc: 'ร่าย 2.5 วิ (ห้ามขยับ/โดนตี) แล้ววาร์ปกลับลานน้ำพุกลางกรุงศรีฯ ได้จากทุกแดน · ปุ่ม B' },
 
   // ---------- อาวุธ (ใครก็ถือได้ · wtype = แนวต่อสู้/สกิลที่ใช้ได้ · แสดงในมือตัวละคร) ----------
   wood_sword:  { nameTh: 'ดาบไม้ฝึก',        type: 'weapon', icon: '🗡️', price: 80,  sell: 10, wtype: 'sword', bonus: { atk: 6 } },
@@ -217,12 +217,12 @@ export function sellPrice(id) {
   return it.sell ?? Math.floor((it.price || 0) * 0.5);
 }
 
-/** NPC ร้านค้า (หมู่บ้านบางผี) */
+/** NPC ร้านค้า (กรุงศรีอยุธยา) */
 export const SHOPS = {
   mae_kha: {
     nameTh: 'ยายติ๋ม ร้านยาและของใช้',
     greeting: 'มาจ้ะหลาน ยาดีของยาย ผีหลอกก็ไม่กลัว!',
-    stock: ['flask_hp1', 'flask_mp1', 'flask_hp2', 'flask_mp2', 'flask_hp3', 'flask_mp3', 'flask_hp4', 'flask_mp4', 'hp_s', 'hp_m', 'mp_s', 'mp_m', 'yant_home', 'garland', 'nam_daeng', 'khai_tom', 'hua_mu',
+    stock: ['flask_hp1', 'flask_mp1', 'flask_hp2', 'flask_mp2', 'flask_hp3', 'flask_mp3', 'flask_hp4', 'flask_mp4', 'hp_s', 'hp_m', 'mp_s', 'mp_m', 'yant_home',
       'reset_water', 'skin_swordman'],
     tabs: ['buy', 'sell', 'cards', 'brew'],
   },
@@ -246,7 +246,7 @@ export const SHOPS = {
   },
   // ---------- ครูประจำอาชีพ (ขายอุปกรณ์สายตัวเอง Lv.1–20) ----------
   kru_sword: {
-    nameTh: 'ครูเหม สำนักดาบบางผี', job: 'swordman',
+    nameTh: 'ครูเหม สำนักดาบกรุงศรี', job: 'swordman',
     greeting: 'ดาบดีต้องคู่กับใจนิ่ง… เลือกอาวุธและเกราะที่เหมาะกับฝีมือเจ้าเถิด',
     stock: gearShopStock('swordman'), tabs: ['buy', 'sell'],
   },
@@ -261,7 +261,7 @@ export const SHOPS = {
     stock: gearShopStock('archer'), tabs: ['buy', 'sell'],
   },
   kru_boxer: {
-    nameTh: 'ครูแดง ค่ายมวยวัดบางผี', job: 'boxer',
+    nameTh: 'ครูแดง ค่ายมวยกรุงศรี', job: 'boxer',
     greeting: 'ไหว้ครูให้ดี ใจสู้ให้ถึง! อุปกรณ์มวยครบ มาเลือกเอา',
     stock: gearShopStock('boxer'), tabs: ['buy', 'sell'],
   },

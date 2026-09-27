@@ -268,7 +268,7 @@ export function setupMobs(io, players, opts = {}) {
 
   // ---------------- บอสประจำภาค ----------------
   function announceBoss(m) {
-    if (![...players.values()].some((q) => q.world !== 'td')) return;            // ไม่มีใครอยู่โลกเดิม → ไม่ประกาศ
+    if (![...players.values()].some((q) => q.world === 'side')) return;          // บอสภาคโลกเดิม: ปิดแล้ว (ไม่ประกาศในแชท)
     const R = REGIONS[m.d.region];
     io.emit('rboss:spawn', { gi: m.gi, id: m.id, mapId: m.map.id, nameTh: m.d.nameTh });
     io.emit('chat', { id: null, name: '👑 เจ้าถิ่น', text: `${m.d.nameTh} ปรากฏตัวที่ ${m.map.no}. ${m.map.nameTh} (ภาค ${R?.no} ${R?.nameTh})!` });

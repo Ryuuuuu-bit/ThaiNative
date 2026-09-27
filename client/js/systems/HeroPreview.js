@@ -12,7 +12,9 @@ export const heroId = (a) => `hero_${a.gender}_${OUTFIT_IDS[a.outfit] || 'mohom'
 export const DIRS = ['south', 'south-east', 'east', 'north-east', 'north', 'north-west', 'west', 'south-west'];
 /** ลำดับหมุนตัวตามเข็มนาฬิกา (มองจากบน) */
 export const TURN = ['south', 'south-west', 'west', 'north-west', 'north', 'north-east', 'east', 'south-east'];
-const RATE = { idle: 5, walk: 10, attack: 14, die: 8 };
+const RATE = { idle: 5, walk: 10, attack: 14, slash: 16, shoot: 14, cast: 13, die: 8 };
+/** ท่าโจมตีจริงตามอาวุธ (ดาบ = ฟัน · ธนู = ยิง · ไม้เท้า = ร่าย · มือเปล่า = ต่อย) — แบบเดียวกับในเกม */
+const ACTION = { swordman: 'slash', archer: 'shoot', mage: 'cast', boxer: 'attack' };
 const BORROW = { attack: 'walk', die: 'idle' };
 
 let metaP = null, meta = {};
@@ -53,6 +55,7 @@ export class HeroView {
 
   set(appearance, anim = this.anim, dir = this.dir) {
     const a = sanitizeAppearance(appearance || {});
+    this.job = appearance?.job || a.job;
     const key = JSON.stringify(a);
     if (key !== this.aKey) { this.aKey = key; this.a = a; this.legacy = null; }
     if (anim !== this.anim || dir !== this.dir) this.t0 = performance.now();
@@ -66,13 +69,15 @@ export class HeroView {
   frame(now) {
     const id = heroId(this.a), m = meta[id];
     if (m) {
-      let anim = m.anims.includes(this.anim) ? this.anim : BORROW[this.anim];
+      const want = this.anim === 'attack' ? ACTION[this.job] || 'attack' : this.anim;
+      let anim = m.anims.includes(want) ? want : m.anims.includes(this.anim) ? this.anim : BORROW[this.anim];
       if (!anim || !m.anims.includes(anim)) anim = 'idle';
       const im = heroImg(id, anim);
       if (!im.complete || !im.naturalWidth) return null;
       const n = m.frames?.[anim] || 4, fw = im.naturalWidth / n, fh = im.naturalHeight / DIRS.length;
       const loopable = anim === 'idle' || anim === 'walk';
-      const ms = 1000 / (RATE[anim] || 8), el = now - this.t0;
+      const ms0 = 1000 / (RATE[anim] || 8);
+      const ms = ms0, el = now - this.t0;
       let i = Math.floor(el / ms);
       i = loopable ? i % n : (i % (n + 6) >= n ? n - 1 : i % (n + 6));      // ท่าไม่วน: เล่นจบแล้วค้างครู่หนึ่งก่อนเล่นซ้ำ
       return { src: im, sx: i * fw, sy: DIRS.indexOf(this.dir) * fh, sw: fw, sh: fh, hero: true };
@@ -91,8 +96,16 @@ export class HeroView {
     return { src: f.source.image, sx: f.cutX, sy: f.cutY, sw: f.cutWidth, sh: f.cutHeight, flip: /west/.test(this.dir) };
   }
 
+  /** โชว์ท่าวนอัตโนมัติ: ยืนหันหน้า → ท่าโจมตีตามอาวุธ → เดินหมุนรอบตัว */
+  setShowcase(on) { this.showcase = !!on; this.sc0 = performance.now(); if (!on) this.spin = 0; return this; }
+
   draw(now) {
     if (!this.a) return;
+    if (this.showcase) {
+      const T = (now - this.sc0) % 8200, ph = T < 2600 ? 'idle' : T < 4400 ? 'attack' : 'walk';
+      if (ph !== this.anim) { this.anim = ph; this.t0 = now; if (ph !== 'walk') this.dir = 'south'; }
+      this.spin = ph === 'walk' ? 650 : 0;
+    }
     if (this.spin && now - (this.spunAt || 0) > this.spin) { this.spunAt = now; this.turn(1); }
     const { ctx, cv } = this, W = cv.width, H = cv.height;
     ctx.clearRect(0, 0, W, H);
