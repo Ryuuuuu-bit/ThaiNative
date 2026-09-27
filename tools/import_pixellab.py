@@ -20,7 +20,7 @@ NEAR = {'north-west': ['north', 'west'], 'south-west': ['south', 'west'], 'west'
         'north-east': ['north', 'east'], 'south-east': ['south', 'east'], 'east': ['south-east', 'north-east', 'south'],
         'north': ['north-east', 'north-west', 'south'], 'south': ['south-east', 'south-west', 'east']}
 # ชื่อท่า PixelLab → ชื่อท่าในเกม
-ANIM_MAP = [(r'^walk', 'walk'), (r'punch|jab|uppercut|kick|slash|attack|strike', 'attack'), (r'fireball|cast|spell', 'cast'),
+ANIM_MAP = [(r'^walk', 'walk'), (r'sword|slash', 'slash'), (r'bow|arrow|shoot', 'shoot'), (r'punch|jab|uppercut|kick|attack|strike', 'attack'), (r'fireball|cast|spell|staff|magic', 'cast'),
             (r'death|die|dying', 'die'), (r'taking|hurt|hit', 'hit'), (r'^idle|breath', 'idle_anim')]
 OUT = 72
 ROOT = os.path.join(os.path.dirname(__file__), '..', 'client', 'assets', 'td')

@@ -17,6 +17,15 @@ export function dirFromVector(vx, vy, prev = 'south') {
   return ['west', 'north-west', 'north', 'north-east', 'east', 'south-east', 'south', 'south-west', 'west'][i + 4];
 }
 
+/** ทิศแบบหน่วง: เปลี่ยนทิศเมื่อมุมพ้นเขตทิศเดิมเกิน ~12° (กันสลับทิศไปมาตอนเดินเฉียง/ตามทาง) */
+const DIR_DEG = { east: 0, 'south-east': 45, south: 90, 'south-west': 135, west: 180, 'north-west': -135, north: -90, 'north-east': -45 };
+export function stableDir(vx, vy, prev = 'south') {
+  if (Math.abs(vx) < 0.01 && Math.abs(vy) < 0.01) return prev;
+  const a = Math.atan2(vy, vx) * 180 / Math.PI;
+  if (prev in DIR_DEG) { let d = Math.abs(a - DIR_DEG[prev]); if (d > 180) d = 360 - d; if (d <= 34.5) return prev; }
+  return dirFromVector(vx, vy, prev);
+}
+
 export const texKey = (id, anim) => `td:${id}:${anim}`;
 export const animKey = (id, anim, dir) => `td:${id}:${anim}:${dir}`;
 
@@ -76,16 +85,50 @@ export function playDir(sprite, anim, dir, restart = false) {
   const scene = sprite.scene;
   sprite.dir = dir;
   if (sprite.d8id && hasDir8(scene, sprite.d8id, 'idle')) {
+    // ท่าโจมตีที่ไม่มีภาพจริง (หรืออาวุธไม่ใช่หมัด) → ยืนนิ่งท่าเตรียม + อาวุธในมือเหวี่ยงแทน (ไม่เอาท่าเดินมาแทนแล้ว ดูสะดุด)
+    // ท่าโจมตีจริงตามอาวุธ (ฟัน/ยิง/ร่าย) ถ้ามีภาพ
+    if ((anim === 'attack' || anim === 'cast') && sprite.actionAnim) {
+      const act = sprite.actionAnim();
+      if (act && hasDir8(scene, sprite.d8id, act)) {
+        const k = animKey(sprite.d8id, act, dir);
+        sprite._action = true;
+        if (sprite.anims.currentAnim?.key !== k || restart || !sprite.anims.isPlaying) { sprite.setFlipX(false); sprite.play(k); }
+        setLook(sprite, true);
+        return true;
+      }
+    }
+    sprite._action = false;
+    const hold = anim === 'attack' || anim === 'cast'
+      ? (!hasDir8(scene, sprite.d8id, 'attack') || (typeof sprite.holdAttack === 'function' ? sprite.holdAttack() : sprite.holdAttack))
+      : false;
+    if (hold) {
+      const now = scene.time.now;
+      if (!restart && sprite._holdUntil > now) { sprite.setFrame(`${dir}_0`); return true; }
+      const tk = texKey(sprite.d8id, 'idle');
+      sprite.anims.stop();
+      sprite.setTexture(tk, `${dir}_0`).setFlipX(false);
+      setLook(sprite, true);
+      sprite._holdUntil = now + 300;
+      const k = `${animKey(sprite.d8id, 'idle', dir)}:attack`;
+      scene.time.delayedCall(300, () => { if (sprite.active) { sprite._holdUntil = 0; sprite.emit('animationcomplete', { key: k }); } });
+      return true;
+    }
+    sprite._holdUntil = 0;
     const use = hasDir8(scene, sprite.d8id, anim) ? anim : BORROW[anim];
     if (!use || !hasDir8(scene, sprite.d8id, use)) return false;              // เช่น die → ให้ผู้เรียกทำเอฟเฟกต์แทน
     const k = animKey(sprite.d8id, use, dir);
     sprite.setFlipX(false);
-    if (sprite.anims.currentAnim?.key !== k || restart) sprite.play(k, !restart);
-    setLook(sprite, true);
-    if (use !== anim && anim === 'attack') {                                    // พุ่งไปข้างหน้าเล็กน้อยแทนท่าฟัน
-      scene.tweens.add({ targets: sprite, scaleY: sprite.scaleY * 0.92, yoyo: true, duration: 90 });
-      scene.time.delayedCall(260, () => sprite.emit('animationcomplete', { key: `${k}:attack` }));
+    const cur = sprite.anims.currentAnim;
+    if (cur?.key !== k || restart) {
+      // เปลี่ยนทิศระหว่างเดิน/ยืน → เล่นต่อจากเฟรมเดิม ไม่กระตุกกลับเฟรมแรก
+      const sameLoop = !restart && cur && sprite.anims.isPlaying && cur.key.startsWith(`td:${sprite.d8id}:${use}:`);
+      if (sameLoop) {
+        const idx = sprite.anims.currentFrame?.index ?? 0, prog = sprite.anims.accumulator || 0;
+        sprite.play({ key: k, startFrame: Math.max(0, idx - 1) });
+        sprite.anims.accumulator = prog;
+      } else sprite.play(k, !restart);
     }
+    setLook(sprite, true);
     return true;
   }
   if (!sprite.legacyKey) return false;

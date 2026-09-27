@@ -23,7 +23,7 @@ import { Network } from '../net/Network.js';
 import { account } from '../net/Account.js';
 import { count } from '../systems/Inventory.js';
 import { TILE, MAP_W, MAP_H, T, SPAWN as TD_SPAWN, inTownXY, isIsland, bakeTileset, bakeProps, buildLayout } from '../topdown/AyutthayaMap.js';
-import { dirFromVector, playDir, registerDir8, texKey } from '../topdown/Dir8.js';
+import { dirFromVector, stableDir, playDir, registerDir8, texKey } from '../topdown/Dir8.js';
 import { TdSkills } from '../topdown/TdSkills.js';
 import { SKILL_SLOTS, SLOT_KEYNAME, isItemSlot, slotItemId } from '/shared/data/skills.js';
 import { WeaponOverlay } from '../topdown/WeaponOverlay.js';
@@ -33,6 +33,8 @@ import { bakeGround, makeWater, TdAtmosphere, bakeTdFx, TdVfx, TdMinimap } from 
 
 const $ = (s) => document.querySelector(s);
 const OUTFIT_IDS = ['mohom', 'ruenton', 'jongkraben', 'rajpatan', 'chaona', 'silk', 'warrior', 'hunter', 'isan', 'mahadlek'];
+/** ท่าโจมตีจริงตามอาวุธ (ถ้ามีภาพ): ดาบ = ฟัน · ธนู = ยิง · ไม้เท้า = ร่าย · มวย = ต่อย */
+const ACTION_ANIM = { swordman: 'slash', archer: 'shoot', mage: 'cast', boxer: 'attack' };
 const SPEED = 92;
 /** ระบบ Auto: หาผีเองในรัศมีนี้รอบตัว (px ≈ 10 ช่อง) */
 const AUTO_RADIUS = 160;                                   // ความเร็วเดิน (px/วิ) – ตรงกับ server/td.js
@@ -70,7 +72,7 @@ export class TopDownScene extends Phaser.Scene {
 
   create({ char }) {
     // ภาพ 8 ทิศจาก manifest (จำนวนเฟรมจริงของแต่ละท่า) ก่อน แล้วค่อยใช้ค่าตั้งต้นจากแผน asset
-    const RATE = { idle: [5, true], walk: [10, true], attack: [14, false], cast: [12, false], hit: [12, false], die: [8, false] };
+    const RATE = { idle: [5, true], walk: [10, true], attack: [14, false], slash: [18, false], shoot: [16, false], cast: [16, false], hit: [12, false], die: [8, false] };
     for (const [id, m] of Object.entries(this.d8meta || {})) {
       const anims = {};
       for (const a of m.anims) { const [rate, loop] = RATE[a] || [10, false]; anims[a] = { frames: m.frames?.[a] || (a === 'idle' ? 4 : 6), rate, loop }; }
@@ -108,7 +110,7 @@ export class TopDownScene extends Phaser.Scene {
     $('#td-hud').classList.remove('hidden');
 
     const cam = this.cameras.main;
-    cam.setBounds(0, 0, MAP_W * TILE, MAP_H * TILE).setZoom(1.5).startFollow(this.player, true, 0.12, 0.12).setRoundPixels(true);
+    cam.setBounds(0, 0, MAP_W * TILE, MAP_H * TILE).setZoom(1.5).startFollow(this.player, false, 0.14, 0.14).setRoundPixels(false);
     this.atmo = new TdAtmosphere(this, this.layout);
     this.vfx = new TdVfx(this);
     this.skills = new TdSkills(this);
@@ -266,10 +268,12 @@ export class TopDownScene extends Phaser.Scene {
     p.cooldownLeft = () => 0;
     p.combatStats = () => getDerived(p.char);
     this.addShadow(p, 22);
+    p.holdAttack = () => p.char.appearance.job !== 'boxer';
+    p.actionAnim = () => ACTION_ANIM[p.char.appearance.job];      // ดาบ/ไม้เท้า/ธนู ใช้ท่ายืน + อาวุธเหวี่ยง · มวยใช้ท่าต่อยจริง (ถ้ามี)
     this.player = p;
     this.physics.add.collider(p, this.blocks);
     this.nameTag = makeText(this, 0, 0, char.name, { fontSize: '7px', color: '#fff3c4' }).setOrigin(0.5, 1).setDepth(99999);
-    p.on('animationcomplete', (anim) => { if (/:(attack|cast|hit)(:|$)/.test(anim.key) && p.alive) p.st = 'idle'; });
+    p.on('animationcomplete', (anim) => { if (/:(attack|cast|hit|slash|shoot)(:|$)/.test(anim.key) && p.alive) p.st = 'idle'; });
     this.playerAnim('idle');
   }
 
@@ -446,11 +450,15 @@ export class TopDownScene extends Phaser.Scene {
     const p = this.player, ranged = this.attackRange() > 40;
     p.nextAtk = time + Math.max(450, this.attackCd()); p.st = 'attack'; p.setVelocity(0, 0);
     p.dir = dirFromVector(m.x - p.x, m.y - p.y, p.dir);
-    if (!(ranged && this.playerAnim('cast', true))) this.playerAnim('attack', true);
-    this.sfx.play(ranged ? 'arrow' : 'swing');
-    if (ranged) this.vfx.shoot(p, m, JOBS[p.char.appearance.job]?.attack?.kind === 'magic' ? 'magic' : 'arrow');
-    else this.time.delayedCall(120, () => m.alive && this.vfx.slash(p, m, false));
-    if (this.econ.server) { this.time.delayedCall(ranged ? 120 : 160, () => m.alive && this.net.send('td:hit', { mid: m.mid })); return; }
+    this.playerAnim('attack', true);
+    const magic = JOBS[p.char.appearance.job]?.attack?.kind === 'magic';
+    // จังหวะ: ง้าง/รวมพลังก่อน แล้วค่อยปล่อย (ธนู ~170ms · เวท ~150ms · ดาบฟันตอน ~110ms)
+    const fireAt = ranged ? (magic ? 150 : 170) : 110;
+    if (!ranged) { const k = Math.min(1, 4 / Math.max(1, dist(p, m))); this.tweens.add({ targets: p, x: p.x + (m.x - p.x) * k, y: p.y + (m.y - p.y) * k, duration: 90, yoyo: true, ease: 'Quad.easeOut' }); }
+    this.time.delayedCall(ranged ? fireAt - 40 : 0, () => this.sfx.play(ranged ? 'arrow' : 'swing'));
+    if (ranged) this.time.delayedCall(fireAt, () => m.alive && p.alive && this.vfx.shoot(p, m, magic ? 'magic' : 'arrow'));
+    else this.time.delayedCall(fireAt, () => m.alive && this.vfx.slash(p, m, false));
+    if (this.econ.server) { this.time.delayedCall(fireAt + (ranged ? 60 : 40), () => m.alive && this.net.send('td:hit', { mid: m.mid })); return; }
     this.time.delayedCall(180, () => {
       if (!m.alive || !p.alive) return;
       const d = p.derived;
@@ -649,7 +657,7 @@ export class TopDownScene extends Phaser.Scene {
     if (this.remotes.has(q.id) || q.id === this.net.selfId) return;
     const key = bakeCharacter(this, q.appearance);
     const s = this.add.sprite(q.x, q.y, key, 'idle_0').setOrigin(0.5, 1).setDepth(q.y);
-    s.legacyKey = key; s.d8id = heroId(q.appearance);
+    s.legacyKey = key; s.d8id = heroId(q.appearance); s.holdAttack = () => q.appearance?.job !== 'boxer'; s.actionAnim = () => ACTION_ANIM[q.appearance?.job];
     this.weapons?.attach(s, () => q.appearance, () => ({ anim: r.anim }));
     const tag = makeText(this, q.x, q.y, `${q.name} Lv.${q.level}`, { fontSize: '7px', color: '#aed6f1' }).setOrigin(0.5, 1);
     const sh = this.addShadow(s, 22);
@@ -733,6 +741,16 @@ export class TopDownScene extends Phaser.Scene {
   }
 
   /** A* บนตารางไทล์ (8 ทิศ ห้ามตัดมุมกำแพง) */
+  /** เดินเส้นตรงจาก a → b ได้ไหม (สุ่มจุดทุก 4px + กว้างตัวละคร) */
+  lineClear(ax, ay, bx, by) {
+    const d = Math.hypot(bx - ax, by - ay), n = Math.ceil(d / 4), solid = this.solid;
+    for (let i = 1; i <= n; i++) {
+      const x = ax + (bx - ax) * i / n, y = ay + (by - ay) * i / n;
+      for (const ox of [-5, 5]) { const tx = Math.floor((x + ox) / TILE), ty = Math.floor(y / TILE); if (solid[ty]?.[tx] !== false) return false; }
+    }
+    return true;
+  }
+
   findPath(sx, sy, tx, ty) {
     const solid = this.solid;
     const s = [Math.floor(sx / TILE), Math.floor(sy / TILE)], t = [Math.floor(tx / TILE), Math.floor(ty / TILE)];
@@ -797,6 +815,8 @@ export class TopDownScene extends Phaser.Scene {
         if (m) this.setTarget(m, true);
       }
       if (!vx && !vy && p.path.length) {
+        // ทางลัด: ถ้ามองเห็นจุดถัดไปตรง ๆ ข้ามจุดกลางทาง → เดินเป็นเส้นตรง ไม่ซิกแซกตามช่องตาราง
+        while (p.path.length > 1 && this.lineClear(p.x, p.y - 2, p.path[1].x, p.path[1].y)) p.path.shift();
         const n = p.path[0], dx = n.x - p.x, dy = n.y - (p.y - 2), d = Math.hypot(dx, dy);
         if (d < 5) p.path.shift(); else { vx = dx / d; vy = dy / d; }
         if (!p.path.length && this.pendingTalk) { const n2 = this.pendingTalk; this.pendingTalk = null; this.talk(n2); }
@@ -805,7 +825,7 @@ export class TopDownScene extends Phaser.Scene {
       else if (vx || vy) {
         const len = Math.hypot(vx, vy) || 1;
         p.setVelocity(vx / len * SPEED, vy / len * SPEED);
-        p.dir = dirFromVector(vx, vy, p.dir); p.st = 'walk'; this.playerAnim('walk');
+        p.dir = stableDir(vx, vy, p.dir); p.st = 'walk'; this.playerAnim('walk');
       } else { p.setVelocity(0, 0); p.st = 'idle'; this.playerAnim('idle'); }
       if (!this.econ.server && this.inTown() && p.char.hp < p.derived.maxHp) p.char.hp = Math.min(p.derived.maxHp, p.char.hp + p.derived.maxHp * 0.04 * dt);
     } else p.setVelocity(0, 0);
