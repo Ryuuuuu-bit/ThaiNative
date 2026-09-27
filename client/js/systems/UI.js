@@ -236,7 +236,7 @@ export class UI {
   applyUiIcons() {
     $('#quick-hp .ic').innerHTML = itemIcon('hp_s', '🧴');
     $('#quick-mp .ic').innerHTML = itemIcon('mp_s', '🥥');
-    const gold = document.querySelector('.actionbar .gold');
+    const gold = document.querySelector('.pf .gold');
     if (gold && uiIcon('gold') && !gold.querySelector('.px-ico')) gold.innerHTML = `${uiIcon('gold')} <b id="hud-gold">${$('#hud-gold').textContent}</b>`;
     // ปุ่มเมนูขวาบน: ไอคอนชุดเดียวกัน (PixelLab ui_menu_*)
     const MENU = { 'stats-panel': 'menu_stats', 'inv-panel': 'menu_bag', 'skill-panel': 'menu_skill', 'map-panel': 'menu_map',
