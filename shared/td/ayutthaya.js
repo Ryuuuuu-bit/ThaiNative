@@ -105,29 +105,32 @@ export function buildLayout() {
   P('env/b_fountain', C.x, C.y + 3, { foot: [5, 3], scale: 1.6, alt: 'env/p_lotus', altScale: 1.9, label: 'น้ำพุนาคราช', glow: [-30, 60, 0xa8e0ff, 0.6] });
   for (const [dx, dy] of [[-7, -5], [7, -5], [-7, 6], [7, 6]]) small('p_lanternpole', C.x + dx, C.y + dy, { glow: LAMP, alt: 'env/p_lantern' });
   for (const [dx, dy] of [[-4, -8], [4, -8]]) deco('p_frangipani', C.x + dx, C.y + dy);
-  P('spirit_house', 53, 45, { foot: [2, 1], label: 'ศาลหลักเมือง', glow: [-20, 30, 0xffd27a, 0.6] });
+  P('env/p_spirit', 53, 45, { foot: [2, 1], scale: 1.1, alt: 'spirit_house', altScale: 1, label: 'ศาลหลักเมือง', glow: [-20, 30, 0xffd27a, 0.6] });
   for (const [dx, dy] of [[-9, -1], [9, -1], [-9, 4], [9, 4]]) small('p_bench', C.x + dx, C.y + dy);
   for (let y = C.y - 12; y <= C.y + 12; y++) for (let x = C.x - 12; x <= C.x + 12; x++) if (Math.hypot(x - C.x + 0.5, y - C.y + 0.5) <= 11.5) reserve(x, y, x, y);
 
   // === พระราชวังหลวง (เหนือ) ===
   P('env/b_thronehall', 60, 22, { foot: [8, 4], scale: 1.45, alt: 'env/b_viharn', altScale: 1.45, label: 'พระที่นั่งสรรเพชญ์ปราสาท', glow: [-50, 100, 0xffe1a0, 0.8] });
-  P('env/b_palacegate', 60, 30, { foot: [6, 2], scale: 1.0, alt: 'env/b_ubosot', altScale: 0.9, label: 'ประตูพระราชวัง', glow: [-40, 60, 0xffe1a0, 0.6] });
+  P('env/b_palacegate3', 60, 30, { foot: [6, 2], scale: 0.95, alt: 'env/b_ubosot', altScale: 0.9, label: 'ประตูพระราชวัง', glow: [-40, 60, 0xffe1a0, 0.6] });
+  P('env/b_pavilion', 51, 21, { foot: [4, 2], scale: 0.65, glow: [-20, 40, 0xffe1a0, 0.5] }); P('env/b_pavilion', 69, 21, { foot: [4, 2], scale: 0.65, flip: true, glow: [-20, 40, 0xffe1a0, 0.5] });
   for (const x of [50, 55, 65, 70]) { small('p_banner', x, 29, { alt: 'env/p_lantern' }); }
-  for (const x of [49, 71]) { small('p_lion', x, 24, { scale: 1.3, flip: x > 60 }); tree(x, 18, 'pink', 1); }
+  for (const x of [49, 71]) { small('p_lion', x, 27, { scale: 1.3, flip: x > 60 }); tree(x, 18, 'pink', 1); }
   small('p_torch', 56, 31, { glow: TORCH }); small('p_torch', 64, 31, { glow: TORCH });
+  for (const [x, y] of [[53, 26], [67, 26], [56, 17], [64, 17]]) small('p_stonelantern', x, y, { glow: [-10, 18, 0xffd27a, 0.5] });
   reserve(45, 10, 75, 32);
 
   // === วัดไชยวัฒนาราม (ตะวันตกเฉียงเหนือ) ===
   P('env/m_prangbig_l', 33, 29, { foot: [6, 3], scale: 1.55, alt: 'env/m_prangbig', label: 'วัดไชยวัฒนาราม', glow: [-80, 110, 0xffe1a0, 0.7] });
   for (const [x, y, sc] of [[26, 21, 0.9], [40, 21, 0.9], [26, 33, 1], [40, 33, 1], [26, 27, 0.8], [40, 27, 0.8], [33, 20, 0.7]]) P('env/b_prang_l', x, y, { foot: [2, 2], scale: sc, alt: 'env/b_prang', flip: x > 33 });
-  for (let x = 25; x <= 41; x += 3) if (x < 31 || x > 35) P('td_ruin', x, 18, { foot: [3, 1], scale: 1.2 });
-  for (let x = 24; x <= 42; x += 3) if (x < 31 || x > 36) P('td_ruin', x, 36, { foot: [3, 1], scale: 1.2 });
+  for (let x = 25; x <= 41; x += 3) if (x < 31 || x > 35) P(x % 2 ? 'env/p_buddhawall' : 'env/p_brickwall', x, 18, { foot: [3, 1], scale: 1.2, alt: 'td_ruin' });
+  for (let x = 24; x <= 42; x += 3) if (x < 31 || x > 36) P(x % 2 ? 'env/p_buddhawall' : 'env/p_brickwall', x, 36, { foot: [3, 1], scale: 1.2, alt: 'td_ruin' });
   for (let x = 28; x <= 38; x += 2) small('p_buddha', x, 19, { glow: [-8, 14, 0xffe9a0, 0.3] });
   small('p_torch', 31, 37, { glow: TORCH }); small('p_torch', 35, 37, { glow: TORCH });
+  small('p_bell', 24, 30, { scale: 1.2 }); small('p_bell', 42, 30, { scale: 1.2, flip: true }); small('p_stonelantern', 29, 34); small('p_stonelantern', 37, 34);
   reserve(21, 14, 45, 38);
 
   // === วัดพระศรีสรรเพชญ์ (ตะวันออกเฉียงเหนือ): เจดีย์ทอง 3 องค์ ===
-  for (const [x, y, sc] of [[79, 28, 1.1], [86, 27, 1.3], [93, 28, 1.1]]) P('env/b_goldchedi', x, y, { foot: [5, 3], scale: sc, alt: 'env/m_chedi_l', altScale: sc * 1.2, glow: [-60, 70, 0xfff0c0, 0.6] });
+  for (const [x, y, sc] of [[79, 28, 0.95], [86, 27, 1.2], [93, 28, 0.95]]) P(x === 86 ? 'env/b_goldchedi' : 'env/b_goldchedi2', x, y, { foot: [5, 3], scale: sc, alt: 'env/m_chedi_l', altScale: sc * 1.2, glow: [-60, 70, 0xfff0c0, 0.6] });
   for (let x = 77; x <= 96; x += 2) if (x < 83 || x > 89) small('p_buddha', x, 31, { glow: [-8, 14, 0xffe9a0, 0.3] });
   small('p_lion', 83, 33, { scale: 1.2 }); small('p_lion', 88, 33, { scale: 1.2, flip: true });
   P('env/b_ubosot', 90, 42, { foot: [7, 3], scale: 1.0, flip: true, label: 'พระอุโบสถ', glow: [-40, 70, 0xffe1a0, 0.6] });
@@ -143,7 +146,8 @@ export function buildLayout() {
   reserve(19, 51, 42, 64); reserve(20, 37, 40, 46);
 
   // === ตะวันออก: ย่านช่างเหล็กน้ำพี้ ===
-  P('forge', 92, 57, { foot: [5, 2], label: 'เตาตีเหล็กน้ำพี้', glow: [-20, 60, 0xff8a3c, 1] });
+  P('env/b_forge', 92, 57, { foot: [5, 2], scale: 0.85, alt: 'forge', altScale: 1, label: 'เตาตีเหล็กน้ำพี้', glow: [-20, 60, 0xff8a3c, 1] });
+  P('env/b_forge3', 97, 55, { foot: [3, 2], scale: 0.55, glow: [-15, 40, 0xff8a3c, 0.8] }); small('p_firewood', 88, 57);
   small('p_cart', 86, 55); small('p_pots', 98, 55); small('p_rice', 87, 60, { alt: 'env/p_pots' }); small('p_sign', 99, 60, { alt: 'env/p_bench' });
   small('p_torch', 85, 58, { glow: TORCH }); small('p_torch', 100, 58, { glow: TORCH });
   P('env/b_wat2', 94, 68, { foot: [7, 3], scale: 0.9, label: 'วิหารไม้', glow: [-40, 60, 0xffe1a0, 0.5] });
@@ -156,20 +160,21 @@ export function buildLayout() {
     small(`p_tent_${TENTS[(i + row * 2) % 5]}`, x, y, { alt: 'env/p_stall', glow: [-14, 30, 0xffb35c, 0.8] });
   }
   for (const [x, y] of [[49, 68], [67, 68], [52, 73], [70, 73], [49, 78], [67, 78]]) small(['p_fruit', 'p_baskets', 'p_pottery', 'p_silk', 'p_flowercart', 'p_teatable'][(x + y) % 6], x, y, { alt: 'env/p_pots' });
-  P('stall', 46, 81, { foot: [6, 1], label: 'ตลาดหัวรอ', glow: [-20, 40, 0xffb35c, 0.9] }); P('food_stall', 73, 81, { foot: [4, 1], glow: [-20, 40, 0xffb35c, 0.9] });
+  P('env/p_stall', 46, 81, { foot: [3, 1], scale: 1.1, alt: 'stall', altScale: 1, label: 'ตลาดหัวรอ', glow: [-20, 40, 0xffb35c, 0.9] }); P('env/p_foodcart', 73, 81, { foot: [3, 1], scale: 1.1, alt: 'env/p_flowercart', altScale: 1.1, glow: [-20, 40, 0xffb35c, 0.9] });
   for (const [x, y] of [[57, 64], [62, 64], [57, 79], [62, 79]]) small('p_lanternpole', x, y, { glow: LAMP, alt: 'env/p_lantern' });
   reserve(43, 61, 76, 83);
   // ประตูใต้
   small('p_lion', 56, 87, { scale: 1.2 }); small('p_lion', 63, 87, { scale: 1.2, flip: true });
   small('p_torch', 56, 85, { glow: TORCH }); small('p_torch', 63, 85, { glow: TORCH });
-  P('bounty_board', 65, 84, { foot: [2, 1], label: 'ป้ายประกาศค่าหัว' });
+  P('env/p_board', 65, 84, { foot: [2, 1], scale: 0.9, alt: 'bounty_board', altScale: 1, label: 'ป้ายประกาศค่าหัว' });
   reserve(54, 83, 66, 92);
   // ประตูตะวันตก/ตะวันออก
   for (const [x, f] of [[20, false], [100, true]]) { small('p_torch', x, 46, { glow: TORCH }); small('p_torch', x, 53, { glow: TORCH }); small('p_lion', x + (f ? -2 : 2), 46, { scale: 1.1, flip: f }); }
+  deco('p_arch', 21, 51, { scale: 1.6 }); deco('p_arch', 99, 51, { scale: 1.6 });
   reserve(14, 44, 24, 55); reserve(96, 44, 106, 55);
 
   // === บ้านเรือนหนาแน่น (เติมช่องว่างที่เหลือในเกาะ) ===
-  const HOUSE = [['env/b_ruenthai', 0.8], ['env/b_house2', 0.8], ['house', 0.85], ['env/b_rowhouses', 0.8], ['env/b_hamlet', 0.75], ['env/b_village', 0.75], ['env/b_ruenthai', 0.8]];
+  const HOUSE = [['env/b_ruenthai', 0.8], ['env/b_house2', 0.8], ['env/b_ruenthai', 0.85], ['env/b_house2', 0.75], ['env/b_hamlet', 0.75], ['env/b_village', 0.75], ['env/b_ruenthai', 0.8]];
   for (let y = 22; y <= 88; y += 4) for (let x = 20; x <= 100; x += 2) {
     const hx = x, hy = y + (x % 2);
     if (!free(hx - 3, hy - 2, hx + 3, hy + 1)) continue;
@@ -178,6 +183,13 @@ export function buildLayout() {
     reserve(hx - 3, hy - 3, hx + 3, hy + 1);
     const r = rnd();
     if (r < 0.35) small('p_jar', hx + (rnd() < 0.5 ? -4 : 4), hy + 1); else if (r < 0.6) deco('p_frangipani', hx + 3, hy + 1); else if (r < 0.75) deco('p_plants', hx - 3, hy + 1);
+  }
+  // รอบสอง: เรือนหลังเล็กอุดช่องแคบระหว่างถนนทแยง (ให้เมืองแน่นแบบภาพอ้างอิง)
+  for (let hy = 22; hy <= 88; hy += 1) for (let hx = 20; hx <= 100; hx += 1) {
+    if (!free(hx - 2, hy - 2, hx + 2, hy + 1)) continue;
+    const key = ['env/b_ruenthai', 'env/b_house2', 'env/b_hamlet'][Math.floor(rnd() * 3)];
+    P(key, hx, hy, { foot: [3, 2], scale: 0.6, alt: 'env/b_ruenthai', altScale: 0.6, flip: rnd() < 0.5, glow: WIN });
+    reserve(hx - 2, hy - 3, hx + 2, hy + 1);
   }
   // ต้นไม้/พุ่มไม้ในช่องว่างที่เหลือ (ไม่บังถนน)
   for (let y = 14; y <= 88; y += 3) for (let x = 18; x <= 102; x += 3) {
@@ -194,13 +206,13 @@ export function buildLayout() {
   // ของจุกจิกในช่องว่างที่เหลือ (บ่อน้ำ เกวียน โอ่ง รั้ว)
   for (let y = 16; y <= 88; y += 2) for (let x = 18; x <= 102; x += 2) {
     if (!free(x - 1, y - 1, x + 1, y) || rnd() > 0.35) continue;
-    const k = ['p_well', 'p_cart', 'p_pots', 'p_fence', 'p_jar', 'p_haystack', 'p_bench', 'p_bamboo'][Math.floor(rnd() * 8)];
+    const k = ['p_well', 'p_cart', 'p_pots', 'p_fence', 'p_jar', 'p_haystack', 'p_bench', 'p_bamboo', 'p_laundry', 'p_coop', 'p_firewood', 'p_oven', 'p_mortar', 'p_trough'][Math.floor(rnd() * 14)];
     (k === 'p_fence' ? deco : small)(k, x, y); reserve(x - 1, y - 1, x + 1, y);
   }
 
   // === นอกเกาะ: ริมคูเมือง ท่าเรือ ต้นไม้ ===
   P('env/b_sala2', 67, 99, { foot: [5, 2], scale: 0.85, label: 'ท่าน้ำ', glow: [-30, 50, 0xffe1a0, 0.6] });
-  for (const [x, y, f] of [[40, 94, 0], [80, 94, 1], [14, 60, 0], [106, 40, 1], [30, 8, 0], [90, 8, 1]]) P('boat', x, y, { foot: [0, 0], depth: 1, flip: !!f });
+  for (const [x, y, f] of [[40, 94, 0], [80, 94, 1], [14, 60, 0], [106, 40, 1], [30, 8, 0], [90, 8, 1], [50, 93, 1], [72, 95, 0], [12, 30, 1], [108, 64, 0]]) P(x % 20 < 10 ? 'env/p_boat' : 'env/p_rowboat', x, y, { foot: [0, 0], depth: 1, flip: !!f, scale: 1.1, alt: 'boat', altScale: 1 });
   small('p_torch', 56, 98, { glow: TORCH }); small('p_torch', 63, 98, { glow: TORCH });
   P('env/b_gatescene', 4, 47, { foot: [0, 0], scale: 0.85, label: 'ทางไปเพนียดคล้องช้าง (เร็ว ๆ นี้)' });
   P('env/b_gatescene2', 115, 47, { foot: [0, 0], scale: 0.85, flip: true, label: 'ทางไปค่ายบางระจัน (เร็ว ๆ นี้)' });
@@ -215,7 +227,7 @@ export function buildLayout() {
   for (let x = 8; x <= 44; x += 5) tree(x, 103, 'palm', 1 + (x % 3) * 0.08);
   for (let x = 76; x <= 112; x += 5) tree(x, 103, 'palm', 1 + (x % 3) * 0.08);
   for (const [x, y] of [[16, 110], [30, 116], [40, 108], [82, 112], [96, 118], [106, 108]]) small('p_haystack', x, y);
-  P('campfire', 60, 112, { foot: [1, 1], label: 'ค่ายพัก', glow: [-10, 80, 0xff8a3c, 1.3] });
+  P('env/p_campfire', 60, 112, { foot: [1, 1], scale: 0.8, alt: 'campfire', altScale: 1, label: 'ค่ายพัก', glow: [-10, 80, 0xff8a3c, 1.3] });
   small('p_torch', 57, 110, { glow: TORCH }); small('p_torch', 63, 110, { glow: TORCH }); small('p_cart', 64, 114); small('p_haystack', 56, 115);
   small('p_spirit', 52, 102, { label: 'ศาลตายาย' });
   P('env/m_mondop', 70, 122, { foot: [6, 3], label: 'มณฑปร้าง' });
