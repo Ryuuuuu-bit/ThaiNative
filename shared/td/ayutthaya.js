@@ -139,7 +139,7 @@ function buildTown() {
 
   // === พระราชวังหลวง (เหนือ) ===
   P('env/b_thronehall', 60, 22, { foot: [8, 4], scale: 1.45, alt: 'env/b_viharn', altScale: 1.45, label: 'พระที่นั่งสรรเพชญ์ปราสาท', glow: [-50, 100, 0xffe1a0, 0.8] });
-  P('env/b_palacegate_front', 60, 30, { foot: [6, 2], scale: 1.2, alt: 'env/b_palacegate3', altScale: 0.95, label: 'ประตูพระราชวัง', glow: [-40, 60, 0xffe1a0, 0.6] });
+  P('env/b_citygate_closed', 60, 30, { foot: [6, 2], scale: 1.1, alt: 'env/b_palacegate3', altScale: 0.95, label: 'ประตูพระราชวัง', glow: [-40, 60, 0xffe1a0, 0.6] });
   for (const x of [48.15, 51.15, 54.15, 65.85, 68.85, 71.85]) P('env/p_brickwall', x, 30, { foot: [3, 1], scale: 48 / 42, alt: 'td_ruin' });   // กำแพงแก้วหน้าวัง ต่อชิดประตูเป็นแนวเดียว
   P('env/b_pavilion', 51, 21, { foot: [4, 2], scale: 0.65, glow: [-20, 40, 0xffe1a0, 0.5] }); P('env/b_pavilion', 69, 21, { foot: [4, 2], scale: 0.65, flip: true, glow: [-20, 40, 0xffe1a0, 0.5] });
   for (const x of [51, 55, 65, 69]) { small('p_banner', x, 33, { alt: 'env/p_lantern' }); }
@@ -217,14 +217,18 @@ function buildTown() {
   for (const [x, y] of [[57, 62], [62, 62], [57, 69], [62, 69]]) small('p_lanternpole', x, y, { glow: LAMP, alt: 'env/p_lantern' });
   reserve(43, 60, 77, 72);
   // ประตูใต้
-  P('env/b_palacegate_front', 60, 90.6, { foot: [0, 0], scale: 1.35, alt: 'env/p_arch', altScale: 2, label: 'ประตูเมืองใต้', glow: [-50, 80, 0xffe1a0, 0.7] });   // ซุ้มประตูเมือง ฝังในกำแพง ทางเดินตรงเข้าประตู
+  // ซุ้มประตูเมืองใต้: กำแพงใต้หันหน้าออกนอกเมือง (หน้ากำแพง = แถว y90) → ฐานซุ้มชิดขอบล่างหน้ากำแพง · ช่องทางเดินกว้างเท่าถนน 4 ไทล์
+  P('env/b_citygate', 60, 91, { foot: [0, 0], scale: 64 / 48, alt: 'env/p_arch', altScale: 2, label: 'ประตูเมืองใต้', glow: [-60, 80, 0xffe1a0, 0.7] });
+  P('none', 56, 89, { foot: [3, 3] }); P('none', 63, 89, { foot: [3, 3] });            // ตัวป้อม (ชนได้ · ไม่มีภาพ)
   small('p_torch', 55, 83, { glow: TORCH }); small('p_torch', 65, 83, { glow: TORCH });
   P('env/p_board', 69, 82, { foot: [2, 1], scale: 0.9, alt: 'bounty_board', altScale: 1, label: 'ป้ายประกาศค่าหัว' });
   small('p_bench', 53, 83); small('p_well2', 53, 81, { alt: 'env/p_well' });
   reserve(51, 80, 68, 92);
   // ประตูตะวันตก/ตะวันออก
   for (const [x, f] of [[20, false], [100, true]]) { small('p_torch', x, 46, { glow: TORCH }); small('p_torch', x, 53, { glow: TORCH }); small('p_lion', x + (f ? -2 : 2), 46, { scale: 1.1, flip: f }); }
-  deco('p_arch', 21, 51, { scale: 1.6 }); deco('p_arch', 99, 51, { scale: 1.6 });
+  // ประตูตะวันตก/ตะวันออก: กำแพงแนวตั้ง (หนา 2 ไทล์) → ป้อมคู่ขนาบถนนบน/ล่าง ฐานป้อมชิดขอบถนน
+  //  มุมกล้อง 3/4 มองจากใต้ → ป้อมฝั่งใต้ถนนจะบังถนน จึงตั้งป้อมเฉพาะฝั่งเหนือ (ฐานชิดขอบบนถนน) ฝั่งใต้ปล่อยปลายกำแพงเป็นเสาประตู
+  for (const wx of [17, 104]) P('env/b_gatetower', wx, 48, { foot: [0, 0], scale: 1, alt: 'env/p_arch', label: wx < 60 ? 'ประตูเมืองตะวันตก' : 'ประตูเมืองตะวันออก' });
   reserve(14, 44, 24, 55); reserve(96, 44, 106, 55);
 
   // === ชุมชนริมซอย: เรือนไทยเรียงหน้าบ้านหันเข้าซอย มีรั้ว สวนครัว โอ่งน้ำ ===
