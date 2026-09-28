@@ -522,7 +522,7 @@ function friendDel(c, { acc }) {
   c.friends = (c.friends || []).filter((f) => f.acc !== acc);
   return c.friends.length < before ? OK('ลบเพื่อนแล้ว') : NO('');
 }
-function gm(c, { cmd = 'help', a1, a2 }, ctx) {
+function gm(c, { cmd = 'help', a1, a2, rest = '' }, ctx) {
   if (!ctx.admin) return NO('คำสั่งนี้ใช้ได้เฉพาะแอดมิน');
   const n = (v, d) => Math.max(0, Math.floor(Number(v) || d));
   switch (String(cmd).toLowerCase()) {
@@ -548,8 +548,19 @@ function gm(c, { cmd = 'help', a1, a2 }, ctx) {
     }
     case 'heal': { const d = getDerived(c); c.hp = d.maxHp; c.mp = d.maxMp; return OK('ฟื้น HP/MP เต็ม', { gm: true }); }
     case 'map': return OK(`วาร์ปไป ${a1}`, { gm: true, gmWarp: String(a1 || '') });
+    case 'say': case 'announce': {                                          // ประกาศถึงทุกคนในเซิร์ฟเวอร์
+      const text = String(rest || '').slice(0, 200).trim();
+      if (!text) return NO('ใช้: /gm say <ข้อความ>');
+      return OK('ประกาศถึงทุกคนแล้ว', { gm: true, gmNotice: { kind: 'say', text } });
+    }
+    case 'patch': {                                                         // นับถอยหลังอัปแพตช์: /gm patch [นาที] [ข้อความ] · /gm patch cancel
+      if (String(a1).toLowerCase() === 'cancel') return OK('ยกเลิกประกาศอัปแพตช์', { gm: true, gmNotice: { kind: 'cancel' } });
+      const min = Math.max(1, Math.min(60, Number(a1) || 5));
+      const text = String(rest || '').replace(/^\S+\s*/, Number(a1) ? '' : '$&').slice(0, 200).trim();
+      return OK(`ประกาศอัปแพตช์ในอีก ${min} นาที`, { gm: true, gmNotice: { kind: 'soon', min, text } });
+    }
     case 'hp': { const pct = Math.max(0, Math.min(100, Number(a1) || 0)); return OK(pct ? `ตั้ง HP → ${pct}%` : 'สลบทันที (ทดสอบชุบชีวิต)', { gm: true, hpPct: pct }); }
-    default: return OK('คำสั่ง: /gm gold [จำนวน] · /gm lv [เลเวล] · /gm exp [จำนวน] · /gm item <id> [จำนวน] · /gm sp [n] · /gm stat [n] · /gm enh <weapon|armor|accessory|accessory2> [ขั้น] · /gm heal', { gm: true });
+    default: return OK('คำสั่ง: /gm gold [จำนวน] · /gm lv [เลเวล] · /gm exp [จำนวน] · /gm item <id> [จำนวน] · /gm sp [n] · /gm stat [n] · /gm enh <weapon|armor|accessory|accessory2> [ขั้น] · /gm heal · /gm say <ข้อความ> · /gm patch [นาที] [ข้อความ] · /gm patch cancel', { gm: true });
   }
 }
 

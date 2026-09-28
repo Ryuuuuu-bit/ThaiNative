@@ -6,6 +6,7 @@ import express from 'express';
 import { createStore, hashPassword, verifyPassword, MAX_SLOTS } from './store.js';
 import { newCharacter, migrate, hotbarItemOk } from '../shared/charmodel.js';
 import { runAction } from '../shared/economy.js';
+import { MAX_LEVEL } from '../shared/stats.js';
 
 const USER_RE = /^[A-Za-z0-9_฀-๿]{3,20}$/;       // อังกฤษ/ตัวเลข/_/ไทย 3–20 ตัว
 const MAX_CHAR_BYTES = 128 * 1024;
@@ -163,12 +164,12 @@ export function setupAuth(app, hooks = {}) {
   // ตารางอันดับ (สาธารณะ · แคช 30 วิ): เลเวลสูงสุด / ตีบวกสูงสุด
   let lbCache = null, lbAt = 0;
   api.get('/leaderboard', wrap(async (req, res) => {
-    if (!lbCache || Date.now() - lbAt > 30000) {
+    if (!lbCache || Date.now() - lbAt > 15000) {
       const rows = (await req.store.topCharacters(300)).filter((r) => r && r.name);
       const clean = rows.map((r) => {
         const enh = r.enhance || {}, eq = r.equipment || {};
         const best = Math.max(0, ...Object.entries(enh).filter(([slot]) => eq[slot]).map(([, v]) => +v || 0));
-        return { name: String(r.name).slice(0, 21), level: Math.min(30, +r.level || 1), path: typeof r.path === 'string' ? r.path : null, enh: Math.min(20, best) };
+        return { name: String(r.name).slice(0, 21), level: Math.min(MAX_LEVEL, +r.level || 1), path: typeof r.path === 'string' ? r.path : null, title: typeof r.title === 'string' ? r.title : null, enh: Math.min(20, best) };
       });
       lbCache = {
         level: clean.slice(0, 20),

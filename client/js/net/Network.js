@@ -39,6 +39,7 @@ export class Network {
     s.on('disconnect', () => this.emitLocal('status', false));
     // แพตช์ใหม่: เซิร์ฟเวอร์แจ้งก่อนปิด + ต่อใหม่แล้วเวอร์ชันไม่ตรง → แถบแจ้งให้รีโหลด
     s.on('server:update', (d) => patchBanner('down', d?.msg));
+    s.on('server:notice', (d) => noticeBanner(d || {}));
     s.on('server:build', (d) => {
       if (!d?.v) return;
       if (this.build && d.v !== this.build) patchBanner('new');
@@ -119,4 +120,30 @@ function patchBanner(kind, msg) {
     el.querySelector('#pb-later').onclick = () => { clearInterval(bannerTimer); el.innerHTML = '<span>✨ มีแพตช์ใหม่</span><button id="pb-go">รีโหลด</button>'; el.querySelector('#pb-go').onclick = () => location.reload(); }; };
   draw();
   bannerTimer = setInterval(() => { if (--left <= 0) { clearInterval(bannerTimer); location.reload(); } else if (el.querySelector('#pb-later')) el.querySelector('span').textContent = `✨ อัปเดตแพตช์ใหม่แล้ว! รีโหลดเพื่อเล่นเวอร์ชันล่าสุด (อัตโนมัติใน ${left} วิ)`; }, 1000);
+}
+
+/** ประกาศจาก GM: say = แถบข้อความ 8 วิ · soon = นับถอยหลังอัปแพตช์ค้างบนจอ · cancel = ซ่อน */
+let noticeTimer = null;
+function noticeBanner({ kind, text = '', at }) {
+  let el = document.getElementById('notice-banner');
+  clearInterval(noticeTimer); clearTimeout(noticeBanner.hide);
+  if (kind === 'cancel') { el?.remove(); return; }
+  if (!el) { el = document.createElement('div'); el.id = 'notice-banner'; document.body.appendChild(el); }
+  const esc = (t) => String(t).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+  el.dataset.kind = kind;
+  if (kind === 'say') {
+    el.innerHTML = `<span>📢 ${esc(text)}</span>`;
+    noticeBanner.hide = setTimeout(() => el.remove(), 9000);
+    return;
+  }
+  const draw = () => {
+    const left = Math.max(0, Math.round((at - Date.now()) / 1000));
+    const mm = Math.floor(left / 60), ss = String(left % 60).padStart(2, '0');
+    el.innerHTML = left > 0
+      ? `<span>⚠️ เซิร์ฟเวอร์จะอัปแพตช์ในอีก <b>${mm}:${ss}</b>${text ? ` · ${esc(text)}` : ''}</span><small>ตัวละครเซฟอัตโนมัติ · หาที่ปลอดภัยพักก่อนนะ</small>`
+      : '<span>🔧 กำลังอัปแพตช์… รอสักครู่</span>';
+    if (left <= 0) clearInterval(noticeTimer);
+  };
+  draw();
+  noticeTimer = setInterval(draw, 1000);
 }

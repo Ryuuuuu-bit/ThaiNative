@@ -3,7 +3,18 @@
 //  ▸ ใช้ไอคอนอาวุธที่สวมจริง (ico_it_<weapon>) + จุดจับจาก gear_art (heldInfo)
 //  ▸ วางที่มือตามทิศ · อยู่หลังตัวเมื่อหันหลัง · เหวี่ยง/ยก/ง้างตอนโจมตี
 // ============================================================
-import { heldInfo } from '../gfx/PlayerArt.js';
+import { heldInfo, enhGlow } from '../gfx/PlayerArt.js';
+
+/** สีออร่าตีบวก (0xRRGGBB) ตามขั้น · ใช้ชุดสีเดียวกับไอคอน/ภาพเดิม */
+const auraColor = (lv) => { const g = enhGlow(lv); if (!g) return 0; const [r, gg, b] = g.color.split(',').map(Number); return (r << 16) | (gg << 8) | b; };
+/** ตั้ง/ถอดแสงเรือง (WebGL preFX) บน game object ตามขั้นตีบวก · คืน glow controller หรือ null */
+function setGlow(obj, lv, prev) {
+  if (!obj.preFX) return null;                                   // Canvas renderer: ไม่มี FX
+  if (prev) { obj.preFX.remove(prev); prev = null; }
+  if (!lv || lv < 1) return null;
+  obj.preFX.setPadding(Math.min(12, 3 + lv * 0.4));
+  return obj.preFX.addGlow(auraColor(lv), 1 + lv * 0.18, 0, false, 0.1, 10);
+}
 
 // ตำแหน่งมือ (px จากเท้า ที่สเกลตัวละคร 0.667) · behind = วาดหลังตัว · side = ด้านของมือบนจอ
 const HAND = {
@@ -25,10 +36,10 @@ export class WeaponOverlay {
   attach(spr, getApp, getState) {
     const img = this.s.add.image(spr.x, spr.y, '__DEFAULT').setVisible(false);
     const fx = this.s.add.graphics().setVisible(false);
-    this.items.set(spr, { spr, img, fx, getApp, getState, key: null, info: null, atkAt: -9999, lastAnim: '' });
+    this.items.set(spr, { spr, img, fx, getApp, getState, key: null, info: null, atkAt: -9999, lastAnim: '', wlv: 0, alv: 0, wGlow: null, aGlow: null, nextMote: 0 });
   }
 
-  detach(spr) { const it = this.items.get(spr); if (it) { it.img.destroy(); it.fx.destroy(); this.items.delete(spr); } }
+  detach(spr) { const it = this.items.get(spr); if (it) { if (it.aGlow && spr.preFX) spr.preFX.remove(it.aGlow); it.img.destroy(); it.fx.destroy(); this.items.delete(spr); } }
 
   update(time) {
     for (const it of this.items.values()) this.draw(it, time);
@@ -39,6 +50,7 @@ export class WeaponOverlay {
     if (!spr.active) return this.detach(spr);
     const a = it.getApp?.();
     const key = a?.weapon ? `ico_it_${a.weapon}` : null;
+    this.aura(it, a, time);
     // แสดงเฉพาะบนภาพ 8 ทิศ (สไปรต์เดิมวาดอาวุธในตัวอยู่แล้ว) และอาวุธที่มีภาพ
     it.fx.clear().setVisible(false);
     if (!spr._d8 || !spr.visible || !key || !this.s.textures.exists(key) || spr._action) { img.setVisible(false); return; }
@@ -100,5 +112,34 @@ export class WeaponOverlay {
     img.setOrigin(flip ? 1 - it.ox : it.ox, it.oy);                          // พลิกภาพ → จุดจับต้องพลิกตาม ไม่งั้นอาวุธลอยห่างมือ
     img.setVisible(true).setFlipX(flip).setScale(info.scale * 0.5 * k).setAngle(ang)
       .setPosition(spr.x + dx, spr.y + dy).setDepth(spr.depth + (h.behind ? -0.05 : 0.05)).setAlpha(spr.alpha);
+    // ออร่าอาวุธตีบวก: เรืองตามขั้น + ประกายลอยขึ้นจากใบอาวุธ (+7 ขึ้นไป)
+    const wl = a.wenh || 0;
+    if (it.wlv !== wl) { it.wlv = wl; it.wGlow = setGlow(img, wl, it.wGlow); }
+    if (it.wGlow) it.wGlow.outerStrength = (1 + wl * 0.18) * (0.75 + 0.25 * Math.sin(time / 260));
+    if (wl >= 7 && time > it.nextMote && spr.alpha > 0.5) {
+      it.nextMote = time + Math.max(90, 420 - wl * 16);
+      const len = (info.wtype === 'bow' ? 10 : 14) * k, ra = Phaser.Math.DegToRad(img.angle + (flip ? 180 : 0) - 90) ;
+      const mx = img.x + Math.cos(ra) * len * Math.random(), my = img.y + Math.sin(ra) * len * Math.random();
+      this.mote(mx, my, auraColor(wl), spr.depth + 0.08, wl);
+    }
+  }
+
+  /** ออร่าชุดเกราะตีบวก: ขอบตัวเรือง (+1) · ประกายวนรอบเท้า (+10) */
+  aura(it, a, time) {
+    const spr = it.spr, al = spr._d8 && spr.visible ? a?.aenh || 0 : 0;
+    if (it.alv !== al) { it.alv = al; it.aGlow = setGlow(spr, al, it.aGlow); }
+    if (it.aGlow) it.aGlow.outerStrength = (0.8 + al * 0.12) * (0.7 + 0.3 * Math.sin(time / 380));
+    if (al >= 10 && time > (it.nextAura || 0) && spr.alpha > 0.5) {
+      it.nextAura = time + Math.max(110, 480 - al * 18);
+      const ang = Math.random() * Math.PI * 2;
+      this.mote(spr.x + Math.cos(ang) * 10, spr.y - 2 + Math.sin(ang) * 4, auraColor(al), spr.depth + (Math.sin(ang) < 0 ? -0.1 : 0.1), al, 22);
+    }
+  }
+
+  /** ประกายเล็กๆ ลอยขึ้นแล้วจาง */
+  mote(x, y, color, depth, lv, rise = 12) {
+    const r = 0.8 + Math.min(1.2, lv * 0.06);
+    const c = this.s.add.circle(x, y, r, color, 0.95).setDepth(depth).setBlendMode(Phaser.BlendModes.ADD);
+    this.s.tweens.add({ targets: c, y: y - rise - Math.random() * 6, x: x + (Math.random() - 0.5) * 4, alpha: 0, scale: 0.4, duration: 650 + Math.random() * 350, onComplete: () => c.destroy() });
   }
 }

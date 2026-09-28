@@ -276,7 +276,7 @@ export class TdSocial {
     const tab = this.lbTab || 'level', rows = this.lb?.[tab] || [];
     const medal = (i) => ['🥇', '🥈', '🥉'][i] || `${i + 1}.`;
     const mine = this.player.char.name;
-    el.innerHTML = rows.length ? rows.map((r, i) => `<div class="soc-row lb ${r.name === mine ? 'me' : ''}"><span>${medal(i)} ${esc(r.name)}</span>
+    el.innerHTML = rows.length ? rows.map((r, i) => `<div class="soc-row lb ${r.name === mine ? 'me' : ''}"><span>${medal(i)} ${esc(r.name)}${TITLE_BY_ID[r.title] ? ` <em class="lb-title" style="color:${TITLE_BY_ID[r.title].color}">«${esc(TITLE_BY_ID[r.title].nameTh)}»</em>` : ''}</span>
       <small>${tab === 'level' ? `Lv.${r.level}` : `<b class="enh t${Math.min(5, Math.floor(r.enh / 4))}">+${r.enh}</b> · Lv.${r.level}`} · ${JOBS[r.path]?.nameTh ?? 'ชาวบ้าน'}</small></div>`).join('')
       : `<p class="empty">${this.net.online ? 'ยังไม่มีข้อมูล' : 'ออฟไลน์อยู่'}</p>`;
   }

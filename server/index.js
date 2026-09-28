@@ -147,6 +147,7 @@ process.on('unhandledRejection', (e) => console.error('[unhandled]', e));
 const BUILD = (process.env.RAILWAY_GIT_COMMIT_SHA || '').slice(0, 7) || `dev-${Date.now().toString(36)}`;
 io.on('connection', (socket) => {
   socket.emit('server:build', { v: BUILD });
+  if (patchNotice && patchNotice.at > Date.now() - 120000) socket.emit('server:notice', { kind: 'soon', ...patchNotice });
   // ห่อทุก handler: payload null/undefined → {} และจับ error ไว้ (ไม่ให้ process ตาย)
   const rawOn = socket.on.bind(socket);
   socket.on = (ev, fn) => rawOn(ev, (...args) => {
@@ -282,6 +283,7 @@ io.on('connection', (socket) => {
     if (a === 'enhance' && r.slot && r.lv >= 10 && r.success) io.emit('chat', { id: null, name: '🔨 ลุงดำ', text: `${p.name} ตีบวกสำเร็จ +${r.lv}!` });
     refresh(p);
     if (r.ok && r.gmWarp && p.admin && p.world === 'td') td.gmWarp(p, socket, r.gmWarp);
+    if (r.ok && r.gmNotice && p.admin) gmNotice(r.gmNotice, p);
     if (r.ok && r.hpPct != null && p.admin) {                                   // GM: ตั้ง HP / สลบ (ทดสอบหมอยา)
       p.invulnUntil = 0;
       if (r.hpPct <= 0) hurtPlayer(p, p.hp + 1, { force: true });
@@ -417,6 +419,35 @@ setInterval(() => {
 }, 1000);
 
 setInterval(() => { for (const p of players.values()) persist(p); }, 5000);
+
+// ประกาศจาก GM: say = ข้อความถึงทุกคน · soon = นับถอยหลังอัปแพตช์ (แจ้งซ้ำ 5/3/1 นาที, 30/10 วิ) · cancel = ยกเลิก
+let patchNotice = null;            // { at, text } ที่กำลังนับอยู่ (คนที่เพิ่งเข้าเกมก็ได้รับ)
+const patchTimers = [];
+function gmNotice(n, by) {
+  if (n.kind === 'say') {
+    io.emit('chat', { id: null, name: '📢 ประกาศ', text: n.text });
+    io.emit('server:notice', { kind: 'say', text: n.text });
+    return;
+  }
+  patchTimers.splice(0).forEach(clearTimeout);
+  if (n.kind === 'cancel') {
+    patchNotice = null;
+    io.emit('server:notice', { kind: 'cancel' });
+    io.emit('chat', { id: null, name: '📢 ประกาศ', text: 'ยกเลิกการอัปแพตช์แล้ว เล่นต่อได้ตามปกติ' });
+    return;
+  }
+  const at = Date.now() + n.min * 60000;
+  patchNotice = { at, text: n.text || '' };
+  const say = (left) => io.emit('chat', { id: null, name: '📢 ประกาศ', text: `⚠️ เซิร์ฟเวอร์จะอัปแพตช์ในอีก ${left}${patchNotice?.text ? ` — ${patchNotice.text}` : ''} (ตัวละครเซฟอัตโนมัติ)` });
+  io.emit('server:notice', { kind: 'soon', at, text: patchNotice.text });
+  say(`${n.min} นาที`);
+  for (const [ms, label] of [[300000, '5 นาที'], [180000, '3 นาที'], [60000, '1 นาที'], [30000, '30 วินาที'], [10000, '10 วินาที']]) {
+    const wait = at - ms - Date.now();
+    if (wait > 1000) patchTimers.push(setTimeout(() => say(label), wait));
+  }
+  patchTimers.push(setTimeout(() => { for (const p of players.values()) { p.dirty = true; persist(p); } }, Math.max(0, at - Date.now() - 5000)));   // เซฟทุกคนก่อนถึงเวลา
+  console.log(`[gm] ${by?.name} ประกาศอัปแพตช์ใน ${n.min} นาที`);
+}
 
 // ปิด server (deploy ใหม่) → เซฟทุกคนก่อน
 async function shutdown() {

@@ -395,6 +395,7 @@ export class TopDownScene extends Phaser.Scene {
     this.player = p;
     this.blockCollider = this.physics.add.collider(p, this.blocks);
     this.nameTag = makeText(this, 0, 0, char.name, { fontSize: '7px', color: '#fff3c4', align: 'center' }).setOrigin(0.5, 1).setDepth(99999);
+    this.titleTag = makeText(this, 0, 0, '', { fontSize: '7px', color: '#ffffff', align: 'center' }).setOrigin(0.5, 1).setDepth(99999).setVisible(false);
     this.refreshNameTag();
     p.on('animationcomplete', (anim) => { if (/:(attack|cast|hit|slash|shoot)(:|$)/.test(anim.key) && p.alive) p.st = 'idle'; });
     this.playerAnim('idle');
@@ -587,6 +588,7 @@ export class TopDownScene extends Phaser.Scene {
   }
 
   setMobVisible(m, on) {
+    if (on) this.tweens.killTweensOf(m);                          // กันบั๊กผีล่องหน: ท่าตายค่อยๆ จางยังค้างอยู่ตอนผีเกิดใหม่/ฟื้นจากแพ็กเก็ตสลับลำดับ
     m.setVisible(on); m.label.setVisible(on); m.hpBg.setVisible(on); m.hpBar.setVisible(on);
     if (on) m.setAlpha(1).clearTint().setInteractive({ useHandCursor: true }); else m.disableInteractive();
   }
@@ -897,8 +899,9 @@ export class TopDownScene extends Phaser.Scene {
   refreshNameTag() {
     const c = this.player?.char; if (!c || !this.nameTag) return;
     const t = TITLE_BY_ID[c.title];
-    const txt = t ? `«${t.nameTh}»\n${c.name}` : c.name;
-    if (this.nameTag.text !== txt) this.nameTag.setText(txt);
+    if (this.nameTag.text !== c.name) this.nameTag.setText(c.name);
+    const tt = t ? `«${t.nameTh}»` : '';
+    if (this.titleTag && this.titleTag.text !== tt) this.titleTag.setText(tt).setColor(t?.color || '#ffffff').setVisible(!!t);
   }
 
   // ------------------------------------------------------------
@@ -939,7 +942,7 @@ export class TopDownScene extends Phaser.Scene {
       .on('td:state', (s) => this.applyState(s))
       .on('td:dmg', (d) => this.onMobDamage(this.mobs[d.mid], d))
       .on('td:die', ({ mid }) => this.onMobDie(this.mobs[mid]))
-      .on('td:matk', ({ mid }) => { const m = this.mobs[mid]; if (m?.alive) playDir(m, 'attack', m.dir, true); })
+      .on('td:matk', ({ mid }) => { const m = this.mobs[mid]; if (!m) return; if (!m.alive || m.alpha < 0.5 || !m.visible) { m.alive = true; if (m.sx != null) m.setPosition(m.sx, m.sy); this.setMobVisible(m, true); } playDir(m, 'attack', m.dir, true); })
       .on('td:aoe', (a) => this.bossAoe(a))
       .on('td:title', ({ id, title }) => this.remotes.get(id)?.setTitle(title))
       .on('td:pbuff', (d) => this.skills?.partyReceive(d))
@@ -976,8 +979,10 @@ export class TopDownScene extends Phaser.Scene {
     const s = this.add.sprite(q.x, q.y, key, 'idle_0').setOrigin(0.5, 1).setDepth(q.y);
     s.legacyKey = key; s.d8id = heroId(q.appearance); s.holdAttack = () => q.appearance?.job !== 'boxer'; s.actionAnim = () => ACTION_ANIM[q.appearance?.job];
     this.weapons?.attach(s, () => q.appearance, () => ({ anim: r.anim }));
-    const tt = TITLE_BY_ID[q.title];
-    const tag = makeText(this, q.x, q.y, `${tt ? `«${tt.nameTh}»\n` : ''}${q.name} Lv.${q.level}`, { fontSize: '7px', color: '#aed6f1', align: 'center' }).setOrigin(0.5, 1);
+    const tag = makeText(this, q.x, q.y, `${q.name} Lv.${q.level}`, { fontSize: '7px', color: '#aed6f1', align: 'center' }).setOrigin(0.5, 1);
+    const ttl = makeText(this, q.x, q.y, '', { fontSize: '7px', color: '#ffffff', align: 'center' }).setOrigin(0.5, 1);   // ฉายา (สีตามฉายา) เหนือชื่อ
+    const paintTitle = (t) => { const T = TITLE_BY_ID[t]; ttl.setText(T ? `«${T.nameTh}»` : '').setColor(T?.color || '#ffffff').setVisible(!!T); };
+    paintTitle(q.title);
     s.setInteractive({ useHandCursor: true });                                   // คลิกผู้เล่น → เมนู เชิญ/เทรด/เพื่อน/กระซิบ
     s.on('pointerdown', (ptr) => { if (uiBlocked(ptr)) return; ptr.event?.stopPropagation?.(); this.social?.openPlayerMenu(r, { x: ptr.x, y: ptr.y }); });
     const sh = this.addShadow(s, 22);
@@ -988,12 +993,13 @@ export class TopDownScene extends Phaser.Scene {
       update(dt) {
         const dx = this.tx - s.x, dy = this.ty - s.y;
         if (Math.hypot(dx, dy) > 120) s.setPosition(this.tx, this.ty); else { const k = Math.min(1, dt * 12); s.x += dx * k; s.y += dy * k; }
-        s.setDepth(s.y); tag.setPosition(s.x, s.y - s.displayHeight - 3).setDepth(s.y + 1);
+        if (this._lv !== this.level) { this._lv = this.level; tag.setText(`${q.name} Lv.${this.level}`); }
+        s.setDepth(s.y); tag.setPosition(s.x, s.y - s.displayHeight - 3).setDepth(s.y + 1); if (ttl.visible) ttl.setPosition(s.x, tag.y - tag.displayHeight).setDepth(s.y + 1);
         playDir(s, this.anim, this.dir);
       },
-      destroy: () => { this.weapons?.detach(s); s.destroy(); tag.destroy(); sh.destroy(); this.shadows = this.shadows.filter((x) => x.obj !== s); },
+      destroy: () => { this.weapons?.detach(s); s.destroy(); tag.destroy(); ttl.destroy(); sh.destroy(); this.shadows = this.shadows.filter((x) => x.obj !== s); },
       get x() { return s.x; }, get y() { return s.y; },
-      setTitle(t) { const T = TITLE_BY_ID[t]; tag.setText(`${T ? `«${T.nameTh}»\n` : ''}${q.name} Lv.${this.level}`); },
+      setTitle(t) { paintTitle(t); },
     };
     this.remotes.set(q.id, r);
   }
@@ -1195,6 +1201,7 @@ export class TopDownScene extends Phaser.Scene {
     } else p.setVelocity(0, 0);
     p.setDepth(p.y);
     this.nameTag.setPosition(p.x, p.y - p.displayHeight - 3);
+    if (this.titleTag?.visible) this.titleTag.setPosition(p.x, this.nameTag.y - this.nameTag.displayHeight);
     if (time > (this.nextAutoMenu || 0)) { this.nextAutoMenu = time + 1000; this.refreshAutoMenuCounts(); }
     for (const sh of this.shadows) sh.img.setPosition(sh.obj.x, sh.obj.y + 1).setVisible(sh.obj.visible && sh.obj.alpha > 0.2);
     for (const m of this.mobs) { if (this.econ.server) this.updateMobOnline(m, dt); else this.updateMobLocal(m, time); this.drawMob(m); }

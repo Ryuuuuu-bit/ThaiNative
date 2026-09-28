@@ -109,7 +109,8 @@ export class UI {
   gmCommand(text) {
     if (!account.account?.admin && this.scene.econ.server) return this.toast('คำสั่งนี้ใช้ได้เฉพาะแอดมิน', 'warn');
     const [, cmd = 'help', a1, a2] = text.trim().split(/\s+/);
-    this.scene.econ.act('gm', { cmd, a1, a2 }).then((r) => {
+    const rest = text.trim().replace(/^\/gm\s+\S+\s*/i, '');          // ข้อความทั้งหมดหลังคำสั่ง (ใช้กับ say/patch)
+    this.scene.econ.act('gm', { cmd, a1, a2, rest }).then((r) => {
       if (!r.ok) return this.toast(r.msg, 'warn');
       this.toast(`🛠️ ${r.msg}`); this.chat({ name: 'GM', text: r.msg });
       if (r.ups) this.scene.combat.levelUpFx(r.ups);

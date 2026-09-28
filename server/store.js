@@ -151,7 +151,7 @@ class PgStore {
   /** ตารางอันดับ: เลเวล/EXP + ตีบวกสูงสุด (ข้อมูลย่อ) */
   async topCharacters(limit = 300) {
     const { rows } = await this.pool.query(
-      `SELECT data->>'name' AS name, data->'level' AS level, data->'exp' AS exp, data->'enhance' AS enhance, data->'path' AS path, data->'equipment' AS equipment
+      `SELECT data->>'name' AS name, data->'level' AS level, data->'exp' AS exp, data->'enhance' AS enhance, data->'path' AS path, data->>'title' AS title, data->'equipment' AS equipment
          FROM characters ORDER BY (data->>'level')::int DESC NULLS LAST, (data->>'exp')::int DESC NULLS LAST LIMIT $1`, [limit]);
     return rows;
   }
@@ -187,7 +187,7 @@ class MemoryStore {
   async namesLike(base) { const b = base.toLowerCase(); return [...this.chars.values()].map((c) => String(c.name).toLowerCase()).filter((n) => n === b || n.startsWith(`${b} #`)); }
   async topCharacters(limit = 300) {
     return [...this.chars.values()].sort((a, b) => (b.level || 0) - (a.level || 0) || (b.exp || 0) - (a.exp || 0)).slice(0, limit)
-      .map((d) => ({ name: d.name, level: d.level, exp: d.exp, enhance: d.enhance, path: d.path, equipment: d.equipment }));
+      .map((d) => ({ name: d.name, level: d.level, exp: d.exp, enhance: d.enhance, path: d.path, title: d.title, equipment: d.equipment }));
   }
 }
 
