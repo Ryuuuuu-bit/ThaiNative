@@ -139,8 +139,11 @@ function buildTown() {
 
   // === พระราชวังหลวง (เหนือ) ===
   P('env/b_thronehall', 60, 22, { foot: [8, 4], scale: 1.45, alt: 'env/b_viharn', altScale: 1.45, label: 'พระที่นั่งสรรเพชญ์ปราสาท', glow: [-50, 100, 0xffe1a0, 0.8] });
-  P('env/b_palacegate_pl', 60, 30, { foot: [6, 2], scale: 1.2, alt: 'env/b_citygate_closed', altScale: 1.1, label: 'ประตูพระราชวัง', glow: [-40, 60, 0xffe1a0, 0.6] });
-  for (const x of [47.93, 50.93, 53.93, 66.07, 69.07, 72.07]) P('env/p_brickwall', x, 30, { foot: [3, 1], scale: 48 / 42, alt: 'td_ruin' });   // กำแพงแก้วหน้าวัง ต่อชิดประตูเป็นแนวเดียว
+  // ประตูวัง: ภาพกว้าง ~9 ไทล์ (55.4–64.6) ช่องประตูอยู่ไทล์ 59–60 → ชนเฉพาะป้อมสองข้าง เดินลอดช่องได้
+  P('env/b_palacegate_pl', 60, 30, { foot: [0, 0], scale: 1.2, alt: 'env/b_citygate_closed', altScale: 1.1, label: 'ประตูพระราชวัง', glow: [-40, 60, 0xffe1a0, 0.6] });
+  P('none', 57, 30, { foot: [4, 2] }); P('none', 63, 30, { foot: [4, 2] });                        // ป้อมซ้าย 55–58 · ป้อมขวา 61–64
+  for (const x of [47.93, 50.93, 53.93, 66.07, 69.07, 72.07]) P('env/p_brickwall', x, 30, { foot: [0, 0], scale: 48 / 42, alt: 'td_ruin' });   // กำแพงแก้วหน้าวัง ต่อชิดประตูเป็นแนวเดียว
+  P('none', 51, 30, { foot: [10, 1] }); P('none', 70, 30, { foot: [10, 1] });                       // แนวชนกำแพงต่อเนื่อง 46–55 · 65–74 (ไม่มีช่องโหว่ข้างป้อม)
   P('env/b_pavilion', 51, 21, { foot: [4, 2], scale: 0.65, glow: [-20, 40, 0xffe1a0, 0.5] }); P('env/b_pavilion', 69, 21, { foot: [4, 2], scale: 0.65, flip: true, glow: [-20, 40, 0xffe1a0, 0.5] });
   for (const x of [51, 55, 65, 69]) { small('p_banner', x, 33, { alt: 'env/p_lantern' }); }
   for (const x of [49, 71]) { small('p_lion', x, 27, { scale: 1.3, flip: x > 60 }); tree(x, 18, 'pink', 1); }
