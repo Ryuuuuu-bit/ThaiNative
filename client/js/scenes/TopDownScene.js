@@ -417,13 +417,13 @@ export class TopDownScene extends Phaser.Scene {
       const spr = this.add.sprite(n.x, n.y, key, 'idle_0').setOrigin(0.5, 1).setDepth(n.y);
       spr.legacyKey = key; spr.d8id = n.key; playDir(spr, 'idle', 'south');
       this.addShadow(spr, 20);
-      this.npcPlate(n, spr);
+      const plateTop = this.npcPlate(n, spr);
       spr.setInteractive({ useHandCursor: true });
       spr.on('pointerdown', (ptr) => { if (uiBlocked(ptr)) return; ptr.event.stopPropagation(); this.talk(n); });
       spr.on('pointerover', () => { this.hovered = spr; document.body.dataset.cursor = 'talk'; });
       spr.on('pointerout', () => { if (this.hovered === spr) this.hovered = null; delete document.body.dataset.cursor; });
       if (n.id === 'quest') {                                                              // เครื่องหมาย ! ทองลอยเหนือป้ายชื่อ
-        const y0 = n.y - spr.displayHeight - 30;
+        const y0 = plateTop - 9;                                                          // ลอยเหนือกรอบป้าย ไม่ทับ
         const g = this.add.graphics().setDepth(n.y + 3);
         g.fillStyle(0x5a1611, 1).fillCircle(0, 0, 6).lineStyle(1.5, 0xf4d03f).strokeCircle(0, 0, 6);
         const t = makeText(this, 0, 1, '!', { fontSize: '9px', color: '#ffe082' }).setOrigin(0.5);
@@ -461,6 +461,7 @@ export class TopDownScene extends Phaser.Scene {
     g.lineStyle(1, 0xd4af37, 0.85).strokeRoundedRect(-w / 2, -h - 1, w, h + 2, 3);
     g.fillStyle(0xd4af37, 1).fillTriangle(-2, 1, 2, 1, 0, 3);
     this.add.container(n.x, top - 2, [g, role, name]).setDepth(n.y + 2);
+    return top - 2 - h - 1;                                                                // ขอบบนของป้าย
   }
 
   talk(n) {

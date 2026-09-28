@@ -16,6 +16,8 @@ export function makeText(scene, x, y, text, style = {}) {
     fontStyle: '500',
     shadow: { offsetX: 0, offsetY: 1, color: '#000', blur: 2, fill: true, stroke: true },
     resolution: 4,
+    // วัดความสูงด้วยสระ/วรรณยุกต์ไทยซ้อนบน-ล่าง ไม่งั้นหัวสระถูกตัด (น้ำ→นา, มือ→มอ)
+    testString: '|MÉqgyปิ่น้ำฏฐุ',
     ...style,
   });
   t.texture.setFilter(Phaser.Textures.FilterMode.LINEAR);
