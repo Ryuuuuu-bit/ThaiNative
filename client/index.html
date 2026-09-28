@@ -317,25 +317,27 @@
       <section id="trade-panel" class="panel window wide hidden">
         <header><span>แลกเปลี่ยนกับ <b id="tr-with"></b></span> <button id="tr-x" class="close-trade">✕</button></header>
         <div class="trade-cols">
-          <div class="tr-col">
-            <h4>ข้อเสนอของคุณ <span id="tr-my-status" class="tr-status"></span></h4>
-            <div id="tr-my" class="tr-offer"></div>
-            <div class="tr-gold">฿ <input id="tr-gold" type="number" min="0" value="0" /></div>
-            <h5>กระเป๋า (คลิกเพื่อใส่ · Shift+คลิก = ทั้งหมด)</h5>
-            <div id="tr-inv" class="tr-inv"></div>
+          <div class="tr-col" id="tr-col-me">
+            <div class="tr-head"><b>ข้อเสนอของคุณ</b><span id="tr-my-status" class="tr-status"></span></div>
+            <div id="tr-my" class="tr-grid"></div>
+            <div class="tr-foot"><label class="tr-gold">฿ <input id="tr-gold" type="number" min="0" value="0" /></label><span class="tr-val" id="tr-my-val"></span></div>
           </div>
-          <div class="tr-col">
-            <h4>ข้อเสนอของ <span id="tr-name2"></span> <span id="tr-their-status" class="tr-status"></span></h4>
-            <div id="tr-their" class="tr-offer"></div>
-            <div class="tr-gold">฿ <b id="tr-their-gold">0</b></div>
+          <div class="tr-col" id="tr-col-them">
+            <div class="tr-head"><b>ข้อเสนอของ <span id="tr-name2"></span></b><span id="tr-their-status" class="tr-status"></span></div>
+            <div id="tr-their" class="tr-grid"></div>
+            <div class="tr-foot"><span class="tr-gold">฿ <b id="tr-their-gold">0</b></span><span class="tr-val" id="tr-their-val"></span></div>
           </div>
         </div>
+        <div id="tr-warn" class="tr-warn"></div>
+        <div id="tr-summary" class="tr-summary"></div>
+        <div class="tr-invbar"><span class="tr-invlbl">🎒 กระเป๋า</span><span id="tr-invtabs" class="tr-invtabs"></span><input id="tr-inv-q" type="text" placeholder="🔎 ค้นหาชื่อ" autocomplete="off" /></div>
+        <div id="tr-inv" class="tr-inv"></div>
         <div class="tr-actions">
           <button id="tr-lock" class="btn ghost">🔒 ล็อกข้อเสนอ</button>
           <button id="tr-confirm" class="btn primary" disabled>✔ ยืนยันแลก</button>
           <button id="tr-cancel" class="btn ghost">ยกเลิก</button>
         </div>
-        <p class="hint">ทั้งสองฝ่ายต้องล็อกข้อเสนอก่อน แล้วกดยืนยันพร้อมกัน · แก้ข้อเสนอเมื่อไหร่ การล็อกจะถูกปลดทั้งคู่</p>
+        <p class="hint">คลิก/ลากของจากกระเป๋าใส่ช่อง (Shift = ทั้งหมด) · คลิกช่องของคุณเพื่อเอาออก · ชี้ที่ไอเทมเพื่อดูรายละเอียด · ล็อกครบทั้งคู่แล้วต้องรอ 3 วิถึงกดยืนยันได้ · แก้ข้อเสนอ = ปลดล็อกทั้งคู่</p>
       </section>
 
       <!-- Skill Tree (K) -->
@@ -450,9 +452,12 @@
       <!-- ร้านค้า NPC -->
       <section id="shop-panel" class="panel window wide hidden">
         <header><span id="shop-title">ร้านค้า</span> <button class="close">✕</button></header>
-        <p id="shop-greet" class="greet"></p>
-        <div class="tabs" id="shop-tabs"></div>
-        <div class="shop-gold">เงินของคุณ: ฿ <b id="shop-gold">0</b></div>
+        <div class="npc-hero">
+          <div class="npc-port"><img id="shop-port" alt="" /><span id="shop-port-ic"></span></div>
+          <div class="npc-say"><div class="npc-nm"><b id="shop-npc"></b><small id="shop-role"></small></div><p id="shop-greet" class="greet"></p></div>
+          <div class="shop-gold"><small>เงินของคุณ</small><span>฿ <b id="shop-gold">0</b></span></div>
+        </div>
+        <div class="tabs shop-tabs" id="shop-tabs"></div>
         <div id="shop-list" class="item-list"></div>
       </section>
 

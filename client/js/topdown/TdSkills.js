@@ -20,6 +20,8 @@ const TINT = {
   mage_akom: 0xff8a2a, mage_yant: 0xffd35c, mage_shield: 0xffe27a, mage_thunder: 0x9fd8ff, mage_kalp: 0xff5a1f,
   boxer_jab: 0xfff1c0, boxer_kick: 0xffb454, boxer_croc: 0x9be870, boxer_waikru: 0xffd35c, boxer_ngouy: 0xffa040,
   sword_twin: 0xdff6ff, sword_thrust: 0xaee4ff, sword_wind: 0x8fe8ff, sword_guard: 0x6ec8ff, sword_pikat: 0xc9f2ff,
+  sword_whirl: 0xbfe9ff, sword_leap: 0xffd35c, sword_berserk: 0xff5a4a, sword_execute: 0xfff4a0,
+  mage_ghostfire: 0x7dffb0, mage_curse: 0xb57dff, mage_meditate: 0xffb347, mage_storm: 0xa8d8ff,
   arch_quick: 0xfff2c0, arch_poison: 0x7dff6a, arch_pierce: 0xffd35c, arch_hawk: 0xffe9a6, arch_rain: 0xff9a3c,
   mage_holy: 0x9dffcf, boxer_drum: 0xffa040, sword_banner: 0xffd35c, arch_garuda: 0xfff0a0,
   ...HEAL_TINT,
@@ -495,7 +497,7 @@ export class TdSkills {
       // ======================= จอมขมังเวทย์ =======================
       case 'mage_akom': {                                       // ลูกไฟนาคา 2 ลูก: วงยันต์เล็กที่มือ → โค้งเข้าเป้า → ระเบิดเพลิง + ประกาย
         fx.rune(cx + o.ux * 10, cy + o.uy * 6, { size: 40, tint, ms: 500, spin: 180 });
-        for (let i = 0; i < (sk.count || 2); i++) at(i * 110, () => this.shot(sk, o, { key: 'td_orb', scale: 2.4, tint, trail: 0xff7a1a, trailScale: 0.55, curve: (i ? -1 : 1) * 28,
+        for (let i = 0; i < (sk.count || 2); i++) at(i * 110, () => this.shot(sk, o, { key: 'td_orb', scale: 2.4, tint, trail: 0xff7a1a, trailScale: 0.55, curve: [28, -28, 0, 46, -46][i % 5],
           onHit: (m, x, y) => { fx.explode(x, y, { r: 26, tint, shake: i === 1 }); fx.flames(x, y, { n: 6, tint: 0xff7a2a, r: 14, h: 24 }); fx.stars(x, y - 12, { n: 4, tint: 0xffe08a, r: 18 }); H(m); } }));
         break;
       }
@@ -745,6 +747,85 @@ export class TdSkills {
           at(420, () => { fx.aura(m, { tint: T2, ms: 3000 }); fx.stars(t.x, t.y - 20, { n: 5, tint: T2, r: 16, size: 14, up: 16 }); });
         }));
         if (dmg) this.buff(sk);
+        break;
+      }
+      // ---------- จอมขมังเวทย์: สกิลขั้นสูง ----------
+      case 'mage_ghostfire': {                                  // ไฟผีห้าทิศ: ไฟผีกองกอยเขียวพุ่งเป็นพัด
+        fx.rune(cx + o.ux * 10, cy + o.uy * 6, { size: 52, tint, ms: 600, spin: -200 });
+        const n = sk.count || 5, spread = (sk.spread || 36) * Math.PI / 180;
+        for (let i = 0; i < n; i++) at(i * 40, () => {
+          const a = ang + (i - (n - 1) / 2) * (spread / Math.max(1, n - 1)) * 2;
+          this.shot(sk, { ...o, ux: Math.cos(a), uy: Math.sin(a), t: null }, { key: 'td_orb', scale: 2, tint, trail: 0x2aff7a, trailScale: 0.5,
+            onHit: (m, x, y) => { fx.explode(x, y, { r: 20, tint, shake: false }); fx.flames(x, y, { n: 4, tint: 0x5affa0, r: 10, h: 20 }); H(m); } });
+        });
+        break;
+      }
+      case 'mage_curse': {                                      // คำสาปพรายตานี: วงยันต์ม่วง → มือพรายโผล่ → หมอกพิษ
+        const c = this.center(sk, o);
+        fx.darken(600, 0x1a0a2a, 0.35);
+        fx.rune(c.x, c.y, { size: sk.radius * 2.2, tint, ms: 1400, spin: -90 });
+        at(250, () => { S('skFlash'); fx.shock(c.x, c.y, { r: sk.radius, tint, ms: 600 }); this.poison(c.x, c.y, tint); this.poison(c.x + 20, c.y + 6, tint); this.poison(c.x - 20, c.y - 4, tint);
+          fx.sparks(c.x, c.y - 10, { n: 18, tint, speed: [30, 110], life: 900, scale: 0.3, gravity: -40 }); this.mobsNear(c.x, c.y, sk.radius).forEach(H); });
+        break;
+      }
+      case 'mage_meditate': {                                   // สมาธิกสิณไฟ: วงไฟรอบตัว + เสาแสงส้ม + ออร่า
+        const sp = o.caster;
+        fx.rune(cx, cy, { size: 90, tint, ms: 1600, spin: 90 }); fx.pillar(cx, cy, { tint, h: 110, ms: 900, w: 26 });
+        fx.flames(cx, cy, { n: 10, tint: 0xff8a2a, r: 26, h: 30, ms: 900 });
+        if (dmg) this.buff(sk);
+        if (sp) { this.orbit(sp, tint, 8, 3000); fx.aura(sp, { tint, ms: 3000 }); }
+        break;
+      }
+      case 'mage_storm': {                                      // พายุอัสนีเทพ: ฟ้ามืด → สายฟ้าผ่าสุ่มรอบตัว 5 ระลอก
+        fx.darken(sk.hits * sk.interval + 800, 0x06102a, 0.55);
+        fx.rune(cx, cy, { size: sk.radius * 2, tint, ms: sk.hits * sk.interval + 900, spin: 160 });
+        for (let i = 0; i < sk.hits; i++) at(150 + i * sk.interval, () => {
+          for (let k = 0; k < 3; k++) { const a = rand(0, Math.PI * 2), r = rand(20, sk.radius * 0.9); fx.lightning(cx + Math.cos(a) * r, cy + Math.sin(a) * r * 0.6, { tint }); }
+          S('skThunder'); fx.flash(90, 0xdff4ff, 0.35); fx.shake(120, 0.006);
+          this.mobsNear(cx, cy, sk.radius).forEach(H);
+        });
+        at(150 + sk.hits * sk.interval, () => { fx.shock(cx, cy, { r: sk.radius * 1.2, tint, ms: 700 }); fx.stars(cx, cy - 20, { n: 12, tint: 0xffffff, r: sk.radius * 0.8, size: 16 }); });
+        break;
+      }
+      // ---------- ขุนศึก: สกิลขั้นสูง ----------
+      case 'sword_whirl': {                                     // ดาบบาทวงจักร: ดาบแสงหมุนรอบตัว 3 รอบ
+        for (let i = 0; i < sk.hits; i++) at(i * sk.interval, () => {
+          for (let k = 0; k < 4; k++) { const a = i * 0.9 + k * 1.57; fx.slash(cx + Math.cos(a) * sk.radius * 0.45, cy - 12 + Math.sin(a) * sk.radius * 0.22, a + 1.57, { size: 1.1, tint, ms: 200 }); }
+          fx.shock(cx, cy, { r: sk.radius * 0.95, tint, ms: 260 }); S('skWhirl');
+          this.mobsNear(cx, cy, sk.radius).forEach(H);
+        });
+        at(sk.hits * sk.interval, () => fx.stars(cx, cy - 16, { n: 6, tint: 0xffffff, r: sk.radius * 0.6, size: 14, ms: 320 }));
+        break;
+      }
+      case 'sword_leap': {                                      // กระโจนผ่าปฐพี: กระโดด → ฟาดลงพื้น แผ่นดินแยก + คลื่นกระแทก
+        fx.shock(cx, cy, { r: 24, tint, ms: 280 });
+        this.dash(sk, o, { tint, leap: true, onLand: (x, y) => {
+          S('skSlam'); fx.slash(x, y - 16, 1.57, { size: 2.2, tint: 0xffffff, ms: 300 });
+          fx.explode(x, y, { r: sk.radius * 0.8, tint, crack: true }); fx.shock(x, y, { r: sk.radius * 1.2, tint, ms: 600 }); fx.shake(260, 0.012);
+          fx.stars(x, y - 18, { n: 8, tint: 0xffe08a, r: sk.radius * 0.7, size: 16 });
+          this.mobsNear(x, y, sk.radius).forEach(H);
+        } });
+        break;
+      }
+      case 'sword_berserk': {                                   // โทสะขุนศึก: ไฟแดงลุกรอบตัว + คำราม
+        const sp = o.caster;
+        S('skSlam'); fx.flash(160, 0xff6a4a, 0.3); fx.shock(cx, cy, { r: 60, tint, ms: 600 });
+        fx.flames(cx, cy, { n: 14, tint, r: 22, h: 40, ms: 1200 }); fx.pillar(cx, cy, { tint, h: 100, ms: 800, w: 24 });
+        if (dmg) this.buff(sk);
+        if (sp) { fx.aura(sp, { tint, ms: 4000 }); this.orbit(sp, 0xffa040, 6, 3000); }
+        break;
+      }
+      case 'sword_execute': {                                   // ดาบประหารอสูร: ชาร์จสายฟ้าบนดาบ → ฟันลงทีเดียว ฟ้าผ่าตามแนว
+        const x = cx + o.ux * 34, y = cy + o.uy * 34;
+        fx.darken(700, 0x101020, 0.45); fx.glow(cx, cy - 26, { size: 70, tint });
+        fx.sparks(cx, cy - 30, { n: 14, tint, speed: [40, 120], life: 420, scale: 0.3 });
+        at(280, () => {
+          fx.lightning(x, y, { tint }); S('skThunder');
+          fx.slash(x, y - 14, ang, { size: 3, tint: 0xffffff, ms: 360 }); fx.slash(x, y - 14, ang, { size: 2.2, tint, ms: 420 });
+          fx.flash(200, 0xfff8d0, 0.7); fx.explode(x, y, { r: 48, tint, crack: true }); fx.shake(380, 0.016);
+          fx.stars(x, y - 20, { n: 12, tint, r: 44, size: 18 });
+          const list = this.front(o, sk.range + 14); (sk.all ? list : list.slice(0, 1)).forEach(H);
+        });
         break;
       }
       default: {                                                // สกิลใหม่ที่ยังไม่มีลายเซ็น → ใช้แบบทั่วไปตามประเภท

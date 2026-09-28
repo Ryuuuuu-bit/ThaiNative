@@ -24,6 +24,7 @@ import { setupTD } from './td.js';
 import { setupHealer } from './healer.js';
 import { setupAuth, isAdmin } from './auth.js';
 import { MAX_SLOTS } from './store.js';
+import { discordInfo, relayChat, postNews, announcePatch } from './discord.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.join(__dirname, '..');
@@ -37,6 +38,7 @@ const byAcc = new Map();
 
 const app = express();
 app.disable('x-powered-by');
+app.get('/api/discord', async (_req, res) => res.json(await discordInfo()));   // ปุ่ม Discord: จำนวนออนไลน์ (Server Widget)
 const storeReady = setupAuth(app, {
   onlineChar: (acc) => { const p = players.get(byAcc.get(acc)); return p ? { slot: p.slot || 0, save: p.save } : null; },
   onlineCount: () => players.size,
@@ -49,6 +51,7 @@ app.use('/vendor', express.static(path.join(ROOT, 'node_modules/phaser/dist')));
 
 const httpServer = createServer(app);
 const io = new Server(httpServer, { cors: { origin: '*' } });
+{ const emit0 = io.emit.bind(io); io.emit = (ev, ...a) => { if (ev === 'chat') relayChat(a[0]); return emit0(ev, ...a); }; }   // ข่าวระบบ → Discord webhook
 
 const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
 const nightNow = () => isNight(dayPhase(Date.now(), DAY_MS));
@@ -470,6 +473,7 @@ let patchNotice = null;            // { at, text } ที่กำลังน�
 const patchTimers = [];
 /** ข่าวด่วนจาก GM (เก็บในฐานข้อมูล meta 'news') */
 let liveNews = [];
+storeReady.then((s) => announcePatch(s)).catch(() => {});
 storeReady.then(async (s) => { try { liveNews = JSON.parse((await s.getMeta?.('news')) || '[]'); } catch { liveNews = []; } });
 const saveNews = () => storeReady.then((s) => s.setMeta?.('news', JSON.stringify(liveNews))).catch(() => {});
 function gmNotice(n, by) {
@@ -477,6 +481,7 @@ function gmNotice(n, by) {
     const it = { id: `g${Date.now()}`, date: new Date(Date.now() + 7 * 3600e3).toISOString().slice(0, 10), tag: 'gm', title: n.title, body: n.body || [], by: by?.name };
     liveNews = [it, ...liveNews].slice(0, 20); saveNews();
     io.emit('news:add', it);
+    postNews(it);
     io.emit('server:notice', { kind: 'say', text: `📰 ${n.title}` });
     return;
   }

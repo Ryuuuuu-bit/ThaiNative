@@ -32,7 +32,7 @@ import { bindAccountSettings } from './AuthScreen.js';
 import { account } from '../net/Account.js';
 import { CardUI } from './Cards.js';
 import { CARD_BY_ID } from '/shared/data/cards.js';
-import { ItemTip, impactLine, inlineStats } from './ItemTip.js';
+import { ItemTip, impactLine, inlineStats, itemCard } from './ItemTip.js';
 import { ChatBox } from './ChatBox.js';
 
 const $ = (s) => document.querySelector(s);
@@ -958,13 +958,21 @@ export class UI {
   }
 
   // ---------------- ร้านค้า NPC ----------------
-  openShop(shopId) {
-    this.shopId = shopId;
+  openShop(shopId, npc = null) {
+    this.shopId = shopId; this.shopSel = null;
     this.shopQty = 1;                        // เปิดร้านใหม่ทุกครั้ง → จำนวนกลับเป็น x1 (กันซื้อพลาดจากค่าที่ค้างจากร้านก่อน)
     const shop = SHOPS[shopId];
     $('#shop-title').textContent = shop.nameTh;
     $('#shop-greet').textContent = `“${shop.greeting}”`;
-    const TAB_TH = { buy: 'ซื้อ', sell: 'ขาย', enhance: `${uiIcon('anvil', '🔨')} ตีบวก`, cook: `${uiIcon('soup', '🍳')} ทำอาหาร`, brew: `${uiIcon('herb', '🌿')} ปรุงยา`, forge: '⚒️ หลอมอุปกรณ์', dye: '🎨 ย้อมสี', cards: '🃏 แลกการ์ด', quests: '📜 เควสอาชีพ' };
+    // ภาพ/ชื่อ NPC ด้านบน (ใช้เฟรมจากตัวละครในเกม)
+    const [nm, ...rest] = shop.nameTh.split(' ');
+    $('#shop-npc').textContent = npc?.nameTh || nm;
+    $('#shop-role').textContent = npc?.role || rest.join(' ');
+    let port = '';
+    try { const spr = npc?.spr; if (spr?.texture && this.scene.textures.getBase64) port = this.scene.textures.getBase64(spr.texture.key, spr.frame?.name); } catch { port = ''; }
+    $('#shop-port').src = port || ''; $('#shop-port').style.display = port ? '' : 'none';
+    $('#shop-port-ic').textContent = port ? '' : (npc?.icon || '🛒');
+    const TAB_TH = { buy: '🛒 ซื้อ', sell: '💰 ขาย', enhance: `${uiIcon('anvil', '🔨')} ตีบวก`, cook: `${uiIcon('soup', '🍳')} ทำอาหาร`, brew: `${uiIcon('herb', '🌿')} ปรุงยา`, forge: '⚒️ หลอมอุปกรณ์', dye: '🎨 ย้อมสี', cards: '🃏 แลกการ์ด', quests: '📜 เควสอาชีพ' };
     const tabs = shop.tabs || ['buy', 'sell'];
     this.shopTab = tabs[0];
     $('#shop-tabs').innerHTML = tabs.map((t, i) => `<button data-tab="${t}" class="${i ? '' : 'active'}">${TAB_TH[t]}</button>`).join('');
@@ -996,20 +1004,27 @@ export class UI {
       const gf = shop.job ? (this.gearFilter || 'all') : 'all';
       const filterBar = shop.job ? `<div class="qty-bar gear-filter"><span>แสดง:</span>${Object.entries(GF).map(([k, l]) => `<button data-gf="${k}" class="${k === gf ? 'active' : ''}">${l}</button>`).join('')}</div>` : '';
       const stock = shop.stock.filter((id) => gf === 'all' || (gf === 'ok' ? (ITEMS[id].lv || 1) <= c.level : ITEMS[id].type === gf));
-      html = (shop.job ? filterBar : qtyBar) + stock.map((id) => {
-        const it = ITEMS[id];
-        const under = it.lv && c.level < it.lv;
-        const owned = it.type === 'skin' && Inv.count(c, id);
-        const n = it.type === 'skin' ? 1 : Math.max(1, Math.min(q, Math.floor(c.gold / it.price)));
-        const job = itemTag(it) ? `<span class="meta">${itemTag(it)}</span>` : it.desc ? `<span class="meta"> · ${esc(it.desc)}</span>` : '';
-        const bonus = it.bonus ? `<div class="meta stl">${inlineStats(it.bonus)}</div>` : '';
-        const food = it.buff ? `<span class="meta"> ${esc(it.buff.textTh)}</span>` : '';
-        const have = Inv.count(c, id);
-        const prev = ['costume', 'armor', 'weapon'].includes(it.type) ? `<button class="prev-btn" data-prev="${id}" title="ลองใส่ดูก่อนซื้อ">👁</button>` : '';
-        return `<div class="item ${under ? 'under' : ''}${rcls(it)}" data-tip-item="${id}"><span class="ic">${itemIcon(id, it.icon)}</span><span>${rname(it, esc(it.nameTh))}${have ? ` <span class="meta">(มี ${have})</span>` : ''}${job}${bonus}${food}${under ? ' <span class="need-lv">🔒 ต้อง Lv.' + it.lv + '</span>' : ''}</span>
-          <span class="price">${prev}฿${(it.price * n).toLocaleString()}</span>
-          <button data-buy="${id}" data-n="${n}" ${owned || c.gold < it.price ? 'disabled' : ''}>${owned ? 'มีแล้ว' : n > 1 ? `ซื้อ x${n}` : 'ซื้อ'}</button></div>`;
+      // แบบ 2 ฝั่ง: ซ้าย = ตารางสินค้า · ขวา = รายละเอียด + จำนวน + ปุ่มซื้อ
+      if (!stock.includes(this.shopSel)) this.shopSel = stock.find((id) => !(ITEMS[id].lv && c.level < ITEMS[id].lv)) || stock[0];
+      const sel = this.shopSel, si = ITEMS[sel];
+      const cards = stock.map((id) => {
+        const it = ITEMS[id], under = it.lv && c.level < it.lv, have = Inv.count(c, id);
+        return `<button class="sb-card${id === sel ? ' on' : ''}${under ? ' under' : ''}${rcls(it)}" data-sel="${id}"><span class="ic">${itemIcon(id, it.icon)}</span>
+          <span class="nm">${rname(it, esc(it.nameTh))}</span><span class="pr">฿${it.price.toLocaleString()}</span>${have ? `<i class="hv">มี ${have}</i>` : ''}${under ? `<i class="lk">🔒 Lv.${it.lv}</i>` : ''}</button>`;
       }).join('');
+      let detail = '<p class="empty">เลือกสินค้าทางซ้าย</p>';
+      if (si) {
+        const owned = si.type === 'skin' && Inv.count(c, sel);
+        const n = si.type === 'skin' ? 1 : Math.max(1, Math.min(q, Math.floor(c.gold / si.price) || 1));
+        const afford = c.gold >= si.price * n;
+        const prev = ['costume', 'armor', 'weapon'].includes(si.type) ? `<button class="btn ghost sm" data-prev="${sel}">👁 ลองใส่</button>` : '';
+        detail = `<div class="item-tip sb-tip"><div class="tt-card">${itemCard(c, sel, { rarityOf: this.itemTip?.rarityOf || (() => 0) })}</div></div>
+          ${impactLine(c, sel)}
+          ${shop.job || si.type === 'skin' ? '' : qtyBar}
+          <div class="sb-buy"><span class="tot">รวม <b class="${afford ? '' : 'bad'}">฿${(si.price * n).toLocaleString()}</b>${n > 1 ? ` <small>(${n} ชิ้น)</small>` : ''}</span>${prev}
+          <button class="btn primary" data-buy="${sel}" data-n="${n}" ${owned || !afford ? 'disabled' : ''}>${owned ? 'มีแล้ว' : !afford ? 'เงินไม่พอ' : n > 1 ? `ซื้อ x${n}` : 'ซื้อ'}</button></div>`;
+      }
+      html = (shop.job ? filterBar : '') + `<div class="shop-buy"><div class="sb-grid">${cards || '<p class="empty">ไม่มีสินค้าในหมวดนี้</p>'}</div><div class="sb-detail">${detail}</div></div>`;
     } else return this.renderSell();
     $('#shop-list').innerHTML = html;
     const trade = (r) => { this.scene.sfx.play(r.ok ? 'buy' : 'error'); this.result(r); };
@@ -1034,6 +1049,7 @@ export class UI {
     $('#shop-list').querySelectorAll('[data-buy]').forEach((b) => (b.onclick = () => E.act('buy', { shop: shopId, id: b.dataset.buy, qty: +b.dataset.n || 1 }).then(trade)));
     $('#shop-list').querySelectorAll('[data-sell]').forEach((b) => (b.onclick = () => E.act('sell', { id: b.dataset.sell, qty: +b.dataset.n || 1 }).then(trade)));
     $('#shop-list').querySelectorAll('[data-prev]').forEach((b) => (b.onclick = () => this.preview(b.dataset.prev)));
+    $('#shop-list').querySelectorAll('[data-sel]').forEach((b) => (b.onclick = () => { this.shopSel = b.dataset.sel; this.scene.sfx.play('click'); const y = $('.sb-grid')?.scrollTop; this.renderShop(); const g = $('.sb-grid'); if (g && y) g.scrollTop = y; }));
     $('#shop-list').querySelectorAll('[data-bulk]').forEach((b) => (b.onclick = () => {
       const list = Inv.bulkSellList(c, b.dataset.bulk);
       const total = list.reduce((a, s) => a + sellPrice(s.id) * s.qty, 0), n = list.reduce((a, s) => a + s.qty, 0);

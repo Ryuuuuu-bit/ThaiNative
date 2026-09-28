@@ -69,7 +69,7 @@ export function setupSocial(io, players, H = {}) {
   const tradeReqs = new Map();
   const tradeOf = (pid) => trades.get(players.get(pid)?.tradeId);
   function tradeState(t) {
-    return { id: t.id, a: t.a, b: t.b, offer: t.offer, locked: t.locked, confirmed: t.confirmed,
+    return { id: t.id, a: t.a, b: t.b, offer: t.offer, locked: t.locked, confirmed: t.confirmed, readyIn: Math.max(0, (t.readyAt || 0) - Date.now()),
       names: { [t.a]: players.get(t.a)?.name, [t.b]: players.get(t.b)?.name } };
   }
   const pushTrade = (t) => { const st = tradeState(t); emitTo(t.a, 'trade:state', st); emitTo(t.b, 'trade:state', st); };
@@ -77,9 +77,10 @@ export function setupSocial(io, players, H = {}) {
     trades.delete(t.id);
     for (const id of [t.a, t.b]) { const p = players.get(id); if (p) p.tradeId = null; emitTo(id, 'trade:closed', { reason }); }
   }
+  const TRADE_SLOTS = 10, TRADE_WAIT_MS = 3000;    // ช่องเทรดต่อฝั่ง · ล็อกครบแล้วต้องรอก่อนกดยืนยัน (กันสลับของแล้วกดเร็ว)
   function cleanOffer(o = {}, save) {
     const items = [];
-    for (const it of Array.isArray(o.items) ? o.items.slice(0, 8) : []) {
+    for (const it of Array.isArray(o.items) ? o.items.slice(0, TRADE_SLOTS) : []) {
       if (!ITEMS[it?.id] || ITEMS[it.id].type === 'skin') continue;
       const qty = int(it.qty, 1, 9999);
       const ex = items.find((x) => x.id === it.id);
@@ -417,11 +418,13 @@ export function setupSocial(io, players, H = {}) {
       const t = tradeOf(socket.id);
       if (!t) return;
       t.locked[socket.id] = true;
+      if (t.locked[t.a] && t.locked[t.b]) t.readyAt = Date.now() + TRADE_WAIT_MS;
       pushTrade(t);
     });
     socket.on('trade:confirm', () => {
       const t = tradeOf(socket.id);
       if (!t || !t.locked[t.a] || !t.locked[t.b]) return;
+      if (Date.now() < (t.readyAt || 0) - 150) return pushTrade(t);        // ยังไม่ครบเวลารอ
       t.confirmed[socket.id] = true;
       if (t.confirmed[t.a] && t.confirmed[t.b]) executeTrade(t);
       else pushTrade(t);

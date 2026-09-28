@@ -2,14 +2,19 @@
 //  TdSocial – สังคมในโลกอยุธยา (top-down): ปาร์ตี้ · เทรด · เพื่อน · อันดับ · ฉายา
 //  ข้อมูลกลางอยู่ที่ server (server/social.js) ไฟล์นี้ทำหน้าที่แสดงผล + ส่งคำสั่ง
 // ============================================================
-import { ITEMS } from '/shared/data/items.js';
+import { ITEMS, sellPrice } from '/shared/data/items.js';
 import { JOBS } from '/shared/data/classes.js';
 import { count, tradeLock } from '../systems/Inventory.js';
 import { itemIcon, makeText } from '../systems/util.js';
+import { inlineStats } from '../systems/ItemTip.js';
+import { baseItemId } from '/shared/data/items.js';
 import { TITLE_BY_ID } from '/shared/data/titles.js';
 
 const $ = (s) => document.querySelector(s);
 const JOB_ICON = { swordman: '⚔️', mage: '🔮', archer: '🏹', boxer: '🥊', healer: '🌿' };
+const TRADE_SLOTS = 10;
+const GEAR_TYPES = new Set(['weapon', 'armor', 'helm', 'gloves', 'boots', 'belt', 'accessory', 'costume', 'card', 'flask']);
+const USE_TYPES = new Set(['consumable', 'food', 'home', 'reset', 'reskill', 'rename', 'offering']);
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
 export class TdSocial {
@@ -57,18 +62,31 @@ export class TdSocial {
     $('#tr-lock').onclick = () => { this.scene.sfx.play('click'); this.net.send('trade:lock'); };
     $('#tr-confirm').onclick = () => { this.scene.sfx.play('click'); this.net.send('trade:confirm'); };
     $('#tr-cancel').onclick = $('#tr-x').onclick = () => this.net.send('trade:cancel');
-    $('#tr-inv').onclick = (e) => {
-      const b = e.target.closest('[data-id]');
-      if (!b) return;
-      const id = b.dataset.id, have = count(this.player.char, id);
+    const addToOffer = (id, all) => {
+      if (!id || this.trade?.locked?.[this.selfId]) return;
+      const have = count(this.player.char, id);
       const ex = this.myOffer.items.find((x) => x.id === id);
       const cur = ex?.qty || 0;
-      const add = e.shiftKey ? have - cur : 1;
+      const add = all ? have - cur : 1;
       if (cur + add > have || add <= 0) return;
-      if (ex) ex.qty += add; else if (this.myOffer.items.length < 8) this.myOffer.items.push({ id, qty: add }); else return this.ui.toast('ใส่ได้สูงสุด 8 ชนิด', 'warn');
+      if (ex) ex.qty += add; else if (this.myOffer.items.length < TRADE_SLOTS) this.myOffer.items.push({ id, qty: add }); else return this.ui.toast(`ใส่ได้สูงสุด ${TRADE_SLOTS} ช่อง`, 'warn');
       this.scene.sfx.play('click');
       this.sendOffer();
     };
+    $('#tr-inv').onclick = (e) => { const b = e.target.closest('[data-id]'); if (b) addToOffer(b.dataset.id, e.shiftKey); };
+    // ลากจากกระเป๋า → ช่องข้อเสนอของเรา
+    $('#tr-inv').addEventListener('dragstart', (e) => { const b = e.target.closest('[data-id]'); if (!b?.dataset.id) return e.preventDefault(); e.dataTransfer.setData('text/tn-item', b.dataset.id); e.dataTransfer.effectAllowed = 'copy'; });
+    $('#tr-my').addEventListener('dragover', (e) => { if (e.dataTransfer.types.includes('text/tn-item')) { e.preventDefault(); $('#tr-my').classList.add('drop'); } });
+    $('#tr-my').addEventListener('dragleave', () => $('#tr-my').classList.remove('drop'));
+    $('#tr-my').addEventListener('drop', (e) => { e.preventDefault(); $('#tr-my').classList.remove('drop'); addToOffer(e.dataTransfer.getData('text/tn-item'), e.shiftKey); });
+    // แท็บ/ค้นหาในกระเป๋า
+    this.trInvTab = 'all';
+    $('#tr-invtabs').onclick = (e) => { const b = e.target.closest('[data-tt]'); if (!b) return; this.trInvTab = b.dataset.tt; this.renderTrade(); };
+    const q = $('#tr-inv-q');
+    q.addEventListener('keydown', (e) => e.stopPropagation());
+    q.addEventListener('focus', () => (this.scene.input.keyboard.enabled = false));
+    q.addEventListener('blur', () => (this.scene.input.keyboard.enabled = true));
+    q.addEventListener('input', () => this.renderTrade());
     $('#tr-my').onclick = (e) => {
       const b = e.target.closest('[data-id]');
       if (!b || this.trade?.locked?.[this.selfId]) return;
@@ -293,7 +311,7 @@ export class TdSocial {
     this.trade = st;
     tradeLock.on = true;                         // ระหว่างเทรด ห้ามใช้/ขาย/สวม/ทิ้งของ
     if (first) {
-      this.myOffer = { items: [], gold: 0 };
+      this.myOffer = { items: [], gold: 0 }; this.theirPrev = null;
       $('#tr-gold').value = 0;
       this.ui.closeAll();
       $('#trade-panel').classList.remove('hidden');
@@ -307,30 +325,82 @@ export class TdSocial {
     if (!st) return;
     const me = this.selfId, other = st.a === me ? st.b : st.a;
     const c = this.player.char;
-    const itemHtml = (list) => list.length ? list.map((it) => `<div class="tr-item" data-id="${it.id}" title="${esc(ITEMS[it.id]?.nameTh)}">${itemIcon(it.id, ITEMS[it.id]?.icon ?? '?')}<small>x${it.qty}</small><span>${esc(ITEMS[it.id]?.nameTh)}</span></div>`).join('') : '<p class="empty">—</p>';
-    $('#tr-with').textContent = $('#tr-name2').textContent = st.names?.[other] ?? '?';
-    // ข้อเสนอของเรา (ใช้ค่าที่ server ยืนยันแล้ว)
+    const rar = (it) => this.ui.itemTip?.rarityOf?.(it) || 0;
+    const otherName = st.names?.[other] ?? '?';
+    // ช่องข้อเสนอ 10 ช่อง: ไอคอน · จำนวน · ◆ค่าสุ่ม · ขอบสีตามความหายาก (ชี้ = รายละเอียดเต็ม)
+    const slotHtml = (it, mark) => {
+      const I = ITEMS[it.id]; if (!I) return '';
+      const r = rar(I);
+      return `<div class="tr-slot${r ? ` r${r}` : ''}${mark?.has(it.id) ? ' tr-new' : ''}" data-id="${esc(it.id)}" data-tip-item="${esc(it.id)}">${itemIcon(it.id, I.icon ?? '?')}${it.qty > 1 ? `<b class="q">${it.qty.toLocaleString()}</b>` : ''}${I.affixN ? `<i class="af">◆${I.affixN}</i>` : ''}</div>`;
+    };
+    const grid = (list, mark) => Array.from({ length: TRADE_SLOTS }, (_, i) => (list[i] ? slotHtml(list[i], mark) : '<div class="tr-slot empty"></div>')).join('');
+    const value = (o) => o.items.reduce((a, it) => a + sellPrice(it.id) * it.qty, 0);
+    $('#tr-with').textContent = $('#tr-name2').textContent = otherName;
+    // ข้อเสนอของเรา (ค่าที่ server ยืนยันแล้ว)
     const mine = st.offer[me] || { items: [], gold: 0 };
     this.myOffer = { items: mine.items.map((x) => ({ ...x })), gold: mine.gold };
-    $('#tr-my').innerHTML = itemHtml(mine.items);
+    $('#tr-my').innerHTML = grid(mine.items);
     if (document.activeElement !== $('#tr-gold')) $('#tr-gold').value = mine.gold;
+    // ข้อเสนอของอีกฝ่าย + ตรวจการเปลี่ยนแปลง
     const theirs = st.offer[other] || { items: [], gold: 0 };
-    $('#tr-their').innerHTML = itemHtml(theirs.items);
+    const sig = JSON.stringify(theirs), prev = this.theirPrev, mark = new Set();
+    if (prev && prev.sig !== sig) {
+      for (const it of theirs.items) if ((prev.items.find((x) => x.id === it.id)?.qty || 0) !== it.qty) mark.add(it.id);
+      const gone = prev.items.filter((x) => !theirs.items.some((y) => y.id === x.id)).length;
+      this.ui.toast(`⚠️ ${otherName} เปลี่ยนข้อเสนอ${gone ? ` (เอาออก ${gone} รายการ)` : ''}${prev.gold !== theirs.gold ? ` · เงิน ฿${prev.gold.toLocaleString()} → ฿${theirs.gold.toLocaleString()}` : ''} — ตรวจให้ดีก่อนยืนยัน`, 'warn', 4000);
+      const box = $('#tr-col-them'); box.classList.remove('tr-flash'); void box.offsetWidth; box.classList.add('tr-flash');
+      this.theirMark = { set: mark, until: Date.now() + 6000 };
+    } else if (this.theirMark && Date.now() < this.theirMark.until) this.theirMark.set.forEach((id) => mark.add(id));
+    this.theirPrev = { sig, items: theirs.items.map((x) => ({ ...x })), gold: theirs.gold };
+    $('#tr-their').innerHTML = grid(theirs.items, mark);
     $('#tr-their-gold').textContent = theirs.gold.toLocaleString();
-    const stat = (id) => st.confirmed[id] ? '<b class="ok">✔ ยืนยันแล้ว</b>' : st.locked[id] ? '<b class="lock">🔒 ล็อกแล้ว</b>' : '<i>กำลังเลือก…</i>';
-    $('#tr-my-status').innerHTML = stat(me);
-    $('#tr-their-status').innerHTML = stat(other);
-    const locked = st.locked[me];
+    const vMine = value(mine), vTheirs = value(theirs);
+    $('#tr-my-val').textContent = mine.items.length ? `มูลค่าขาย NPC ~฿${vMine.toLocaleString()}` : '';
+    $('#tr-their-val').textContent = theirs.items.length ? `มูลค่าขาย NPC ~฿${vTheirs.toLocaleString()}` : '';
+    // สถานะ: แถบสีหัวคอลัมน์
+    const stOf = (id) => (st.confirmed[id] ? 'ok' : st.locked[id] ? 'lock' : 'pick');
+    const stTxt = { ok: '✔ ยืนยันแล้ว', lock: '🔒 ล็อกแล้ว', pick: 'กำลังเลือก…' };
+    for (const [col, id, el] of [['#tr-col-me', me, '#tr-my-status'], ['#tr-col-them', other, '#tr-their-status']]) {
+      const k = stOf(id); $(col).dataset.trst = k; $(el).textContent = stTxt[k];
+    }
+    // คำเตือนกันโกง
+    const warns = [];
+    const give = vMine + mine.gold, get = vTheirs + theirs.gold;
+    if ((mine.items.length || mine.gold) && !theirs.items.length && !theirs.gold) warns.push(`${otherName} ยังไม่ได้ใส่อะไรเลย — คุณจะให้ฟรี`);
+    else if (give >= 500 && get < give * 0.3) warns.push(`สิ่งที่คุณจะได้ (~฿${get.toLocaleString()}) มีมูลค่าต่ำกว่าที่คุณให้ (~฿${give.toLocaleString()}) มาก`);
+    for (const it of theirs.items) { const I = ITEMS[it.id]; if (I?.lv && GEAR_TYPES.has(I.type) && !I.affixN && mine.items.some((x) => ITEMS[x.id]?.affixN)) { warns.push(`${I.nameTh} ของอีกฝ่าย "ไม่มีค่าสุ่ม" ◆ — ตรวจให้แน่ว่าไม่ใช่ชิ้นที่ตกลงกันไว้`); break; } }
+    if (mark.size) warns.push('ช่องที่มีขอบส้ม = อีกฝ่ายเพิ่งเปลี่ยน');
+    $('#tr-warn').innerHTML = warns.map((w) => `<div>⚠️ ${esc(w)}</div>`).join('');
+    // สรุปเป็นข้อความ
+    const sum = (o) => [...o.items.map((it) => `${ITEMS[it.id]?.nameTh || it.id}${ITEMS[it.id]?.affixN ? ` ◆${ITEMS[it.id].affixN}` : ''} x${it.qty}`), o.gold ? `฿${o.gold.toLocaleString()}` : ''].filter(Boolean).join(', ') || 'ไม่มี';
+    $('#tr-summary').innerHTML = `<div>📥 คุณจะได้: <b>${esc(sum(theirs))}</b></div><div>📤 คุณจะให้: <b>${esc(sum(mine))}</b></div>`;
+    // ปุ่ม: ล็อกครบแล้วต้องรอ (server บังคับด้วย)
+    const locked = st.locked[me], both = st.locked[me] && st.locked[other];
     $('#tr-lock').disabled = locked;
     $('#tr-gold').disabled = locked;
-    $('#tr-confirm').disabled = !(st.locked[me] && st.locked[other]) || st.confirmed[me];
-    // กระเป๋าของเรา (ไม่รวมที่ใส่ในข้อเสนอไปแล้ว)
+    this.readyAt = both ? (this.readyAt && this.readySig === sig + mine.gold ? this.readyAt : Date.now() + (st.readyIn || 0)) : 0;
+    this.readySig = sig + mine.gold;
+    const tick = () => {
+      const b = $('#tr-confirm'); if (!b || !this.trade) return clearInterval(this.readyT);
+      const left = Math.ceil(((this.readyAt || 0) - Date.now()) / 1000);
+      const bothNow = this.trade.locked[me] && this.trade.locked[other];
+      b.disabled = !bothNow || this.trade.confirmed[me] || left > 0;
+      b.textContent = bothNow && left > 0 ? `✔ ยืนยันแลก (${left})` : '✔ ยืนยันแลก';
+      if (!bothNow || left <= 0) clearInterval(this.readyT);
+    };
+    clearInterval(this.readyT); tick(); if (both) this.readyT = setInterval(tick, 250);
+    // กระเป๋า: แท็บ + ค้นหา (ไม่รวมที่ใส่ในข้อเสนอแล้ว)
+    const TABS = [['all', 'ทั้งหมด'], ['gear', 'อุปกรณ์'], ['use', 'ใช้ได้'], ['etc', 'วัตถุดิบ/อื่นๆ']];
+    const catOf = (I) => (GEAR_TYPES.has(I.type) ? 'gear' : USE_TYPES.has(I.type) ? 'use' : 'etc');
+    $('#tr-invtabs').innerHTML = TABS.map(([k, l]) => `<button data-tt="${k}" class="${this.trInvTab === k ? 'active' : ''}">${l}</button>`).join('');
+    const qq = ($('#tr-inv-q').value || '').trim().toLowerCase();
     $('#tr-inv').classList.toggle('disabled', !!locked);
-    $('#tr-inv').innerHTML = c.inventory.filter((it) => ITEMS[it.id]).map((it) => {
-      const used = mine.items.find((x) => x.id === it.id)?.qty || 0;
-      const left = it.qty - used;
-      return `<div class="tr-item ${left <= 0 ? 'used' : ''}" data-id="${left > 0 && !locked ? it.id : ''}" title="${esc(ITEMS[it.id].nameTh)}">${itemIcon(it.id, ITEMS[it.id].icon)}<small>x${left}</small></div>`;
-    }).join('') || '<p class="empty">กระเป๋าว่าง</p>';
+    const inv = c.inventory.filter((it) => { const I = ITEMS[it.id]; return I && (this.trInvTab === 'all' || catOf(I) === this.trInvTab) && (!qq || I.nameTh.toLowerCase().includes(qq)); });
+    $('#tr-inv').innerHTML = inv.map((it) => {
+      const I = ITEMS[it.id], used = mine.items.find((x) => x.id === it.id)?.qty || 0, left = it.qty - used, r = rar(I);
+      const ok = left > 0 && !locked && I.type !== 'skin';
+      return `<div class="tr-slot${r ? ` r${r}` : ''}${ok ? '' : ' used'}" data-id="${ok ? esc(it.id) : ''}" data-tip-item="${esc(it.id)}" draggable="${ok}">${itemIcon(it.id, I.icon)}${left > 1 ? `<b class="q">${left.toLocaleString()}</b>` : ''}${I.affixN ? `<i class="af">◆${I.affixN}</i>` : ''}</div>`;
+    }).join('') || `<p class="empty">${qq ? 'ไม่พบไอเทม' : 'ไม่มีของในหมวดนี้'}</p>`;
   }
 
   onTradeComplete({ get, with: name }) {
@@ -344,7 +414,8 @@ export class TdSocial {
   }
 
   closeTrade() {
-    this.trade = null;
+    this.trade = null; this.theirPrev = null; this.theirMark = null;
+    clearInterval(this.readyT);
     tradeLock.on = false;
     this.myOffer = { items: [], gold: 0 };
     $('#trade-panel').classList.add('hidden');

@@ -1,5 +1,5 @@
 // ============================================================
-//  ระบบสกิล 30 แบบ (5 อาชีพ × 6 สกิล · สกิลที่ 6 = สกิลปาร์ตี้) + Skill Tree
+//  ระบบสกิล (5 อาชีพ × 6 สกิล + ขุนศึก/จอมขมังเวทย์ มีสกิลขั้นสูงเพิ่มอีก 4) + Skill Tree
 //  ▸ เรียน/อัปเลเวลสกิลด้วย Skill Point (SP) ได้ 1 SP ต่อเลเวลตัวละคร
 //  ▸ สกิลละ 5 เลเวล: ตัวคูณดาเมจ +15%/เลเวล, คูลดาวน์ -4%/เลเวล, MP +10%/เลเวล
 //  ▸ ติดตั้งลง Hotbar Q W E R T (ลาก-วาง หรือคลิกเลือก)
@@ -39,16 +39,16 @@ export const SKILLS = {
   // ---------------- จอมขมังเวทย์ ----------------
   mage: [
     { id: 'mage_akom', nameTh: 'คาถาอาคม', icon: '📿', reqLv: 1, type: 'projectile', kind: 'magic',
-      mp: 6, cd: 1800, mult: 1.3, proj: 'fireball', speed: 260, range: 240, count: 2, spread: 10, sfx: 'fireball',
-      desc: 'ยิงลูกไฟอาคม 2 ลูก' },
+      mp: 6, cd: 1800, mult: 1.15, proj: 'fireball', speed: 270, range: 240, count: 3, spread: 12, sfx: 'fireball',
+      desc: 'ยิงลูกไฟอาคม 3 ลูกโค้งเข้าเป้า' },
     { id: 'mage_yant', nameTh: 'ยันต์ตรึงวิญญาณ', icon: '📜', reqLv: 2, type: 'projectile', kind: 'magic',
       mp: 10, cd: 6000, mult: 0.9, proj: 'yant', speed: 220, range: 220, pierce: true, effect: { stun: { ms: 1800 } }, sfx: 'buff',
       desc: 'ปายันต์ทอง 3 แผ่นวนเข้าเป้า โซ่วิญญาณล็อกศัตรูนิ่ง 1.8 วิ (ทะลุทุกตัว)' },
     { id: 'mage_shield', nameTh: 'เกราะยันต์เก้ายอด', icon: '🛡️', reqLv: 4, type: 'buff',
-      mp: 15, cd: 16000, buff: { def: 20 }, duration: 8000, heal: 0.2, sfx: 'buff',
-      desc: 'ฟื้น HP 20% ป้องกัน +20 นาน 8 วิ' },
+      mp: 15, cd: 16000, buff: { def: 24 }, duration: 8000, heal: 0.25, sfx: 'buff',
+      desc: 'ฟื้น HP 25% ป้องกัน +24 นาน 8 วิ' },
     { id: 'mage_thunder', nameTh: 'อัสนีบาต', icon: '⚡', reqLv: 6, type: 'strike', kind: 'magic',
-      mp: 14, cd: 5000, mult: 2.4, range: 260, effect: { stun: { ms: 600 } }, sfx: 'thunder',
+      mp: 14, cd: 5000, mult: 2.6, range: 270, effect: { stun: { ms: 700 } }, sfx: 'thunder',
       desc: 'ฟ้าผ่าศัตรูที่ใกล้ที่สุด สะดุ้งชั่วครู่' },
     { id: 'mage_kalp', nameTh: 'เพลิงกัลป์ปราบผี', icon: '☄️', reqLv: 8, type: 'aoe', kind: 'magic', ultimate: true,
       mp: 35, cd: 22000, mult: 2.2, radius: 110, offset: 110, hits: 4, interval: 240, fx: 'meteor', sfx: 'meteor',
@@ -56,6 +56,19 @@ export const SKILLS = {
     { id: 'mage_holy', nameTh: 'น้ำมนต์ธาราทิพย์', icon: '🪷', reqLv: 10, type: 'party', party: true,
       mp: 30, cd: 24000, radius: 220, buff: { def: 12 }, duration: 10000, heal: 0.25, mpHeal: 0.15, sfx: 'buff',
       desc: '[ปาร์ตี้] บัวทิพย์บานกลางวง ฟื้น HP 25% + MP 15% ทั้งปาร์ตี้ · ป้องกัน +12 นาน 10 วิ' },
+    // ---- สกิลขั้นสูง (Lv.20 / 40 / 70 / 100) ----
+    { id: 'mage_ghostfire', nameTh: 'ไฟผีห้าทิศ', icon: '🔥', reqLv: 20, type: 'projectile', kind: 'magic',
+      mp: 18, cd: 7000, mult: 0.95, proj: 'fireball', speed: 250, range: 230, count: 5, spread: 36, sfx: 'fireball',
+      desc: 'เรียกไฟผีกองกอย 5 ดวงพุ่งแผ่เป็นพัด โดนได้หลายตัว' },
+    { id: 'mage_curse', nameTh: 'คำสาปพรายตานี', icon: '☠️', reqLv: 40, type: 'aoe', kind: 'magic',
+      mp: 24, cd: 11000, mult: 1.2, radius: 90, offset: 120, hits: 1, effect: { poison: { ticks: 6, every: 700, ratio: 0.4 } }, sfx: 'buff',
+      desc: 'วงคำสาปใต้เป้า ผีทุกตัวในวงติดพิษพราย 6 ครั้ง' },
+    { id: 'mage_meditate', nameTh: 'สมาธิกสิณไฟ', icon: '🧘', reqLv: 70, type: 'buff',
+      mp: 20, cd: 32000, buff: { atkMul: 0.3, critAdd: 0.1 }, duration: 12000, heal: 0.1, sfx: 'buff',
+      desc: 'เข้าฌานกสิณ พลังเวทย์ +30% คริ +10% ฟื้น HP 10% นาน 12 วิ' },
+    { id: 'mage_storm', nameTh: 'พายุอัสนีเทพ', icon: '🌩️', reqLv: 100, type: 'aoe', kind: 'magic',
+      mp: 48, cd: 20000, mult: 1.55, radius: 170, offset: 0, hits: 5, interval: 250, effect: { stun: { ms: 400 } }, sfx: 'thunder',
+      desc: 'เรียกพายุฟ้าผ่ารอบตัว 5 ระลอก ผีในวงกว้างสะดุ้งทุกครั้ง' },
   ],
   // ---------------- หมอยา (ซัพพอร์ต) ----------------
   healer: [
@@ -120,23 +133,36 @@ export const SKILLS = {
   // ---------------- ขุนศึก (ดาบคู่) ----------------
   swordman: [
     { id: 'sword_twin', nameTh: 'ฟันดาบคู่', icon: '⚔️', reqLv: 1, type: 'melee', kind: 'physical',
-      mp: 5, cd: 2500, mult: 1.0, range: 42, hits: 2, interval: 140, all: true, sfx: 'slash',
-      desc: 'ฟันไขว้ 2 ครั้ง โดนทุกตัวด้านหน้า' },
+      mp: 5, cd: 2500, mult: 0.9, range: 46, hits: 3, interval: 120, all: true, sfx: 'slash',
+      desc: 'ฟันไขว้ 3 ครั้ง โดนทุกตัวด้านหน้า' },
     { id: 'sword_thrust', nameTh: 'แทงทะลวง', icon: '🗡️', reqLv: 2, type: 'dash', kind: 'physical',
-      mp: 8, cd: 6000, mult: 1.7, distance: 95, sfx: 'dash',
-      desc: 'พุ่งแทงทะลุแนวศัตรู (อมตะระหว่างพุ่ง)' },
+      mp: 8, cd: 6000, mult: 1.9, distance: 110, effect: { stun: { ms: 500 } }, sfx: 'dash',
+      desc: 'พุ่งแทงทะลุแนวศัตรู สะดุ้งชั่วครู่ (อมตะระหว่างพุ่ง)' },
     { id: 'sword_wind', nameTh: 'ดาบวายุ', icon: '🌪️', reqLv: 4, type: 'projectile', kind: 'physical',
       mp: 10, cd: 5000, mult: 1.5, proj: 'wave', speed: 270, range: 230, pierce: true, sfx: 'wind',
       desc: 'คลื่นดาบทะลุทุกตัว' },
     { id: 'sword_guard', nameTh: 'ตั้งการ์ดดาบคู่', icon: '🛡️', reqLv: 6, type: 'buff',
-      mp: 12, cd: 18000, buff: { def: 25, atkMul: 0.15 }, duration: 10000, heal: 0.1, sfx: 'buff',
-      desc: 'ป้องกัน +25 โจมตี +15% นาน 10 วิ' },
+      mp: 12, cd: 18000, buff: { def: 25, atkMul: 0.15 }, duration: 10000, heal: 0.15, sfx: 'buff',
+      desc: 'ฟื้น HP 15% ป้องกัน +25 โจมตี +15% นาน 10 วิ' },
     { id: 'sword_pikat', nameTh: 'เพลงดาบพิฆาต', icon: '🔥', reqLv: 8, type: 'aoe', kind: 'physical', ultimate: true,
       mp: 28, cd: 20000, mult: 1.3, radius: 62, offset: 10, hits: 6, interval: 150, sfx: 'storm',
       desc: 'ร่ายเพลงดาบรอบตัว 6 ครั้ง' },
     { id: 'sword_banner', nameTh: 'ธงชัยเฉลิมพล', icon: '🚩', reqLv: 10, type: 'party', party: true,
       mp: 26, cd: 28000, radius: 220, buff: { atkMul: 0.22, def: 8 }, duration: 12000, heal: 0.08, sfx: 'buff',
       desc: '[ปาร์ตี้] ปักธงครุฑนำทัพ โจมตี +22% ป้องกัน +8 ทั้งปาร์ตี้ 12 วิ' },
+    // ---- สกิลขั้นสูง (Lv.20 / 40 / 70 / 100) ----
+    { id: 'sword_whirl', nameTh: 'ดาบบาทวงจักร', icon: '🌀', reqLv: 20, type: 'aoe', kind: 'physical',
+      mp: 16, cd: 8000, mult: 1.15, radius: 78, offset: 0, hits: 3, interval: 180, sfx: 'storm',
+      desc: 'หมุนดาบรอบตัว 3 รอบ ฟันทุกตัวรอบกาย' },
+    { id: 'sword_leap', nameTh: 'กระโจนผ่าปฐพี', icon: '🦅', reqLv: 40, type: 'dash', kind: 'physical',
+      mp: 22, cd: 12000, mult: 2.3, distance: 130, radius: 70, leap: true, effect: { stun: { ms: 1000 } }, sfx: 'dash',
+      desc: 'กระโดดข้ามไปฟาดดาบลงพื้น ทุกตัวในวงรอบจุดลงสะดุ้ง 1 วิ' },
+    { id: 'sword_berserk', nameTh: 'โทสะขุนศึก', icon: '😤', reqLv: 70, type: 'buff',
+      mp: 30, cd: 30000, buff: { atkMul: 0.35, critAdd: 0.15, speed: 0.15 }, duration: 10000, heal: 0, sfx: 'buff',
+      desc: 'ปลุกโทสะนักรบ โจมตี +35% คริ +15% วิ่งเร็วขึ้น 15% นาน 10 วิ' },
+    { id: 'sword_execute', nameTh: 'ดาบประหารอสูร', icon: '⚡', reqLv: 100, type: 'melee', kind: 'physical',
+      mp: 40, cd: 15000, mult: 5.2, range: 66, hits: 1, all: true, effect: { stun: { ms: 1500 } }, sfx: 'slash',
+      desc: 'รวมพลังฟันดาบฟ้าผ่าเพียงครั้งเดียว แรงมาก โดนทุกตัวด้านหน้า มึน 1.5 วิ' },
   ],
   // ---------------- พรานป่า ----------------
   archer: [

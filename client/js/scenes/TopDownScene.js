@@ -531,7 +531,7 @@ export class TopDownScene extends Phaser.Scene {
     this.sfx.play('npc');
     if (n.id === 'quest') return this.village.openQuests();
     if (n.id === 'warp') return this.openWarp();
-    if (NPC_OPEN[n.id]) return this.ui.openShop(NPC_OPEN[n.id]);
+    if (NPC_OPEN[n.id]) return this.ui.openShop(NPC_OPEN[n.id], n);
     this.ui.toast(`💬 ${n.nameTh}: “${n.lines[n.line++ % n.lines.length]}”`, '', 4500);
   }
 

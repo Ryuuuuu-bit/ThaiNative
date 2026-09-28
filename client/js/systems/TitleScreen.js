@@ -5,6 +5,7 @@
 //  ▸ titleScreen.start() ตอนเปิดหน้า Login / สร้างตัวละคร · titleScreen.stop() ตอนเข้าเกม
 // ============================================================
 import { sound } from './Sound.js';
+import { startDiscordLink } from './DiscordLink.js';
 
 const IW = 384, IH = 216;
 const LAST_KEY = 'thainative_title_last';
@@ -62,7 +63,7 @@ class TitleScreen {
     this.t0 = performance.now();
     const cap = document.getElementById('title-caption');
     if (cap) { cap.textContent = `📍 ${this.scene.nameTh}`; cap.classList.remove('hidden'); }
-    document.getElementById('title-credit')?.classList.remove('hidden'); document.getElementById('title-discord')?.classList.remove('hidden');
+    document.getElementById('title-credit')?.classList.remove('hidden'); document.getElementById('title-discord')?.classList.remove('hidden'); startDiscordLink();
     sound.music(this.scene.music);
     if (!this.running) {
       this.running = true;

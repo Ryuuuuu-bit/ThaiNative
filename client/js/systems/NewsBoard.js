@@ -5,6 +5,7 @@
 // ============================================================
 import { NEWS, NEWS_TAGS } from '/shared/data/news.js';
 import { uiIcon } from './util.js';
+import { startDiscordLink } from './DiscordLink.js';
 
 const SEEN = 'tn_news_seen_v1';
 const esc = (t) => String(t).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
@@ -21,6 +22,7 @@ export class NewsBoard {
     }
     document.querySelector('#news-panel .close')?.addEventListener('click', () => this.ui.toggle('news-panel', false));
     this.refreshDot();
+    startDiscordLink();
   }
 
   all() { return [...this.live, ...NEWS]; }
