@@ -60,13 +60,13 @@ export const SKILLS = {
   // ---------------- หมอยา (ซัพพอร์ต) ----------------
   healer: [
     { id: 'heal_vine', nameTh: 'สายใยสมุนไพร', icon: '🌿', reqLv: 1, type: 'tether', kind: 'magic', element: 'water', heals: true,
-      mp: 8, cd: 9000, range: 220, near: 90, nearMul: 1.5, breakAt: 230, duration: 6000, tick: 500, hmult: 0.2, sfx: 'buff',
+      mp: 8, cd: 9000, range: 220, near: 90, nearMul: 1.5, breakAt: 230, duration: 6000, tick: 500, hmult: 0.06, sfx: 'buff',
       desc: 'เถาสมุนไพรผูกเพื่อนที่เลือดน้อยสุด 6 วิ รักษาทุก 0.5 วิ · ใกล้กว่า 90 แรง ×1.5 · ห่างเกิน 230 ขาด' },
     { id: 'heal_pill', nameTh: 'ลูกกลอนเด้งห้าทิศ', icon: '🟢', reqLv: 2, type: 'bounce', kind: 'magic', element: 'wind', heals: true,
-      mp: 10, cd: 6000, range: 220, hop: 170, bounces: 5, mult: 0.9, hmult: 0.75, sfx: 'fireball',
+      mp: 10, cd: 6000, range: 220, hop: 170, bounces: 5, mult: 0.9, hmult: 0.35, sfx: 'fireball',
       desc: 'ปายาเม็ดเด้ง 5 ครั้ง สลับเพื่อน → ผี → เพื่อน · โดนเพื่อนรักษา · โดนผีระเบิดฝุ่นยา' },
     { id: 'heal_seed', nameTh: 'เมล็ดพันธุ์ชีวา', icon: '🌱', reqLv: 4, type: 'seed', kind: 'magic', element: 'earth', heals: true,
-      mp: 12, cd: 11000, range: 220, delay: 4000, lowHp: 0.3, hmult: 2.2, sfx: 'buff',
+      mp: 12, cd: 11000, range: 220, delay: 4000, lowHp: 0.3, hmult: 1.1, sfx: 'buff',
       desc: 'ฝังเมล็ดบนเพื่อน 4 วิแล้วบานรักษาก้อนใหญ่ · ถ้าเลือดต่ำกว่า 30% บานทันที' },
     { id: 'heal_tiger', nameTh: 'ยาต้มพยัคฆ์เหิน', icon: '🐯', reqLv: 6, type: 'party', party: true, element: 'fire',
       mp: 18, cd: 16000, radius: 200, buff: { defMul: 0.2, speed: 0.25, cleanse: true }, grow: { defMul: 0.03, speed: 0.025 }, duration: 8000, sfx: 'buff',
@@ -75,8 +75,26 @@ export const SKILLS = {
       mp: 35, cd: 40000, radius: 220, castMs: 1200, heal: 0.4, undying: 10000, sfx: 'buff',
       desc: '★ ร่าย 1.2 วิ บายศรีสู่ขวัญ รักษา 40% ทุกคนในวง · ชุบชีวิตเพื่อนที่สลบ · ขวัญกันตาย 10 วิ (เลือดไม่ลดต่ำกว่า 1)' },
     { id: 'heal_mortar', nameTh: 'ครกยาระเบิดสมุนไพร', icon: '🪨', reqLv: 10, type: 'mortar', kind: 'magic', element: 'earth', heals: true,
-      mp: 28, cd: 16000, offset: 110, radius: 110, hits: 3, interval: 280, mult: 1.4, hmult: 1.2, perHit: 0.1, perMax: 0.5, effect: { stun: { ms: 400 } }, sfx: 'thunder',
+      mp: 28, cd: 16000, offset: 110, radius: 110, hits: 3, interval: 280, mult: 1.4, hmult: 0.6, perHit: 0.1, perMax: 0.5, effect: { stun: { ms: 400 } }, sfx: 'thunder',
       desc: 'ตำครกยา 3 ที ลงกลางวง 110 · ผีในวงโดน ×1.4 + มึน · แล้วผงยาเขียววนเข้ารักษาเพื่อนในวง (+10% ต่อผีที่โดน สูงสุด +50%)' },
+  ],
+  // ---------------- เคล็ดวิชาผสม (อยู่บนจุดผสมระหว่างสองกิ่ง · ใช้ได้เมื่อถืออาวุธของกิ่งใดกิ่งหนึ่ง) ----------------
+  hybrid: [
+    { id: 'hy_spellblade', nameTh: 'ดาบลงอาคม', icon: '🗡️', reqLv: 12, jobs: ['swordman', 'mage'], node: 'hy_swordman_mage', type: 'melee', kind: 'best',
+      mp: 12, cd: 7000, mult: 1.25, range: 46, hits: 2, interval: 150, all: true, sfx: 'slash',
+      desc: '[ดาบ+ไม้เท้า] ฟันไขว้ลงอาคม 2 ครั้ง โดนทุกตัวด้านหน้า · ใช้พลังโจมตีหรือพลังเวทย์ที่สูงกว่า' },
+    { id: 'hy_holywater', nameTh: 'น้ำมนต์ยาลงยันต์', icon: '💧', reqLv: 12, jobs: ['mage', 'healer'], node: 'hy_mage_healer', type: 'party', party: true,
+      mp: 20, cd: 20000, radius: 200, heal: 0.12, mpHeal: 0.1, buff: { def: 6 }, duration: 6000, sfx: 'buff',
+      desc: '[ไม้เท้า+ไม้เท้าสมุนไพร] ประพรมน้ำมนต์ผสมยา ฟื้น HP 12% + MP 10% ทั้งปาร์ตี้ · ป้องกัน +6 นาน 6 วิ' },
+    { id: 'hy_herbarrow', nameTh: 'ศรอาบว่าน', icon: '🌿', reqLv: 12, jobs: ['healer', 'archer'], node: 'hy_healer_archer', type: 'projectile', kind: 'best',
+      mp: 10, cd: 6000, mult: 1.1, proj: 'arrow_poison', speed: 380, range: 270, effect: { poison: { ticks: 4, every: 700, ratio: 0.3 } }, sfx: 'arrow',
+      desc: '[ไม้เท้าสมุนไพร+ธนู] ศรอาบว่านพิษ ดาเมจต่อเนื่อง 4 ครั้ง · ใช้พลังโจมตีหรือพลังเวทย์ที่สูงกว่า' },
+    { id: 'hy_monkey', nameTh: 'วานรพลิกลม', icon: '🐒', reqLv: 12, jobs: ['archer', 'boxer'], node: 'hy_archer_boxer', type: 'dash', kind: 'physical',
+      mp: 12, cd: 8000, mult: 1.8, distance: 90, leap: true, effect: { stun: { ms: 600 } }, sfx: 'dash',
+      desc: '[ธนู+มวย] ตีลังกากระโดดถีบใส่เป้า แรงและมึนงง' },
+    { id: 'hy_krabi', nameTh: 'กระบี่กระบองหมุน', icon: '🌀', reqLv: 12, jobs: ['boxer', 'swordman'], node: 'hy_boxer_swordman', type: 'aoe', kind: 'physical',
+      mp: 14, cd: 9000, mult: 0.9, radius: 56, offset: 0, hits: 4, interval: 130, sfx: 'storm',
+      desc: '[มวย+ดาบ] ควงกระบองรอบตัว 4 รอบ โดนทุกตัวรอบกาย' },
   ],
   // ---------------- นักมวยคาดเชือก ----------------
   boxer: [
@@ -147,18 +165,35 @@ export const SKILLS = {
 export const SKILL_BY_ID = Object.fromEntries(
   Object.entries(SKILLS).flatMap(([job, list]) => list.map((s) => [s.id, { ...s, job }])));
 
-/** ค่าจริงของสกิลตามเลเวล (1–5) */
-export function skillStats(skill, lv = 1) {
-  const L = Math.max(1, Math.min(MAX_SKILL_LV, lv)) - 1;
+/** ใช้สกิลนี้ได้ไหมเมื่อถืออาวุธแนว job (เคล็ดวิชาผสมใช้ได้ทั้งสองแนว) */
+export const skillUsable = (base, job) => !!base && (base.job === job || (base.jobs || []).includes(job));
+/** อาวุธที่ต้องถือ (ข้อความ) */
+export const skillWeaponTh = (base, JOBS) => (base.jobs ? base.jobs : [base.job]).map((j) => JOBS[j]?.weaponTh).join(' หรือ ');
+
+// ------------------------------------------------------------
+//  ความชำนาญสกิล (แบบ Soul's Remnant: ยิ่งใช้ยิ่งเก่ง) — ร่ายสำเร็จ 1 ครั้ง = 1 แต้ม · ขั้นละ +2% ความแรง −1% คูลดาวน์ (สูงสุดขั้น 10)
+// ------------------------------------------------------------
+export const MASTERY_MAX = 10;
+export const MASTERY_NEED = [0, 10, 30, 60, 100, 160, 240, 340, 460, 600, 800];
+export function skillMastery(n = 0) {
+  let m = 0; while (m < MASTERY_MAX && n >= MASTERY_NEED[m + 1]) m++;
+  const next = MASTERY_NEED[m + 1];
+  return { m, cur: n - MASTERY_NEED[m], need: next ? next - MASTERY_NEED[m] : 0 };
+}
+export const masteryOf = (c, id) => skillMastery(c?.skx?.[id] || 0).m;
+
+/** ค่าจริงของสกิลตามเลเวล (1–5) + ขั้นความชำนาญ (0–10) */
+export function skillStats(skill, lv = 1, mastery = 0) {
+  const L = Math.max(1, Math.min(MAX_SKILL_LV, lv)) - 1, M = Math.max(0, Math.min(MASTERY_MAX, mastery | 0));
   return {
     ...skill,
-    lv: L + 1,
-    mult: skill.mult ? +(skill.mult * (1 + 0.15 * L)).toFixed(3) : undefined,
+    lv: L + 1, mastery: M,
+    mult: skill.mult ? +(skill.mult * (1 + 0.15 * L) * (1 + 0.02 * M)).toFixed(3) : undefined,
     mp: Math.round(skill.mp * (1 + 0.1 * L)),
-    cd: Math.round(skill.cd * (1 - 0.04 * L)),
+    cd: Math.round(skill.cd * (1 - 0.04 * L) * (1 - 0.01 * M)),
     duration: skill.duration ? Math.round(skill.duration * (1 + 0.1 * L)) : undefined,
     heal: typeof skill.heal === 'number' ? +(skill.heal * (1 + 0.1 * L)).toFixed(3) : skill.heal,
-    hmult: skill.hmult ? +(skill.hmult * (1 + 0.15 * L)).toFixed(3) : undefined,
+    hmult: skill.hmult ? +(skill.hmult * (1 + 0.15 * L) * (1 + 0.02 * M)).toFixed(3) : undefined,
     buff: skill.buff && skill.grow ? Object.fromEntries(Object.entries(skill.buff).map(([k, v]) => [k, typeof v === 'number' ? +(v + (skill.grow[k] || 0) * L).toFixed(3) : v])) : skill.buff,
   };
 }
@@ -171,6 +206,10 @@ export function reqCharLevel(skill, nextLv) {
 /** เลเวลสกิลสูงสุดที่อัปได้ = 2 + (แต้มพรสวรรค์ในกิ่งอาวุธนั้น ÷ 2) สูงสุด 5 · ท่าไม้ตาย ★ ต้องมีคีย์สโตนของกิ่ง */
 export function skillCap(char, skill) {
   const owned = char.passives || [];
+  if (skill.jobs) {                                              // เคล็ดวิชาผสม: ต้องมีจุดผสม + ลงสองกิ่งอย่างละ 3 แต้มขึ้นไป
+    const bp = branchPoints(owned), lo = Math.min(...skill.jobs.map((j) => bp[j] || 0));
+    return owned.includes(skill.node) && lo >= 3 ? Math.min(MAX_SKILL_LV, SUB_CAP + Math.floor((lo - 3) / 2) + 1) : 0;
+  }
   if (skill.ultimate) return owned.includes(KEYSTONE[skill.job]) ? MAX_SKILL_LV : 0;
   return Math.min(MAX_SKILL_LV, SUB_CAP + Math.floor(branchPoints(owned)[skill.job] / 2));
 }
@@ -182,7 +221,9 @@ export function canLearn(char, skillId) {
   const cur = char.skills?.[skillId] || 0;
   const cap = skillCap(char, s);
   if (cur >= MAX_SKILL_LV) return { ok: false, reason: 'เลเวลสูงสุดแล้ว' };
+  if (cap === 0 && s.jobs) return { ok: false, reason: `ต้องลงจุดผสม “${PASSIVES[s.node]?.nameTh}” + ${s.jobs.map((j) => BRANCHES[j].nameTh).join(' และ ')} อย่างละ 3 แต้ม` };
   if (cap === 0) return { ok: false, reason: `★ ต้องมีคีย์สโตน “${PASSIVES[KEYSTONE[s.job]].nameTh}”` };
+  if (cur >= cap && s.jobs) return { ok: false, reason: `ลงแต้มทั้งสองกิ่งเพิ่มเพื่อปลดเลเวลถัดไป` };
   if (cur >= cap) {
     const need = (cur + 1 - SUB_CAP) * 2 - branchPoints(char.passives || [])[s.job];
     return { ok: false, reason: `ลงแต้ม${BRANCHES[s.job].nameTh}อีก ${need} แต้ม` };

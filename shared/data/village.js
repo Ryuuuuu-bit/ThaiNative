@@ -138,6 +138,13 @@ export const QUESTS = [
     goal: { kill: 'grave', n: 20 }, reward: { exp: 3200, gold: 1500, items: [{ id: 'black_iron', qty: 3 }] } },
   { id: 'q_buek', lv: 8, nameTh: 'ตำนานปลาบึก', text: 'ปู่เล่าว่ามีปลาบึกยักษ์ในแม่น้ำรอบเกาะเมือง ตกมาให้ดูสักตัว',
     goal: { fish: 'pla_buek', n: 1 }, reward: { exp: 1200, gold: 1000, items: [{ id: 'takrut', qty: 1 }] } },
+  // ---- สายหมอยา (ไม่บังคับ · ถือไม้เท้าสมุนไพรแล้วรักษาเพื่อนในปาร์ตี้) ----
+  { id: 'q_heal1', lv: 3, optional: true, job: 'healer', nameTh: 'ศิษย์ศาลาโอสถ', text: 'หมอพรที่ศาลาโอสถ (ข้างค่ายมวย) อยากลองฝีมือ ถือไม้เท้าสมุนไพรแล้วรักษาเพื่อนร่วมปาร์ตี้ให้ได้รวม 500 HP',
+    goal: { heal: 'any', n: 500 }, reward: { exp: 300, gold: 300, items: [{ id: 'mp_m', qty: 5 }, { id: 'herb_honey', qty: 2 }] } },
+  { id: 'q_heal2', lv: 12, optional: true, job: 'healer', nameTh: 'หมอประจำขบวน', text: 'ขบวนล่าผีต้องมีหมอคอยดูแล ออกล่ากับเพื่อนแล้วรักษาเพื่อนให้ได้รวม 8,000 HP',
+    goal: { heal: 'any', n: 8000 }, reward: { exp: 4000, gold: 2000, items: [{ id: 'hp_m', qty: 10 }, { id: 'black_iron', qty: 3 }] } },
+  { id: 'q_revive', lv: 8, optional: true, job: 'healer', nameTh: 'เรียกขวัญคืนร่าง', text: 'หมอพรสอนพิธีสู่ขวัญ (★ ต้องมีคีย์สโตนกิ่งหมอยา) ชุบชีวิตเพื่อนที่สลบให้ได้ 1 ครั้ง',
+    goal: { revive: 'any', n: 1 }, reward: { exp: 2500, gold: 1500, items: [{ id: 'yant_guard', qty: 1 }] } },
 ];
 
 export const QUEST_BY_ID = Object.fromEntries(QUESTS.map((q) => [q.id, q]));

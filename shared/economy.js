@@ -63,16 +63,17 @@ const clampHp = (c) => { const d = getDerived(c); c.hp = Math.min(c.hp, d.maxHp)
 //  เควส / ค่าหัว (เรียกจากรางวัลฆ่าผี · ตกปลา · เก็บสมุนไพร)
 // ------------------------------------------------------------
 /** นับความคืบหน้าเควส → คืนรายการเควสที่เพิ่งครบ */
-export function questEvent(c, type, id) {
+export function questEvent(c, type, id, amt = 1) {
   const Q = (c.quests ||= { active: {}, done: [] }), done = [];
   for (const qid of Object.keys(Q.active)) {
     const q = QUEST_BY_ID[qid], g = q?.goal;
     if (!g || Q.active[qid] >= g.n) continue;
     const match = type === 'kill' ? g.kill && (g.kill === 'any' || g.kill === id || (g.kill === 'grave' && MONSTERS[id]?.zone?.[0] >= WORLD.graveX))
       : type === 'herb' ? g.herb && (g.herb === 'any' || g.herb === id)
-      : type === 'fish' ? g.fish && (g.fish === 'any' ? id !== 'junk_boot' : g.fish === id) : false;
+      : type === 'fish' ? g.fish && (g.fish === 'any' ? id !== 'junk_boot' : g.fish === id)
+      : type === 'heal' ? !!g.heal : type === 'revive' ? !!g.revive : false;
     if (!match) continue;
-    Q.active[qid]++;
+    Q.active[qid] = Math.min(g.n, Q.active[qid] + Math.max(1, Math.round(amt)));
     if (Q.active[qid] >= g.n) done.push(qid);
   }
   return done;
@@ -544,6 +545,7 @@ function gm(c, { cmd = 'help', a1, a2 }, ctx) {
       return OK(`ตีบวก ${slot} → +${c.enhance[slot]}`, { gm: true, jobChanged: syncAppearance(c) });
     }
     case 'heal': { const d = getDerived(c); c.hp = d.maxHp; c.mp = d.maxMp; return OK('ฟื้น HP/MP เต็ม', { gm: true }); }
+    case 'map': return OK(`วาร์ปไป ${a1}`, { gm: true, gmWarp: String(a1 || '') });
     case 'hp': { const pct = Math.max(0, Math.min(100, Number(a1) || 0)); return OK(pct ? `ตั้ง HP → ${pct}%` : 'สลบทันที (ทดสอบชุบชีวิต)', { gm: true, hpPct: pct }); }
     default: return OK('คำสั่ง: /gm gold [จำนวน] · /gm lv [เลเวล] · /gm exp [จำนวน] · /gm item <id> [จำนวน] · /gm sp [n] · /gm stat [n] · /gm enh <weapon|armor|accessory|accessory2> [ขั้น] · /gm heal', { gm: true });
   }

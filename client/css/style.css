@@ -262,6 +262,8 @@ kbd { display: inline-block; min-width: 1.6em; text-align: center; padding: 0 .3
 .sk-card.locked .sk-icon, .sk-card.unlearned .sk-icon { filter: grayscale(.8); cursor: not-allowed; }
 .sk-name { font-size: .8em; font-weight: 600; }
 .sk-lv { font-size: .78em; color: var(--gold-soft); }
+.sk-mast { position: relative; font-size: .72em; color: #f9e79f; background: rgba(0,0,0,.35); border-radius: 4px; padding: 0 .4em; overflow: hidden; margin: .1em 0; }
+.sk-mast i { position: absolute; left: 0; bottom: 0; height: 2px; background: linear-gradient(90deg,#f5b041,#f9e79f); }
 .sk-pips { display: flex; gap: 2px; } .sk-pips i { width: .5em; height: .5em; border-radius: 50%; background: #3a2a4a; } .sk-pips i.on { background: var(--gold); }
 .sk-stat { font-size: .72em; color: var(--muted); line-height: 1.35; min-height: 3.9em; }
 .sk-desc { font-size: .72em; color: var(--text); min-height: 2.6em; }

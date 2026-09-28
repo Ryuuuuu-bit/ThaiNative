@@ -6,7 +6,7 @@ import { ENHANCE } from './data/village.js';
 import { JOBS, VILLAGER, JOB_IDS } from './data/classes.js';
 import { ITEMS } from './data/items.js';
 import { computeDerived, STAT_KEYS, MAX_LEVEL, POINTS_PER_LEVEL, clamp } from './stats.js';
-import { SKILL_BY_ID, MAX_SKILL_LV, SP_PER_LEVEL, START_SP, skillStats } from './data/skills.js';
+import { SKILL_BY_ID, MAX_SKILL_LV, SP_PER_LEVEL, START_SP, skillStats, skillUsable, masteryOf } from './data/skills.js';
 import { combineBlessings } from './data/blessings.js';
 import { setInfo } from './data/gear.js';
 import { passiveBonus } from './data/passives.js';
@@ -125,8 +125,8 @@ export function attackSpec(c, job, skillId = null, combo = false) {
   if (skillId) {
     const base = SKILL_BY_ID[skillId], lv = c.skills?.[skillId] || 0;
     if (!base || lv <= 0 || !base.mult) return null;
-    if (job && base.job && base.job !== job) return null;                    // ต้องถืออาวุธแนวเดียวกับสกิล
-    const sk = skillStats(base, lv);
+    if (job && base.job && !skillUsable(base, job)) return null;              // ต้องถืออาวุธแนวเดียวกับสกิล (เคล็ดวิชาผสม: แนวใดแนวหนึ่ง)
+    const sk = skillStats(base, lv, masteryOf(c, skillId));
     return { kind: sk.kind || 'physical', mult: sk.mult, effect: sk.effect || null, hits: sk.hits || 1 };
   }
   const atk = JOBS[job]?.attack;

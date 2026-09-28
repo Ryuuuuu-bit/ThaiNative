@@ -14,7 +14,7 @@ import { sanitizeAppearance } from '../shared/data/appearance.js';
 import { getDerived } from '../shared/character.js';
 import { migrate } from '../shared/charmodel.js';
 import { runAction, packChar } from '../shared/economy.js';
-import { SKILL_BY_ID, MAX_SKILL_LV, skillStats } from '../shared/data/skills.js';
+import { SKILL_BY_ID, MAX_SKILL_LV, skillStats, skillUsable, skillMastery } from '../shared/data/skills.js';
 import { DAY_MS_DEFAULT, dayPhase, isNight } from '../shared/data/world.js';
 import { setupSocial } from './social.js';
 import { setupMobs } from './mobs.js';
@@ -276,6 +276,7 @@ io.on('connection', (socket) => {
     if (a === 'title' && r.ok) io.emit('td:title', { id: p.id, title: p.save.title || null });   // ฉายาเหนือชื่อ → ทุกคนเห็นทันที
     if (a === 'enhance' && r.slot && r.lv >= 10 && r.success) io.emit('chat', { id: null, name: '🔨 ลุงดำ', text: `${p.name} ตีบวกสำเร็จ +${r.lv}!` });
     refresh(p);
+    if (r.ok && r.gmWarp && p.admin && p.world === 'td') td.gmWarp(p, socket, r.gmWarp);
     if (r.ok && r.hpPct != null && p.admin) {                                   // GM: ตั้ง HP / สลบ (ทดสอบหมอยา)
       p.invulnUntil = 0;
       if (r.hpPct <= 0) hurtPlayer(p, p.hp + 1, { force: true });
@@ -292,16 +293,21 @@ io.on('connection', (socket) => {
     const base = SKILL_BY_ID[d.skillId];
     const now = Date.now();
     if (!p || !base || p.dead) return;
-    if (base.job !== p.appearance.job) return;
+    if (!skillUsable(base, p.appearance.job)) return;
     const lv = p.save.skills?.[base.id] || 0;
     if (!lv || now - p.lastSkill < 150) return;
     const x = Number(d.x) || 0, y = Number(d.y) || 0, td = p.world === 'td';
     if (Math.abs(x - (td ? p.tx : p.x)) > 120 || Math.abs(y - (td ? p.ty : p.y)) > 120) return;
-    const sk = skillStats(base, lv);
+    const skx = (p.save.skx ||= {}), m0 = skillMastery(skx[base.id] || 0).m;
+    const sk = skillStats(base, lv, m0);
     p.skillAt ||= {};
     if (now - (p.skillAt[base.id] || 0) < sk.cd * 0.8) return;         // คูลดาวน์ (server)
     p.skillAt[base.id] = now;
     p.lastSkill = now;
+    skx[base.id] = Math.min(99999, (skx[base.id] || 0) + 1);                   // ความชำนาญสกิล: ยิ่งใช้ยิ่งเก่ง
+    const m1 = skillMastery(skx[base.id]).m;
+    if (m1 > m0) { queueSync(p); socket.emit('chat', { id: null, name: '✨ ชำนาญ', text: `${base.nameTh} ชำนาญขึ้นเป็นขั้น ${m1}! (แรงขึ้น +${m1 * 2}% · คูลดาวน์ −${m1}%)` }); }
+    else p.dirty = true;
     if (sk.type === 'buff') {
       p.buffs = (p.buffs || []).filter((b) => b.until > now && b.sk !== base.id);
       p.buffs.push({ buff: sk.buff, until: now + sk.duration, sk: base.id });

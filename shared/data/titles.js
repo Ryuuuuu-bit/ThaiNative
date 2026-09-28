@@ -34,8 +34,11 @@ export const TITLES = [
   { id: 'dungeon',    nameTh: 'ผู้พิชิตกุมภกรรณ',      color: '#a569bd', hint: 'ร่วมปราบกุมภกรรณ (ป่าหิมพานต์)',              ok: (c, r) => (tb(r).kumphakan || 0) >= 1 },
   { id: 'dungeon10',  nameTh: 'สหายนาคราช',          color: '#8e44ad', hint: 'ร่วมปราบพญาอนันตนาคราช (เมืองบาดาล)',          ok: (c, r) => (tb(r).anantanak || 0) >= 1 },
   { id: 'hell',       nameTh: 'เจ้าแห่งเจ็ดบอส',       color: '#c0392b', hint: 'ปราบบอสประจำโซนครบทั้ง 7 ตัว',               ok: (c, r) => ALL_BOSS.every((b) => tb(r)[b]) },
+  { id: 'medic',      nameTh: 'หมอยาประจำขบวน',       color: '#48c9b0', hint: 'รักษาเพื่อนรวม 20,000 HP',                   ok: (c, r) => (r.healOut || 0) >= 20000 },
+  { id: 'medic2',     nameTh: 'หมอเทวดาแห่งกรุงศรี',    color: '#76d7c4', hint: 'รักษาเพื่อนรวม 500,000 HP',                  ok: (c, r) => (r.healOut || 0) >= 500000 },
+  { id: 'khwan10',    nameTh: 'ผู้เรียกขวัญ',            color: '#f9e79f', hint: 'ชุบชีวิตเพื่อนด้วยพิธีสู่ขวัญ 10 ครั้ง',         ok: (c, r) => (r.revive || 0) >= 10 },
   { id: 'rich',       nameTh: 'เศรษฐีกรุงศรี',          color: '#f7dc6f', hint: 'มีเงินติดตัว ฿1,000,000',                   ok: (c) => (c.gold || 0) >= 1_000_000 },
-  { id: 'elder',      nameTh: 'ลูกรักผู้ใหญ่ชัย',       color: '#f8c471', hint: 'ทำเควสผู้ใหญ่ชัยครบทุกเควส',                  ok: (c) => QUESTS.every((q) => c.quests?.done?.includes(q.id)) },
+  { id: 'elder',      nameTh: 'ลูกรักผู้ใหญ่ชัย',       color: '#f8c471', hint: 'ทำเควสผู้ใหญ่ชัยครบทุกเควส',                  ok: (c) => QUESTS.every((q) => q.optional || c.quests?.done?.includes(q.id)) },
   { id: 'social',     nameTh: 'เพื่อนเยอะ',            color: '#76d7c4', hint: 'มีเพื่อนในรายชื่อ 5 คน',                     ok: (c) => (c.friends || []).length >= 5 },
 ];
 export const TITLE_BY_ID = Object.fromEntries(TITLES.map((t) => [t.id, t]));

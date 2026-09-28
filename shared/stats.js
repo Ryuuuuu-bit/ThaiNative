@@ -76,7 +76,7 @@ export function rollDamage(atk, def, kind = 'physical', mult = 1, rng = Math.ran
   const hitChance = hitChanceOf(atk.accuracy, def.eva || 0);
   if (rng() > hitChance) return { hit: false, crit: false, dmg: 0 };
 
-  const power = kind === 'magic' ? atk.matk : atk.patk;
+  const power = kind === 'magic' ? atk.matk : kind === 'best' ? Math.max(atk.patk, atk.matk) : atk.patk;   // best = เคล็ดวิชาผสม
   const variance = 0.9 + rng() * 0.2;
   // เวทย์ทะลุเกราะได้ครึ่งหนึ่ง
   const armor = (def.def || 0) * (kind === 'magic' ? 0.25 : 0.5);

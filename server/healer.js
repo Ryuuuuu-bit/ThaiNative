@@ -6,6 +6,8 @@
 //  ▸ แจ้งทุกคนในแมพด้วย td:heal { id, amt, fx } · สายใย td:tether · ชุบชีวิต td:revive
 // ============================================================
 import { combatDerived } from '../shared/character.js';
+import { questEvent } from '../shared/economy.js';
+import { checkTitles } from '../shared/data/titles.js';
 
 export function setupHealer(io, players, { healPlayer, queueSync, social, tdSys }) {
   const posOf = (p) => (p.world === 'td' ? { x: p.tx, y: p.ty } : { x: p.x, y: p.y });
@@ -30,7 +32,20 @@ export function setupHealer(io, players, { healPlayer, queueSync, social, tdSys 
     healPlayer(t, amt);
     const got = Math.round(t.hp - before);
     emitRoom(caster, 'td:heal', { id: t.id, amt: got > 0 ? got : amt, over: got <= 0, fx, sk, by: caster.id });
+    if (got > 0 && t !== caster) credit(caster, 'heal', got);
     return got;
+  }
+  /** สถิติ/เควส/ฉายาของหมอยา (รักษาเพื่อน · ชุบชีวิต) — รวบส่งทีละช่วง */
+  function credit(c, kind, n) {
+    const s = c.save; if (!s) return;
+    s.rec ||= {};
+    if (kind === 'heal') s.rec.healOut = (s.rec.healOut || 0) + n; else s.rec.revive = (s.rec.revive || 0) + n;
+    const done = questEvent(s, kind, 'any', n);
+    const got = checkTitles(s);
+    if (got.length) social.announceTitles?.(c, got);
+    if (done.length) io.to(c.id).emit('chat', { id: null, name: '📜 เควส', text: 'เควสสำเร็จ! กลับไปรับรางวัลกับผู้ใหญ่ชัย' });
+    c.dirty = true;
+    if (done.length || got.length || !c._healSync || Date.now() - c._healSync > 3000) { c._healSync = Date.now(); queueSync(c); }
   }
 
   const tethers = new Map();          // casterId → { tid, until, next, sk, amt }
@@ -78,6 +93,7 @@ export function setupHealer(io, players, { healPlayer, queueSync, social, tdSys 
               io.to(t.id).emit('td:revive', { hp: Math.round(t.hp), maxHp: t.maxHp, by: p.name });
               emitRoom(p, 'td:heal', { id: t.id, amt: Math.round(t.hp), fx: 'revive', sk: sk.id, by: p.id });
               queueSync(t);
+              if (t !== p) credit(p, 'revive', 1);
             } else heal(p, t, t.maxHp * sk.heal, 'khwan', sk.id);
             t.buffs = (t.buffs || []).filter((b) => b.until > at && b.sk !== sk.id);
             t.buffs.push({ buff: { undying: true }, until: at + sk.undying, sk: sk.id });

@@ -243,6 +243,11 @@
     "villager_female": "assets/players/villager_female.png"
   },
   "icons": {
+    "sk_hy_spellblade": "assets/icons/sk_hy_spellblade.png",
+    "sk_hy_holywater": "assets/icons/sk_hy_holywater.png",
+    "sk_hy_herbarrow": "assets/icons/sk_hy_herbarrow.png",
+    "sk_hy_monkey": "assets/icons/sk_hy_monkey.png",
+    "sk_hy_krabi": "assets/icons/sk_hy_krabi.png",
     "sk_heal_vine": "assets/icons/sk_heal_vine.png",
     "sk_heal_pill": "assets/icons/sk_heal_pill.png",
     "sk_heal_seed": "assets/icons/sk_heal_seed.png",

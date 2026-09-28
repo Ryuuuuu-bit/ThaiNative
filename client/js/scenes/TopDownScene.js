@@ -467,7 +467,7 @@ export class TopDownScene extends Phaser.Scene {
     const m = this.physics.add.sprite(s.x, s.y, this.textures.exists(key) ? key : 'npc_maekha', 'walk_0').setOrigin(0.5, 1);
     if (!own && def.tint) { const ct = m.clearTint.bind(m); m.clearTint = () => { ct(); m.setTint(def.tint); return m; }; m.setTint(def.tint); }
     this.monsters.add(m);
-    const scale = def.scale || 1; m.setScale(scale); m.scaleMul = def.boss ? def.scale || 1.6 : 1;
+    const scale = def.scale || 1; m.setScale(scale); m.scaleMul = def.boss ? def.scale || 1.6 : def.elite ? def.scale || 1.2 : 1;   // ตัวแกร่ง (elite) ตัวโตขึ้นเล็กน้อย
     m.body.setSize(14 / scale, 8 / scale).setOffset((m.width - 14 / scale) / 2, m.height - 8 / scale); m.bodyFoot = [14, 8];
     Object.assign(m, { mid, def, spawn: s, hp: def.hp, maxHp: def.hp, alive: true, mode: 'wander', nextThink: 0, nextAtk: 0, dir: 'south', sx: s.x, sy: s.y });
     m.legacyKey = m.texture.key; m.d8id = `mob_${art}`; playDir(m, 'walk', 'south');

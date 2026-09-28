@@ -11,7 +11,7 @@ import { ITEMS, STARTING_GOLD, STARTING_ITEMS, STARTER_WEAPON } from './data/ite
 import { sanitizeAppearance } from './data/appearance.js';
 import { expToNext, POINTS_PER_LEVEL, STAT_KEYS, MAX_LEVEL } from './stats.js';
 import { getDerived } from './character.js';
-import { SKILL_SLOTS, OLD_SKILL_SLOTS, SP_PER_LEVEL, START_SP, SKILL_BY_ID, canLearn, isItemSlot, slotItemId, skillCap } from './data/skills.js';
+import { SKILL_SLOTS, OLD_SKILL_SLOTS, SP_PER_LEVEL, START_SP, SKILL_BY_ID, canLearn, isItemSlot, slotItemId, skillCap, skillUsable } from './data/skills.js';
 import { PASSIVES, KEYSTONE, canAllocate, branchPoints, totalPassivePoints } from './data/passives.js';
 import { LIFE, LIFE_IDS, lifeLevel, masteryLevel } from './data/life.js';
 import { fixCards } from './data/cards.js';
@@ -83,7 +83,7 @@ function swapHotbar(c, from, to) {
   if (!hb) {
     // แถบใหม่ของแนวนี้: ไอเทมตามแถบเดิม + สกิลที่เรียนแล้วของแนวนี้ในช่องที่ว่าง
     hb = Object.fromEntries(SKILL_SLOTS.map((k) => [k, isItemSlot(c.hotbar?.[k]) ? c.hotbar[k] : null]));
-    const learned = Object.keys(c.skills || {}).filter((id) => SKILL_BY_ID[id]?.job === to && c.skills[id] > 0);
+    const learned = Object.keys(c.skills || {}).filter((id) => skillUsable(SKILL_BY_ID[id], to) && c.skills[id] > 0);
     for (const id of learned) { const free = SKILL_FILL_ORDER.find((k) => !hb[k]); if (free) hb[free] = id; }
   }
   c.hotbar = fixHotbar(c, hb);

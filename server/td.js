@@ -343,6 +343,13 @@ export function setupTD(io, players, opts = {}) {
       p.tx = TD_SPAWN.x; p.ty = TD_SPAWN.y; p.tdLast = Date.now(); p.save.tdPos = { ...TD_SPAWN }; p.save.tdMap = 'ayutthaya'; p.dirty = true;
     },
     inTown: (p) => W(p).inTown(p.tx, p.ty),
+    /** GM: วาร์ปไปแมพไหนก็ได้ (ทดสอบ) */
+    gmWarp(p, socket, to) {
+      if (!TD_MAPS[to] || p.world !== 'td') return false;
+      if (!visited(p).includes(to)) visited(p).push(to);
+      if (to === mapOf(p)) { const sp = TD_MAPS[to].spawn; p.tx = sp.x; p.ty = sp.y; socket.emit('td:correct', { x: sp.x, y: sp.y }); return true; }
+      moveMap(socket, p, to, { ...TD_MAPS[to].spawn }, 'npc'); return true;
+    },
     onConnection(socket) {
       socket.on('td:enter', () => { const p = players.get(socket.id); if (p) enter(socket, p); });
       socket.on('td:move', (s) => onMove(socket, s));

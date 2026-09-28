@@ -11,7 +11,7 @@ import { setInfo, SET_TEXT } from '/shared/data/gear.js';
 import { TITLES, TITLE_BY_ID } from '/shared/data/titles.js';
 import { DYE_PRICE } from '/shared/economy.js';
 import { OUTFITS, HAIRSTYLES } from '/shared/data/appearance.js';
-import { SKILLS, SKILL_SLOTS, SKILL_BY_ID, MAX_SKILL_LV, skillStats, canLearn, skillCap, isItemSlot, slotItemId } from '/shared/data/skills.js';
+import { SKILLS, SKILL_SLOTS, SKILL_BY_ID, MAX_SKILL_LV, skillStats, canLearn, skillCap, isItemSlot, slotItemId, skillUsable, skillWeaponTh, masteryOf, skillMastery, MASTERY_MAX as SK_MMAX } from '/shared/data/skills.js';
 import { hotbarItemOk, passiveFree, classTitle } from '/shared/charmodel.js';
 import { PASSIVES, BRANCHES, KEYSTONE, canAllocate, branchPoints, bonusText, totalPassivePoints } from '/shared/data/passives.js';
 import { LIFE, LIFE_IDS, lifeLevel, masteryLevel, MASTERY_MAX } from '/shared/data/life.js';
@@ -341,10 +341,10 @@ export class UI {
       if (!id || !lv) return `<div class="skill empty" data-key="${key}"><span class="k">${key}</span><span class="ic">＋</span>
         <div class="tip">ช่อง ${key} ว่าง – ลากสกิล (K) หรือไอเทม (I) มาวาง</div></div>`;
       const st = skillStats(SKILL_BY_ID[id], lv);
-      const off = SKILL_BY_ID[id].job !== c.appearance.job;
+      const off = !skillUsable(SKILL_BY_ID[id], c.appearance.job);
       return `<div class="skill${off ? ' noweapon' : ''}" data-key="${key}" data-id="${id}" draggable="true"><span class="k">${key}</span><button class="hb-x" data-hbx="${key}" title="เอาออกจากช่อง" aria-label="เอาออก">✕</button><span class="ic">${skillIcon(id, st.icon)}</span><span class="mp">${st.mp}</span>
         <div class="cd"></div><div class="cdt"></div>
-        <div class="tip"><b>${st.nameTh}</b> Lv.${lv} (${key})<br>MP ${st.mp} · CD ${(st.cd / 1000).toFixed(1)}s${st.mult ? ` · ดาเมจ x${st.mult}` : ''}<br>${st.desc}${off ? `<br><span style="color:#f5b041">ต้องถือ${JOBS[SKILL_BY_ID[id].job].weaponTh}</span>` : ''}</div></div>`;
+        <div class="tip"><b>${st.nameTh}</b> Lv.${lv} (${key})<br>MP ${st.mp} · CD ${(st.cd / 1000).toFixed(1)}s${st.mult ? ` · ดาเมจ x${st.mult}` : ''}<br>${st.desc}${off ? `<br><span style="color:#f5b041">ต้องถือ${skillWeaponTh(SKILL_BY_ID[id], JOBS)}</span>` : ''}</div></div>`;
     }).join('');
     this.skillEls = [...document.querySelectorAll('#skillbar .skill')];
     document.querySelectorAll('#skillbar .hb-x').forEach((b) => {
@@ -461,7 +461,7 @@ export class UI {
       const n = PASSIVES[id], on = owned.includes(id), can = !on && canAllocate(owned, id);
       const kind = { root: 'จุดเริ่มต้น', key: '🌟 คีย์สโตน (ฉายาประจำสาย · ปลดท่าไม้ตาย ★)', notable: '✦ จุดสำคัญ', small: 'จุดเล็ก' }[n.kind];
       info.innerHTML = `<b style="color:${n.branch ? BRANCHES[n.branch].color : 'var(--gold-soft)'}">${n.nameTh}</b><small>${kind}${n.branch ? ` · ${BRANCHES[n.branch].nameTh}` : ''}</small>
-        <p>${bonusText(n.bonus) || 'จุดศูนย์กลาง — เริ่มลงแต้มจากตรงนี้'}</p>
+        <p>${bonusText(n.bonus) || 'จุดศูนย์กลาง — เริ่มลงแต้มจากตรงนี้'}</p>${n.id.startsWith('hy_') ? (() => { const hs = SKILLS.hybrid.find((x) => x.node === n.id); return hs ? `<p style="color:#f9e79f">⚡ ปลดเคล็ดวิชาผสม “${hs.nameTh}” (ต้องลงทั้งสองกิ่งอย่างละ 3 แต้ม)</p>` : ''; })() : ''}
         <em>${on ? '✔ ลงแล้ว' : can ? (free ? 'คลิกเพื่อลงแต้ม' : 'แต้มพรสวรรค์หมด') : 'ต้องลงจุดที่ติดกันก่อน'}</em>`;
     };
     const summary = () => {
@@ -515,15 +515,19 @@ export class UI {
     const job = this.skTab;
     const bp = branchPoints(c.passives || []);
     let tabs = $('#sk-tabs');
-    tabs.innerHTML = JOB_IDS.map((j) => {
+    const HY = job === 'hybrid';
+    tabs.innerHTML = [...JOB_IDS, 'hybrid'].map((j) => {
       const learned = SKILLS[j].reduce((a, sk) => a + (c.skills[sk.id] || 0), 0);
-      return `<button data-sktab="${j}" class="${j === job ? 'active' : ''} ${c.appearance.job === j ? 'main' : ''}">${JOBS[j].icon} ${JOBS[j].weaponTh}${learned ? ` <small>${learned}</small>` : ''}</button>`;
-    }).join('') + `<span class="sk-note">เพดานเลเวลสกิล = 2 + (แต้ม${BRANCHES[job].nameTh} ${bp[job]} ÷ 2) · ★ ต้องมีคีย์สโตน · ใช้ได้เมื่อถือ${JOBS[job].weaponTh}${c.appearance.job === job ? ' ✔' : ''}</span>`;
+      const label = j === 'hybrid' ? '⚡ เคล็ดวิชาผสม' : `${JOBS[j].icon} ${JOBS[j].weaponTh}`;
+      return `<button data-sktab="${j}" class="${j === job ? 'active' : ''} ${c.appearance.job === j ? 'main' : ''}">${label}${learned ? ` <small>${learned}</small>` : ''}</button>`;
+    }).join('') + (HY ? `<span class="sk-note">เคล็ดวิชาผสม: ลงจุดผสมระหว่างสองกิ่ง + ลงทั้งสองกิ่งอย่างละ 3 แต้ม · ใช้ได้เมื่อถืออาวุธของกิ่งใดกิ่งหนึ่ง · สกิลทุกท่าชำนาญขึ้นเองเมื่อใช้ (สูงสุดขั้น ${SK_MMAX})</span>`
+      : `<span class="sk-note">เพดานเลเวลสกิล = 2 + (แต้ม${BRANCHES[job].nameTh} ${bp[job]} ÷ 2) · ★ ต้องมีคีย์สโตน · ใช้ได้เมื่อถือ${JOBS[job].weaponTh}${c.appearance.job === job ? ' ✔' : ''} · ยิ่งใช้ยิ่งชำนาญ (ขั้นละ +2% แรง −1% คูลดาวน์)</span>`);
     tabs.querySelectorAll('[data-sktab]').forEach((b) => (b.onclick = () => { this.skTab = b.dataset.sktab; this.scene.sfx.play('click'); this.renderSkillTree(); }));
     $('#sk-tree').innerHTML = SKILLS[job].map((base) => {
       const lv = c.skills[base.id] || 0;
       const cap = skillCap(c, { ...base, job });
-      const cur = skillStats(base, Math.max(1, lv)), next = lv < MAX_SKILL_LV ? skillStats(base, lv + 1) : null;
+      const mm = skillMastery(c.skx?.[base.id] || 0);
+      const cur = skillStats(base, Math.max(1, lv), mm.m), next = lv < MAX_SKILL_LV ? skillStats(base, lv + 1, mm.m) : null;
       const chk = canLearn(c, base.id);
       const locked = c.level < base.reqLv || cap === 0;
       const stat = (st) => `MP ${st.mp} · CD ${(st.cd / 1000).toFixed(1)}s${st.mult ? `<br>ดาเมจ x${st.mult}` : ''}${st.duration ? `<br>นาน ${(st.duration / 1000).toFixed(0)}s` : ''}`;
@@ -533,6 +537,7 @@ export class UI {
         <div class="sk-name">${base.nameTh}${base.ultimate ? ' ★' : ''}</div>
         <div class="sk-pips">${Array.from({ length: MAX_SKILL_LV }, (_, i) => `<i class="${i < lv ? 'on' : i >= cap ? 'cap' : ''}"></i>`).join('')}</div>
         <div class="sk-lv">Lv.${lv} / ${cap}</div>
+        <div class="sk-mast" title="ความชำนาญ: ร่ายสำเร็จ 1 ครั้ง = 1 แต้ม · ขั้นละ +2% ความแรง −1% คูลดาวน์">✨ ชำนาญ ${mm.m}/${SK_MMAX}<i style="width:${mm.need ? Math.round(mm.cur / mm.need * 100) : 100}%"></i></div>
         <div class="sk-desc">${base.desc}</div>
         <div class="sk-stat">${lv ? stat(cur) : stat(skillStats(base, 1))}${next && lv ? `<br><span style="color:#58d68d">→ Lv.${lv + 1}: ${next.mult ? `x${next.mult}` : `MP ${next.mp}`}</span>` : ''}</div>
         <span class="sk-ups"><button class="sk-up" data-learn="${base.id}" ${chk.ok ? '' : 'disabled'}>${lv ? '+ อัป' : '+ เรียน'}</button><button class="sk-up max" data-learnmax="${base.id}" ${chk.ok ? '' : 'disabled'} title="อัปจนสุดเท่าที่ SP/เลเวลให้">MAX</button></span>

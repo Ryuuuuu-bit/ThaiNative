@@ -290,6 +290,8 @@ export class Village {
   goalText(q) {
     const g = q.goal;
     if (g.herb) return `เก็บ${g.herb === 'any' ? 'สมุนไพรอะไรก็ได้' : ITEMS[g.herb]?.nameTh} ${g.n} ครั้ง`;
+    if (g.heal) return `รักษาเพื่อนร่วมปาร์ตี้รวม ${g.n.toLocaleString()} HP`;
+    if (g.revive) return `ชุบชีวิตเพื่อน ${g.n} ครั้ง`;
     if (g.kill) return `ปราบ ${g.kill === 'any' ? 'ผีตัวไหนก็ได้' : g.kill === 'grave' ? 'ผีในป่าช้า' : MONSTERS[g.kill]?.nameTh} ${g.n} ตัว`;
     return `ตก${g.fish === 'any' ? 'ปลาอะไรก็ได้' : ITEMS[g.fish]?.nameTh} ${g.n} ตัว`;
   }

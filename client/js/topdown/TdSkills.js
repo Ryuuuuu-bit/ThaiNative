@@ -3,7 +3,7 @@
 //  ▸ ใช้ข้อมูลสกิลชุดเดิม (shared/data/skills.js) · ดาเมจยังคิดที่ server (td:hit + sk)
 //  ▸ ทุกสกิลมีลายเซ็นภาพของตัวเอง: ฟ้าผ่า/อุกกาบาต/ห่าฝนธนู/พายุดาบ/ช้างศึกกระแทก ฯลฯ
 // ============================================================
-import { SKILL_BY_ID, skillStats, SKILL_SLOTS, isItemSlot } from '/shared/data/skills.js';
+import { SKILL_BY_ID, skillStats, SKILL_SLOTS, isItemSlot, skillUsable, skillWeaponTh, masteryOf } from '/shared/data/skills.js';
 import { JOBS } from '/shared/data/classes.js';
 import { popupNumber, yantCircle } from '../gfx/Fx.js';
 import { dirFromVector } from './Dir8.js';
@@ -388,8 +388,8 @@ export class TdSkills {
     const p = this.s.player, c = p.char, id = c.hotbar?.[key];
     if (!id || isItemSlot(id)) return null;
     const lv = c.skills?.[id] || 0, base = SKILL_BY_ID[id];
-    if (!lv || !base || base.job !== c.appearance.job) return null;
-    const sk = skillStats(base, lv);
+    if (!lv || !base || !skillUsable(base, c.appearance.job)) return null;
+    const sk = skillStats(base, lv, masteryOf(c, id));
     if (p.cooldownLeft(id, time) > 0 || c.mp < sk.mp) return null;
     return { id, sk };
   }
@@ -426,9 +426,10 @@ export class TdSkills {
     }
     const lv = c.skills?.[id] || 0, base = SKILL_BY_ID[id];
     if (!lv || !base) return;
-    if (base.job !== c.appearance.job) { if (time - (p.cooldowns[`_w${key}`] ?? -9999) > 1500) { ui.toast(`${base.nameTh}: ต้องถือ${JOBS[base.job].weaponTh}`, 'warn'); s.sfx.play('error'); p.cooldowns[`_w${key}`] = time; } return; }
-    const sk = skillStats(base, lv);
+    if (!skillUsable(base, c.appearance.job)) { if (time - (p.cooldowns[`_w${key}`] ?? -9999) > 1500) { ui.toast(`${base.nameTh}: ต้องถือ${skillWeaponTh(base, JOBS)}`, 'warn'); s.sfx.play('error'); p.cooldowns[`_w${key}`] = time; } return; }
+    const sk = skillStats(base, lv, masteryOf(c, id));
     if (p.cooldownLeft(id, time) > 0) return;
+    (c.skx ||= {})[id] = (c.skx[id] || 0) + 1;                   // ความชำนาญ (server นับจริง · ฝั่งนี้ให้ UI ขยับทันที)
     if (c.mp < sk.mp) { ui.toast('MP ไม่พอ!', 'warn'); s.sfx.play('error'); p.cooldowns[id] = time + 400; return; }
     c.mp -= sk.mp; p.cooldowns[id] = time + sk.cd;
     const reach = this.reachOf(sk);
@@ -459,12 +460,18 @@ export class TdSkills {
   // ------------------------------------------------------------
   play(sk, o) {
     const fx = this.fx, s = this.s, tint = TINT[sk.id] || 0xffffff, dmg = o.local;
-    const H = (m) => dmg && this.hit(m, sk, tint);
+    const H = (m) => dmg && this.hit(m, o.hitSk || sk, tint);
     const S = (n) => { if (o.local || dist(o, s.player) < 300) this.snd(n); };
     const at = (ms, f) => s.time.delayedCall(ms, f);
     const cx = o.x, cy = o.y, ang = Math.atan2(o.uy, o.ux);
     if (sk.ultimate) { yantCircle(s, cx, cy, { tint, size: 90, ms: 1100, rise: true }); fx.darken(700); S('skFlash'); }
     if (SKILL_BY_ID[sk.id]?.job === 'healer' && this.heal.play(sk, o)) return;
+    const HY_FX = { hy_spellblade: 'sword_twin', hy_holywater: 'mage_holy', hy_herbarrow: 'arch_poison', hy_monkey: 'boxer_ngouy', hy_krabi: 'sword_pikat' };
+    if (HY_FX[sk.id] && !o.hitSk) {                               // เคล็ดวิชาผสม: ยืมลายเซ็นภาพจากสกิลต้นแบบ + ประกายสองสี (ดาเมจยังนับเป็นสกิลผสม)
+      fx.sparks(cx, cy - 20, { n: 14, tint: 0xc39bff, speed: [40, 140], life: 600, scale: 0.3 });
+      fx.sparks(cx, cy - 20, { n: 10, tint: 0xffd35c, speed: [40, 140], life: 600, scale: 0.3 });
+      return this.play({ ...sk, id: HY_FX[sk.id], ultimate: false }, { ...o, hitSk: sk });
+    }
 
     switch (sk.id) {
       // ======================= จอมขมังเวทย์ =======================
