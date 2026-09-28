@@ -360,3 +360,11 @@ body.td-mode.lowhp #hud::before { content: ''; position: absolute; inset: 0; z-i
 .sk-calc-list small { color: #9d8a70; }
 .sk-calc-list .nx { color: #58d68d; }
 .sk-calc-list .grow { display: block; margin-top: 2px; }
+
+/* ใบเปลี่ยนชื่อ */
+#rename-box { position: fixed; inset: 0; z-index: 10060; background: rgba(6,3,12,.6); display: flex; align-items: center; justify-content: center; }
+#rename-box.hidden { display: none; }
+#rename-box .rn-card { width: min(420px, 92vw); padding: 16px 18px; border-radius: 12px; background: linear-gradient(180deg, #2b1a3d, #150c1f); border: 1px solid rgba(212,175,55,.85); color: #e8d6b4; font-family: 'Mitr', Tahoma, sans-serif; display: flex; flex-direction: column; gap: 8px; }
+#rename-box h3 { margin: 0; color: #ffe7a8; } #rename-box p { margin: 0; font-size: .9em; } #rename-box b { color: #ffd76a; }
+#rename-box input { padding: 8px 10px; border-radius: 8px; border: 1px solid #8a6a2a; background: #120a1b; color: #fff; font: inherit; font-size: 1.05em; }
+#rename-box .rn-btns { display: flex; justify-content: flex-end; gap: 8px; margin-top: 4px; }

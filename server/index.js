@@ -13,7 +13,8 @@ import { MAPS, mapAt, gateNear, canTravelFrom } from '../shared/data/maps.js';
 import { sanitizeAppearance } from '../shared/data/appearance.js';
 import { getDerived } from '../shared/character.js';
 import { migrate } from '../shared/charmodel.js';
-import { runAction, packChar } from '../shared/economy.js';
+import { runAction, packChar, count as invCount, removeItem } from '../shared/economy.js';
+import { checkName, nameKey, nameIdeas } from '../shared/data/names.js';
 import { SKILL_BY_ID, MAX_SKILL_LV, skillStats, skillUsable, skillMastery } from '../shared/data/skills.js';
 import { DAY_MS_DEFAULT, dayPhase, isNight } from '../shared/data/world.js';
 import { setupSocial } from './social.js';
@@ -202,11 +203,12 @@ io.on('connection', (socket) => {
       mobs.touch(p);
       socket.emit('char:load', packChar(save));
       socket.emit('world:init', {
-        selfId: socket.id, serverTime: Date.now(), dayMs: DAY_MS, admin: p.admin,
+        selfId: socket.id, serverTime: Date.now(), online: players.size, dayMs: DAY_MS, admin: p.admin,
         players: [...players.values()].filter((q) => q.id !== socket.id && q.world !== 'td').map(publicPlayer),
       });
       socket.broadcast.emit('player:joined', publicPlayer(p));
       social.onJoin(p);
+      onlineSoon();
     } finally { socket.data.joining = false; }
   });
 
@@ -341,6 +343,40 @@ io.on('connection', (socket) => {
     });
   });
 
+  // 4.05) ใบเปลี่ยนชื่อ: ตรวจกติกา/ซ้ำ → ใช้ใบ → เปลี่ยนชื่อ · ชื่อเดิมกันไว้ให้บัญชีนี้ 7 วัน
+  socket.on('char:rename', async (d = {}, cb) => {
+    const reply = typeof cb === 'function' ? cb : () => {};
+    const p = me();
+    if (!p || !p.acc) return reply({ ok: false, msg: 'ยังไม่ได้เข้าเกม' });
+    if (invCount(p.save, 'rename_ticket') <= 0) return reply({ ok: false, msg: 'ไม่มีใบเปลี่ยนชื่อ' });
+    if (p.renaming) return reply({ ok: false, msg: 'กำลังเปลี่ยนชื่ออยู่' });
+    const chk = checkName(d.name);
+    if (!chk.ok) return reply({ ok: false, msg: chk.msg });
+    const oldName = p.save.name, oldKey = p.save.nk || nameKey(oldName);
+    if (chk.name === oldName) return reply({ ok: false, msg: 'เป็นชื่อเดิมอยู่แล้ว' });
+    p.renaming = true;
+    try {
+      const store = await storeReady;
+      if (chk.key !== oldKey && await store.nameTaken(chk.key, p.acc)) {
+        const ideas = [];
+        for (const n of nameIdeas(chk.name)) { if (ideas.length >= 4) break; const k = checkName(n); if (k.ok && !(await store.nameTaken(k.key, p.acc))) ideas.push(k.name); }
+        return reply({ ok: false, msg: `ชื่อ “${chk.name}” มีคนใช้แล้ว`, ideas });
+      }
+      removeItem(p.save, 'rename_ticket', 1);
+      p.save.name = chk.name; p.save.nk = chk.key; p.name = chk.name;
+      try { await store.saveCharacter(p.acc, p.slot || 0, p.save); }
+      catch (e) {
+        p.save.name = oldName; p.save.nk = oldKey; p.name = oldName; (p.save.inventory ||= []).push({ id: 'rename_ticket', qty: 1 });
+        return reply({ ok: false, msg: e.code === '23505' ? `ชื่อ “${chk.name}” เพิ่งมีคนใช้ไป` : 'เปลี่ยนชื่อไม่สำเร็จ' });
+      }
+      if (oldKey !== chk.key) await store.holdName?.(oldKey, p.acc);
+      await store.releaseHold?.(chk.key);
+      queueSync(p);
+      io.emit('player:rename', { id: p.id, name: chk.name, old: oldName });
+      reply({ ok: true, name: chk.name });
+    } finally { p.renaming = false; }
+  });
+
   // 4.1) แชท (จำกัด 1 ข้อความ / 0.5 วินาที)
   socket.on('chat', (text) => {
     if (typeof text !== 'string') return;
@@ -372,6 +408,13 @@ function warpTo(p, to, x = to.arriveX) {
   mobs.touch(p);
 }
 
+/** จำนวนผู้เล่นออนไลน์ทั้งเซิร์ฟ → ส่งให้ทุกคน (รวมหลายการเปลี่ยนแปลงใน 1 วิ เป็นครั้งเดียว) */
+let onlineT = null;
+function onlineSoon() {
+  if (onlineT) return;
+  onlineT = setTimeout(() => { onlineT = null; io.emit('online:count', players.size); }, 1000);
+}
+
 /** ออกจากเกม: เซฟ → ลบออกจากโลก */
 async function leave(id) {
   const p = players.get(id);
@@ -383,6 +426,7 @@ async function leave(id) {
   players.delete(id);
   if (byAcc.get(p.acc) === id) byAcc.delete(p.acc);
   io.emit('player:left', id);
+  onlineSoon();
   p.dirty = true;
   await persist(p);
 }

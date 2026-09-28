@@ -7,11 +7,19 @@ import { createStore, hashPassword, verifyPassword, MAX_SLOTS } from './store.js
 import { newCharacter, migrate, hotbarItemOk } from '../shared/charmodel.js';
 import { runAction } from '../shared/economy.js';
 import { MAX_LEVEL } from '../shared/stats.js';
+import { checkName, nameIdeas } from '../shared/data/names.js';
 
 const USER_RE = /^[A-Za-z0-9_฀-๿]{3,20}$/;       // อังกฤษ/ตัวเลข/_/ไทย 3–20 ตัว
 const MAX_CHAR_BYTES = 128 * 1024;
 // บัญชีแอดมิน (GM): ตั้งค่า env ADMIN_IDS="ชื่อ1,ชื่อ2" → ใช้คำสั่ง /gm ในเกมได้
 const ADMIN_IDS = new Set(String(process.env.ADMIN_IDS || '').split(',').map((s) => s.trim().toLowerCase()).filter(Boolean));
+/** ชื่อแนะนำที่ยังว่าง (สูงสุด 4) */
+async function freeIdeas(store, name, accountId) {
+  const out = [];
+  for (const n of nameIdeas(name)) { if (out.length >= 4) break; const k = checkName(n); if (k.ok && !(await store.nameTaken(k.key, accountId))) out.push(k.name); }
+  return out;
+}
+
 export const isAdmin = (username) => !!username && ADMIN_IDS.has(String(username).toLowerCase());
 
 export function setupAuth(app, hooks = {}) {
@@ -113,22 +121,25 @@ export function setupAuth(app, hooks = {}) {
     if (slot < 0 || typeof name !== 'string' || !appearance || typeof appearance !== 'object') return res.status(400).json({ error: 'ข้อมูลตัวละครไม่ถูกต้อง' });
     if (live(req.account.id)) return res.status(409).json({ error: 'บัญชีนี้กำลังออนไลน์อยู่ที่อื่น' });
     if (await req.store.getCharacter(req.account.id, slot)) return res.status(409).json({ error: 'ช่องนี้มีตัวละครอยู่แล้ว' });
-    const c = newCharacter(name, appearance);
+    // ชื่อแบบ Ragnarok: ห้ามซ้ำทั้งเซิร์ฟเวอร์ (ไม่เติมเลขให้) · ซ้ำ → ตอบกลับพร้อมชื่อแนะนำ
+    const chk = checkName(name);
+    if (!chk.ok) return res.status(400).json({ error: chk.msg });
+    if (await req.store.nameTaken(chk.key, req.account.id)) return res.status(409).json({ error: `ชื่อ “${chk.name}” มีคนใช้แล้ว`, ideas: await freeIdeas(req.store, chk.name, req.account.id) });
+    const c = newCharacter(chk.name, appearance);
+    c.name = chk.name; c.nk = chk.key;
     if (typeof weapon === 'string') runAction(c, 'equip', { id: weapon });
-    // ชื่อห้ามซ้ำ: ซ้ำ → ต่อท้ายเลข #001, #002, …
-    const base = c.name;
-    for (let attempt = 0; ; attempt++) {
-      const taken = new Set(await req.store.namesLike(base));
-      if (taken.has(base.toLowerCase())) {
-        let n = 1;
-        while (n < 1000 && taken.has(`${base} #${String(n).padStart(3, '0')}`.toLowerCase())) n++;
-        if (n >= 1000) return res.status(409).json({ error: 'ชื่อนี้มีคนใช้เยอะเกินไป ลองชื่ออื่น' });
-        c.name = `${base} #${String(n).padStart(3, '0')}`;           // แสดงเป็น "Ryuu #001"
-      } else c.name = base;
-      try { await req.store.saveCharacter(req.account.id, slot, c); break; }
-      catch (e) { if (e.code !== '23505' || attempt >= 3) throw e; }          // มีคนเอาชื่อนี้ไปพร้อมกัน → ลองเลขถัดไป
-    }
-    res.json({ character: c, slot, renamed: c.name !== base });
+    try { await req.store.saveCharacter(req.account.id, slot, c); }
+    catch (e) { if (e.code === '23505') return res.status(409).json({ error: `ชื่อ “${chk.name}” เพิ่งมีคนใช้ไป ลองชื่ออื่น`, ideas: await freeIdeas(req.store, chk.name, req.account.id) }); throw e; }
+    await req.store.releaseHold?.(chk.key);
+    res.json({ character: c, slot });
+  }));
+
+  // ตรวจชื่อระหว่างพิมพ์ (หน้าสร้างตัวละคร/ใบเปลี่ยนชื่อ) → { ok, msg, ideas }
+  api.get('/name/check', auth(async (req, res) => {
+    const chk = checkName(req.query?.name);
+    if (!chk.ok) return res.json({ ok: false, msg: chk.msg, ideas: [] });
+    if (await req.store.nameTaken(chk.key, req.account.id)) return res.json({ ok: false, msg: `ชื่อ “${chk.name}” มีคนใช้แล้ว`, ideas: await freeIdeas(req.store, chk.name, req.account.id) });
+    res.json({ ok: true, msg: `ชื่อ “${chk.name}” ใช้ได้`, ideas: [] });
   }));
 
   // ลบตัวละคร: ต้องพิมพ์ชื่อตัวละครยืนยัน
@@ -138,8 +149,9 @@ export function setupAuth(app, hooks = {}) {
     if (live(req.account.id)) return res.status(409).json({ error: 'บัญชีนี้กำลังออนไลน์อยู่ที่อื่น' });
     const cur = await req.store.getCharacter(req.account.id, slot);
     if (!cur) return res.status(404).json({ error: 'ช่องนี้ไม่มีตัวละคร' });
-    if (name !== String(cur.name).trim()) return res.status(400).json({ error: 'ชื่อที่พิมพ์ยืนยันไม่ตรงกับชื่อตัวละคร' });
+    if (name.toLowerCase() !== String(cur.name).trim().toLowerCase()) return res.status(400).json({ error: 'ชื่อที่พิมพ์ยืนยันไม่ตรงกับชื่อตัวละคร' });
     await req.store.deleteCharacter(req.account.id, slot);
+    await req.store.holdName?.(cur.nk || checkName(cur.name).key, req.account.id);     // กันชื่อไว้ให้บัญชีนี้ 7 วัน
     res.json({ ok: true });
   }));
 

@@ -23,7 +23,7 @@ import { MAX_LEVEL } from '../shared/stats.js';
 
 export const TD_SPAWN = { ...TD_MAPS.ayutthaya.spawn };
 const SPEED = 92;                   // ความเร็วเดินผู้เล่น (ตรงกับ client)
-const AGGRO = 110, LEASH = 260, RESPAWN_MS = 9000, STRIKE_MS = 260;
+const AGGRO = 110, LEASH = 260, RESPAWN_MS = 7000, STRIKE_MS = 260;
 const BOSS_AGGRO = 150, BOSS_LEASH = 340, AOE_WARN_MS = 1000, BOSS_SHARE = 0.05;
 export const TD_MAP_V = 2;           // เวอร์ชันผังแผนที่ (2 = ขยายโซนรอบเมือง · เมืองเดิมเลื่อนไป OX ไทล์)
 const NPC_R = 56;                   // ระยะคุยกับ NPC
@@ -176,7 +176,10 @@ export function setupTD(io, players, opts = {}) {
 
   function kill(m, killer) {
     const d = m.d, tm = timeMods(d);
-    m.hp = 0; m.st = 'dead'; m.pending = []; m.respawnAt = Date.now() + (d.respawnMs || RESPAWN_MS);
+    m.hp = 0; m.st = 'dead'; m.pending = [];
+    // คนเยอะในแมพ → ผีเกิดเร็วขึ้น (สูงสุด ×2 เมื่อ 8 คนขึ้นไป · บอสไม่เร่ง)
+    const crowd = m.boss ? 1 : Math.min(2, 1 + 0.15 * Math.max(0, tdPlayers(mapId).length - 1));
+    m.respawnAt = Date.now() + Math.round((d.respawnMs || RESPAWN_MS) / crowd);
     const assist = [...m.dmgBy.entries()].filter(([id, v]) => id !== killer.id && v >= d.hp * (m.boss ? BOSS_SHARE : 0.15)).map(([id]) => id);
     io.to(room).emit('td:die', { mid: m.mid, killer: killer.id });
     m.aoe = null;

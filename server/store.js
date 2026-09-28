@@ -7,6 +7,7 @@ import crypto from 'node:crypto';
 
 const SESSION_DAYS = 60;
 /** จำนวนช่องตัวละครต่อบัญชี (แบบ RO) */
+import { nameKey, NAME_HOLD_MS } from '../shared/data/names.js';
 export const MAX_SLOTS = 3;
 const slotOf = (v) => (Number.isInteger(+v) && +v >= 0 && +v < MAX_SLOTS ? +v : 0);
 const toList = (rows) => { const out = Array(MAX_SLOTS).fill(null); for (const r of rows) if (r.slot >= 0 && r.slot < MAX_SLOTS) out[r.slot] = r.data; return out; };
@@ -83,8 +84,36 @@ class PgStore {
         console.log(`[store] RESET_ALL_DATA=${reset} → ล้างบัญชี/ตัวละคร/เซสชันทั้งหมดแล้ว`);
       }
     }
+    await this.migrateNames();
     return this;
   }
+
+  /** ชื่อแบบ Ragnarok (ครั้งเดียว): ตัดเลขท้าย " #001" ถ้าชื่อเปล่าว่าง · ชนกัน → ตัวแรก (บัญชีเก่าสุด) ได้ชื่อเปล่า ตัวอื่นคงเลขไว้ + ใบเปลี่ยนชื่อฟรี · เติม nk (กุญแจเทียบชื่อ) */
+  async migrateNames() {
+    await this.pool.query('CREATE TABLE IF NOT EXISTS meta (key TEXT PRIMARY KEY, value TEXT)');
+    await this.pool.query('CREATE TABLE IF NOT EXISTS name_holds (key TEXT PRIMARY KEY, account_id INTEGER, until TIMESTAMPTZ NOT NULL)');
+    const { rows: done } = await this.pool.query("SELECT value FROM meta WHERE key = 'names_v2'");
+    if (!done[0]) {
+      const { rows } = await this.pool.query('SELECT account_id, slot, data FROM characters ORDER BY account_id, slot');
+      const plan = planNameMigration(rows.map((r) => ({ acc: r.account_id, slot: r.slot, data: r.data })));
+      for (const r of plan) await this.pool.query('UPDATE characters SET data = $3 WHERE account_id = $1 AND slot = $2', [r.acc, r.slot, r.data]);
+      await this.pool.query("INSERT INTO meta (key, value) VALUES ('names_v2', $1) ON CONFLICT (key) DO NOTHING", [String(plan.length)]);
+      console.log(`[store] names_v2: ปรับชื่อ ${plan.length} ตัวละคร`);
+    }
+    try { await this.pool.query("CREATE UNIQUE INDEX IF NOT EXISTS characters_nk ON characters ((data->>'nk'))"); }
+    catch (e) { console.error('[store] unique nk index:', e.message); }
+  }
+  /** ชื่อ (กุญแจ) ถูกใช้แล้ว หรือถูกกันไว้ให้บัญชีอื่น → true */
+  async nameTaken(key, accountId) {
+    const { rows } = await this.pool.query("SELECT 1 FROM characters WHERE data->>'nk' = $1 LIMIT 1", [key]);
+    if (rows[0]) return true;
+    const { rows: h } = await this.pool.query('SELECT account_id FROM name_holds WHERE key = $1 AND until > now()', [key]);
+    return !!h[0] && h[0].account_id !== accountId;
+  }
+  async holdName(key, accountId) {
+    await this.pool.query('INSERT INTO name_holds (key, account_id, until) VALUES ($1, $2, $3) ON CONFLICT (key) DO UPDATE SET account_id = EXCLUDED.account_id, until = EXCLUDED.until', [key, accountId, new Date(Date.now() + NAME_HOLD_MS)]);
+  }
+  async releaseHold(key) { await this.pool.query('DELETE FROM name_holds WHERE key = $1', [key]); }
 
   async createGuest() {
     const { rows } = await this.pool.query('INSERT INTO accounts (is_guest) VALUES (TRUE) RETURNING *');
@@ -187,6 +216,13 @@ class MemoryStore {
     return a;
   }
   async touch() {}
+  async nameTaken(key, accountId) {
+    if ([...this.chars.values()].some((c) => (c.nk || nameKey(c.name)) === key)) return true;
+    const h = (this.holds ||= new Map()).get(key);
+    return !!h && h.until > Date.now() && h.acc !== accountId;
+  }
+  async holdName(key, accountId) { (this.holds ||= new Map()).set(key, { acc: accountId, until: Date.now() + NAME_HOLD_MS }); }
+  async releaseHold(key) { this.holds?.delete(key); }
   async getMeta(k) { return (this.meta ||= new Map()).get(k) ?? null; }
   async setMeta(k, v) { (this.meta ||= new Map()).set(k, v); }
   async createSession(accountId) { const t = newToken(); this.sessions.set(t, accountId); return t; }
@@ -201,6 +237,30 @@ class MemoryStore {
     return [...this.chars.values()].sort((a, b) => (b.level || 0) - (a.level || 0) || (b.exp || 0) - (a.exp || 0)).slice(0, limit)
       .map((d) => ({ name: d.name, level: d.level, exp: d.exp, enhance: d.enhance, path: d.path, title: d.title, equipment: d.equipment }));
   }
+}
+
+/** แผนย้ายชื่อเก่า (#เลข) → ชื่อเปล่า · rows = [{acc, slot, data}] เรียงตามบัญชีเก่าก่อน → คืนเฉพาะตัวที่ข้อมูลเปลี่ยน */
+export function planNameMigration(rows) {
+  const out = [], used = new Set(), SUF = / #\d{3}$/;
+  const owner = new Map();                                    // ชื่อไม่มีเลขท้าย จองก่อน (ตัวแรก/เก่าสุดได้)
+  for (const r of rows) { const n = r.data?.name || ''; if (r.data && !SUF.test(n)) { const k = nameKey(n); if (!owner.has(k)) { owner.set(k, r); used.add(k); } } }
+  const gift = (d) => { if (!d.renameGift) { d.renameGift = true; (d.inventory ||= []).push({ id: 'rename_ticket', qty: 1 }); } };
+  for (const r of rows) {
+    const d = r.data; if (!d) continue;
+    const before = JSON.stringify([d.name, d.nk, d.renameGift]);
+    const name = String(d.name || ''), m = name.match(/^(.*) #\d{3}$/);
+    if (m) {
+      const base = m[1].trim(), k = nameKey(base);
+      if (base && !used.has(k)) { d.name = base; used.add(k); }
+      else { used.add(nameKey(name)); gift(d); }            // ชื่อชน → คงเลข + ใบเปลี่ยนชื่อฟรี
+    } else if (owner.get(nameKey(name)) !== r) {              // ชื่อหน้าตาคล้ายกันแต่มาทีหลัง → เติมเลข + ใบเปลี่ยนชื่อ
+      let i = 2, nn; do nn = `${name.slice(0, 11)} #${String(i++).padStart(3, '0')}`; while (used.has(nameKey(nn)));
+      d.name = nn; used.add(nameKey(nn)); gift(d);
+    }
+    d.nk = nameKey(d.name);
+    if (JSON.stringify([d.name, d.nk, d.renameGift]) !== before) out.push(r);
+  }
+  return out;
 }
 
 export async function createStore() {

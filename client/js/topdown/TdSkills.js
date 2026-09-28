@@ -406,7 +406,7 @@ export class TdSkills {
   /** เรียกทุกเฟรม: ถ้าเปิด Auto Skill และกำลังตีเป้า → ร่ายสกิลแรกที่พร้อม (ช่อง 1→0 ข้ามไอเทม) (บัฟเมื่อหมดฤทธิ์ · สกิลโจมตีเมื่อเป้าอยู่ในระยะ) */
   autoTick(time) {
     const s = this.s, p = s.player;
-    if (!s.settings?.autoSkill || !p.alive || s.recalling || s.ui.anyOpen?.() || time < (this.autoAt || 0)) return;
+    if (!s.settings?.autoSkill || !p.alive || s.recalling || s.ui.typing || time < (this.autoAt || 0)) return;   // เปิดหน้าต่างอื่นค้างไว้ Auto ยังร่ายต่อ
     const t = p.target;
     if (!t?.alive || dist(t, p) > 260) return;
     this.autoAt = time + 250;
@@ -417,16 +417,16 @@ export class TdSkills {
       else if (r.sk.type === 'revive') { if (!this.heal.anyDead(r.sk.radius) && !this.heal.needHeal(0.35, r.sk.radius)) continue; }
       else if (r.sk.type === 'buff' || r.sk.type === 'party') { if ((p.buffs || []).some((b) => b.sk === r.id && b.until > time)) continue; }
       else if (dist(t, p) > this.reachOf(r.sk)) continue;
-      this.cast(key, time);
+      this.cast(key, time, true);
       this.autoAt = time + 600;          // เว้นจังหวะให้ท่าร่ายเล่นจบ
       return;
     }
   }
 
   // ---------------- ร่ายจากปุ่ม Q W E R T ----------------
-  cast(key, time = this.s.time.now) {
+  cast(key, time = this.s.time.now, auto = false) {
     const s = this.s, p = s.player, c = p.char, ui = s.ui;
-    if (!p.alive || s.ui.anyOpen?.()) return;
+    if (!p.alive || (!auto && s.ui.anyOpen?.())) return;
     const id = c.hotbar?.[key];
     if (isItemSlot(id)) return s.useSlot?.(key);
     if (!id) {

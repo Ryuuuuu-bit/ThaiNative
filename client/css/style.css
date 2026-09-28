@@ -1417,3 +1417,10 @@ body.touch #cb-size { display: none; }
 .sell-foot .price { color: #ffd76a; font-size: 1.05em; }
 .sell-foot .sell-go { padding: 5px 18px; font-size: 1em; }
 @media (max-width: 700px) { .sell-tabs input { width: 100%; margin-left: 0; } }
+
+/* ตรวจชื่อตัวละคร */
+.cc-hint.ok { color: #58d68d !important; } .cc-hint.bad { color: #ff7a7a !important; }
+.cc-ideas { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 4px; }
+.cc-ideas:empty { display: none; }
+.cc-idea { padding: 3px 10px; border-radius: 12px; border: 1px solid #8a6a2a; background: #2a1c34; color: #ffe7a8; font: inherit; font-size: .85em; cursor: pointer; }
+.cc-idea:hover { border-color: var(--gold); background: #3a2848; }

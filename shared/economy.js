@@ -212,6 +212,7 @@ function use(c, { id }) {
   }
   if (it.type === 'costume') return wearCostume(c, id);
   if (it.type === 'home') return { ok: true, home: true };
+  if (it.type === 'rename') return { ok: true, rename: true };           // ใบเปลี่ยนชื่อ: เปิดช่องพิมพ์ชื่อ (server ตรวจ/ใช้ใบผ่าน char:rename)
   if (it.type === 'herb') return NO(`${it.nameTh}: ให้ยายติ๋มปรุงยา หรือป้าสาทำอาหาร`);
   if (it.type === 'fish') return NO(`${it.nameTh}: นำไปให้ป้าสาทำอาหาร หรือขายได้`);
   if (it.type === 'offering') return NO(`${it.nameTh}: นำไปถวายที่ศาลพระภูมิ (ยืนหน้าศาลแล้วกด F)`);

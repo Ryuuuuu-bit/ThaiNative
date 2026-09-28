@@ -5,6 +5,27 @@
 // ============================================================
 import { TILE, MAP_W, MAP_H, SPAWN, ZONES as AYT_ZONES, zoneAtTile, inTownXY, buildLayout } from './ayutthaya.js';
 import { REALMS, buildRealm, realmZoneAt } from './realms.js';
+import { MONSTERS } from '../data/monsters.js';
+
+/**
+ * ความหนาแน่นผี (ตัวคูณจำนวนต่อแหล่ง) · ผีตัวเพิ่มต่อท้าย spawns (index เดิมไม่เลื่อน · client/server ได้ผังเดียวกัน)
+ * ▸ ไม่คูณ: บอส · ผีกลางคืน (nightOnly)
+ */
+export const MOB_DENSITY = { ayutthaya: 2, himmaphan: 2.5, nagaphop: 2.5, naraka: 2.5 };
+function densify(L, mult) {
+  if (!(mult > 1)) return L;
+  const groups = new Map();
+  for (const s of L.spawns) {
+    if (s.boss || MONSTERS[s.id]?.boss || MONSTERS[s.id]?.nightOnly) continue;
+    const k = `${s.id}|${s.x}|${s.y}`;
+    (groups.get(k) || groups.set(k, []).get(k)).push(s);
+  }
+  for (const list of groups.values()) {
+    const s = list[0], add = Math.round(list.length * mult) - list.length;
+    for (let i = 0; i < add; i++) L.spawns.push({ id: s.id, x: s.x, y: s.y, r: Math.round(s.r * 1.35), extra: true });
+  }
+  return L;
+}
 
 export const TD_MAP_IDS = ['ayutthaya', 'himmaphan', 'nagaphop', 'naraka'];
 export const DEFAULT_MAP = 'ayutthaya';
@@ -25,7 +46,7 @@ function realmEntry(def) {
     zoneAtTile: (tx, ty) => realmZoneAt(def, tx, ty),
     zoneAt: (x, y) => realmZoneAt(def, Math.floor(x / TILE), Math.floor(y / TILE)),
     inSafe: (x, y) => Math.hypot(x / TILE - def.hub.x, y / TILE - def.hub.y) <= def.hub.r + 0.5,
-    layout: () => (cache[def.id] ||= buildRealm(def)),
+    layout: () => (cache[def.id] ||= densify(buildRealm(def), MOB_DENSITY[def.id])),
   };
 }
 
@@ -38,7 +59,7 @@ export const TD_MAPS = {
     zoneAtTile,
     zoneAt: (x, y) => zoneAtTile(Math.floor(x / TILE), Math.floor(y / TILE)),
     inSafe: inTownXY,
-    layout: () => (cache.ayutthaya ||= buildLayout()),
+    layout: () => (cache.ayutthaya ||= densify(buildLayout(), MOB_DENSITY.ayutthaya)),
   },
   ...Object.fromEntries(Object.values(REALMS).map((d) => [d.id, realmEntry(d)])),
 };

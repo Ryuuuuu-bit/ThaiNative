@@ -751,7 +751,7 @@ export class TopDownScene extends Phaser.Scene {
   // ------------------------------------------------------------
   //  ต่อสู้
   // ------------------------------------------------------------
-  attackRange() { const a = JOBS[this.player.char.appearance.job]?.attack; return a?.style === 'projectile' ? Math.min(160, a.range) : 28; }
+  attackRange() { const a = JOBS[this.player.char.appearance.job]?.attack; return a?.style === 'projectile' ? Math.min(240, a.range) : 28; }   // ธนู 240 · เวท 220 · หมอยา 200 (server รับถึง range+30)
   attackCd() { return JOBS[this.player.char.appearance.job]?.attack?.cooldown || 600; }
 
   playerAttack(m, time) {
@@ -1038,6 +1038,7 @@ export class TopDownScene extends Phaser.Scene {
   setupNetwork() {
     const net = (this.net = new Network());
     if (!this.econ.server) { this.ui.setOnline(false, 0); this.ui.toast('โหมดออฟไลน์: เซฟในเครื่อง', '', 4000); return; }
+    net.on('online:count', (n) => this.ui.setOnlineTotal(n));
     net.on('status', (on) => { this.ui.setOnline(on, this.remotes.size); if (!on) { this.remotes.forEach((r) => r.destroy()); this.remotes.clear(); } })
       .on('init', ({ admin, serverTime, dayMs }) => { if (account.account) account.account.admin = !!admin; this.atmo?.sync(serverTime, dayMs); net.send('td:enter'); })
       .on('char:load', (s) => this.econ.apply(s))
@@ -1073,6 +1074,11 @@ export class TopDownScene extends Phaser.Scene {
       .on('td:matk', ({ mid }) => { const m = this.mobs[mid]; if (!m) return; if (!m.alive || m.alpha < 0.5 || !m.visible) { m.alive = true; if (m.sx != null) m.setPosition(m.sx, m.sy); this.setMobVisible(m, true); } playDir(m, 'attack', m.dir, true); })
       .on('td:aoe', (a) => this.bossAoe(a))
       .on('td:title', ({ id, title }) => this.remotes.get(id)?.setTitle(title))
+      .on('player:rename', ({ id, name, old }) => {
+        if (id === this.net.selfId) { this.player.char.name = name; this.refreshNameTag(); this.ui.hudCache = ''; }
+        else this.remotes.get(id)?.rename(name);
+        if (old) this.ui.chat({ id: null, name: '📝 ระบบ', text: `${old} เปลี่ยนชื่อเป็น ${name}` });
+      })
       .on('news:live', (l) => this.ui.news?.setLive(l))
       .on('news:add', (it) => this.ui.news?.add(it))
       .on('news:del', (id) => this.ui.news?.del(id))
@@ -1134,6 +1140,7 @@ export class TopDownScene extends Phaser.Scene {
       destroy: () => { this.weapons?.detach(s); this.costumes?.detach(s); s.destroy(); tag.destroy(); ttl.destroy(); sh.destroy(); this.shadows = this.shadows.filter((x) => x.obj !== s); },
       get x() { return s.x; }, get y() { return s.y; },
       setTitle(t) { paintTitle(t); },
+      rename(n) { q.name = n; r.name = n; tag.setText(`${n} Lv.${r.level}`); },
       setAppearance: (a) => { q.appearance = a; this.applyHero(s, a); },
     };
     this.remotes.set(q.id, r);

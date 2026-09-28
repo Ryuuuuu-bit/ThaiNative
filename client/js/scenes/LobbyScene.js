@@ -45,7 +45,6 @@ export class LobbyScene extends Phaser.Scene {
     this.bindDom();
     this.render();
     if (data.created) { sound.play('levelup'); this.flashCard(this.sel); }
-    if (data.renamed) this.toast(`ชื่อนี้มีผู้ใช้แล้ว — ตัวละครของคุณได้ชื่อ <b>${esc(data.renamed)}</b>`);
   }
 
   loadList() {

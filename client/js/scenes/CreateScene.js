@@ -3,6 +3,7 @@
 //  ▸ ตัวอย่างเป็นภาพแบบเดียวกับในเกม (top-down 8 ทิศ) หมุนดูรอบตัวได้ (ปุ่ม ⟲ ⟳ / ลากที่ตัวละคร)
 //  ▸ เลือกเพศ (ชาย = ชุดม่อฮ่อม · หญิง = ชุดไทยเรือนต้น) + อาวุธเริ่มต้น
 // ============================================================
+import { checkName } from '/shared/data/names.js';
 import { GENDERS, HAIRSTYLES, DEFAULT_APPEARANCE, startOutfit } from '/shared/data/appearance.js';
 import { JOBS } from '/shared/data/classes.js';
 import { ITEMS } from '/shared/data/items.js';
@@ -79,29 +80,47 @@ export class CreateScene extends Phaser.Scene {
     cv.onpointerup = cv.onpointercancel = () => { dragX = null; };
 
     $('#cc-name').onkeydown = (e) => { e.stopPropagation(); if (e.key === 'Enter') $('#cc-start').click(); };
-    $('#cc-name').oninput = (e) => { const v = e.target.value; if (v.includes('#')) e.target.value = v.replace(/#/g, ''); };
+    // ตรวจชื่อระหว่างพิมพ์ (แบบ Ragnarok: ห้ามซ้ำทั้งเซิร์ฟเวอร์) · ซ้ำ → เสนอชื่อใกล้เคียงให้กดเลือก
+    const st = $('#cc-name-st'), ideas = $('#cc-ideas');
+    const show = (ok, msg, list = []) => {
+      st.textContent = msg; st.className = `cc-hint ${ok === true ? 'ok' : ok === false ? 'bad' : ''}`;
+      ideas.innerHTML = list.map((n) => `<button type="button" class="cc-idea" data-n="${n.replace(/"/g, '')}">${n}</button>`).join('');
+      ideas.querySelectorAll('.cc-idea').forEach((b) => (b.onclick = () => { $('#cc-name').value = b.dataset.n; this.checkName(); }));
+      this.nameOk = ok;
+    };
+    this.checkName = () => {
+      clearTimeout(this.nameT);
+      const v = $('#cc-name').value, chk = checkName(v);
+      if (!v.trim()) return show(null, 'ชื่อต้องไม่ซ้ำใคร · ไทย/อังกฤษ/ตัวเลข/_ · 2–16 ตัว');
+      if (!chk.ok) return show(false, `✖ ${chk.msg}`);
+      if (!online) return show(true, '✔ ใช้ได้ (โหมดออฟไลน์)');
+      show(null, '… กำลังตรวจชื่อ');
+      const ask = v;
+      this.nameT = setTimeout(() => account.checkName(v).then((r) => { if ($('#cc-name').value === ask) show(r.ok, `${r.ok ? '✔' : '✖'} ${r.msg}`, r.ideas); }).catch(() => show(null, '')), 350);
+    };
+    $('#cc-name').oninput = () => this.checkName();
 
     $('#cc-random').onclick = () => {
       const r = (n) => Math.floor(Math.random() * n);
       const gender = GENDERS[r(2)].id;
       this.a = { ...this.a, gender, outfit: startOutfit(gender), hair: r(HAIRSTYLES.length), weapon: START_WEAPONS[r(START_WEAPONS.length)].id };
-      if (!$('#cc-name').value.trim()) $('#cc-name').value = NAMES[gender][r(NAMES[gender].length)];
+      if (!$('#cc-name').value.trim()) { $('#cc-name').value = NAMES[gender][r(NAMES[gender].length)]; this.checkName(); }
       this.refresh();
     };
     $('#cc-back').onclick = () => this.scene.start('lobby', { select: this.slot });
 
     $('#cc-start').onclick = async () => {
       const name = $('#cc-name').value.trim();
+      if (name && online && this.nameOk === false) { $('#cc-name').focus(); $('#cc-name').classList.add('shake'); setTimeout(() => $('#cc-name').classList.remove('shake'), 500); sound.play('error'); return; }
       if (!name) { $('#cc-name').focus(); $('#cc-name').classList.add('shake'); setTimeout(() => $('#cc-name').classList.remove('shake'), 500); sound.play('error'); return; }
       const btn = $('#cc-start');
       if (online) {                       // บัญชีออนไลน์: server สร้างให้ (กันแก้ค่าเริ่มต้น)
         btn.disabled = true;
         try {
-          const made = await account.createCharacter(this.slot, name, this.a, this.a.weapon || null);
+          await account.createCharacter(this.slot, name, this.a, this.a.weapon || null);
           await account.refresh();
-          const renamed = made?.name && made.name !== name.replace(/[<>#]/g, '').trim().slice(0, 16) ? made.name : null;
-          return this.scene.start('lobby', { select: this.slot, created: true, renamed });
-        } catch (e) { alert(e.message || 'สร้างตัวละครไม่สำเร็จ'); btn.disabled = false; return; }
+          return this.scene.start('lobby', { select: this.slot, created: true });
+        } catch (e) { btn.disabled = false; if (e.ideas) { show(false, `✖ ${e.message}`, e.ideas); sound.play('error'); return; } alert(e.message || 'สร้างตัวละครไม่สำเร็จ'); return; }
       }
       const char = newCharacter(name, this.a);
       if (this.a.weapon) runAction(char, 'equip', { id: this.a.weapon });

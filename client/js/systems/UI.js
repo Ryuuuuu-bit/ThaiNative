@@ -327,11 +327,16 @@ export class UI {
     }, 1000);
   }
 
-  setOnline(on, count = 0) {
-    const el = $('#net-status');
+  /** on = ต่อเซิร์ฟอยู่ · near = ผู้เล่นอื่นในแผนที่นี้ · จำนวนที่แสดง = ออนไลน์ทั้งเซิร์ฟ (server ส่ง online:count) */
+  setOnline(on, near = this.nearN || 0) {
+    this.netOn = on; this.nearN = near;
+    const el = $('#net-status'); if (!el) return;
     el.className = `net ${on ? 'on' : 'off'}`;
-    el.textContent = on ? `● ${count + 1} คนออนไลน์` : '● ออฟไลน์';
+    const total = Math.max(this.onlineN || 0, near + 1);
+    el.textContent = on ? `● ${total} คนออนไลน์` : '● ออฟไลน์';
+    el.title = on ? `ออนไลน์ทั้งเซิร์ฟเวอร์ ${total} คน · ในแผนที่นี้ ${near + 1} คน (รวมคุณ)` : '';
   }
+  setOnlineTotal(n) { this.onlineN = Math.max(0, n | 0); this.setOnline(this.netOn ?? true, this.nearN || 0); }
 
   setMuted() { /* ย้ายไปอยู่ในหน้าตั้งค่า */ }
 
@@ -682,6 +687,39 @@ export class UI {
 
   toast(msg, kind = '', ms = 2600) { notifyToast(msg, kind, ms); }
 
+  /** ใบเปลี่ยนชื่อ: พิมพ์ชื่อใหม่ (ตรวจระหว่างพิมพ์) → server ตรวจซ้ำ/ใช้ใบ/เปลี่ยนชื่อ */
+  openRename() {
+    const net = this.scene.net;
+    if (!net?.socket) return this.toast('ต้องออนไลน์ถึงจะเปลี่ยนชื่อได้', 'warn');
+    this.closeAll?.();
+    let box = $('#rename-box');
+    if (!box) { box = document.createElement('div'); box.id = 'rename-box'; box.className = 'lb-modal'; document.body.appendChild(box); }
+    box.innerHTML = `<div class="rn-card thai-frame"><h3>📝 ใบเปลี่ยนชื่อ</h3><p>ชื่อตอนนี้: <b>${esc(this.char.name)}</b> · ชื่อใหม่ต้องไม่ซ้ำใคร (ไทย/อังกฤษ/ตัวเลข/_ · 2–16 ตัว)</p>
+      <input id="rn-in" maxlength="16" placeholder="ชื่อใหม่" autocomplete="off"><small id="rn-st" class="cc-hint"></small><span class="cc-ideas" id="rn-ideas"></span>
+      <div class="rn-btns"><button class="btn ghost" id="rn-no">ยกเลิก</button><button class="btn primary" id="rn-ok">เปลี่ยนชื่อ</button></div></div>`;
+    box.classList.remove('hidden');
+    const inp = $('#rn-in'), st = $('#rn-st'), ideas = $('#rn-ideas');
+    this.scene.input.keyboard.enabled = false;
+    const close = () => { box.classList.add('hidden'); this.scene.input.keyboard.enabled = true; };
+    const show = (ok, msg, list = []) => {
+      st.textContent = msg; st.className = `cc-hint ${ok === true ? 'ok' : ok === false ? 'bad' : ''}`;
+      ideas.innerHTML = list.map((n) => `<button type="button" class="cc-idea" data-n="${esc(n)}">${esc(n)}</button>`).join('');
+      ideas.querySelectorAll('.cc-idea').forEach((b) => (b.onclick = () => { inp.value = b.dataset.n; check(); }));
+    };
+    let t = 0;
+    const check = () => { clearTimeout(t); const v = inp.value; if (!v.trim()) return show(null, ''); t = setTimeout(() => account.checkName(v).then((r) => { if (inp.value === v) show(r.ok, `${r.ok ? '✔' : '✖'} ${r.msg}`, r.ideas); }).catch(() => {}), 300); };
+    inp.oninput = check; inp.onkeydown = (e) => { e.stopPropagation(); if (e.key === 'Enter') $('#rn-ok').click(); if (e.key === 'Escape') close(); };
+    $('#rn-no').onclick = close;
+    $('#rn-ok').onclick = () => {
+      const v = inp.value.trim(); if (!v) return;
+      net.socket.emit('char:rename', { name: v }, (r) => {
+        if (!r?.ok) { show(false, `✖ ${r?.msg || 'เปลี่ยนชื่อไม่สำเร็จ'}`, r?.ideas || []); this.scene.sfx.play('error'); return; }
+        close(); this.scene.sfx.play('levelup'); this.toast(`✔ เปลี่ยนชื่อเป็น “${r.name}” แล้ว`, 'ok', 4000);
+      });
+    };
+    setTimeout(() => inp.focus(), 50);
+  }
+
   /** แถบร่าย (กลางล่าง) เช่น ยันต์คืนถิ่น → { done(), cancel(msg) } */
   castBar(label, ms, icon = '') {
     let el = $('#castbar');
@@ -710,6 +748,7 @@ export class UI {
     if (r?.then) return r.then((x) => this.result(x));            // รับ Promise จาก econ.act ได้
     if (!r) return;
     if (r.home) { this.closeAll(); return this.scene.recall(); }
+    if (r.rename) return this.openRename();
     if (r.msg) this.toast(r.msg, r.ok ? '' : 'warn');
     if (r.jobChanged) this.scene.onAppearanceChanged();
     if (r.titles?.length) this.scene.social?.onNewTitles(r.titles);
@@ -921,6 +960,7 @@ export class UI {
   // ---------------- ร้านค้า NPC ----------------
   openShop(shopId) {
     this.shopId = shopId;
+    this.shopQty = 1;                        // เปิดร้านใหม่ทุกครั้ง → จำนวนกลับเป็น x1 (กันซื้อพลาดจากค่าที่ค้างจากร้านก่อน)
     const shop = SHOPS[shopId];
     $('#shop-title').textContent = shop.nameTh;
     $('#shop-greet').textContent = `“${shop.greeting}”`;
@@ -945,7 +985,8 @@ export class UI {
     if (this.shopTab === 'quests') return this.scene.village.renderQuestList($('#shop-list'), this.shopId);
     // เลือกจำนวน: x1 / x5 / x10 / สูงสุด (ใช้ทั้งซื้อและขาย)
     const QTY = [[1, 'x1'], [5, 'x5'], [10, 'x10'], [9999, 'สูงสุด']];
-    const q = this.shopQty || 1;
+    // ร้านครูอาชีพไม่มีแถบจำนวน → ซื้อทีละชิ้นเสมอ
+    const q = this.shopTab === 'buy' && shop.job ? 1 : this.shopQty || 1;
     const custom = !QTY.some(([n]) => n === q);
     const qtyBar = `<div class="qty-bar"><span>จำนวน:</span>${QTY.map(([n, l]) => `<button data-qty="${n}" class="${q === n ? 'active' : ''}">${l}</button>`).join('')}
       <label class="qty-custom ${custom ? 'active' : ''}">ระบุ <input type="number" id="shop-qty-in" min="1" max="9999" value="${custom ? q : ''}" placeholder="เช่น 25" /></label></div>`;

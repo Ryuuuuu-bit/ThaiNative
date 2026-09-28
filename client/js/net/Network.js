@@ -49,7 +49,8 @@ export class Network {
     });
     s.on('connect_error', () => this.emitLocal('status', false));
 
-    s.on('world:init', (d) => { this.selfId = d.selfId; this.emitLocal('init', d); });
+    s.on('online:count', (n) => { this.onlineN = n; this.emitLocal('online:count', n); });
+    s.on('world:init', (d) => { this.selfId = d.selfId; if (d.online) { this.onlineN = d.online; this.emitLocal('online:count', d.online); } this.emitLocal('init', d); });
     s.on('player:joined', (p) => this.emitLocal('joined', p));
     s.on('player:left', (id) => this.emitLocal('left', id));
     s.on('player:appearance', (d) => this.emitLocal('appearance', d));
@@ -68,7 +69,7 @@ export class Network {
     // ระบบ MMO: ปาร์ตี้ · เทรด · เรดบอส → ส่งต่อด้วยชื่อ event เดิม
     for (const ev of ['party:invite', 'party:state', 'party:exp', 'trade:request', 'trade:state', 'trade:closed', 'trade:complete',
       'raid:state', 'raid:spawn', 'raid:attack', 'raid:impact', 'raid:dmg', 'raid:reward', 'raid:defeated',
-      'news:live', 'news:add', 'news:del', 'char:load', 'char:sync', 'pl:hit', 'pl:die', 'pl:hp', 'friends:state', 'title:new',
+      'news:live', 'news:add', 'news:del', 'player:rename', 'char:load', 'char:sync', 'pl:hit', 'pl:die', 'pl:hp', 'friends:state', 'title:new',
       'rboss:spawn', 'rboss:list', 'rboss:down', 'rboss:slam', 'rboss:reward',
       'dg:start', 'dg:state', 'dg:wave', 'dg:cleared', 'dg:dmg', 'dg:die', 'dg:exp', 'dg:slam', 'dg:end', 'dg:exit',
       // โลก New Version (top-down)

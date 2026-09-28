@@ -29,7 +29,7 @@ class AccountClient {
     });
     let data = {};
     try { data = await res.json(); } catch { /* ignore */ }
-    if (!res.ok) { const e = new Error(data.error || `HTTP ${res.status}`); e.status = res.status; throw e; }
+    if (!res.ok) { const e = new Error(data.error || `HTTP ${res.status}`); e.status = res.status; e.ideas = data.ideas || []; throw e; }
     return data;
   }
 
@@ -73,6 +73,7 @@ class AccountClient {
   async refresh() { return this.setSession(await this.api('/me')); }
   /** สร้างตัวละครใหม่ลงช่องว่าง (server กำหนดค่าเริ่มต้นเอง) */
   async createCharacter(slot, name, appearance, weapon) { return (await this.api('/character/new', 'POST', { slot, name, appearance, weapon })).character; }
+  async checkName(name) { return this.api(`/name/check?name=${encodeURIComponent(name)}`); }
   async deleteCharacter(slot, name) { return this.api('/character/delete', 'POST', { slot, name }); }
   async status() { return this.api('/status'); }
 

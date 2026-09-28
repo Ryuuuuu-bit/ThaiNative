@@ -45,7 +45,7 @@ function fixHotbar(c, hb) {
 export function newCharacter(name, appearance = {}) {
   const c = {
     v: SAVE_VERSION,
-    name: String(name || '').replace(/[<>#]/g, '').trim().slice(0, 16) || 'ผู้กล้า',   // # สงวนไว้สำหรับเลขกันชื่อซ้ำ (เช่น Ryuu#001)
+    name: String(name || '').replace(/[<>#]/g, '').replace(/\s+/g, ' ').trim().slice(0, 16) || 'ผู้กล้า',   // ชื่อจริงตรวจที่ server (shared/data/names.js)
     appearance: sanitizeAppearance({ ...appearance, weapon: null, armor: null, path: null }),   // ชุดกำหนดตามเพศ (ชาย ม่อฮ่อม · หญิง เรือนต้น)
     path: null,
     level: 1, exp: 0, statPoints: 0,
