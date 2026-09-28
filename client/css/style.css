@@ -1331,3 +1331,9 @@ body.td-mode #chat-log { max-height: 6.5em; }
   background: #2a1d0c; border: 1px solid #6b4a12; }
 .auto-menu .am-bulk button:hover { border-color: #d4a017; }
 .auto-menu .am-bulk button.on { background: linear-gradient(#6b4a12, #3a2a10); border-color: #ffd76a; color: #ffe9a8; }
+/* แถบแจ้งแพตช์ใหม่ */
+#patch-banner { position: fixed; top: 8px; left: 50%; transform: translateX(-50%); z-index: 9999; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; justify-content: center;
+  max-width: calc(100vw - 16px); padding: 8px 14px; border-radius: 10px; font-size: 14px; color: #fff3cf;
+  background: linear-gradient(180deg, rgba(70,45,12,.97), rgba(35,22,6,.97)); border: 1px solid #d4a017; box-shadow: 0 6px 20px rgba(0,0,0,.6); }
+#patch-banner button { padding: 4px 12px; border-radius: 6px; border: 1px solid #ffd76a; background: #6b4a12; color: #ffe9a8; font-weight: 700; cursor: pointer; }
+#patch-banner button#pb-later { background: transparent; border-color: #8a6a2a; font-weight: 400; }

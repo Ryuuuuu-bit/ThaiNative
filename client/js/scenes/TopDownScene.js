@@ -36,6 +36,7 @@ import { TITLE_BY_ID } from '/shared/data/titles.js';
 import { TouchControls } from '../topdown/TouchControls.js';
 import { ALL_ASSETS } from '/shared/data/td_assets.js';
 import { bakeGround, makeWater, TdAtmosphere, bakeTdFx, TdVfx, TdMinimap } from '../topdown/TdTheme.js';
+import { uiBlocked } from '../systems/uiGuard.js';
 const NONE = '__none';                                  // autoMobs: ยกเลิกทั้งหมด (Auto ไม่ไล่ตีผี)
 
 const $ = (s) => document.querySelector(s);
@@ -255,7 +256,7 @@ export class TopDownScene extends Phaser.Scene {
       const lock = (this.player?.char.level || 1) < T2.reqLv;
       makeText(this, pt.x, pt.y - 62, `🌀 ${T2.nameTh}\nLv.${T2.reqLv}+${lock ? ' 🔒' : ''}`, { fontSize: '7px', color: lock ? '#f5b7b1' : '#ffe9a6', align: 'center' }).setOrigin(0.5, 1).setDepth(99990);
       const hit = this.add.zone(pt.x, pt.y - 22, 48, 60).setInteractive({ useHandCursor: true }).setDepth(pt.y);
-      hit.on('pointerdown', (ptr) => { ptr.event.stopPropagation(); this.player.target = null; this.moveTo(pt.x, pt.y); });
+      hit.on('pointerdown', (ptr) => { if (uiBlocked(ptr)) return; ptr.event.stopPropagation(); this.player.target = null; this.moveTo(pt.x, pt.y); });
       return pt;
     });
   }
@@ -412,7 +413,7 @@ export class TopDownScene extends Phaser.Scene {
       this.addShadow(spr, 20);
       this.npcPlate(n, spr);
       spr.setInteractive({ useHandCursor: true });
-      spr.on('pointerdown', (ptr) => { ptr.event.stopPropagation(); this.talk(n); });
+      spr.on('pointerdown', (ptr) => { if (uiBlocked(ptr)) return; ptr.event.stopPropagation(); this.talk(n); });
       spr.on('pointerover', () => { this.hovered = spr; document.body.dataset.cursor = 'talk'; });
       spr.on('pointerout', () => { if (this.hovered === spr) this.hovered = null; delete document.body.dataset.cursor; });
       if (n.id === 'quest') {                                                              // เครื่องหมาย ! ทองลอยเหนือป้ายชื่อ
@@ -477,7 +478,7 @@ export class TopDownScene extends Phaser.Scene {
     m.barW = def.boss ? 48 : 22;
     m.hpBg = this.add.rectangle(0, 0, m.barW, def.boss ? 5 : 3, 0x000000, 0.7); m.hpBar = this.add.rectangle(0, 0, m.barW, def.boss ? 5 : 3, def.boss ? 0xc0392b : 0xe74c3c).setOrigin(0, 0.5);
     m.setInteractive({ useHandCursor: true });
-    m.on('pointerdown', (ptr) => { ptr.event.stopPropagation(); this.setTarget(m); });
+    m.on('pointerdown', (ptr) => { if (uiBlocked(ptr)) return; ptr.event.stopPropagation(); this.setTarget(m); });
     m.on('pointerover', () => { this.hovered = m; document.body.dataset.cursor = 'attack'; });
     m.on('pointerout', () => { if (this.hovered === m) this.hovered = null; delete document.body.dataset.cursor; });
     if (!this.econ.server) m.setPosition(s.x + rand(-s.r, s.r), s.y + rand(-s.r, s.r));
@@ -978,7 +979,7 @@ export class TopDownScene extends Phaser.Scene {
     const tt = TITLE_BY_ID[q.title];
     const tag = makeText(this, q.x, q.y, `${tt ? `«${tt.nameTh}»\n` : ''}${q.name} Lv.${q.level}`, { fontSize: '7px', color: '#aed6f1', align: 'center' }).setOrigin(0.5, 1);
     s.setInteractive({ useHandCursor: true });                                   // คลิกผู้เล่น → เมนู เชิญ/เทรด/เพื่อน/กระซิบ
-    s.on('pointerdown', (ptr) => { ptr.event?.stopPropagation?.(); this.social?.openPlayerMenu(r, { x: ptr.x, y: ptr.y }); });
+    s.on('pointerdown', (ptr) => { if (uiBlocked(ptr)) return; ptr.event?.stopPropagation?.(); this.social?.openPlayerMenu(r, { x: ptr.x, y: ptr.y }); });
     const sh = this.addShadow(s, 22);
     const r = {
       id: q.id, netId: q.id, name: q.name, level: q.level, hp: q.hp, maxHp: q.maxHp, spr: s,
@@ -1006,6 +1007,7 @@ export class TopDownScene extends Phaser.Scene {
     this.input.mouse?.disableContextMenu();                    // คลิกขวาไม่เปิดเมนูของเบราว์เซอร์
     this.input.on('pointerdown', (ptr, over) => {
       if (this.touch?.owns(ptr)) return;                        // นิ้วที่กำลังใช้จอยสติ๊ก/ปุ่มบนจอ
+      if (uiBlocked(ptr)) return;                                // แตะโดนหน้าต่าง/เมนู (หรือเพิ่งเปิด-ปิด) → ไม่ทะลุลงฉาก
       const w = this.cameras.main.getWorldPoint(ptr.x, ptr.y);
       const hitMob = over.find((o) => o.mid != null && o.alive) || this.mobAt(w.x, w.y, this.touch?.on ? 30 : 14);
       // คลิกขวา = โจมตีผีที่ชี้ (หรือตัวที่ใกล้จุดคลิกที่สุด) · ไม่มีผีก็ไม่เดิน

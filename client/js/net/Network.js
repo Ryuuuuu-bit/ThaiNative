@@ -37,6 +37,14 @@ export class Network {
       this.emitLocal('status', true);
     });
     s.on('disconnect', () => this.emitLocal('status', false));
+    // แพตช์ใหม่: เซิร์ฟเวอร์แจ้งก่อนปิด + ต่อใหม่แล้วเวอร์ชันไม่ตรง → แถบแจ้งให้รีโหลด
+    s.on('server:update', (d) => patchBanner('down', d?.msg));
+    s.on('server:build', (d) => {
+      if (!d?.v) return;
+      if (this.build && d.v !== this.build) patchBanner('new');
+      else if (this.build === d.v) patchBanner(null);
+      this.build ||= d.v;
+    });
     s.on('connect_error', () => this.emitLocal('status', false));
 
     s.on('world:init', (d) => { this.selfId = d.selfId; this.emitLocal('init', d); });
@@ -94,4 +102,21 @@ export class Network {
       tx: t ? t.x : undefined, ty: t ? t.y : undefined,
     });
   }
+}
+
+/** แถบแจ้งแพตช์ด้านบนจอ: 'down' = เซิร์ฟเวอร์กำลังอัปเดต · 'new' = มีเวอร์ชันใหม่ → รีโหลด (นับถอยหลังอัตโนมัติ) · null = ซ่อน */
+let bannerTimer = null;
+function patchBanner(kind, msg) {
+  let el = document.getElementById('patch-banner');
+  clearInterval(bannerTimer);
+  if (!kind) { if (el && el.dataset.kind === 'down') el.remove(); return; }
+  if (!el) { el = document.createElement('div'); el.id = 'patch-banner'; document.body.appendChild(el); }
+  el.dataset.kind = kind;
+  if (kind === 'down') { el.innerHTML = `<span>🔧 ${msg || 'เซิร์ฟเวอร์กำลังอัปเดต'}</span>`; return; }
+  let left = 30;
+  const draw = () => { el.innerHTML = `<span>✨ อัปเดตแพตช์ใหม่แล้ว! รีโหลดเพื่อเล่นเวอร์ชันล่าสุด (อัตโนมัติใน ${left} วิ)</span><button id="pb-go">รีโหลดเลย</button><button id="pb-later">ภายหลัง</button>`;
+    el.querySelector('#pb-go').onclick = () => location.reload();
+    el.querySelector('#pb-later').onclick = () => { clearInterval(bannerTimer); el.innerHTML = '<span>✨ มีแพตช์ใหม่</span><button id="pb-go">รีโหลด</button>'; el.querySelector('#pb-go').onclick = () => location.reload(); }; };
+  draw();
+  bannerTimer = setInterval(() => { if (--left <= 0) { clearInterval(bannerTimer); location.reload(); } else if (el.querySelector('#pb-later')) el.querySelector('span').textContent = `✨ อัปเดตแพตช์ใหม่แล้ว! รีโหลดเพื่อเล่นเวอร์ชันล่าสุด (อัตโนมัติใน ${left} วิ)`; }, 1000);
 }

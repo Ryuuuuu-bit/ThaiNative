@@ -40,8 +40,10 @@ const storeReady = setupAuth(app, {
   onlineChar: (acc) => { const p = players.get(byAcc.get(acc)); return p ? { slot: p.slot || 0, save: p.save } : null; },
   onlineCount: () => players.size,
 });
-app.use(express.static(path.join(ROOT, 'client')));
-app.use('/shared', express.static(path.join(ROOT, 'shared')));
+// no-cache = เบราว์เซอร์ถามทุกครั้ง (ETag → 304 ถ้าไม่เปลี่ยน) · อัปแพตช์แล้วรีโหลดได้ของใหม่แน่นอน
+const NOCACHE = { setHeaders: (res) => res.setHeader('Cache-Control', 'no-cache') };
+app.use(express.static(path.join(ROOT, 'client'), NOCACHE));
+app.use('/shared', express.static(path.join(ROOT, 'shared'), NOCACHE));
 app.use('/vendor', express.static(path.join(ROOT, 'node_modules/phaser/dist')));
 
 const httpServer = createServer(app);
@@ -141,7 +143,10 @@ const cleanText = (s, max) => String(s ?? '').replace(/[<>]/g, '').trim().slice(
 process.on('uncaughtException', (e) => console.error('[uncaught]', e));
 process.on('unhandledRejection', (e) => console.error('[unhandled]', e));
 
+// เวอร์ชันเซิร์ฟเวอร์ (commit ที่ deploy) → client เทียบตอนต่อใหม่ ถ้าเปลี่ยน = มีแพตช์ใหม่ ให้รีโหลด
+const BUILD = (process.env.RAILWAY_GIT_COMMIT_SHA || '').slice(0, 7) || `dev-${Date.now().toString(36)}`;
 io.on('connection', (socket) => {
+  socket.emit('server:build', { v: BUILD });
   // ห่อทุก handler: payload null/undefined → {} และจับ error ไว้ (ไม่ให้ process ตาย)
   const rawOn = socket.on.bind(socket);
   socket.on = (ev, fn) => rawOn(ev, (...args) => {
@@ -416,6 +421,7 @@ setInterval(() => { for (const p of players.values()) persist(p); }, 5000);
 // ปิด server (deploy ใหม่) → เซฟทุกคนก่อน
 async function shutdown() {
   console.log('[server] shutting down – saving players');
+  io.emit('server:update', { msg: 'เซิร์ฟเวอร์กำลังอัปเดตแพตช์ใหม่ · ตัวละครเซฟแล้ว · อีกสักครู่จะเชื่อมต่อใหม่เอง' });
   await Promise.all([...players.values()].map((p) => { p.dirty = true; return persist(p); }));
   process.exit(0);
 }

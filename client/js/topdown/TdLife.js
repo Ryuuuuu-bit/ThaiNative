@@ -7,6 +7,7 @@
 import { ITEMS } from '/shared/data/items.js';
 import { HERB_SPOTS, TILE, T } from '/shared/td/ayutthaya.js';
 import { LIFE } from '/shared/data/life.js';
+import { uiBlocked } from '../systems/uiGuard.js';
 
 const $ = (s) => document.querySelector(s);
 const GATHER_R = 30;
@@ -37,7 +38,7 @@ export class TdLife {
     s.tweens.add({ targets: glow, alpha: 0.05, duration: 1100, yoyo: true, repeat: -1 });
     const hit = s.add.zone(h.x, h.y, 22, 22).setInteractive({ useHandCursor: true }).setDepth(h.y);
     const n = { ...h, spr, glow, hit, readyAt: 0 };
-    hit.on('pointerdown', (ptr) => { ptr.event.stopPropagation(); this.goGather(n); });
+    hit.on('pointerdown', (ptr) => { if (uiBlocked(ptr)) return; ptr.event.stopPropagation(); this.goGather(n); });
     return n;
   }
 
