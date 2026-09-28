@@ -493,10 +493,14 @@
   "mob_khotchasi": {
    "anims": [
     "idle",
+    "attack",
+    "die",
     "walk"
    ],
    "frames": {
     "idle": 4,
+    "attack": 6,
+    "die": 7,
     "walk": 6
    },
    "frame": 72,
@@ -505,10 +509,14 @@
   "mob_hatsadiling": {
    "anims": [
     "idle",
+    "attack",
+    "die",
     "walk"
    ],
    "frames": {
     "idle": 4,
+    "attack": 6,
+    "die": 7,
     "walk": 6
    },
    "frame": 72,
@@ -517,10 +525,14 @@
   "mob_makkaliphon": {
    "anims": [
     "idle",
+    "attack",
+    "die",
     "walk"
    ],
    "frames": {
     "idle": 4,
+    "attack": 6,
+    "die": 7,
     "walk": 6
    },
    "frame": 72,
@@ -529,10 +541,14 @@
   "mob_kumphakan": {
    "anims": [
     "idle",
+    "attack",
+    "die",
     "walk"
    ],
    "frames": {
     "idle": 4,
+    "attack": 6,
+    "die": 7,
     "walk": 6
    },
    "frame": 72,
@@ -541,10 +557,14 @@
   "mob_nak_phrai": {
    "anims": [
     "idle",
+    "attack",
+    "die",
     "walk"
    ],
    "frames": {
     "idle": 4,
+    "attack": 6,
+    "die": 7,
     "walk": 6
    },
    "frame": 72,
@@ -553,10 +573,14 @@
   "mob_ngueak_phi": {
    "anims": [
     "idle",
+    "attack",
+    "die",
     "walk"
    ],
    "frames": {
     "idle": 4,
+    "attack": 6,
+    "die": 7,
     "walk": 6
    },
    "frame": 72,
@@ -565,10 +589,12 @@
   "mob_pla_khiao": {
    "anims": [
     "idle",
+    "attack",
     "walk"
    ],
    "frames": {
     "idle": 4,
+    "attack": 6,
     "walk": 6
    },
    "frame": 72,
