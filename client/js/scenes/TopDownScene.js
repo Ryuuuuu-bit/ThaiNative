@@ -36,6 +36,7 @@ import { TITLE_BY_ID } from '/shared/data/titles.js';
 import { TouchControls } from '../topdown/TouchControls.js';
 import { ALL_ASSETS } from '/shared/data/td_assets.js';
 import { bakeGround, makeWater, TdAtmosphere, bakeTdFx, TdVfx, TdMinimap } from '../topdown/TdTheme.js';
+const NONE = '__none';                                  // autoMobs: ยกเลิกทั้งหมด (Auto ไม่ไล่ตีผี)
 
 const $ = (s) => document.querySelector(s);
 const OUTFIT_IDS = ['mohom', 'ruenton', 'jongkraben', 'rajpatan', 'chaona', 'silk', 'warrior', 'hunter', 'isan', 'mahadlek'];
@@ -508,7 +509,10 @@ export class TopDownScene extends Phaser.Scene {
     return best;
   }
 
-  /** ชุดชนิดผีที่ Auto จะตี (null = ตีทุกตัว) */
+  /** จำนวนชนิดที่เลือก (ไม่นับ NONE) */
+  autoCount(only = this.autoFilter()) { return only ? only.size - (only.has(NONE) ? 1 : 0) : 0; }
+
+  /** ชุดชนิดผีที่ Auto จะตี (null = ตีทุกตัว · มีแค่ NONE = ไม่ตีเลย) */
   autoFilter() {
     const list = this.settings.autoMobs;
     return Array.isArray(list) && list.length ? new Set(list) : null;
@@ -540,20 +544,21 @@ export class TopDownScene extends Phaser.Scene {
     const kinds = this.mobKinds();
     box.innerHTML = `
       <div class="am-head"><b>🎯 เป้าหมาย Auto</b><small>ระยะ: ทั้งหน้าจอ</small></div>
-      <label class="am-all"><input type="checkbox" data-all ${only ? '' : 'checked'}> ตีทุกตัว</label>
+      <div class="am-bulk"><button type="button" data-bulk="all" class="${only ? '' : 'on'}">✔ เลือกทั้งหมด</button><button type="button" data-bulk="none" class="${only && !this.autoCount(only) ? 'on' : ''}">✖ ยกเลิกทั้งหมด</button></div>
       <div class="am-list">${kinds.length ? kinds.map((k) => `
         <label class="${only && !only.has(k.id) ? 'off' : ''}" data-cnt="${k.alive}/${k.n}">
           <input type="checkbox" data-id="${k.id}" ${!only || only.has(k.id) ? 'checked' : ''}>
           <span class="am-lv">Lv.${k.def.level}</span><span class="am-n">${k.def.nameTh}${k.def.elite || k.def.boss ? ' 👑' : ''}${k.def.nightOnly ? ' 🌙' : ''}</span>
         </label>`).join('') : '<div class="am-empty">แผนที่นี้ไม่มีผี</div>'}</div>
-      <div class="am-foot">ติ๊กเฉพาะชนิดที่อยากตี · ไม่ติ๊กเลย = ตีทุกตัว</div>`;
-    box.querySelector('[data-all]').onchange = (e) => {
-      this.settings.autoMobs = e.target.checked ? [] : kinds.map((k) => k.id);
+      <div class="am-foot">ติ๊กเฉพาะชนิดที่อยากตี · ไม่ติ๊กเลย = Auto ไม่ไล่ตีผี</div>`;
+    box.querySelectorAll('[data-bulk]').forEach((b) => (b.onclick = () => {
+      this.settings.autoMobs = b.dataset.bulk === 'all' ? [] : [NONE];
       saveSettings(this.settings); this.renderAutoMenu(); this.autoRetarget();
-    };
+    }));
     box.querySelectorAll('[data-id]').forEach((cb) => (cb.onchange = () => {
       let ids = [...box.querySelectorAll('[data-id]:checked')].map((x) => x.dataset.id);
       if (ids.length === kinds.length) ids = [];               // ติ๊กครบทุกชนิด = ตีทุกตัว
+      else if (!ids.length) ids = [NONE];                      // ไม่ติ๊กเลย = ไม่ไล่ตี
       this.settings.autoMobs = ids;
       saveSettings(this.settings); this.renderAutoMenu(); this.autoRetarget();
     }));
@@ -577,7 +582,7 @@ export class TopDownScene extends Phaser.Scene {
     const bt = $('#auto-skill'); if (!bt) return;
     const only = this.autoFilter();
     bt.classList.toggle('filtered', !!only);
-    bt.title = `Auto (A) – ตีผี${only ? `ที่เลือก ${only.size} ชนิด` : 'ทุกตัว'}ในหน้าจอ + ร่ายสกิลในแถบ 1–0 อัตโนมัติ · เลือกเป้า: ปุ่ม ▾ / Shift+A`;
+    bt.title = `Auto (A) – ตีผี${only ? `ที่เลือก ${this.autoCount(only)} ชนิด` : 'ทุกตัว'}ในหน้าจอ + ร่ายสกิลในแถบ 1–0 อัตโนมัติ · เลือกเป้า: ปุ่ม ▾ / Shift+A`;
   }
 
   setMobVisible(m, on) {
@@ -884,7 +889,7 @@ export class TopDownScene extends Phaser.Scene {
     this.settings.autoSkill = on; saveSettings(this.settings);
     $('#auto-skill')?.classList.toggle('on', on);
     const only = this.autoFilter();
-    this.ui.toast(on ? `⚡ Auto: เปิด — ตีผี${only ? `ที่เลือก ${only.size} ชนิด` : 'ทุกตัว'}ในหน้าจอ + ร่ายสกิลในแถบ 1–0 (เดิน/คลิกพื้นเพื่อพักชั่วคราว)` : 'Auto: ปิด', on ? 'ok' : '', 2200);
+    this.ui.toast(on ? `⚡ Auto: เปิด — ตีผี${only ? `ที่เลือก ${this.autoCount(only)} ชนิด` : 'ทุกตัว'}ในหน้าจอ + ร่ายสกิลในแถบ 1–0 (เดิน/คลิกพื้นเพื่อพักชั่วคราว)` : 'Auto: ปิด', on ? 'ok' : '', 2200);
   }
 
   /** ป้ายชื่อตัวเอง (มีฉายาอยู่บรรทัดบน) */

@@ -1321,3 +1321,13 @@ body.td-mode #chat-log { max-height: 6.5em; }
 #inv-panel .ro-bar { flex-wrap: wrap; }
 #inv-panel .ro-name { flex-basis: 12em; }
 @media (max-width: 900px) { #inv-panel .inv-body { grid-template-columns: 1fr; } }
+/* Auto ▾ ใหญ่ขึ้น กดง่าย + ปุ่มเลือก/ยกเลิกทั้งหมด */
+.auto-cfg { top: -11px; right: -11px; width: 26px; height: 26px; font-size: 14px; line-height: 23px; border-width: 2px; }
+@media (pointer: coarse) { .auto-cfg { width: 30px; height: 30px; line-height: 27px; font-size: 16px; top: -13px; right: -13px; } }
+.auto-cfg::before { content: ''; position: absolute; inset: -6px; border-radius: 50%; }
+.auto-menu { width: 250px; }
+.auto-menu .am-bulk { display: flex; gap: 6px; padding-bottom: 6px; border-bottom: 1px solid rgba(212,160,23,.3); }
+.auto-menu .am-bulk button { flex: 1; padding: 5px 4px; border-radius: 6px; cursor: pointer; font-size: 11px; font-weight: 700; color: #f3e3bf;
+  background: #2a1d0c; border: 1px solid #6b4a12; }
+.auto-menu .am-bulk button:hover { border-color: #d4a017; }
+.auto-menu .am-bulk button.on { background: linear-gradient(#6b4a12, #3a2a10); border-color: #ffd76a; color: #ffe9a8; }
