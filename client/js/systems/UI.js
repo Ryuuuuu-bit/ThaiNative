@@ -801,42 +801,61 @@ export class UI {
     $('#inv-equip').querySelectorAll('[data-unequip]').forEach((b) => (b.onclick = () => this.result(this.scene.econ.act('unequip', { slot: b.dataset.unequip }))));
     $('#inv-equip').querySelectorAll('[data-uncos]').forEach((b) => (b.onclick = () => this.result(this.scene.econ.act('cosOff', { slot: b.dataset.uncos }))));
 
-    if (!c.inventory.length) { $('#inv-list').innerHTML = '<div class="empty">กระเป๋าว่างเปล่า</div>'; return; }
-    // แท็บกรอง + เรียงลำดับ
-    const CAT = { all: ['ทั้งหมด', () => true], gear: ['อุปกรณ์', (t) => GEAR_TYPES.includes(t) || t === 'flask'], cos: ['ชุดแต่งตัว', (t) => t === 'costume'],
-      use: ['ยา/อาหาร', (t) => ['consumable', 'home', 'food', 'reset', 'skin', 'offering'].includes(t)],
-      mat: ['วัตถุดิบ', (t) => ['material', 'herb', 'fish'].includes(t)], card: ['การ์ด', (t) => t === 'card'] };
+    // ---------- กระเป๋าแบบ Ragnarok: แท็บ ไอเทม/อุปกรณ์/อื่นๆ · ตารางช่องไอคอน + จำนวนมุมขวาล่าง ----------
+    //  คลิก = เลือก (แถบคำสั่งด้านล่าง) · ดับเบิลคลิก = ใช้/สวม · คลิกขวา = ล็อก/ปลดล็อก · ลากไป Hotbar ได้
+    const CAT = { use: ['ไอเทม', (t) => ['consumable', 'home', 'food', 'reset', 'skin', 'offering', 'flask'].includes(t)],
+      equip: ['อุปกรณ์', (t) => GEAR_TYPES.includes(t) || t === 'costume' || t === 'card'],
+      etc: ['อื่นๆ', (t) => ['material', 'herb', 'fish'].includes(t)], all: ['ทั้งหมด', () => true] };
     const ORDER = ['card', 'weapon', 'helm', 'armor', 'gloves', 'boots', 'belt', 'accessory', 'flask', 'costume', 'home', 'consumable', 'food', 'reset', 'skin', 'offering', 'herb', 'fish', 'material'];
-    const cat = this.invCat || 'all', sort = this.invSort || 'type';
-    const list = c.inventory.filter((s) => CAT[cat][1](ITEMS[s.id].type)).sort((a, b) => {
+    let cat = this.invCat || 'use'; if (!CAT[cat]) cat = 'use';
+    const sort = this.invSort || 'type';
+    const list = c.inventory.filter((st) => CAT[cat][1](ITEMS[st.id].type)).sort((a, b) => {
       const A = ITEMS[a.id], B = ITEMS[b.id];
       if (sort === 'name') return A.nameTh.localeCompare(B.nameTh, 'th');
       if (sort === 'price') return sellPrice(b.id) * b.qty - sellPrice(a.id) * a.qty;
       return ORDER.indexOf(A.type) - ORDER.indexOf(B.type) || A.nameTh.localeCompare(B.nameTh, 'th');
     });
-    const tabs = `<div class="inv-tools"><div class="inv-tabs">${Object.entries(CAT).map(([k, [l]]) => `<button data-cat="${k}" class="${k === cat ? 'active' : ''}">${l}</button>`).join('')}</div>
-      <select id="inv-sort"><option value="type">เรียง: ประเภท</option><option value="name">เรียง: ชื่อ</option><option value="price">เรียง: มูลค่า</option></select></div>`;
-    $('#inv-list').innerHTML = tabs + (list.length ? list.map((s) => {
-      const it = ITEMS[s.id], lock = Inv.isLocked(c, s.id);
-      const action = { home: 'ใช้', consumable: 'ใช้', food: 'กิน', offering: 'ถวาย', weapon: 'ถือ', armor: 'สวม', helm: 'สวม', gloves: 'สวม', boots: 'สวม', belt: 'คาด', accessory: 'สวม', flask: 'ใส่', costume: 'แต่ง', reset: 'ใช้', card: 'ใส่', skin: c.path === it.job ? 'ใช้อยู่' : 'เปลี่ยนสาย' }[it.type];
-      const job = itemTag(it) || (it.type === 'costume' ? ` · ชุดแต่งตัว${it.rare ? ' ✨หายาก' : ''}` : '');
-      const hb = hotbarItemOk(s.id);
-      return `<div class="item inv${rcls(it)}" data-tip-item="${s.id}"${hb ? ` draggable="true" data-hbitem="${s.id}" title="ลากไปวางที่ Hotbar (1–0)"` : ''}><span class="ic">${itemIcon(s.id, it.icon)}</span>
-        <span>${rname(it, esc(it.nameTh))} <span class="meta">x${s.qty}${job}</span>${impactLine(c, s.id)}</span>
-        <button class="lock ${lock ? 'on' : ''}" data-lock="${s.id}" title="${lock ? 'ปลดล็อก' : 'ล็อก (กันขาย)'}">${lock ? '🔒' : '🔓'}</button>
-        <span class="price">฿${sellPrice(s.id)}</span>
-        <span class="inv-acts">${hb ? `<button class="hb-add" data-hbadd="${s.id}" title="ใส่ Hotbar ช่องว่างแรก">⌨</button>` : ''}${action ? `<button data-use="${s.id}" ${action === 'ใช้อยู่' ? 'disabled' : ''}>${action}</button>` : ''}</span></div>`;
-    }).join('') : '<div class="empty">ไม่มีของในหมวดนี้</div>');
+    const ACT = { home: 'ใช้', consumable: 'ใช้', food: 'กิน', offering: 'ถวาย', weapon: 'ถือ', armor: 'สวม', helm: 'สวม', gloves: 'สวม', boots: 'สวม', belt: 'คาด', accessory: 'สวม', flask: 'ใส่', costume: 'แต่ง', reset: 'ใช้', card: 'ใส่' };
+    const actOf = (id) => { const it = ITEMS[id]; return it.type === 'skin' ? (c.path === it.job ? null : 'เปลี่ยนสาย') : ACT[it.type] || null; };
+    const count = (k) => c.inventory.filter((st) => CAT[k][1](ITEMS[st.id].type)).length;
+    const cells = Math.max(40, Math.ceil((list.length + 1) / 8) * 8);
+    const sel = list.some((st) => st.id === this.invSel) ? this.invSel : null;
+    const slots = Array.from({ length: cells }, (_, i) => {
+      const st = list[i];
+      if (!st) return '<div class="ro-slot empty"></div>';
+      const it = ITEMS[st.id], lock = Inv.isLocked(c, st.id), hb = hotbarItemOk(st.id);
+      return `<div class="ro-slot${rcls(it)}${st.id === sel ? ' sel' : ''}" data-slot="${st.id}" data-tip-item="${st.id}"${hb ? ` draggable="true" data-hbitem="${st.id}"` : ''}>
+        ${itemIcon(st.id, it.icon)}${st.qty > 1 ? `<b class="ro-q">${st.qty > 9999 ? '9999+' : st.qty}</b>` : ''}${lock ? '<i class="ro-lock">🔒</i>' : ''}</div>`;
+    }).join('');
+    const si2 = sel && ITEMS[sel], selSt = sel && c.inventory.find((st) => st.id === sel);
+    const bar = si2 ? `<div class="ro-bar"><span class="ic">${itemIcon(sel, si2.icon)}</span><span class="ro-name">${rname(si2, esc(si2.nameTh))} <span class="meta">x${selSt.qty}${itemTag(si2) || ''}</span>${impactLine(c, sel)}</span>
+        <span class="ro-acts"><span class="price">฿${sellPrice(sel)}</span>
+        <button class="lock ${Inv.isLocked(c, sel) ? 'on' : ''}" data-lock="${sel}" title="ล็อกกันขาย">${Inv.isLocked(c, sel) ? '🔒' : '🔓'}</button>
+        ${hotbarItemOk(sel) ? `<button class="hb-add" data-hbadd="${sel}" title="ใส่ Hotbar ช่องว่างแรก">⌨</button>` : ''}
+        ${actOf(sel) ? `<button class="primary" data-use="${sel}">${actOf(sel)}</button>` : ''}</span></div>`
+      : '<div class="ro-bar hint">คลิกไอเทมเพื่อเลือก · ดับเบิลคลิก = ใช้/สวม · คลิกขวา = ล็อก · ลากไปวางที่ Hotbar ได้</div>';
+    $('#inv-list').innerHTML = `<div class="ro-bag">
+      <div class="ro-tabs">${Object.entries(CAT).map(([k, [l]]) => `<button data-cat="${k}" class="${k === cat ? 'active' : ''}">${l}<small>${count(k)}</small></button>`).join('')}
+        <select id="inv-sort" title="เรียงลำดับ"><option value="type">ประเภท</option><option value="name">ชื่อ</option><option value="price">มูลค่า</option></select></div>
+      <div class="ro-grid">${slots}</div>
+      ${bar}
+      <div class="ro-foot"><span>ช่องที่ใช้ ${c.inventory.length}</span><span class="ro-zeny">฿ ${c.gold.toLocaleString()}</span></div></div>`;
     $('#inv-sort').value = sort;
     $('#inv-sort').onchange = (e) => { this.invSort = e.target.value; this.renderInventory(); };
-    $('#inv-list').querySelectorAll('[data-cat]').forEach((b) => (b.onclick = () => { this.invCat = b.dataset.cat; this.scene.sfx.play('click'); this.renderInventory(); }));
-    $('#inv-list').querySelectorAll('[data-lock]').forEach((b) => (b.onclick = () => {
-      this.scene.econ.act('lock', { id: b.dataset.lock }).then((r) => {
-        this.toast(r.locked ? `🔒 ล็อก ${ITEMS[b.dataset.lock].nameTh} (จะไม่ถูกขาย)` : `🔓 ปลดล็อก ${ITEMS[b.dataset.lock].nameTh}`);
-        this.scene.sfx.play('click'); this.renderInventory(); this.scene.saveSoon();
-      });
-    }));
-    $('#inv-list').querySelectorAll('[data-use]').forEach((b) => (b.onclick = () => (CARD_BY_ID[b.dataset.use] ? this.cards.open('sockets', b.dataset.use) : this.result(this.scene.econ.act('use', { id: b.dataset.use })))));
+    $('#inv-list').querySelectorAll('[data-cat]').forEach((b) => (b.onclick = () => { this.invCat = b.dataset.cat; this.invSel = null; this.scene.sfx.play('click'); this.renderInventory(); }));
+    const toggleLock = (id) => this.scene.econ.act('lock', { id }).then((r) => {
+      this.toast(r.locked ? `🔒 ล็อก ${ITEMS[id].nameTh} (จะไม่ถูกขาย)` : `🔓 ปลดล็อก ${ITEMS[id].nameTh}`);
+      this.scene.sfx.play('click'); this.renderInventory(); this.scene.saveSoon();
+    });
+    const use = (id) => (CARD_BY_ID[id] ? this.cards.open('sockets', id) : this.result(this.scene.econ.act('use', { id })));
+    $('#inv-list').querySelectorAll('.ro-slot[data-slot]').forEach((el) => {
+      const id = el.dataset.slot;
+      el.onclick = () => { if (this.invSel !== id) { this.invSel = id; this.scene.sfx.play('click'); this.renderInventory(); } };
+      el.ondblclick = () => { if (actOf(id)) use(id); };
+      el.oncontextmenu = (e) => { e.preventDefault(); toggleLock(id); };
+    });
+    $('#inv-list').querySelectorAll('[data-lock]').forEach((b) => (b.onclick = () => toggleLock(b.dataset.lock)));
+    $('#inv-list').querySelectorAll('[data-use]').forEach((b) => (b.onclick = () => use(b.dataset.use)));
     $('#inv-list').querySelectorAll('[data-hbadd]').forEach((b) => (b.onclick = () => this.assignFirstFree(b.dataset.hbadd)));
     $('#inv-list').querySelectorAll('[data-hbitem]').forEach((el) => el.addEventListener('dragstart', (e) => { e.dataTransfer.setData('text/item', el.dataset.hbitem); e.dataTransfer.effectAllowed = 'copy'; }));
   }
