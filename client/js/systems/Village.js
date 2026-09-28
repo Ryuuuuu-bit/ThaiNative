@@ -347,8 +347,12 @@ export class Village {
     const q = QUEST_BY_ID[id];
     if (!q) return;
     if (!this.nearChai()) return this.ui.toast('กลับไปรับรางวัลกับผู้ใหญ่ชัยที่ลานน้ำพุกลางกรุงศรีฯ', 'warn');
+    if (this.claiming) return;                                         // กันกดซ้ำระหว่างรอ server
+    this.claiming = id;
+    document.querySelectorAll(`[data-q="claim:${id}"]`).forEach((b) => { b.disabled = true; b.textContent = 'กำลังส่ง…'; });
     this.econ.act('qClaim', { id }).then((r) => {
-      if (!r.ok) return r.msg && this.ui.toast(r.msg, 'warn');
+      this.claiming = null;
+      if (!r.ok) { this.afterChange(); return r.msg && this.ui.toast(r.msg, 'warn'); }
       this.scene.sfx.play('victory');
       this.ui.banner(`✔ เควสสำเร็จ: ${q.nameTh}`);
       this.ui.toast(`รางวัล: ${this.rewardText(q)}`);
@@ -364,6 +368,7 @@ export class Village {
   }
 
   renderTracker() {
+    this.scene.updateQuestMark?.();
     const Q = this.char.quests || { active: {}, done: [] };
     const ids = Object.keys(Q.active);
     $('#quest-track').classList.toggle('hidden', !ids.length);

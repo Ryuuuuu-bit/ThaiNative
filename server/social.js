@@ -379,7 +379,7 @@ export function setupSocial(io, players, H = {}) {
       const msg = String(text ?? '').replace(/[<>]/g, '').trim().slice(0, 120);
       if (!party || !msg || Date.now() - (p.lastChat || 0) < 500) return;
       p.lastChat = Date.now();
-      for (const id of party.members) emitTo(id, 'chat', { id: p.id, name: `[ปาร์ตี้] ${p.name}`, text: msg, party: true });
+      for (const id of party.members) emitTo(id, 'chat', { id: p.id, name: `[ปาร์ตี้] ${p.name}`, text: msg, party: true, nm: p.name, lv: p.save?.level });
     });
 
     // ---------- เทรด ----------

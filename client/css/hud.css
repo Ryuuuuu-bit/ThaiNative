@@ -92,9 +92,6 @@ body.td-mode #td-hud .td-act { bottom: 15cqh !important; }
 body.td-mode .prompt { top: auto !important; bottom: 19.5cqh; }
 
 /* ---------- ซ้ายล่าง: แชท (จบก่อนแถบแอ็กชัน) ---------- */
-body.td-mode:not(.touch) #chat { left: var(--hud-pad) !important; bottom: calc(2.6cqh + var(--hud-pad)) !important; width: 33cqh !important; font-size: 1.8cqh !important; }
-body.td-mode #chat-log { max-height: 18cqh !important; }
-body.td-mode #chat-toggle { top: -3.6cqh; }
 
 /* ---------- ขอบล่าง: EXP ---------- */
 body.td-mode .expbar { height: 2.6cqh !important; min-height: 0 !important; }
@@ -128,11 +125,6 @@ body.td-mode.touch #hud > .hud-buttons.dock.open { display: grid !important; pos
 body.td-mode.touch #hud > .hud-buttons.dock.open button { width: 100% !important; height: 8cqh !important; }
 body.td-mode.touch #hud > .hud-buttons.dock.open button .px-ico { width: 6cqh; height: 6cqh; }
 /* ซ้าย: ผู้เล่น → ปาร์ตี้ → แชท (เหนือจอย) */
-body.td-mode.touch #chat { top: 44.5cqh !important; bottom: auto !important; left: var(--hud-pad) !important; width: 40cqh !important; font-size: 2cqh !important; }
-body.td-mode.touch #chat-log { max-height: 10cqh !important; }
-body.td-mode.touch #chat-input { display: none; }
-body.td-mode.touch #chat:focus-within #chat-input { display: block; }
-body.td-mode.touch #chat-toggle { top: 0; right: -4cqh; }
 body.td-mode.touch .t-stick { bottom: 6cqh !important; left: calc(var(--hud-pad) + 1cqh + env(safe-area-inset-left, 0px)) !important; width: 32cqh !important; height: 32cqh !important; }
 /* ขวา: เขต/แมพ → เควส (สั้นลง) → ปุ่มตี · ของที่ได้ อยู่ซ้ายปุ่มตี */
 body.td-mode.touch #td-minimap { width: var(--hud-col) !important; }
@@ -153,11 +145,6 @@ body.td-mode.touch .quest-track div:nth-child(n+2) { display: none !important; }
 body.td-mode .loot-log div:nth-last-child(n+5) { display: none !important; }
 body.td-mode.touch .loot-log div:nth-last-child(n+4) { display: none !important; }
 body.td-mode .quest-track, body.td-mode .loot-log { max-height: none !important; overflow: visible !important; }
-body.td-mode #chat-log { background: none !important; }
-body.td-mode #chat-log div { background: rgba(14,7,20,.55) !important; border-radius: .6cqh; }
-body.td-mode #chat-log { max-height: none !important; }
-body.td-mode #chat-log div:nth-last-child(n+7) { display: none; }
-body.td-mode.touch #chat-log div:nth-last-child(n+3) { display: none; }
 
 /* Hotbar: ปุ่ม ✕ เอาไอเทม/สกิลออกจากช่อง (เห็นตอนชี้เมาส์ · บนจอสัมผัสเห็นตลอด) */
 #skillbar .skill .hb-x { position: absolute; top: .2cqh; right: .2cqh; z-index: 3; width: 2.4cqh; height: 2.4cqh; padding: 0; border-radius: 50%;
@@ -258,3 +245,7 @@ body.touch #skillbar .skill .hb-x { opacity: .85; width: 2.8cqh; height: 2.8cqh;
 body.td-mode.win-open #boss-bar { visibility: hidden; }   /* เปิดหน้าต่างอยู่ → ซ่อนแถบบอสชั่วคราว (ข้อความแจ้งเตือนใช้ที่ด้านบนแทน) */
 .warp-card .wc-ic .px-ico { width: 4.4cqh; height: 4.4cqh; }
 .td-wm .wm-realms .px-ico { width: 1.9cqh; height: 1.9cqh; vertical-align: -.35cqh; }
+
+/* ช่องแชทกรอบ MMO: ขนาดตามความสูงจอ (cqh) */
+body.td-mode:not(.touch) #chat { left: var(--hud-pad) !important; bottom: calc(2.6cqh + var(--hud-pad)) !important; width: 50cqh !important; font-size: 1.85cqh !important; }
+body.td-mode.touch #chat { top: 30cqh !important; bottom: auto !important; left: var(--hud-pad) !important; width: 64cqh !important; font-size: 2.7cqh !important; }

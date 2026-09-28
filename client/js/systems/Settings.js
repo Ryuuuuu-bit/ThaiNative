@@ -12,6 +12,7 @@ export const DEFAULT_SETTINGS = {
   fxFlash: 'full',              // แสงวาบ/ฟ้ามืดของสกิล: full | soft | off
   autoHp: 0, autoMp: 0,         // กินยาอัตโนมัติเมื่อต่ำกว่า % (0 = ปิด)
   autoSkill: false,             // Auto: ตีผีในหน้าจอ + ร่ายสกิลในแถบอัตโนมัติ (ปุ่ม A)
+  chatBubble: true,             // ฟองคำพูดเหนือหัวผู้เล่น
   autoMobs: [],                 // ชนิดผีที่ Auto จะตี (ว่าง = ตีทุกตัว) · เลือกที่ปุ่ม ▾ / Shift+A
 };
 

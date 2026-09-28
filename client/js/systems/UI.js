@@ -30,6 +30,7 @@ import { account } from '../net/Account.js';
 import { CardUI } from './Cards.js';
 import { CARD_BY_ID } from '/shared/data/cards.js';
 import { ItemTip, impactLine, inlineStats } from './ItemTip.js';
+import { ChatBox } from './ChatBox.js';
 
 const $ = (s) => document.querySelector(s);
 const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -75,32 +76,21 @@ export class UI {
     this.applyUiIcons();
     this.renderAccount = bindAccountSettings(this);
 
-    // แชท
-    const input = $('#chat-input');
-    input.addEventListener('keydown', (e) => {
-      e.stopPropagation();
-      if (e.key === 'Enter') {
-        const text = input.value.trim();
-        if (text) {
-          if (/^\/r\s+/i.test(text) && this.lastWhisper) scene.net.sendChat(`/w ${this.lastWhisper} ${text.replace(/^\/r\s+/i, '')}`);   // /r = ตอบกระซิบล่าสุด
-          else if (/^\/gm\b/i.test(text)) this.gmCommand(text);     // /gm … = คำสั่งแอดมิน
-          else if (/^\/p\s+/i.test(text)) {                        // /p ข้อความ = แชทปาร์ตี้
-            if (scene.social?.party) scene.social.partyChat(text.replace(/^\/p\s+/i, ''));
-            else this.toast('ยังไม่มีปาร์ตี้', 'warn');
-          } else if (scene.net.online) scene.net.sendChat(text);
-          else this.chat({ name: scene.player.char.name, text }); // ออฟไลน์: แสดงเฉพาะเรา
-        }
-        input.value = '';
-        input.blur();
-      } else if (e.key === 'Escape') input.blur();
-    });
+    // แชท (กรอบ MMO แบบแท็บ)
+    this.rarityOf = rarityOf;
+    this.chatBox = ChatBox.attach(this);                           // ตัวเดียวตลอดเกม (ฉากเริ่มใหม่ก็ไม่หายประวัติ)
+    // Shift+คลิกไอเทมใดก็ได้ (กระเป๋า/ช่องสวม/ร้าน) → แชร์ลงแชท (ของที่สวมอยู่แนบขั้นตีบวกไปด้วย)
+    document.addEventListener('click', (e) => {
+      if (!e.shiftKey) return;
+      const t = e.target.closest?.('[data-tip-item]'); if (!t || t.closest('#chat')) return;
+      e.preventDefault(); e.stopPropagation();
+      const slot = t.dataset.tipSlot, enh = slot ? this.char?.enhance?.[slot] || 0 : 0;
+      this.chatBox.linkItem(t.dataset.tipItem, enh);
+    }, true);
     // พิมพ์ในช่องกรอกใดก็ได้ → ปิดคีย์บอร์ดเกม + ล้างปุ่มค้าง (ไม่งั้นตัวละครเดินเองหลังพิมพ์เสร็จ)
     const isField = (el) => el && /^(INPUT|TEXTAREA|SELECT)$/.test(el.tagName) && el.type !== 'checkbox' && el.type !== 'range';
     document.addEventListener('focusin', (e) => { if (isField(e.target)) { scene.input.keyboard.enabled = false; scene.input.keyboard.resetKeys(); } });
     document.addEventListener('focusout', (e) => { if (isField(e.target)) { scene.input.keyboard.resetKeys(); scene.input.keyboard.enabled = true; } });
-    $('#chat-toggle').onclick = () => { $('#chat').classList.toggle('collapsed'); input.blur(); };
-    input.addEventListener('focus', () => { scene.input.keyboard.enabled = false; $('#chat').classList.remove('collapsed'); });
-    input.addEventListener('blur', () => (scene.input.keyboard.enabled = true));
   }
 
   get char() { return this.scene.player.char; }
@@ -652,15 +642,7 @@ export class UI {
     setTimeout(() => el.remove(), ms);
   }
 
-  chat({ name, text, party, whisper, from }) {
-    const log = $('#chat-log');
-    const el = document.createElement('div');
-    if (party) el.className = 'party-msg';
-    if (whisper) { el.className = 'whisper-msg'; if (from) this.lastWhisper = from; }
-    el.innerHTML = `<b>${esc(name)}:</b> ${esc(text)}`;
-    log.appendChild(el);
-    while (log.children.length > 8) log.firstChild.remove();
-  }
+  chat(m) { this.chatBox?.add(m); }
 
   /** ผลลัพธ์จาก Inventory → แจ้งเตือน + รีเฟรช */
   result(r) {
@@ -836,9 +818,10 @@ export class UI {
     const bar = si2 ? `<div class="ro-bar"><span class="ic">${itemIcon(sel, si2.icon)}</span><span class="ro-name">${rname(si2, esc(si2.nameTh))} <span class="meta">x${selSt.qty}${itemTag(si2) || ''}</span>${impactLine(c, sel)}</span>
         <span class="ro-acts"><span class="price">฿${sellPrice(sel)}</span>
         <button class="lock ${Inv.isLocked(c, sel) ? 'on' : ''}" data-lock="${sel}" title="ล็อกกันขาย">${Inv.isLocked(c, sel) ? '🔒' : '🔓'}</button>
+        <button class="hb-add" data-share="${sel}" title="แชร์ไอเทมลงแชท (Shift+คลิก ก็ได้)">💬</button>
         ${hotbarItemOk(sel) ? `<button class="hb-add" data-hbadd="${sel}" title="ใส่ Hotbar ช่องว่างแรก">⌨</button>` : ''}
         ${actOf(sel) ? `<button class="primary" data-use="${sel}">${actOf(sel)}</button>` : ''}</span></div>`
-      : '<div class="ro-bar hint">คลิกไอเทมเพื่อเลือก · ดับเบิลคลิก = ใช้/สวม · คลิกขวา = ล็อก · ลากไปวางที่ Hotbar ได้</div>';
+      : '<div class="ro-bar hint">คลิกไอเทมเพื่อเลือก · ดับเบิลคลิก = ใช้/สวม · คลิกขวา = ล็อก · Shift+คลิก = แชร์ลงแชท · ลากไปวางที่ Hotbar ได้</div>';
     $('#inv-list').innerHTML = `<div class="ro-bag">
       <div class="ro-tabs">${Object.entries(CAT).map(([k, [l]]) => `<button data-cat="${k}" class="${k === cat ? 'active' : ''}">${l}<small>${count(k)}</small></button>`).join('')}
         <select id="inv-sort" title="เรียงลำดับ"><option value="type">ประเภท</option><option value="name">ชื่อ</option><option value="price">มูลค่า</option></select></div>
@@ -860,6 +843,7 @@ export class UI {
       el.oncontextmenu = (e) => { e.preventDefault(); toggleLock(id); };
     });
     $('#inv-list').querySelectorAll('[data-lock]').forEach((b) => (b.onclick = () => toggleLock(b.dataset.lock)));
+    $('#inv-list').querySelectorAll('[data-share]').forEach((b) => (b.onclick = () => this.chatBox?.linkItem(b.dataset.share)));
     $('#inv-list').querySelectorAll('[data-use]').forEach((b) => (b.onclick = () => use(b.dataset.use)));
     $('#inv-list').querySelectorAll('[data-hbadd]').forEach((b) => (b.onclick = () => this.assignFirstFree(b.dataset.hbadd)));
     $('#inv-list').querySelectorAll('[data-hbitem]').forEach((el) => el.addEventListener('dragstart', (e) => { e.dataTransfer.setData('text/item', el.dataset.hbitem); e.dataTransfer.effectAllowed = 'copy'; }));

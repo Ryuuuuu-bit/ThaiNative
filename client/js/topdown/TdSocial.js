@@ -42,7 +42,7 @@ export class TdSocial {
       if (act === 'party') this.invite(id);
       if (act === 'trade') this.requestTrade(id);
       if (act === 'friend') this.addFriend(id);
-      if (act === 'whisper') { const r = this.scene.remotes.get(id), inp = $('#chat-input'); if (r) { inp.value = `/w ${String(r.name).replace(/\s+#/, '#')} `; inp.focus(); } }
+      if (act === 'whisper') { const nm = this.scene.remotes.get(id)?.name || this.menuName; if (nm) this.ui.chatBox?.whisperTo(nm); }
     };
     // เทรด
     $('#tr-gold').addEventListener('keydown', (e) => e.stopPropagation());
@@ -81,7 +81,7 @@ export class TdSocial {
     // ปาร์ตี้ / ผู้เล่น (P)
     $('#social-panel').addEventListener('click', (e) => {
       const w = e.target.closest('[data-act="whisper"]');
-      if (w) { const inp = $('#chat-input'); inp.value = `/w ${String(w.dataset.name).replace(/\s+#/, '#')} `; this.ui.closeAll(); inp.focus(); return; }
+      if (w) { this.ui.closeAll(); this.ui.chatBox?.whisperTo(w.dataset.name); return; }
       const b = e.target.closest('button[data-act]');
       if (!b) return;
       const { act, id } = b.dataset;
@@ -122,9 +122,9 @@ export class TdSocial {
 
   /** คลิกที่ผู้เล่นอื่น → เมนู */
   openPlayerMenu(remote, pointer) {
-    this.menuTarget = remote.id;
+    this.menuTarget = remote.id; this.menuName = remote.name;
     const m = $('#player-menu');
-    $('#pm-name').textContent = `${remote.name} · Lv.${remote.level || '?'}`;
+    $('#pm-name').textContent = remote.level ? `${remote.name} · Lv.${remote.level}` : remote.name;
     const rect = this.scene.game.canvas.getBoundingClientRect();
     const sx = rect.width / this.scene.scale.width;
     m.style.left = `${Math.min(pointer.x * sx, rect.width - 170)}px`;

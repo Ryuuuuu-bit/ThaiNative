@@ -21,6 +21,9 @@ import { TdLife } from '../topdown/TdLife.js';
 import { Econ } from '../net/Econ.js';
 import { Network } from '../net/Network.js';
 import { account } from '../net/Account.js';
+import { emojiOnly } from '../systems/ChatBox.js';
+import { questState as qState } from '../systems/Inventory.js';
+import { QUESTS } from '/shared/data/village.js';
 import { count } from '../systems/Inventory.js';
 import { TILE, T, SPAWN as TD_SPAWN, isIsland, bakeTileset, bakeProps, OX } from '../topdown/AyutthayaMap.js';
 import { TD_MAPS, getMap, validMap, arrivalPoint } from '/shared/td/maps.js';
@@ -130,6 +133,8 @@ export class TopDownScene extends Phaser.Scene {
     this.skills = new TdSkills(this);
     this.weapons = new WeaponOverlay(this);
     this.touch = new TouchControls(this);
+    this.ui.chatBox?.load(`${account.slot ?? 0}_${char.name}`);
+    if (document.body.classList.contains('touch')) this.ui.chatBox?.collapse(true);
     this.weapons.attach(this.player, () => this.player.char.appearance, () => ({ anim: this.player.st }));
     this.minimap = new TdMinimap(this.groundMini);
     this.zone = null;
@@ -424,9 +429,24 @@ export class TopDownScene extends Phaser.Scene {
         const t = makeText(this, 0, 1, '!', { fontSize: '9px', color: '#ffe082' }).setOrigin(0.5);
         const q = this.add.container(n.x, y0, [g, t]).setDepth(n.y + 3);
         this.tweens.add({ targets: q, y: y0 - 4, duration: 650, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
+        this.questMark = { q, g, t }; this.updateQuestMark();
       }
       return { ...n, icon: NPC_ICON[n.id], spr, line: 0 };
     });
+  }
+
+  /** เครื่องหมายเหนือผู้ใหญ่ชัย: ? = มีเควสส่งได้ · ! = มีเควสใหม่ให้รับ · ไม่มี = ซ่อน */
+  updateQuestMark() {
+    const m = this.questMark, c = this.player?.char;
+    if (!m || !m.q.active || !c?.quests) return;
+    const st = QUESTS.map((q) => qState(c, q));
+    const kind = st.includes('ready') ? 'ready' : st.includes('open') ? 'open' : null;
+    if (m.kind === kind) return;
+    m.kind = kind;
+    m.q.setVisible(!!kind);
+    if (!kind) return;
+    m.g.clear().fillStyle(kind === 'ready' ? 0x1e5a2a : 0x5a1611, 1).fillCircle(0, 0, 6).lineStyle(1.5, 0xf4d03f).strokeCircle(0, 0, 6);
+    m.t.setText(kind === 'ready' ? '?' : '!');
   }
 
   /** ป้ายชื่อ NPC: กรอบรักดำขอบทอง · บรรทัดบน = หน้าที่ (ไอคอน) · บรรทัดล่าง = ชื่อ */
@@ -895,6 +915,40 @@ export class TopDownScene extends Phaser.Scene {
     this.ui.toast(on ? `⚡ Auto: เปิด — ตีผี${only ? `ที่เลือก ${this.autoCount(only)} ชนิด` : 'ทุกตัว'}ในหน้าจอ + ร่ายสกิลในแถบ 1–0 (เดิน/คลิกพื้นเพื่อพักชั่วคราว)` : 'Auto: ปิด', on ? 'ok' : '', 2200);
   }
 
+  /** ฟองคำพูดเหนือหัว (แชททั่วไป) · อีโมจิล้วน = ฟองอีโมจิใหญ่ */
+  chatBubble(id, text) {
+    if (this.settings?.chatBubble === false) return;
+    const spr = id === this.net?.selfId ? this.player : this.remotes.get(id)?.spr;
+    if (!spr || spr.visible === false) return;
+    this.bubbles ||= new Map();
+    this.bubbles.get(spr)?.destroy();
+    const big = emojiOnly(text);
+    const t = String(text).replace(/\[\[([a-z0-9_#-]+?)(?:\+(\d{1,2}))?\]\]/gi, (a, iid, e) => `[${ITEMS[iid]?.nameTh || iid}${e ? ` +${e}` : ''}]`);
+    const shown = t.length > 60 ? `${t.slice(0, 58)}…` : t;
+    const txt = makeText(this, 0, 0, shown, { fontSize: big ? '16px' : '7px', color: '#2a1a0a', align: 'center', wordWrap: { width: 110, useAdvancedWrap: true } }).setOrigin(0.5, 1);
+    if (txt.setStroke) txt.setStroke('#fff8e7', 0);
+    const w = Math.max(18, txt.width + 10), h = txt.height + 6;
+    const g = this.add.graphics();
+    g.fillStyle(0xfff8e7, 0.96).lineStyle(1, 0x8a6a2a, 1);
+    g.fillRoundedRect(-w / 2, -h, w, h, 5).strokeRoundedRect(-w / 2, -h, w, h, 5);
+    g.fillTriangle(-4, -0.5, 4, -0.5, 0, 5).lineBetween(-4, 0, 0, 5).lineBetween(4, 0, 0, 5);
+    txt.setPosition(0, -3);
+    const c = this.add.container(spr.x, spr.y, [g, txt]).setDepth(99998).setAlpha(0).setScale(0.85);
+    this.tweens.add({ targets: c, alpha: 1, scale: 1, duration: 160, ease: 'Back.Out' });
+    const life = 3500 + Math.min(4000, shown.length * 70);
+    const b = { c, spr, until: this.time.now + life, destroy: () => { c.destroy(); if (this.bubbles.get(spr) === b) this.bubbles.delete(spr); } };
+    this.bubbles.set(spr, b);
+  }
+  updateBubbles(time) {
+    if (!this.bubbles?.size) return;
+    for (const b of [...this.bubbles.values()]) {
+      if (b.fading) continue;
+      if (!b.spr.active || time > b.until) { b.fading = true; this.tweens.add({ targets: b.c, alpha: 0, duration: 250, onComplete: () => b.destroy() }); continue; }
+      const top = b.spr.y - b.spr.displayHeight - (b.spr === this.player ? (this.titleTag?.visible ? 20 : 12) : 20);
+      b.c.setPosition(b.spr.x, top);
+    }
+  }
+
   /** ป้ายชื่อตัวเอง (มีฉายาอยู่บรรทัดบน) */
   refreshNameTag() {
     const c = this.player?.char; if (!c || !this.nameTag) return;
@@ -1210,6 +1264,7 @@ export class TopDownScene extends Phaser.Scene {
     this.skills?.autoTick(time);
     this.social?.update(time);
     if (time > (this.tagAt || 0)) { this.tagAt = time + 500; this.refreshNameTag(); }
+    this.updateBubbles(time);
     this.life?.update(time, dt);
     this.autoPotion(time);
     // NPC หันมามองเมื่อเราเดินเข้าใกล้ (มีภาพ 8 ทิศ) · ห่างออกไปแล้วหันกลับหน้าตรง
