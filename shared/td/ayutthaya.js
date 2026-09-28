@@ -140,7 +140,7 @@ function buildTown() {
   // === พระราชวังหลวง (เหนือ) ===
   P('env/b_thronehall', 60, 22, { foot: [8, 4], scale: 1.45, alt: 'env/b_viharn', altScale: 1.45, label: 'พระที่นั่งสรรเพชญ์ปราสาท', glow: [-50, 100, 0xffe1a0, 0.8] });
   P('env/b_palacegate_front', 60, 30, { foot: [6, 2], scale: 1.2, alt: 'env/b_palacegate3', altScale: 0.95, label: 'ประตูพระราชวัง', glow: [-40, 60, 0xffe1a0, 0.6] });
-  for (const x of [49, 52, 55, 65, 68, 71]) P('env/p_brickwall', x, 30, { foot: [3, 1], scale: 1.1, alt: 'td_ruin' });   // กำแพงแก้วแนวหน้าวัง
+  for (const x of [48.15, 51.15, 54.15, 65.85, 68.85, 71.85]) P('env/p_brickwall', x, 30, { foot: [3, 1], scale: 48 / 42, alt: 'td_ruin' });   // กำแพงแก้วหน้าวัง ต่อชิดประตูเป็นแนวเดียว
   P('env/b_pavilion', 51, 21, { foot: [4, 2], scale: 0.65, glow: [-20, 40, 0xffe1a0, 0.5] }); P('env/b_pavilion', 69, 21, { foot: [4, 2], scale: 0.65, flip: true, glow: [-20, 40, 0xffe1a0, 0.5] });
   for (const x of [51, 55, 65, 69]) { small('p_banner', x, 33, { alt: 'env/p_lantern' }); }
   for (const x of [49, 71]) { small('p_lion', x, 27, { scale: 1.3, flip: x > 60 }); tree(x, 18, 'pink', 1); }
@@ -217,9 +217,9 @@ function buildTown() {
   for (const [x, y] of [[57, 62], [62, 62], [57, 69], [62, 69]]) small('p_lanternpole', x, y, { glow: LAMP, alt: 'env/p_lantern' });
   reserve(43, 60, 77, 72);
   // ประตูใต้
-  small('p_lion', 56, 87, { scale: 1.2 }); small('p_lion', 63, 87, { scale: 1.2, flip: true });
-  small('p_torch', 56, 85, { glow: TORCH }); small('p_torch', 63, 85, { glow: TORCH });
-  P('env/p_board', 66, 83, { foot: [2, 1], scale: 0.9, alt: 'bounty_board', altScale: 1, label: 'ป้ายประกาศค่าหัว' });
+  P('env/b_palacegate_front', 60, 90.6, { foot: [0, 0], scale: 1.35, alt: 'env/p_arch', altScale: 2, label: 'ประตูเมืองใต้', glow: [-50, 80, 0xffe1a0, 0.7] });   // ซุ้มประตูเมือง ฝังในกำแพง ทางเดินตรงเข้าประตู
+  small('p_torch', 55, 83, { glow: TORCH }); small('p_torch', 65, 83, { glow: TORCH });
+  P('env/p_board', 69, 82, { foot: [2, 1], scale: 0.9, alt: 'bounty_board', altScale: 1, label: 'ป้ายประกาศค่าหัว' });
   small('p_bench', 53, 83); small('p_well2', 53, 81, { alt: 'env/p_well' });
   reserve(51, 80, 68, 92);
   // ประตูตะวันตก/ตะวันออก
@@ -263,7 +263,7 @@ function buildTown() {
   const mark = (cx, cy, rx, ry) => { for (let y = cy - ry; y <= cy; y++) for (let x = cx - rx; x <= cx + rx; x++) if (inMap(x, y)) busy[y][x] = true; };
   for (const p of props) { const [fw, fh] = p.foot || [1, 1], tx = Math.round(p.x / TILE), ty = Math.round(p.y / TILE); if (fw >= 2) mark(tx, ty + 1, Math.ceil(fw / 2) + 1, fh + 2); else mark(tx, ty, fw ? 1 : 0, fw ? 1 : 0); }
   mark(60, 36, 11, 6);
-  mark(33, 36, 12, 22); mark(60, 61, 12, 22);                                         // ลานวัดไชยฯ · ลานน้ำพุ                                                              // ลานหน้าประตูวังโล่ง
+  mark(33, 36, 12, 22); mark(60, 61, 12, 22); mark(60, 90, 8, 9);                                         // ลานวัดไชยฯ · ลานน้ำพุ                                                              // ลานหน้าประตูวังโล่ง
   for (const [x, y] of [[52, 68], [64, 56], [95, 62], [68, 68], [28, 57], [38, 40], [30, 44], [34, 57], [44, 57], [55, 57]]) mark(x, y + 2, 3, 5);
   const open = (x0, y0, x1, y1) => { for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) if (!inMap(x, y) || busy[y][x] || !isIsland(x, y)) return false; return true; };
   for (let y = 12; y <= 90; y += 2) for (let x = 16; x <= 104; x += 2) {
