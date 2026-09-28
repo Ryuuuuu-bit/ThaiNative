@@ -10,9 +10,9 @@ import { GEAR_ART } from './gear_art.js';
 export const GEAR_TIERS = [1, 2, 4, 6, 8, 10, 12, 14, 16, 18, 20, 22, 24, 26, 28, 30];
 export const SHOP_MAX_LV = 20;
 /** ขั้นแมพต่างแดน (ต่อจาก Lv.30): ป่าหิมพานต์ 35–50 · นาคพิภพ 55–75 · นรกภูมิ 80–95 */
-export const HIGH_TIERS = [35, 40, 45, 50, 55, 60, 65, 70, 75, 80, 85, 90, 95];
-export const HIGH_PART_TIERS = [35, 45, 55, 65, 75, 85, 95];
-const HIGH_WORD = ['กินนร', 'คชสีห์', 'หัสดีลิงค์', 'ไกรสร', 'นาคพราย', 'มัจฉาทอง', 'เกล็ดนาค', 'มณีนาคา', 'อนันตนาค', 'นิรยบาล', 'ต้นงิ้ว', 'ยมทูต', 'ยมราช'];
+export const HIGH_TIERS = [35, 40, 45, 50, 55, 60, 65, 70, 75, 80, 85, 90, 95, 100, 105, 110, 115, 120, 125, 130, 135, 140, 145, 150];
+export const HIGH_PART_TIERS = [35, 45, 55, 65, 75, 85, 95, 105, 115, 125, 135, 145];
+const HIGH_WORD = ['กินนร', 'คชสีห์', 'หัสดีลิงค์', 'ไกรสร', 'นาคพราย', 'มัจฉาทอง', 'เกล็ดนาค', 'มณีนาคา', 'อนันตนาค', 'นิรยบาล', 'ต้นงิ้ว', 'ยมทูต', 'ยมราช', 'เทวดา', 'ดาวดึงส์', 'ไอยราวัณ', 'ปาริชาติ', 'อินทรา', 'ราหู', 'สุเมรุ', 'ครุฑราช', 'วชิระ', 'พรหมา', 'จักรวาล'];
 const HIGH_NOUN = { swordman: ['ดาบ', 'เกราะ', 'ตะกรุด'], mage: ['คทา', 'ชุดอาคม', 'จี้ยันต์'], archer: ['ธนู', 'ชุดพราน', 'สร้อย'], boxer: ['สนับมือ', 'ชุดมวย', 'ประเจียด'], healer: ['ไม้เท้าโอสถ', 'ชุดหมอยา', 'ตลับยา'] };          // ครูอาชีพขายถึง Lv.20 · สูงกว่านั้นต้องล่า
 
 const NAMES = {
@@ -82,7 +82,7 @@ function weaponBonus(job, lv, leg) {
   if (job === 'swordman') return { atk: R((6 + lv * 2.9) * m), ...(lv >= 6 ? { crit: +(0.01 * F(lv / 6) + (leg ? 0.03 : 0)).toFixed(2) } : {}), ...(leg ? { STR: 6 } : {}) };
   if (job === 'mage') return { matk: R((8 + lv * 3.1) * m), mp: R((10 + lv * 4) * m), ...(lv >= 8 ? { INT: F(lv / 8) + (leg ? 5 : 0) } : {}) };
   if (job === 'archer') return { atk: R((5 + lv * 2.7) * m), DEX: 1 + F(lv / 5) + (leg ? 5 : 0), ...(leg ? { crit: 0.05 } : {}) };
-  if (job === 'healer') return { matk: R((7 + lv * 2.8) * m), mp: R((10 + lv * 3.5) * m), hp: R((8 + lv * 3) * m), ...(lv >= 8 ? { VIT: F(lv / 8) + (leg ? 5 : 0) } : {}) };
+  if (job === 'healer') return { matk: R((7 + lv * 2.6) * m), mp: R((10 + lv * 3.5) * m), hp: R((8 + lv * 3) * m), healMul: +((0.05 + lv * 0.004) * m).toFixed(3), ...(lv >= 8 ? { VIT: F(lv / 8) + (leg ? 5 : 0) } : {}) };   // หมอยา: พลังรักษาเป็นค่าหลัก
   return { atk: R((5 + lv * 2.5) * m), STR: 1 + F(lv / 6) + (leg ? 5 : 0), crit: +(0.01 + F(lv / 10) * 0.01 + (leg ? 0.03 : 0)).toFixed(2) };
 }
 function armorBonus(job, lv) {
@@ -90,7 +90,7 @@ function armorBonus(job, lv) {
   if (job === 'swordman') return { def: R(def * 1.1), hp: R(hp * 1.3), ...(lv >= 6 ? { VIT: F(lv / 6) } : {}) };
   if (job === 'mage') return { def: R(def * 0.7), hp: R(hp * 0.8), mp: R(15 + lv * 5), matk: R(lv * 0.8) };
   if (job === 'archer') return { def: R(def * 0.85), hp: R(hp), DEX: 1 + F(lv / 6) };
-  if (job === 'healer') return { def: R(def * 0.8), hp: R(hp * 1.05), mp: R(10 + lv * 4), ...(lv >= 6 ? { INT: F(lv / 6) } : {}) };
+  if (job === 'healer') return { def: R(def * 0.85), hp: R(hp * 1.1), mp: R(10 + lv * 4), healMul: +(0.02 + lv * 0.0015).toFixed(3), ...(lv >= 6 ? { INT: F(lv / 6) } : {}) };
   return { def: R(def * 0.9), hp: R(hp * 1.15), STR: 1 + F(lv / 6) };
 }
 function accBonus(job, lv, leg) {
@@ -98,7 +98,7 @@ function accBonus(job, lv, leg) {
   if (job === 'swordman') return { STR: R((1 + lv / 4) * m), def: R((1 + lv / 5) * m), ...(lv >= 6 ? { CRI: R(lv / 6 * m) } : {}) };
   if (job === 'mage') return { INT: R((1 + lv / 4) * m), mp: R((10 + lv * 3) * m), ...(lv >= 4 ? { matk: R(lv * 0.5 * m) } : {}) };
   if (job === 'archer') return { DEX: R((1 + lv / 4) * m), ...(lv >= 6 ? { CRI: R(lv / 6 * m) } : {}), ...(lv >= 10 ? { crit: +(0.005 * F(lv / 5) * m).toFixed(3) } : {}) };
-  if (job === 'healer') return { INT: R((1 + lv / 5) * m), VIT: R((1 + lv / 6) * m), mp: R((8 + lv * 2.5) * m) };
+  if (job === 'healer') return { INT: R((1 + lv / 5) * m), VIT: R((1 + lv / 6) * m), mp: R((8 + lv * 2.5) * m), healMul: +((0.02 + lv * 0.002) * m).toFixed(3) };
   return { STR: R((1 + lv / 5) * m), VIT: R((1 + lv / 5) * m), hp: R((10 + lv * 4) * m) };
 }
 
@@ -121,14 +121,14 @@ function partBonus(slot, job, lv) {
     const b = { def: R(1 + lv * 0.45), hp: R(10 + lv * 4) };
     if (job === 'swordman') return { ...b, hp: R(b.hp * 1.2), ...(lv >= 8 ? { VIT: F(lv / 8) } : {}) };
     if (job === 'mage') return { def: R(b.def * 0.7), mp: R(10 + lv * 3), ...(lv >= 8 ? { INT: F(lv / 8) } : {}) };
-    if (job === 'healer') return { def: R(b.def * 0.8), hp: b.hp, mp: R(8 + lv * 2), ...(lv >= 8 ? { INT: F(lv / 8) } : {}) };
+    if (job === 'healer') return { def: R(b.def * 0.8), hp: b.hp, mp: R(8 + lv * 2), healMul: +(0.01 + lv * 0.001).toFixed(3), ...(lv >= 8 ? { INT: F(lv / 8) } : {}) };
     if (job === 'archer') return { ...b, ...(lv >= 4 ? { DEX: F(lv / 6) + 1 } : {}) };
     return { ...b, ...(lv >= 4 ? { STR: F(lv / 6) + 1 } : {}) };
   }
   if (slot === 'gloves') {
     if (job === 'swordman') return { atk: R(2 + lv * 0.9), acc: R(1 + lv / 4) };
     if (job === 'mage') return { matk: R(2 + lv * 1.0), ...(lv >= 8 ? { INT: F(lv / 8) } : {}) };
-    if (job === 'healer') return { matk: R(2 + lv * 0.8), hp: R(5 + lv * 2) };
+    if (job === 'healer') return { matk: R(2 + lv * 0.8), hp: R(5 + lv * 2), healMul: +(0.01 + lv * 0.001).toFixed(3) };
     if (job === 'archer') return { atk: R(2 + lv * 0.8), ...(lv >= 8 ? { crit: +(0.01 * F(lv / 8)).toFixed(2) } : {}) };
     return { atk: R(2 + lv * 0.85), ...(lv >= 8 ? { crit: +(0.01 * F(lv / 8)).toFixed(2) } : {}) };
   }
@@ -188,12 +188,29 @@ function build() {
   }
   return out;
 }
-export const GEAR = build();
+/** ---- อุปกรณ์ขอบแดง "ชุดสุริยคราส" (บอสโลกพระราหู · หลอมจากศิลาราหู / ดรอปตามอันดับ) Lv.140 (โบนัสขั้น Lv.150) ---- */
+const RED_NAMES = {
+  swordman: ['ดาบคราสสุริยา', 'ตะกรุดราหูกลืนตะวัน'], mage: ['คทาจันทร์ดับ', 'ลูกแก้วคราสเงา'], archer: ['ธนูราหูอมจันทร์', 'ขนนกราหูดำ'],
+  boxer: ['ประเจียดราหูกลืนฟ้า', 'มงคลเมฆคราส'], healer: ['ไม้เท้าอมฤตจันทร์', 'จี้จันทร์เลือด'],
+};
+function buildRed(out) {
+  for (const [job, [wn, cn]] of Object.entries(RED_NAMES)) {
+    const k = JOB_KEY[job], [iw, , ic] = ICON[job];
+    const art = (code) => (out[`g_${k}_${code}leg`] ? `g_${k}_${code}leg` : `g_${k}_${code}16`);   // จุดจับสำรอง (ถ้าภาพของตัวเองยังไม่มี grip)
+    const wb = weaponBonus(job, 150, true), cb = accBonus(job, 150, true);
+    out[`g_${k}_wred`] = { lv: 140, job, tier: 30, red: true, sell: 20000, nameTh: `☾ ${wn}`, type: 'weapon', icon: iw, wtype: WTYPE[job], bonus: { ...wb, critDmg: +((wb.critDmg || 0) + 0.15).toFixed(2) }, ...(GEAR_ART[`g_${k}_wred`]?.grip ? GEAR_ART[`g_${k}_wred`] : GEAR_ART[art('w')] || {}) };
+    out[`g_${k}_cred`] = { lv: 140, job, tier: 30, red: true, sell: 20000, nameTh: `☾ ${cn}`, type: 'accessory', icon: ic, bonus: { ...cb, hpMul: +((cb.hpMul || 0) + 0.06).toFixed(2) } };
+  }
+  return out;
+}
+export const GEAR = buildRed(build());
+/** อุปกรณ์ขอบแดง (ชุดสุริยคราส) */
+export const RED_GEAR = Object.keys(GEAR).filter((id) => GEAR[id].red);
 export const GEAR_IDS = Object.keys(GEAR);
 export const LEGEND_IDS = GEAR_IDS.filter((id) => GEAR[id].legend);
 
 /** รายการขายของครูแต่ละอาชีพ (เรียงตามเลเวล) */
-export const gearShopStock = (job) => GEAR_IDS.filter((id) => GEAR[id].job === job && !GEAR[id].drop && !GEAR[id].legend)
+export const gearShopStock = (job) => GEAR_IDS.filter((id) => GEAR[id].job === job && !GEAR[id].drop && !GEAR[id].legend && !GEAR[id].red)
   .sort((a, b) => GEAR[a].lv - GEAR[b].lv || GEAR_ORDER.indexOf(GEAR[a].type) - GEAR_ORDER.indexOf(GEAR[b].type));
 const GEAR_ORDER = ['weapon', 'helm', 'armor', 'gloves', 'boots', 'belt', 'accessory'];
 
@@ -201,8 +218,8 @@ const GEAR_ORDER = ['weapon', 'helm', 'armor', 'gloves', 'boots', 'belt', 'acces
 export function rollGearDrop(monLevel, dropMul = 1, rnd = Math.random) {
   if (rnd() > 0.02 * dropMul) return null;                       // 2% ต่อตัว (ของมีค่าสุ่มจาก affixes.js)
   // ผีดรอปได้ทั้งของร้าน (มักมีค่าสุ่มติดมา) และของดรอปล้วน · ไม่รวมของตำนาน
-  const L = Math.min(monLevel, 97);                              // บอส Lv.99 (+6) ยังดรอปของขั้นสูงสุด Lv.95 ได้
-  const pool = GEAR_IDS.filter((id) => !GEAR[id].legend && GEAR[id].lv >= L - 4 && GEAR[id].lv <= L + 2);
+  const L = Math.min(monLevel, 148);                              // บอส Lv.99 (+6) ยังดรอปของขั้นสูงสุด Lv.95 ได้
+  const pool = GEAR_IDS.filter((id) => !GEAR[id].legend && !GEAR[id].red && GEAR[id].lv >= L - 4 && GEAR[id].lv <= L + 2);
   return pool.length ? pool[F(rnd() * pool.length)] : null;
 }
 

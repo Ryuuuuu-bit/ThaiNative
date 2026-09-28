@@ -37,6 +37,7 @@ export const STAT = {
   hpMul:    { ic: '❤️', th: 'HP', f: (v) => pct(v) },
   mpMul:    { ic: '💧', th: 'MP', f: (v) => pct(v) },
   flaskPct: { ic: '🧪', th: 'ขวดยาฟื้นเพิ่ม', f: (v) => `${v}%` },
+  healMul:  { ic: '💚', th: 'พลังรักษา', f: (v) => pct(v, 1) },
   expMul:   { ic: '📘', th: 'EXP', f: (v) => pct(v) },
   goldMul:  { ic: '🪙', th: 'เงิน', f: (v) => pct(v) },
   dropMul:  { ic: '🎁', th: 'โอกาสดรอป', f: (v) => pct(v) },

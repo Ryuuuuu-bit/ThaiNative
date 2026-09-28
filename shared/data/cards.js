@@ -60,7 +60,19 @@ const DEFS = {
   pret_khem:       { slot: 'accessory', bonus: {}, econ: { exp: 8 },          flavor: 'หิวกระหายความรู้ชั่วกัลป์' },
   phi_ton_ngiw:    { slot: 'armor',     bonus: { def: 20, hp: 260, STR: 2 },  flavor: 'หนามเหล็กต้นงิ้วสะท้อนกลับ' },
   yommathut:       { slot: 'accessory', bonus: {}, econ: { drop: 12, gold: 10 }, flavor: 'บ่วงบาศคล้องของมีค่า' },
+  rahu_eclipse:    { slot: 'weapon',    bonus: { STR: 6, INT: 6, DEX: 6, patkMul: 0.12, matkMul: 0.12, critDmg: 0.2 }, flavor: 'จันทร์ที่ถูกกลืนยังเรืองแสงในมือผู้ปิดฉาก (การ์ด MVP บอสโลก)' },
+  // ---- Lv.99–150 ----
+  khon_thanpha:    { slot: 'accessory', bonus: { INT: 6, mpMul: 0.08 },      flavor: 'เสียงพิณสวรรค์ปลุกปัญญา' },
+  kinnaree_ngao:   { slot: 'accessory', bonus: { DEX: 6, eva: 10 },          flavor: 'ปีกเงาจันทรคราส' },
+  thep_asura:      { slot: 'weapon',    bonus: { atk: 42, STR: 4 },          flavor: 'กระบองเพชรอสูรกบฏ' },
+  yak_thawarn:     { slot: 'armor',     bonus: { def: 28, hp: 420 },          flavor: 'ประตูสวรรค์ไม่เคยแตก' },
+  krut_dam:        { slot: 'weapon',    bonus: { crit: 0.05, critDmg: 0.2 }, flavor: 'กรงเล็บครุฑดำ' },
+  nak_sumeru:      { slot: 'armor',     bonus: { VIT: 8, hpMul: 0.1 },        flavor: 'เกล็ดหินพันเขา' },
+  asura_fire:      { slot: 'weapon',    bonus: { matk: 48, INT: 4 },          flavor: 'ไฟกัลป์เผาจักรวาล' },
+  rakkhasa:        { slot: 'accessory', bonus: {}, econ: { exp: 10, drop: 8 }, flavor: 'ทัพรากษสไม่เคยกลับมือเปล่า' },
   phaya_yom:       { slot: 'weapon',    bonus: { STR: 5, INT: 5, patkMul: 0.14, matkMul: 0.14 }, flavor: 'คำพิพากษาแห่งยมโลก' },
+  phra_rahu:       { slot: 'armor',     bonus: { VIT: 8, def: 22, hpMul: 0.15 }, flavor: 'เงาที่กลืนดวงจันทร์' },
+  phaya_mara:      { slot: 'weapon',    bonus: { STR: 7, INT: 7, patkMul: 0.18, matkMul: 0.18, crit: 0.03 }, flavor: 'มารผจญแห่งจักรวาล' },
 };
 
 /** รายการการ์ดทั้งหมด (เรียงตามเลเวลผี) */

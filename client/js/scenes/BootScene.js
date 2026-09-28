@@ -6,7 +6,7 @@ import { ITEMS } from '/shared/data/items.js';
 import { generateAll, bakeRigMonster } from '../gfx/SpriteFactory.js';
 import { MONSTER_RIG, tintedCopy, fitHeight } from '../gfx/Rig.js';
 import { MONSTERS } from '/shared/data/monsters.js';
-import { ICONS } from '../systems/util.js';
+import { ICONS, watchEmoji } from '../systems/util.js';
 import { showAuth } from '../systems/AuthScreen.js';
 
 export class BootScene extends Phaser.Scene {
@@ -20,6 +20,7 @@ export class BootScene extends Phaser.Scene {
     const manifest = this.cache.json.get('manifest') || {};
     const bases = manifest.monsterBases || {};
     Object.assign(ICONS, manifest.icons || {});
+    watchEmoji();                                                   // อีโมจิบน HUD → ไอคอนพิกเซล
     const entries = [
       // ผี/บอสที่มีภาพต้นฉบับ → ใช้หุ่นตัดต่อ (Rig) แทน spritesheet เก่า
       ...Object.entries(manifest.monsters || {}).filter(([id]) => !bases[id]).map(([id, e]) => ({ ...e, key: `mon_${id}`, monsterId: id })),
@@ -32,6 +33,11 @@ export class BootScene extends Phaser.Scene {
     // ฉากเมือง: บ้านเรือนไทย วัด ศาลา แผงตลาด ฉากหลัง
     Object.entries(manifest.env || {}).forEach(([k, file]) => this.load.image(k, file));
     Object.entries(manifest.icons || {}).filter(([k]) => /^it_(pla_|kung|junk|herb_|rice_)/.test(k) || ['weapon', 'costume'].includes(ITEMS[k.slice(3)]?.type)).forEach(([k, file]) => this.load.image(`ico_${k}`, file));
+    // อาวุธที่ไม่มีไอคอนของตัวเองแต่ยืมภาพ (art) เช่น ไม้เท้าเถาบอระเพ็ด · ชุดสุริยคราส → โหลดเป็น ico_it_<id> ให้ถือในมือได้
+    for (const [id, it] of Object.entries(ITEMS)) {
+      if (it.type !== 'weapon' || manifest.icons?.[`it_${id}`] || !it.art) continue;
+      const f = manifest.icons?.[`it_${it.art}`]; if (f) this.load.image(`ico_it_${id}`, f);
+    }
     Object.entries(manifest.players || {}).forEach(([k, file]) => this.load.image(`pbase_${k}`, file));
 
     this.load.once('complete', () => {

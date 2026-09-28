@@ -65,7 +65,7 @@ function build() {
 
 /** อุปกรณ์ที่สุ่มดรอปจากผีตามเลเวล (gear.js rollGearDrop: ผีเลเวล L ดรอปของ lv ∈ [L−4, L+2]) */
 function gearDrop(id) {
-  const g = GEAR[id]; if (!g || g.legend || !g.lv) return [];
+  const g = GEAR[id]; if (!g || g.legend || g.red || !g.lv) return [];
   const lo = Math.max(1, g.lv - 2), hi = g.lv + 4, W = monWhere();
   const mons = Object.entries(MONSTERS).filter(([k, m]) => W[k] && !m.boss && !m.nightOnly && m.level >= lo && m.level <= hi).sort((a, b) => a[1].level - b[1].level);
   if (!mons.length) return [];

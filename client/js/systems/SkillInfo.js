@@ -33,11 +33,11 @@ export function skillCalcHtml(sk, d, { lv = 1, next = null } = {}) {
     rows.push(`<b>คริติคอล:</b> โอกาส ${pct(d.critRate || 0)} → ดาเมจ × ${(d.critDmg || 1.5).toFixed(2)}`);
   }
   if (sk.hmult) {
-    const h = d.matk * sk.hmult;
+    const hp = d.healPow || 1, h = d.matk * hp * sk.hmult;
     const extra = sk.type === 'tether' ? ` ทุก ${(sk.tick / 1000).toFixed(1)} วิ นาน ${(sk.duration / 1000).toFixed(0)} วิ (ใกล้ ≤${sk.near}px ×${sk.nearMul})`
       : sk.type === 'seed' ? ` หลัง ${(sk.delay / 1000).toFixed(0)} วิ หรือทันทีเมื่อ HP ต่ำกว่า ${pct(sk.lowHp)}`
       : sk.type === 'bounce' ? ` ต่อคน (เด้ง ${sk.bounces} คน)` : sk.perHit ? ` ต่อครั้ง +${pct(sk.perHit)}/ผีที่โดน (สูงสุด +${pct(sk.perMax)})` : '';
-    rows.push(`<b>ฟื้นเลือดเพื่อน:</b> MATK ${n0(d.matk)} × ${pct(sk.hmult)} = <em>${n0(h)}</em>${extra}`);
+    rows.push(`<b>ฟื้นเลือดเพื่อน:</b> MATK ${n0(d.matk)}${hp > 1 ? ` × พลังรักษา ${pct(hp)}` : ''} × ${pct(sk.hmult)} = <em>${n0(h)}</em>${extra}`);
   }
   if (sk.heal && typeof sk.heal === 'number') rows.push(`<b>ฟื้น HP:</b> ${pct(sk.heal)} ของ HP สูงสุด${sk.party ? ' (ทุกคนในปาร์ตี้ในรัศมี)' : ''}${sk.mpHeal ? ` · MP ${pct(sk.mpHeal)}` : ''}`);
   if (sk.buff) {

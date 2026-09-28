@@ -18,7 +18,7 @@ import { FLASK_SLOTS } from '../shared/data/slots.js';
 import { ITEMS } from '../shared/data/items.js';
 import { NPC_BY_ID } from '../shared/data/npcs.js';
 import { TILE, T, OX } from '../shared/td/ayutthaya.js';
-import { TD_MAPS, TD_MAP_IDS, getMap, validMap, arrivalPoint } from '../shared/td/maps.js';
+import { TD_MAPS, TD_MAP_IDS, EVENT_MAPS, getMap, validMap, arrivalPoint } from '../shared/td/maps.js';
 import { MAX_LEVEL } from '../shared/stats.js';
 
 export const TD_SPAWN = { ...TD_MAPS.ayutthaya.spawn };
@@ -39,6 +39,7 @@ export function setupTD(io, players, opts = {}) {
   const mapOf = (p) => validMap(p.tmap);
   const worlds = Object.fromEntries(TD_MAP_IDS.map((id) => [id, makeWorld(id)]));
   const W = (p) => worlds[mapOf(p)];
+  let wb = null;                       // ตัวควบคุมบอสโลก (server/worldboss.js) · setWb()
   const nightNow = () => isNight(dayPhase(Date.now(), dayMs));
   function timeMods(d) {
     const now = Date.now(), phase = dayPhase(now, dayMs), moon = moonOf(dayIndex(now + dayMs * 0.25, dayMs));
@@ -60,11 +61,12 @@ export function setupTD(io, players, opts = {}) {
 
   // ---------------- ผี ----------------
   const mobs = L.spawns.map((s, i) => spawn({ mid: i, id: s.id, d: MONSTERS[s.id], s, boss: !!(s.boss || MONSTERS[s.id]?.boss) }, true));
+  for (const m of mobs) if (m.s.wb) { m.hp = 0; m.st = 'dead'; m.respawnAt = Infinity; m.wb = m.s.wb; }   // บอสโลก/ผลึก/บริวาร: หลับไว้ ตัวควบคุมอีเวนต์ปลุก
   function spawn(m, quiet = false) {
     let x, y, n = 0;
     do { x = m.s.x + rand(-m.s.r, m.s.r); y = m.s.y + rand(-m.s.r, m.s.r); } while (solidAt(x, y) && ++n < 20);
     Object.assign(m, { x, y, hp: m.d.hp, st: 'wander', target: null, nextThink: 0, wx: null, wy: null, nextAtk: 0, pending: [], dmgBy: new Map(), respawnAt: 0, dir: 0, nextAoe: Date.now() + 4000, aoe: null, stunUntil: 0, poison: null });
-    if (m.boss && !quiet) io.emit('chat', { id: null, name: '👑 บอส', text: `${m.d.nameTh} Lv.${m.d.level} ปรากฏตัวที่${M.ZONES[M.zoneAt(m.x, m.y)]?.nameTh || M.nameTh}${M.realm ? ` (${M.nameTh})` : ''}!` });
+    if (m.boss && !quiet && !m.s.wb) io.emit('chat', { id: null, name: '👑 บอส', text: `${m.d.nameTh} Lv.${m.d.level} ปรากฏตัวที่${M.ZONES[M.zoneAt(m.x, m.y)]?.nameTh || M.nameTh}${M.realm ? ` (${M.nameTh})` : ''}!` });
     return m;
   }
 
@@ -86,12 +88,14 @@ export function setupTD(io, players, opts = {}) {
         const P = m.poison, by = players.get(P.by);
         m.hp -= P.dmg; P.left--; P.next = now + P.every;
         if (by) m.dmgBy.set(by.id, (m.dmgBy.get(by.id) || 0) + P.dmg);
+        if (by && m.wb) wb?.onDmg(m, by, P.dmg);
         io.to(room).emit('td:dmg', { mid: m.mid, by: P.by, hit: true, dot: true, dmg: P.dmg, hp: Math.max(0, Math.round(m.hp)) });
         if (P.left <= 0) m.poison = null;
         if (m.hp <= 0) { if (by && sameMap(by)) kill(m, by); else { m.hp = 1; } continue; }
       }
       // ติดมึน (สกิล): ไม่เดิน ไม่ตี · ท่าตีที่ค้างถูกยกเลิก
       if (now < m.stunUntil) { m.pending = []; continue; }
+      if (m.wb === 'boss' || m.d.passive) continue;                                  // บอสโลก/ผลึก: ตัวควบคุมอีเวนต์เป็นคนสั่ง
       if (d.nightOnly && m.st !== 'chase' && !nightNow()) { m.st = 'dead'; m.hp = 0; m.respawnAt = now + 30000; m.pending = []; m.dmgBy.clear(); continue; }   // ผีกลางคืน: สว่างแล้วหายไป
       // บอส: ท่าวงกว้าง (เตือนวงแดงก่อน AOE_WARN_MS แล้วลงดาเมจทุกคนในวง)
       if (m.boss && m.aoe && now >= m.aoe.at) {
@@ -109,16 +113,17 @@ export function setupTD(io, players, opts = {}) {
         if (sameMap(p) && !p.dead && dist(m, { x: p.tx, y: p.ty }) <= (d.attackRange || 16) + 20) {
           const pd = combatDerived(p.char, p.buffs, now);
           const r = rollDamage(mobAtk(d), { def: pd.def, eva: pd.eva }, d.projectile ? 'magic' : 'physical', 1);
+          if (d.pctDmg && r.hit) r.dmg = Math.max(1, Math.round(p.maxHp * d.pctDmg));   // บริวารราหู: ดูด % HP
           hurtPlayer(p, r.dmg, { hit: r.hit, crit: r.crit, x: Math.round(m.x), force: true, td: true, mid: m.mid });
         }
       }
       // หาเป้า: ผู้เล่นที่ใกล้สุด (ไม่ไล่เข้าเขตเมือง)
-      let best = null, bd = m.boss ? BOSS_AGGRO : AGGRO;
+      let best = null, bd = m.wb ? 9999 : m.boss ? BOSS_AGGRO : AGGRO;
       for (const p of here) { if (p.dead || inTown(p.tx, p.ty)) continue; const dd = dist(m, { x: p.tx, y: p.ty }); if (dd < bd) { bd = dd; best = p; } }
       // บอสไล่ต่อคนเดิมที่กำลังตีอยู่ (ไม่สลับเป้าไปมา) ถ้ายังอยู่ในระยะ
       if (m.boss && m.st === 'chase') { const cur = players.get(m.target); if (cur && !cur.dead && sameMap(cur) && dist(m, { x: cur.tx, y: cur.ty }) < BOSS_LEASH) best = cur; }
       const home = Math.hypot(m.x - m.s.x, m.y - m.s.y);
-      if (best && home < (m.boss ? BOSS_LEASH : LEASH)) { m.st = 'chase'; m.target = best.id; }
+      if (best && (m.wb || home < (m.boss ? BOSS_LEASH : LEASH))) { m.st = 'chase'; m.target = best.id; }
       else if (m.st === 'chase') { m.st = 'wander'; m.target = null; m.wx = m.s.x; m.wy = m.s.y; }
       if (m.boss && m.st !== 'chase' && m.hp < d.hp) { m.hp = Math.min(d.hp, m.hp + d.hp * 0.03 * dt); if (m.hp >= d.hp) m.dmgBy.clear(); }   // ไม่มีใครสู้ → ฟื้นเลือด
       const spd = (d.speed || 40) * 0.9;
@@ -158,6 +163,14 @@ export function setupTD(io, players, opts = {}) {
     if (dist(m, { x: p.tx, y: p.ty }) > range) return;
     const gate = attackGate(p, sk, !!d.combo, now);
     if (!gate) return;
+    if (sk) {                                                                 // ต้องมีการร่ายจริง (skill:cast) · ตีเป้าเดิมได้ไม่เกินจำนวนจังหวะของท่า
+      const t = p.castTok?.[sk];
+      if (!t || now - t.at > 1800 + (skb.hits || 1) * (skb.interval || 0) + (skb.delay || 0) + (skb.duration && skb.type === 'aoe' ? skb.duration : 0)) return;
+      const per = Math.max((skb.hits || 1) * (skb.count || 1), skb.bounces || 1), n = (t.mobs.get(m.mid) || 0) + 1;
+      if (n > per) return;
+      t.mobs.set(m.mid, n);
+      if (sk === 'heal_mortar') p.mortarHits = { at: t.at, n: t.mobs.size };
+    }
     // คูลดาวน์ตีปกติ (server): เร็วกว่าที่ client ตั้งไว้เล็กน้อยเผื่อ lag
     if (!sk) { if (now - (p.tdAtk || 0) < (atk?.cooldown || 500) * 0.7) return; p.tdAtk = now; }
     const spec = attackSpec(p.char, job, sk, gate === 'combo');
@@ -166,6 +179,7 @@ export function setupTD(io, players, opts = {}) {
     if (!r.hit) return io.to(room).emit('td:dmg', { mid: m.mid, by: p.id, hit: false, dmg: 0 });
     m.hp -= r.dmg;
     m.dmgBy.set(p.id, (m.dmgBy.get(p.id) || 0) + r.dmg);
+    if (m.wb) wb?.onDmg(m, p, r.dmg);
     // ผลพิเศษของสกิล: มึน (บอสติดครึ่งเวลา) · พิษ (ต่อเนื่อง ticks ครั้ง ครั้งละ ratio × ดาเมจที่โดน)
     if (spec.effect?.stun && m.hp > 0) m.stunUntil = Math.max(m.stunUntil || 0, now + spec.effect.stun.ms * (m.boss ? 0.5 : 1));
     if (spec.effect?.poison && m.hp > 0) { const P = spec.effect.poison; m.poison = { by: p.id, dmg: Math.max(1, Math.round(r.dmg * P.ratio)), left: P.ticks, every: P.every, next: now + P.every }; }
@@ -183,6 +197,7 @@ export function setupTD(io, players, opts = {}) {
     const assist = [...m.dmgBy.entries()].filter(([id, v]) => id !== killer.id && v >= d.hp * (m.boss ? BOSS_SHARE : 0.15)).map(([id]) => id);
     io.to(room).emit('td:die', { mid: m.mid, killer: killer.id });
     m.aoe = null;
+    if (m.wb) { m.respawnAt = Infinity; wb?.onKill(m, killer); return; }       // บอสโลก: รางวัล/MVP ที่ตัวควบคุมอีเวนต์
     if (m.boss) io.emit('chat', { id: null, name: '👑 บอส', text: `${d.nameTh} ถูกปราบแล้ว! ผู้ปิดฉาก ${killer.name}${assist.length ? ` · ร่วมปราบอีก ${assist.length} คน` : ''} (เกิดใหม่ใน ${Math.round((d.respawnMs || RESPAWN_MS) / 60000)} นาที)` });
     const reward = (p, isKiller) => {
       if (!p?.save) return;
@@ -254,7 +269,7 @@ export function setupTD(io, players, opts = {}) {
     const ok = w.okPos(pos);
     p.tx = ok ? pos.x : w.M.spawn.x; p.ty = ok ? pos.y : w.M.spawn.y; p.tdLast = Date.now();
     p.save.tdPos = { x: Math.round(p.tx), y: Math.round(p.ty) }; p.dirty = true;
-    if (!visited(p).includes(mapId)) visited(p).push(mapId);
+    if (!EVENT_MAPS.has(mapId) && !visited(p).includes(mapId)) visited(p).push(mapId);
     socket.join(w.room);
     socket.to(w.room).emit('td:joined', publicTd(p));
     return w;
@@ -265,6 +280,8 @@ export function setupTD(io, players, opts = {}) {
     p.save.tdMapV = TD_MAP_V;
     for (const id of TD_MAP_IDS) socket.leave(tdRoom(id));
     p.world = 'td'; p.tdir = 'south'; p.tanim = 'idle';
+    if (p.save.deadAt) { const M0 = worlds[validMap(p.save.tdMap)]?.M; if (M0) p.save.tdPos = { ...M0.spawn }; p.save.deadAt = 0; }   // ตายค้างแล้วออกเกม → เกิดที่จุดฟื้น
+    if (EVENT_MAPS.has(validMap(p.save.tdMap)) && !wb?.isOpen()) { p.save.tdMap = p.save.wbFrom?.map || 'ayutthaya'; p.save.tdPos = p.save.wbFrom?.pos || null; }   // ลานอีเวนต์ปิดแล้ว → กลับที่เดิม
     const w = place(socket, p, validMap(p.save.tdMap), p.save.tdPos);
     socket.join('td');
     socket.emit('td:init', { map: w.id, maps: visited(p), x: p.tx, y: p.ty, players: tdPlayers(w.id).filter((q) => q.id !== p.id).map(publicTd) });
@@ -312,13 +329,25 @@ export function setupTD(io, players, opts = {}) {
     if (s.map && s.map !== w.id) return;                                       // แพ็กเก็ตค้างจากแมพเก่า (ระหว่างวาร์ป)
     const nx = Number(s.x), ny = Number(s.y);
     if (!Number.isFinite(nx) || !Number.isFinite(ny)) return;
-    const max = SPEED * dt * 1.6 + 24, dx = nx - p.tx, dy = ny - p.ty, d = Math.hypot(dx, dy);
-    const k = d > max ? max / d : 1, cx = p.tx + dx * k, cy = p.ty + dy * k;
-    if (!w.solidAt(cx, cy - 2)) { p.tx = cx; p.ty = cy; }
-    if (d > max || w.solidAt(cx, cy - 2)) socket.emit('td:correct', { x: Math.round(p.tx), y: Math.round(p.ty) });
+    // งบระยะเดิน: สะสมตามเวลาจริง (เพดาน ~0.6 วิ) · สกิลพุ่ง/กระโดดได้งบพิเศษ → ส่งแพ็กเก็ตถี่/หายไปนานแล้ววาร์ปไม่ได้
+    const el = Math.min(0.6, dt), cap = SPEED * 1.6 * 0.6 + 40 + (now < (p.dashUntil || 0) ? p.dashExtra || 0 : 0);
+    p.mvBudget = Math.min(cap, (p.mvBudget ?? cap) + SPEED * 1.6 * el);
+    const dx = nx - p.tx, dy = ny - p.ty, d = Math.hypot(dx, dy), max = p.mvBudget;
+    const k = d > max ? max / d : 1;
+    // เดินทีละ ~6px ตรวจกำแพงตลอดทาง (กันทะลุกำแพง)
+    let cx = p.tx, cy = p.ty, blocked = false;
+    const steps = Math.max(1, Math.ceil(d * k / 6));
+    for (let i = 1; i <= steps; i++) {
+      const tx = p.tx + dx * k * i / steps, ty = p.ty + dy * k * i / steps;
+      if (w.solidAt(tx, ty - 2)) { blocked = true; break; }
+      cx = tx; cy = ty;
+    }
+    p.mvBudget = Math.max(0, p.mvBudget - Math.hypot(cx - p.tx, cy - p.ty));
+    p.tx = cx; p.ty = cy;
+    if (d > max + 2 || blocked) { if (process.env.DEBUG_MOVE) console.log('[move-correct]', p.name, blocked ? 'blocked' : 'budget', Math.round(d), Math.round(max), Math.round(el * 1000)); socket.emit('td:correct', { x: Math.round(p.tx), y: Math.round(p.ty) }); }
     p.tdir = DIRS.includes(s.dir) ? s.dir : p.tdir;
     p.tanim = ANIMS.includes(s.anim) ? s.anim : 'idle';
-    if (Number.isFinite(+s.mp)) p.save.mp = Math.max(0, Math.min(99999, +s.mp));   // MP ยังเป็นของ client (ร่ายสกิล/ฟื้นเอง) – เก็บไว้เซฟ
+    if (Number.isFinite(+s.mp)) p.save.mp = Math.max(0, Math.min(+s.mp, p.save.mp ?? 0, p.maxMp || 99999));   // MP: client แจ้งได้แค่ ≤ ค่าที่ server นับ
     if (now - (p.tdSaveAt || 0) > 3000) {
       p.tdSaveAt = now; p.save.tdPos = { x: Math.round(p.tx), y: Math.round(p.ty) }; p.save.tdMap = w.id; p.dirty = true;
       // ในเมือง/ค่ายพัก: ขวดยาเติมเต็ม
@@ -330,7 +359,7 @@ export function setupTD(io, players, opts = {}) {
     const p = players.get(socket.id);
     if (!p || p.world !== 'td' || (!p.dead && p.hp > 0)) return;
     const w = W(p);
-    p.dead = false; p.hp = p.maxHp; p.invulnUntil = Date.now() + 2000;
+    p.dead = false; p.hp = p.maxHp; p.invulnUntil = Date.now() + 2000; p.save.deadAt = 0;
     p.tx = w.M.spawn.x; p.ty = w.M.spawn.y; p.save.tdPos = { ...w.M.spawn }; p.hpDirty = true;
     refillFlasks(p.save); queueSync(p);
     socket.emit('td:respawn', { x: p.tx, y: p.ty, hp: Math.round(p.hp), maxHp: p.maxHp });
@@ -360,6 +389,13 @@ export function setupTD(io, players, opts = {}) {
       p.tx = TD_SPAWN.x; p.ty = TD_SPAWN.y; p.tdLast = Date.now(); p.save.tdPos = { ...TD_SPAWN }; p.save.tdMap = 'ayutthaya'; p.dirty = true;
     },
     inTown: (p) => W(p).inTown(p.tx, p.ty),
+    // ---- บอสโลก ----
+    setWb(c) { wb = c; },
+    world: (id) => worlds[id],
+    playersIn: (id) => tdPlayers(id),
+    socketOf: (p) => io.sockets.sockets.get(p.id),
+    /** ย้ายผู้เล่นไปแมพ (ใช้โดยอีเวนต์) */
+    move(p, to, pos, how = 'npc') { const sk = io.sockets.sockets.get(p.id); if (!sk || p.world !== 'td') return false; moveMap(sk, p, to, pos || { ...TD_MAPS[to].spawn }, how); return true; },
     /** GM: วาร์ปไปแมพไหนก็ได้ (ทดสอบ) */
     gmWarp(p, socket, to) {
       if (!TD_MAPS[to] || p.world !== 'td') return false;

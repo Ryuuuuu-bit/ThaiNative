@@ -10,7 +10,8 @@ const TOP = 99985;
 const ADD = () => Phaser.BlendModes.ADD;
 const rand = (a, b) => a + Math.random() * (b - a);
 const dist = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
-export const HEAL_TINT = { heal_vine: 0x6dffa8, heal_pill: 0x9dff6a, heal_seed: 0xffb3d9, heal_tiger: 0xffa040, heal_khwan: 0xffe27a, heal_mortar: 0x7dffb0 };
+export const HEAL_TINT = { heal_vine: 0x6dffa8, heal_pill: 0x9dff6a, heal_seed: 0xffb3d9, heal_tiger: 0xffa040, heal_khwan: 0xffe27a, heal_mortar: 0x7dffb0,
+  heal_mist: 0xa8f0ff, heal_tonic: 0xff9a5a, heal_mother: 0xfff0a0, heal_amrita: 0xfff6c0 };
 const GREEN = 0x6dffa8, GOLD = 0xffd35c, PINK = 0xffb3d9;
 
 /** texture เฉพาะหมอยา */
@@ -287,6 +288,7 @@ export class HealerKit {
         if (local) sys.buff(sk);
         break;
       }
+      case 'heal_amrita':                                     // น้ำอมฤต: ใช้พิธีเดียวกับสู่ขวัญ (สีทองขาว)
       case 'heal_khwan': {                                    // บายศรี + เทียน 8 เล่ม → สายสิญจน์พุ่งไปทุกคน → ลำแสงทอง
         const bs = F.img(cx + o.ux * 16, cy - 2, 'hl_baisri', { add: false, depth: cy + 2 }).setOrigin(0.5, 1).setScale(0.1);
         F.tween({ targets: bs, scale: 0.75, duration: 420, ease: 'Back.easeOut' });

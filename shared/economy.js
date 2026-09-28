@@ -137,9 +137,9 @@ function equip(c, { id, slot: forceSlot = null }) {
     slot = FLASK_SLOTS.find((s) => !c.equipment[s]) || same || 'flask';
   }
   removeItem(c, id);
-  if (c.equipment[slot]) addItem(c, c.equipment[slot]);
+  if (c.equipment[slot]) { const old = c.equipment[slot]; if (ITEMS[old]?.flask) (c.flaskStore ||= {})[old] = c.flaskCh?.[slot] || 0; addItem(c, old); }
   c.equipment[slot] = id;
-  if (it.type === 'flask') { c.flaskCh ||= {}; c.flaskCh[slot] = it.flask.max; }
+  if (it.type === 'flask') { c.flaskCh ||= {}; const st = c.flaskStore?.[id]; c.flaskCh[slot] = Math.min(it.flask.max, st ?? it.flask.max); if (c.flaskStore) delete c.flaskStore[id]; }   // ถอด-ใส่ใหม่ไม่เติมขวด (เติมที่เมือง/ค่าย)
   const changed = syncAppearance(c);
   clampHp(c);
   const style = it.wtype ? ` · แนว${JOBS[c.appearance.job].nameTh}` : '';
@@ -150,7 +150,7 @@ function unequip(c, { slot }) {
   const id = c.equipment[slot];
   if (!id) return NO('');
   c.equipment[slot] = null;
-  if (c.flaskCh && slot in c.flaskCh) c.flaskCh[slot] = 0;
+  if (c.flaskCh && slot in c.flaskCh) { if (ITEMS[id]?.flask) (c.flaskStore ||= {})[id] = c.flaskCh[slot] || 0; c.flaskCh[slot] = 0; }
   addItem(c, id);
   const changed = syncAppearance(c);
   clampHp(c);
@@ -482,6 +482,7 @@ function gather(c, { node }, ctx) {
 }
 function chest(c, a, ctx) {
   const S = ctx.sess;
+  if (ctx.td) return NO('');                                           // หีบสมบัติมีเฉพาะโลกเก่า
   if (ctx.x != null && !mapAt(ctx.x).mon) return NO('');
   const last = S.chestAt ?? ((S.joinAt || 0) - 105000);           // เข้าเกม 15 วิแรกยังไม่มีหีบ
   if (ctx.now - last < 120000) return NO('หีบนี้ว่างเปล่า…');
@@ -570,6 +571,7 @@ function gm(c, { cmd = 'help', a1, a2, rest = '' }, ctx) {
       if (!id) return NO(`ไม่พบไอเทม "${a1}" (ใช้ id เช่น yant_guard, cs_head_naga)`);
       addItem(c, id, Math.min(9999, n(a2, 1))); return OK(`ได้รับ ${ITEMS[id].nameTh} x${Math.min(9999, n(a2, 1))}`, { gm: true });
     }
+    case 'rahu': return OK('', { gm: true, gmRahu: String(a1 || 'open') });   // บอสโลก (server จัดการ)
     case 'sp': c.sp = (c.sp || 0) + n(a1, 10); return OK(`SP → ${c.sp}`, { gm: true });
     case 'stat': c.statPoints = (c.statPoints || 0) + n(a1, 10); return OK(`แต้มสถานะ → ${c.statPoints}`, { gm: true });
     case 'enh': {
@@ -611,7 +613,7 @@ function chargeFlasks(c, n) {
   for (const s of FLASK_SLOTS) { const f = ITEMS[c.equipment?.[s]]?.flask; if (f) c.flaskCh[s] = Math.min(f.max, (c.flaskCh[s] || 0) + n); }
 }
 /** เติมขวดยาเต็ม (กลับเมือง/ฟื้น) */
-export function refillFlasks(c) { chargeFlasks(c, 99); }
+export function refillFlasks(c) { chargeFlasks(c, 99); c.flaskStore = {}; }
 /** ดื่มขวดยาในช่อง */
 function flask(c, { slot }) {
   if (!FLASK_SLOTS.includes(slot)) return NO('ช่องไม่ถูกต้อง');

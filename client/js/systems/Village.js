@@ -206,7 +206,7 @@ export class Village {
       const it = ITEMS[r.out];
       const needs = Object.entries(r.need).map(([id, n]) => {
         const have = count(c, id);
-        return `<span class="${have >= n ? 'ok' : 'miss'}">${itemIcon(id, ITEMS[id].icon)}${esc(ITEMS[id].nameTh)} ${have}/${n}</span>`;
+        return `<span class="${have >= n ? 'ok' : 'miss'}">${itemIcon(id, ITEMS[id].icon, { badge: false })}${esc(ITEMS[id].nameTh)} ${have}/${n}</span>`;
       }).join(' ');
       const can = canCraft(c, r);
       const max = Math.min(...Object.entries(r.need).map(([id, n]) => Math.floor(count(c, id) / n)), r.fee ? Math.floor(c.gold / r.fee) : 99);

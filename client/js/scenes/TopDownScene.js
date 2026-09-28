@@ -27,7 +27,8 @@ import { questState as qState } from '../systems/Inventory.js';
 import { QUESTS } from '/shared/data/village.js';
 import { count } from '../systems/Inventory.js';
 import { TILE, T, SPAWN as TD_SPAWN, isIsland, bakeTileset, bakeProps, OX } from '../topdown/AyutthayaMap.js';
-import { TD_MAPS, getMap, validMap, arrivalPoint } from '/shared/td/maps.js';
+import { TD_MAPS, EVENT_MAPS, getMap, validMap, arrivalPoint } from '/shared/td/maps.js';
+import { WorldBossUI } from '../topdown/WorldBoss.js';
 import { hasDir8 } from '../topdown/Dir8.js';
 import { dirFromVector, stableDir, playDir, registerDir8, texKey } from '../topdown/Dir8.js';
 import { TdSkills } from '../topdown/TdSkills.js';
@@ -141,7 +142,7 @@ export class TopDownScene extends Phaser.Scene {
     this.ui.updateHud();
     this.setupNetwork();
     this.ui.news?.autoOpen();                                         // มีข่าวใหม่ที่ยังไม่อ่าน → เปิดกระดานข่าวให้ครั้งเดียว
-    if (this.econ.server) this.social = new TdSocial(this);           // ปาร์ตี้ · เทรด · เพื่อน · อันดับ · ฉายา (ต้องออนไลน์)
+    if (this.econ.server) { this.social = new TdSocial(this); this.wb = new WorldBossUI(this); this.wb.bind(this.net); }   // บอสโลกพระราหู           // ปาร์ตี้ · เทรด · เพื่อน · อันดับ · ฉายา (ต้องออนไลน์)
     this.ui.toast(this.M.realm ? `${this.M.icon} ${this.M.nameTh} · ${this.M.sub}` : '🏯 ยินดีต้อนรับสู่กรุงศรีอยุธยา · คลิกพื้นเพื่อเดิน คลิกผีเพื่อโจมตี · คลิก NPC เพื่อเปิดร้าน', '', 6000);
     if (!this.econ.server) this.time.addEvent({ delay: 5000, loop: true, callback: () => this.saveSoon() });
     // ฟื้น MP ทุกวินาที (ในเมืองเร็วกว่า) – MP เป็นของ client ทั้งออนไลน์/ออฟไลน์ · HP ออนไลน์ server ฟื้นให้
@@ -252,6 +253,7 @@ export class TopDownScene extends Phaser.Scene {
     yantCircle(this, at.x, at.y, { tint: 0xc39bd3, size: 80, ms: 1100, rise: true });
     this.cameras.main.flash(260, 200, 170, 255);
     if (!this.econ.server) this.saveSoon();
+    this.wb?.onMap();
   }
 
   /** ประตูมิติ: วงแสงหมุน + ป้ายปลายทาง · เดินเข้า = วาร์ป */
@@ -299,7 +301,7 @@ export class TopDownScene extends Phaser.Scene {
     const box = document.querySelector('#warp-list'), panel = document.querySelector('#warp-panel');
     if (!box || !panel) return;
     const lv = this.player.char.level;
-    box.innerHTML = Object.values(TD_MAPS).map((m) => {
+    box.innerHTML = Object.values(TD_MAPS).filter((m) => !EVENT_MAPS.has(m.id)).map((m) => {
       const here = m.id === this.M.id, been = this.visitedMaps.includes(m.id), low = lv < m.reqLv;
       const why = here ? 'อยู่ที่นี่' : low ? `ต้อง Lv.${m.reqLv}` : !been ? 'ยังไม่เคยไป' : '';
       return `<div class="warp-card ${here ? 'here' : why ? 'lock' : ''}"><span class="wc-ic">${uiIcon(`realm_${m.id}`, m.icon)}</span>
@@ -564,6 +566,7 @@ export class TopDownScene extends Phaser.Scene {
     m.on('pointerover', () => { this.hovered = m; document.body.dataset.cursor = 'attack'; });
     m.on('pointerout', () => { if (this.hovered === m) this.hovered = null; delete document.body.dataset.cursor; });
     if (!this.econ.server) m.setPosition(s.x + rand(-s.r, s.r), s.y + rand(-s.r, s.r));
+    if (s.wb) { m.alive = false; m.hp = 0; this.setMobVisible(m, false); }       // บอสโลก/ผลึก/บริวาร: หลับไว้จนกว่า server ปลุก (ไม่กะพริบตอนเข้าลาน)
     return m;
   }
 
@@ -1335,7 +1338,7 @@ export class TopDownScene extends Phaser.Scene {
       if (p.st === 'attack') p.setVelocity(0, 0);
       else if (vx || vy) {
         const len = Math.hypot(vx, vy) || 1;
-        const now = this.time.now, sp = SPEED * (1 + Math.min(0.4, (p.buffs || []).reduce((a, b) => a + (b.until > now && b.buff?.speed || 0), 0)));   // ยาต้มพยัคฆ์เหิน: วิ่งเร็วขึ้น
+        const now = this.time.now, sp = SPEED * (1 + Math.min(0.4, (p.buffs || []).reduce((a, b) => a + (b.until > now && b.buff?.speed || 0), 0))) * (this.wb?.speedMul(p) ?? 1);   // ยาต้มพยัคฆ์เหิน: วิ่งเร็วขึ้น
         p.setVelocity(vx / len * sp, vy / len * sp);
         p.dir = stableDir(vx, vy, p.dir); p.st = 'walk'; this.playerAnim('walk');
       } else { p.setVelocity(0, 0); p.st = 'idle'; this.playerAnim('idle'); }
@@ -1349,6 +1352,7 @@ export class TopDownScene extends Phaser.Scene {
     for (const sh of this.shadows) sh.img.setPosition(sh.obj.x, sh.obj.y + 1).setVisible(sh.obj.visible && sh.obj.alpha > 0.2);
     for (const m of this.mobs) { if (this.econ.server) this.updateMobOnline(m, dt); else this.updateMobLocal(m, time); this.drawMob(m); }
     this.remotes.forEach((r) => r.update(dt));
+    this.wb?.update();
     this.weapons?.update(time);
     this.costumes?.update();
     this.skills?.autoTick(time);

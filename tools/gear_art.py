@@ -9,7 +9,7 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 ICONS = [os.path.join(ROOT, 'client/assets/icons'), os.path.join(ROOT, 'assets_src/pixellab/icons')]
 LEG = {'leg_sword': 'g_sword_wleg', 'leg_staff': 'g_mage_wleg', 'leg_bow': 'g_archer_wleg', 'leg_wrap': 'g_boxer_wleg',
        'leg_acc_sword': 'g_sword_cleg', 'leg_acc_mage': 'g_mage_cleg', 'leg_acc_archer': 'g_archer_cleg', 'leg_acc_boxer': 'g_boxer_cleg'}
-WT = {'sword': 'sword', 'mage': 'staff', 'archer': 'bow', 'boxer': 'wraps'}
+WT = {'sword': 'sword', 'mage': 'staff', 'archer': 'bow', 'boxer': 'wraps', 'healer': 'staff'}
 
 def largest_component(im):
     """เก็บเฉพาะชิ้นที่ใหญ่สุด (กันภาพที่มีของ 2 ชิ้น) แล้ววางกลางภาพ 48px"""
@@ -43,10 +43,44 @@ def grip(im, wt):
     if wt == 'sword':
         gy = y1 - 5; return {'g': [row_cx(im, gy), gy], 's': 0.55, 'r': 0.7}
     if wt == 'staff':
+        up = staff_up(im)
+        if abs(up) > 12:                                        # ไม้เท้าวาดเฉียง → จุดจับตามแนวแกน 62% จากหัว
+            import math
+            pts = [(x, y) for y in range(im.size[1]) for x in range(im.size[0]) if im.load()[x, y][3] > 40]
+            cx = sum(p[0] for p in pts) / len(pts); cy = sum(p[1] for p in pts) / len(pts)
+            a = math.radians(-90 - up)                          # ทิศหัวไม้เท้าในภาพ
+            ux, uy = math.cos(a), math.sin(a)
+            proj = [ (p[0] - cx) * ux + (p[1] - cy) * uy for p in pts ]
+            lo, hi = min(proj), max(proj), 
+            t = hi - (hi - lo) * 0.62
+            gx, gy = round(cx + ux * t), round(cy + uy * t)
+            return {'g': [gx, gy], 's': 0.78, 'ox': 2, 'up': round(up)}
         gy = y0 + int(h * 0.62); return {'g': [row_cx(im, gy), gy], 's': 0.78, 'ox': 2}
     if wt == 'bow':
         gy = y0 + h // 2; return {'g': [row_cx(im, gy), gy], 's': 0.72, 'ox': 4, 'oy': -5}
     return None
+
+def staff_up(im):
+    """มุม (องศา) ที่ต้องหมุนภาพไม้เท้าให้หัวชี้ขึ้นตรง · หัว = ปลายที่มีพิกเซลหนากว่า"""
+    import math
+    a = im.load(); W, H = im.size
+    pts = [(x, y) for y in range(H) for x in range(W) if a[x, y][3] > 40]
+    if len(pts) < 10: return 0
+    cx = sum(p[0] for p in pts) / len(pts); cy = sum(p[1] for p in pts) / len(pts)
+    sxx = sum((p[0] - cx) ** 2 for p in pts); syy = sum((p[1] - cy) ** 2 for p in pts); sxy = sum((p[0] - cx) * (p[1] - cy) for p in pts)
+    th = 0.5 * math.atan2(2 * sxy, sxx - syy)             # แกนหลัก (เรเดียน, y ลง)
+    ux, uy = math.cos(th), math.sin(th)
+    proj = [(p[0] - cx) * ux + (p[1] - cy) * uy for p in pts]
+    lo, hi = min(proj), max(proj), 
+    # ปลายไหนหนากว่า (ในช่วง 30% ปลาย) = หัว
+    L = hi - lo
+    a_mass = sum(1 for v in proj if v > hi - L * 0.3); b_mass = sum(1 for v in proj if v < lo + L * 0.3)
+    if b_mass > a_mass: ux, uy = -ux, -uy
+    head = math.degrees(math.atan2(uy, ux))                # มุมหัวในภาพ
+    up = -90 - head                                        # หมุนเท่านี้ → หัวชี้ขึ้น (-90°)
+    while up > 180: up -= 360
+    while up < -180: up += 360
+    return up
 
 def hexc(c): return '#%02x%02x%02x' % c
 

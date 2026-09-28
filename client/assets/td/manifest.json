@@ -717,11 +717,23 @@
   "hero_female_chaona": {
    "anims": [
     "idle",
-    "walk"
+    "walk",
+    "attack",
+    "slash",
+    "shoot",
+    "cast",
+    "spell",
+    "die"
    ],
    "frames": {
     "idle": 4,
-    "walk": 6
+    "walk": 6,
+    "attack": 6,
+    "slash": 9,
+    "shoot": 9,
+    "cast": 6,
+    "spell": 9,
+    "die": 7
    },
    "frame": 72,
    "scale": 0.667,
@@ -730,11 +742,23 @@
   "hero_female_hunter": {
    "anims": [
     "idle",
-    "walk"
+    "walk",
+    "attack",
+    "slash",
+    "shoot",
+    "cast",
+    "spell",
+    "die"
    ],
    "frames": {
     "idle": 4,
-    "walk": 6
+    "walk": 6,
+    "attack": 6,
+    "slash": 9,
+    "shoot": 9,
+    "cast": 6,
+    "spell": 9,
+    "die": 7
    },
    "frame": 72,
    "scale": 0.667,
@@ -743,11 +767,23 @@
   "hero_female_isan": {
    "anims": [
     "idle",
-    "walk"
+    "walk",
+    "attack",
+    "slash",
+    "shoot",
+    "cast",
+    "spell",
+    "die"
    ],
    "frames": {
     "idle": 4,
-    "walk": 6
+    "walk": 6,
+    "attack": 6,
+    "slash": 9,
+    "shoot": 9,
+    "cast": 6,
+    "spell": 9,
+    "die": 7
    },
    "frame": 72,
    "scale": 0.667,
@@ -756,11 +792,23 @@
   "hero_female_jongkraben": {
    "anims": [
     "idle",
-    "walk"
+    "walk",
+    "attack",
+    "slash",
+    "shoot",
+    "cast",
+    "spell",
+    "die"
    ],
    "frames": {
     "idle": 4,
-    "walk": 6
+    "walk": 6,
+    "attack": 6,
+    "slash": 9,
+    "shoot": 9,
+    "cast": 6,
+    "spell": 9,
+    "die": 7
    },
    "frame": 72,
    "scale": 0.667,
@@ -769,11 +817,23 @@
   "hero_female_mahadlek": {
    "anims": [
     "idle",
-    "walk"
+    "walk",
+    "attack",
+    "slash",
+    "shoot",
+    "cast",
+    "spell",
+    "die"
    ],
    "frames": {
     "idle": 4,
-    "walk": 6
+    "walk": 6,
+    "attack": 6,
+    "slash": 9,
+    "shoot": 9,
+    "cast": 6,
+    "spell": 9,
+    "die": 7
    },
    "frame": 72,
    "scale": 0.667,
@@ -782,11 +842,23 @@
   "hero_female_mohom": {
    "anims": [
     "idle",
-    "walk"
+    "walk",
+    "attack",
+    "slash",
+    "shoot",
+    "cast",
+    "spell",
+    "die"
    ],
    "frames": {
     "idle": 4,
-    "walk": 6
+    "walk": 6,
+    "attack": 6,
+    "slash": 9,
+    "shoot": 9,
+    "cast": 6,
+    "spell": 9,
+    "die": 7
    },
    "frame": 72,
    "scale": 0.667,
@@ -795,11 +867,23 @@
   "hero_female_rajpatan": {
    "anims": [
     "idle",
-    "walk"
+    "walk",
+    "attack",
+    "slash",
+    "shoot",
+    "cast",
+    "spell",
+    "die"
    ],
    "frames": {
     "idle": 4,
-    "walk": 6
+    "walk": 6,
+    "attack": 6,
+    "slash": 9,
+    "shoot": 9,
+    "cast": 6,
+    "spell": 9,
+    "die": 7
    },
    "frame": 72,
    "scale": 0.667,
@@ -808,11 +892,23 @@
   "hero_female_silk": {
    "anims": [
     "idle",
-    "walk"
+    "walk",
+    "attack",
+    "slash",
+    "shoot",
+    "cast",
+    "spell",
+    "die"
    ],
    "frames": {
     "idle": 4,
-    "walk": 6
+    "walk": 6,
+    "attack": 6,
+    "slash": 9,
+    "shoot": 9,
+    "cast": 6,
+    "spell": 9,
+    "die": 7
    },
    "frame": 72,
    "scale": 0.667,
@@ -821,11 +917,23 @@
   "hero_female_warrior": {
    "anims": [
     "idle",
-    "walk"
+    "walk",
+    "attack",
+    "slash",
+    "shoot",
+    "cast",
+    "spell",
+    "die"
    ],
    "frames": {
     "idle": 4,
-    "walk": 6
+    "walk": 6,
+    "attack": 6,
+    "slash": 9,
+    "shoot": 9,
+    "cast": 6,
+    "spell": 9,
+    "die": 7
    },
    "frame": 72,
    "scale": 0.667,
@@ -834,11 +942,23 @@
   "hero_male_chaona": {
    "anims": [
     "idle",
-    "walk"
+    "walk",
+    "attack",
+    "slash",
+    "shoot",
+    "cast",
+    "spell",
+    "die"
    ],
    "frames": {
     "idle": 4,
-    "walk": 6
+    "walk": 6,
+    "attack": 6,
+    "slash": 9,
+    "shoot": 9,
+    "cast": 6,
+    "spell": 9,
+    "die": 7
    },
    "frame": 72,
    "scale": 0.667,
@@ -847,11 +967,23 @@
   "hero_male_hunter": {
    "anims": [
     "idle",
-    "walk"
+    "walk",
+    "attack",
+    "slash",
+    "shoot",
+    "cast",
+    "spell",
+    "die"
    ],
    "frames": {
     "idle": 4,
-    "walk": 6
+    "walk": 6,
+    "attack": 6,
+    "slash": 9,
+    "shoot": 9,
+    "cast": 6,
+    "spell": 9,
+    "die": 7
    },
    "frame": 72,
    "scale": 0.667,
@@ -860,11 +992,23 @@
   "hero_male_isan": {
    "anims": [
     "idle",
-    "walk"
+    "walk",
+    "attack",
+    "slash",
+    "shoot",
+    "cast",
+    "spell",
+    "die"
    ],
    "frames": {
     "idle": 4,
-    "walk": 6
+    "walk": 6,
+    "attack": 6,
+    "slash": 9,
+    "shoot": 9,
+    "cast": 6,
+    "spell": 9,
+    "die": 7
    },
    "frame": 72,
    "scale": 0.667,
@@ -873,11 +1017,23 @@
   "hero_male_jongkraben": {
    "anims": [
     "idle",
-    "walk"
+    "walk",
+    "attack",
+    "slash",
+    "shoot",
+    "cast",
+    "spell",
+    "die"
    ],
    "frames": {
     "idle": 4,
-    "walk": 6
+    "walk": 6,
+    "attack": 6,
+    "slash": 9,
+    "shoot": 9,
+    "cast": 6,
+    "spell": 9,
+    "die": 7
    },
    "frame": 72,
    "scale": 0.667,
@@ -886,11 +1042,23 @@
   "hero_male_mahadlek": {
    "anims": [
     "idle",
-    "walk"
+    "walk",
+    "attack",
+    "slash",
+    "shoot",
+    "cast",
+    "spell",
+    "die"
    ],
    "frames": {
     "idle": 4,
-    "walk": 6
+    "walk": 6,
+    "attack": 6,
+    "slash": 9,
+    "shoot": 9,
+    "cast": 6,
+    "spell": 9,
+    "die": 7
    },
    "frame": 72,
    "scale": 0.667,
@@ -899,11 +1067,23 @@
   "hero_male_rajpatan": {
    "anims": [
     "idle",
-    "walk"
+    "walk",
+    "attack",
+    "slash",
+    "shoot",
+    "cast",
+    "spell",
+    "die"
    ],
    "frames": {
     "idle": 4,
-    "walk": 6
+    "walk": 6,
+    "attack": 6,
+    "slash": 9,
+    "shoot": 9,
+    "cast": 6,
+    "spell": 9,
+    "die": 7
    },
    "frame": 72,
    "scale": 0.667,
@@ -912,11 +1092,23 @@
   "hero_male_ruenton": {
    "anims": [
     "idle",
-    "walk"
+    "walk",
+    "attack",
+    "slash",
+    "shoot",
+    "cast",
+    "spell",
+    "die"
    ],
    "frames": {
     "idle": 4,
-    "walk": 6
+    "walk": 6,
+    "attack": 6,
+    "slash": 9,
+    "shoot": 9,
+    "cast": 6,
+    "spell": 9,
+    "die": 7
    },
    "frame": 72,
    "scale": 0.667,
@@ -925,11 +1117,23 @@
   "hero_male_silk": {
    "anims": [
     "idle",
-    "walk"
+    "walk",
+    "attack",
+    "slash",
+    "shoot",
+    "cast",
+    "spell",
+    "die"
    ],
    "frames": {
     "idle": 4,
-    "walk": 6
+    "walk": 6,
+    "attack": 6,
+    "slash": 9,
+    "shoot": 9,
+    "cast": 6,
+    "spell": 9,
+    "die": 7
    },
    "frame": 72,
    "scale": 0.667,
@@ -938,15 +1142,187 @@
   "hero_male_warrior": {
    "anims": [
     "idle",
-    "walk"
+    "walk",
+    "attack",
+    "slash",
+    "shoot",
+    "cast",
+    "spell",
+    "die"
    ],
    "frames": {
     "idle": 4,
-    "walk": 6
+    "walk": 6,
+    "attack": 6,
+    "slash": 9,
+    "shoot": 9,
+    "cast": 6,
+    "spell": 9,
+    "die": 7
    },
    "frame": 72,
    "scale": 0.667,
    "lazy": true
+  },
+  "mob_phra_rahu": {
+   "anims": [
+    "idle",
+    "attack",
+    "die",
+    "walk"
+   ],
+   "frames": {
+    "idle": 4,
+    "attack": 6,
+    "die": 7,
+    "walk": 6
+   },
+   "frame": 72,
+   "scale": 0.6
+  },
+  "mob_kinnaree_ngao": {
+   "anims": [
+    "idle",
+    "attack",
+    "die",
+    "walk"
+   ],
+   "frames": {
+    "idle": 4,
+    "attack": 6,
+    "die": 7,
+    "walk": 6
+   },
+   "frame": 72,
+   "scale": 0.6
+  },
+  "mob_thep_asura": {
+   "anims": [
+    "idle",
+    "attack",
+    "die",
+    "walk"
+   ],
+   "frames": {
+    "idle": 4,
+    "attack": 6,
+    "die": 7,
+    "walk": 6
+   },
+   "frame": 72,
+   "scale": 0.6
+  },
+  "mob_yak_thawarn": {
+   "anims": [
+    "idle",
+    "attack",
+    "die",
+    "walk"
+   ],
+   "frames": {
+    "idle": 4,
+    "attack": 6,
+    "die": 7,
+    "walk": 6
+   },
+   "frame": 72,
+   "scale": 0.6
+  },
+  "mob_krut_dam": {
+   "anims": [
+    "idle",
+    "attack",
+    "die",
+    "walk"
+   ],
+   "frames": {
+    "idle": 4,
+    "attack": 6,
+    "die": 7,
+    "walk": 6
+   },
+   "frame": 72,
+   "scale": 0.6
+  },
+  "mob_nak_sumeru": {
+   "anims": [
+    "idle",
+    "attack",
+    "die",
+    "walk"
+   ],
+   "frames": {
+    "idle": 4,
+    "attack": 6,
+    "die": 7,
+    "walk": 6
+   },
+   "frame": 72,
+   "scale": 0.6
+  },
+  "mob_asura_fire": {
+   "anims": [
+    "idle",
+    "attack",
+    "die",
+    "walk"
+   ],
+   "frames": {
+    "idle": 4,
+    "attack": 6,
+    "die": 7,
+    "walk": 6
+   },
+   "frame": 72,
+   "scale": 0.6
+  },
+  "mob_khon_thanpha": {
+   "anims": [
+    "idle",
+    "attack",
+    "die",
+    "walk"
+   ],
+   "frames": {
+    "idle": 4,
+    "attack": 6,
+    "die": 7,
+    "walk": 6
+   },
+   "frame": 72,
+   "scale": 0.6
+  },
+  "mob_rakkhasa": {
+   "anims": [
+    "idle",
+    "attack",
+    "die",
+    "walk"
+   ],
+   "frames": {
+    "idle": 4,
+    "attack": 6,
+    "die": 7,
+    "walk": 6
+   },
+   "frame": 72,
+   "scale": 0.6
+  },
+  "mob_phaya_mara": {
+   "anims": [
+    "idle",
+    "attack",
+    "die",
+    "walk"
+   ],
+   "frames": {
+    "idle": 4,
+    "attack": 6,
+    "die": 7,
+    "walk": 6
+   },
+   "frame": 72,
+   "scale": 0.6
   }
  },
  "images": [

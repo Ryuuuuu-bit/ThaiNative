@@ -1,5 +1,5 @@
 // ============================================================
-//  แมพต่างแดน (Lv.30–99) – ผังสร้างจากสูตร (seed ตายตัว → client/server ได้ผังเดียวกัน)
+//  แมพต่างแดน (Lv.30–150) – ผังสร้างจากสูตร (seed ตายตัว → client/server ได้ผังเดียวกัน)
 //  ▸ ป่าหิมพานต์ Lv.30–50 · เมืองบาดาลนาคพิภพ Lv.50–75 · นรกภูมิ Lv.75–99
 //  ▸ แต่ละแมพ: ค่ายพัก (Safe Zone + NPC วาร์ป/ร้านยา) → ทางเดินผ่านแหล่งผี 4 แห่ง → ลานบอส → ประตูมิติไปแมพถัดไป
 // ============================================================
@@ -53,7 +53,7 @@ export const REALMS = {
     route: [[16, 16], [32, 22], [50, 24], [80, 18], [108, 20], [122, 40], [104, 70], [78, 60], [52, 64], [36, 80], [52, 100], [84, 104], [110, 104], [124, 104]],
     camps: [['niraiyaban', 50, 24, 6], ['pret_khem', 110, 20, 6], ['phi_ton_ngiw', 36, 82, 6], ['yommathut', 104, 72, 6]],
     boss: ['phaya_yom', 124, 104], bossNameTh: 'บัลลังก์พญายม',
-    portals: [{ to: 'nagaphop', x: 6, y: 16 }],
+    portals: [{ to: 'nagaphop', x: 6, y: 16 }, { to: 'dusit', x: 142, y: 40 }], extra: [[[122, 40], [132, 40], [142, 40]]],
     lakes: [[74, 40, 9, 'กระทะทองแดง'], [20, 56, 7], [138, 70, 6], [70, 84, 6], [96, 44, 4], [18, 110, 6]],
     ground: [[T.STONE, 0.4], [T.SAND, 0.22], [T.GRASS3, 0.18], [T.BRICK, 0.08]],
     path: T.STONE, clear: T.BRICK, hubT: T.STONE, arenaT: T.BRICK, bank: T.STONE,
@@ -62,6 +62,41 @@ export const REALMS = {
     ruins: [['env/b_chediruin', [6, 2]], ['env/m_prangbig_l', [6, 3]], ['env/b_prang_l', [2, 2]]], ruinTint: 0xa04030,
     torch: 'p_torch2', glow: 0xff6a3c,
     style: { overlay: 'rgba(130,30,10,0.30)', water: 'rgba(255,90,20,0.85)', waterTint: 0xff7a30, lava: true },
+  },
+  // ===== Lv.99–150 =====
+  dusit: {
+    id: 'dusit', nameTh: 'สวรรค์ชั้นดาวดึงส์', icon: '☁️', lv: [99, 125], reqLv: 99, W: 150, H: 120, seed: 9901,
+    sub: 'Lv.99–125 · บอส พระราหู', color: '#f9e79f', music: 'ayt_field',
+    hub: { x: 16, y: 60, r: 9, nameTh: 'ศาลาเทวสภา' },
+    route: [[16, 60], [30, 44], [46, 28], [70, 20], [96, 22], [118, 32], [128, 52], [120, 76], [100, 92], [76, 100], [52, 96], [36, 84], [30, 70]],
+    camps: [['khon_thanpha', 46, 28, 6], ['kinnaree_ngao', 118, 32, 6], ['thep_asura', 120, 78, 6], ['yak_thawarn', 36, 86, 6]],
+    boss: ['phra_rahu', 76, 102], bossNameTh: 'ลานราหูอมจันทร์',
+    portals: [{ to: 'naraka', x: 6, y: 60 }, { to: 'sumeru', x: 142, y: 104 }], extra: [[[100, 92], [122, 100], [142, 104]]],
+    lakes: [[76, 58, 12, 'สระโบกขรณี'], [20, 20, 6], [134, 14, 5], [16, 104, 6], [100, 56, 4], [52, 60, 4]],
+    ground: [[T.SAND, 0.38], [T.STONE, 0.24], [T.GRASS2, 0.22], [T.BRICK, 0.1]],
+    path: T.BRICK, clear: T.STONE, hubT: T.BRICK, arenaT: T.STONE, bank: T.SAND,
+    trees: [['golden', 0.55], ['pink', 0.45]], treeDensity: 0.4, treeTint: 0xfff0c0,
+    decor: ['p_lotus', 'p_lotus2', 'p_frangipani', 'p_frangipani2', 'p_stonelantern'], decorTint: 0xfff4d6,
+    ruins: [['env/m_mondop', [6, 3]], ['env/m_prangbig_l', [6, 3]], ['env/m_chedi_l', [3, 2]]], ruinTint: 0xffe9a6,
+    torch: 'p_torch', glow: 0xffe08a,
+    style: { overlay: 'rgba(255,236,190,0.14)', water: 'rgba(170,220,255,0.35)', waterTint: 0xcfefff },
+  },
+  sumeru: {
+    id: 'sumeru', nameTh: 'เขาพระสุเมรุ', icon: '🏔️', lv: [125, 150], reqLv: 125, W: 150, H: 120, seed: 12501,
+    sub: 'Lv.125–150 · บอส พญามาราธิราช', color: '#a9cce3', music: 'ayt_night',
+    hub: { x: 75, y: 14, r: 9, nameTh: 'อาศรมเชิงเขาสุเมรุ' },
+    route: [[75, 14], [52, 22], [30, 34], [22, 58], [30, 84], [52, 98], [76, 104], [100, 98], [122, 86], [128, 60], [120, 36], [98, 22], [75, 14]],
+    camps: [['krut_dam', 30, 34, 6], ['nak_sumeru', 22, 60, 6], ['asura_fire', 122, 86, 6], ['rakkhasa', 124, 36, 6]],
+    boss: ['phaya_mara', 76, 102], bossNameTh: 'ยอดเขาพญามาร',
+    portals: [{ to: 'dusit', x: 75, y: 5 }],
+    lakes: [[76, 58, 13, 'ทะเลสีทันดร'], [14, 14, 6], [136, 16, 6], [12, 104, 6], [138, 106, 6], [100, 60, 4], [50, 60, 4]],
+    ground: [[T.STONE, 0.44], [T.GRASS3, 0.22], [T.SAND, 0.18], [T.TALL, 0.1]],
+    path: T.STONE, clear: T.STONE, hubT: T.BRICK, arenaT: T.BRICK, bank: T.STONE,
+    trees: [['bamboo', 0.5], ['tamarind', 0.5]], treeDensity: 0.45, treeTint: 0x9fb8d8,
+    decor: ['p_stonelantern', 'p_ruin', 'p_ruin2', 'p_shrub', 'p_buddhahead'], decorTint: 0xc8d8f0,
+    ruins: [['env/m_prangbig_l', [6, 3]], ['env/b_chediruin', [6, 2]], ['env/b_prang_l', [2, 2]]], ruinTint: 0x9fb8ff,
+    torch: 'p_torch2', glow: 0x9fc8ff,
+    style: { overlay: 'rgba(70,90,160,0.22)', water: 'rgba(60,110,200,0.45)', waterTint: 0x7fa8ff },
   },
 };
 

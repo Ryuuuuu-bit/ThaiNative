@@ -95,6 +95,7 @@ const ITEMS_BASE = {
   pret_bone:    { nameTh: 'กระดูกเปรต',       type: 'material', icon: '🦴', sell: 18 },
   saming_fang:  { nameTh: 'เขี้ยวเสือสมิง',     type: 'material', icon: '🦷', sell: 24 },
   dark_mist:    { nameTh: 'หมอกดำผีห่า',      type: 'material', icon: '🌫️', sell: 30 },
+  rahu_stone:   { nameTh: 'ศิลาราหู', type: 'material', icon: '🌑', sell: 800, desc: 'หินดำจากคราสจันทร์ ได้จากบอสโลกพระราหู (ลานสุริยคราส) · ใช้หลอมอุปกรณ์ขอบแดง "ชุดสุริยคราส" ที่ลุงดำ' },
   yak_fang:     { nameTh: 'เขี้ยวพญายักษ์',     type: 'material', icon: '🐗', sell: 120, desc: 'ใช้ตีบวก +15 ขึ้นไป · ดรอปจากบอสภาค (ปู่โสม อสุรกาย ชาละวัน) บอสแดนต่างแดน และผีในหิมพานต์ บาดาล นรกภูมิ' },
   ha_essence:   { nameTh: 'แก่นวิญญาณผีห่า',    type: 'material', icon: '🔥', sell: 60, desc: 'ดรอปจากผีห่า (ป่าช้าวัดร้าง) · ยายติ๋มใช้ปรุงยาอายุวัฒนะ' },
   // ป่าช้าผีตายโหง
@@ -119,6 +120,13 @@ const ITEMS_BASE = {
   hell_ember:   { nameTh: 'ถ่านไฟนรก',           type: 'material', icon: '🔥', sell: 380 },
   ngiw_thorn:   { nameTh: 'หนามต้นงิ้ว',          type: 'material', icon: '🌵', sell: 430 },
   yama_seal:    { nameTh: 'ตราพญายม',           type: 'material', icon: '⚖️', sell: 5000 },
+  // ---- Lv.99–150 ----
+  deva_silk:    { nameTh: 'ผ้าทิพย์คนธรรพ์',       type: 'material', icon: '🧣', sell: 520 },
+  asura_gold:   { nameTh: 'ทองอสูรกบฏ',          type: 'material', icon: '🪙', sell: 600 },
+  rahu_eye:     { nameTh: 'ดวงตาพระราหู',         type: 'material', icon: '🌑', sell: 8000 },
+  garuda_plume: { nameTh: 'ขนครุฑดำ',            type: 'material', icon: '🪶', sell: 700 },
+  sumeru_crystal:{ nameTh: 'ผลึกเขาสุเมรุ',         type: 'material', icon: '🔷', sell: 800 },
+  mara_crown:   { nameTh: 'มงกุฎพญามาร',         type: 'material', icon: '👑', sell: 15000 },
 
   // ---------- ปลา (ตกที่ท่าน้ำ ซ้ายสุดของหมู่บ้าน) – ขายป้าสา หรือให้ป้าสาทำอาหาร ----------
   pla_nin:     { nameTh: 'ปลานิล',            type: 'fish', icon: '🐟', sell: 6 },

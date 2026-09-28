@@ -3,7 +3,7 @@
 //  ▸ ของดรอปภาค 3–5 + แร่เหล็กไหล + ค่าแรง → อุปกรณ์สายที่เลือก (ไม่ต้องรอดวงดรอป)
 //  ▸ ยันต์กันลดขั้นก็หลอมได้จากวัตถุดิบภาค 2–3
 // ============================================================
-import { GEAR, GEAR_IDS } from './gear.js';
+import { GEAR, GEAR_IDS , RED_GEAR} from './gear.js';
 
 /** วัตถุดิบตามเลเวลอุปกรณ์ */
 const TIER_NEED = {
@@ -26,8 +26,20 @@ const TIER_NEED = {
   85: { need: { hell_ember: 12, ngiw_thorn: 8, black_iron: 30 }, fee: 165000 },
   90: { need: { ngiw_thorn: 12, hell_ember: 12, black_iron: 32 }, fee: 190000 },
   95: { need: { ngiw_thorn: 14, hell_ember: 14, black_iron: 35, yama_seal: 1 }, fee: 230000 },
+  // ---- Lv.100–150 (สวรรค์ดาวดึงส์ · เขาพระสุเมรุ) ----
+  100: { need: { deva_silk: 10, black_iron: 36 }, fee: 260000 },
+  105: { need: { deva_silk: 12, asura_gold: 6, black_iron: 38 }, fee: 300000 },
+  110: { need: { asura_gold: 10, deva_silk: 10, black_iron: 40 }, fee: 340000 },
+  115: { need: { asura_gold: 12, deva_silk: 12, black_iron: 42 }, fee: 390000 },
+  120: { need: { asura_gold: 14, deva_silk: 14, black_iron: 44 }, fee: 440000 },
+  125: { need: { asura_gold: 16, deva_silk: 16, black_iron: 46, rahu_eye: 1 }, fee: 500000 },
+  130: { need: { garuda_plume: 10, black_iron: 48 }, fee: 560000 },
+  135: { need: { garuda_plume: 12, sumeru_crystal: 6, black_iron: 50 }, fee: 630000 },
+  140: { need: { sumeru_crystal: 10, garuda_plume: 12, black_iron: 52 }, fee: 700000 },
+  145: { need: { sumeru_crystal: 14, garuda_plume: 14, black_iron: 55 }, fee: 780000 },
+  150: { need: { sumeru_crystal: 16, garuda_plume: 16, black_iron: 60, mara_crown: 1 }, fee: 900000 },
 };
-const FIXED = new Set(['yak_fang', 'asura_horn', 'giant_tusk', 'naga_gem', 'yama_seal']);   // วัตถุดิบบอส: จำนวนเท่ากันทุกชิ้น
+const FIXED = new Set(['yak_fang', 'asura_horn', 'giant_tusk', 'naga_gem', 'yama_seal', 'rahu_eye', 'mara_crown']);   // วัตถุดิบบอส: จำนวนเท่ากันทุกชิ้น
 const TYPE_MUL = { weapon: 1.25, armor: 1, accessory: 0.8, helm: 0.7, gloves: 0.7, boots: 0.7, belt: 0.6 };
 
 /** รายการสูตรหลอมทั้งหมด: { out, need, fee, job, lv, type } */
@@ -38,6 +50,8 @@ export const FORGE = [
     return { out: id, need, fee: Math.round((t.fee * m) / 100) * 100, job: it.job, lv: it.lv, type: it.type };
   }).sort((a, b) => a.lv - b.lv),
   { out: 'yant_guard', need: { dark_mist: 10, pret_bone: 8, saming_fang: 4 }, fee: 800, util: true },
+  // อุปกรณ์ขอบแดง ชุดสุริยคราส (บอสโลกพระราหู)
+  ...RED_GEAR.map((id) => ({ out: id, need: { rahu_stone: GEAR[id].type === 'weapon' ? 40 : 30, yak_fang: 12 }, fee: 300000, job: GEAR[id].job, lv: 90, type: GEAR[id].type, red: true })),
   { out: 'black_iron', need: { film_reel: 4, water_lily: 4 }, fee: 40, util: true },
 ];
 

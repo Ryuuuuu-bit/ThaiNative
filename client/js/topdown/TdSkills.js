@@ -24,6 +24,8 @@ const TINT = {
   mage_ghostfire: 0x7dffb0, mage_curse: 0xb57dff, mage_meditate: 0xffb347, mage_storm: 0xa8d8ff,
   arch_quick: 0xfff2c0, arch_poison: 0x7dff6a, arch_pierce: 0xffd35c, arch_hawk: 0xffe9a6, arch_rain: 0xff9a3c,
   mage_holy: 0x9dffcf, boxer_drum: 0xffa040, sword_banner: 0xffd35c, arch_garuda: 0xfff0a0,
+  arch_volley: 0xfff6c8, arch_trap: 0x9be870, arch_snipe: 0xff6a5a, arch_meteor: 0xff7a2a,
+  boxer_elbow: 0xffd0a0, boxer_knee: 0xffb454, boxer_iron: 0x9fc8ff, boxer_hanuman: 0xffffff,
   ...HEAL_TINT,
 };
 
@@ -826,6 +828,103 @@ export class TdSkills {
           fx.stars(x, y - 20, { n: 12, tint, r: 44, size: 18 });
           const list = this.front(o, sk.range + 14); (sk.all ? list : list.slice(0, 1)).forEach(H);
         });
+        break;
+      }
+      // ---------- พรานป่า: สกิลขั้นสูง ----------
+      case 'arch_volley': {                                     // ศรกระจายเจ็ดดาว: ศรแสงแผ่เป็นพัด
+        fx.glow(cx + o.ux * 10, cy - 16, { size: 56, tint, ms: 240 });
+        const n = sk.count || 5, spread = (sk.spread || 34) * Math.PI / 180;
+        for (let i = 0; i < n; i++) at(i * 30, () => {
+          const a = ang + (i - (n - 1) / 2) * (spread / Math.max(1, n - 1)) * 2;
+          this.shot(sk, { ...o, ux: Math.cos(a), uy: Math.sin(a), t: null }, { key: 'td_arrow', scale: 1.4, tint: 0xfffbe0, add: false, trail: tint, trailScale: 0.4,
+            onHit: (m, x, y) => { fx.stars(x, y - 10, { n: 2, tint, r: 8, size: 12, ms: 240 }); H(m); } });
+        });
+        break;
+      }
+      case 'arch_trap': {                                       // กับดักหนามพราน: วงหนามผุด → ติดกับ
+        const c = this.center(sk, o);
+        fx.fly('td_arrow', cx, cy - 16, c.x, c.y, { speed: 700, tint: 0xffffff, add: false, trail: tint });
+        at(220, () => {
+          fx.rune(c.x, c.y, { size: sk.radius * 2, tint, ms: 1600, spin: 0, inner: false });
+          for (let k = 0; k < 10; k++) { const a = (k / 10) * Math.PI * 2; fx.slash(c.x + Math.cos(a) * sk.radius * 0.6, c.y + Math.sin(a) * sk.radius * 0.3 - 6, -1.57, { size: 0.7, tint, ms: 420 }); }
+          fx.shock(c.x, c.y, { r: sk.radius, tint, ms: 500 }); S('skSlam'); fx.shake(120, 0.005);
+          this.mobsNear(c.x, c.y, sk.radius).forEach((m) => { H(m); this.dizzy(m, 1400); });
+        });
+        break;
+      }
+      case 'arch_snipe': {                                      // ศรสังหารเหยี่ยวราตรี: เล็ง (ฟ้ามืด+เส้นเล็ง) → ศรใหญ่ทะลุลม
+        fx.darken(520, 0x0a0a1a, 0.4);
+        const x1 = cx + o.ux * sk.range, y1 = cy + o.uy * sk.range;
+        const aim = fx.img((cx + x1) / 2, (cy + y1) / 2 - 16, 'fx_glow', { tint: 0xff4a4a }).setRotation(ang).setDisplaySize(sk.range, 2);
+        fx.tween({ targets: aim, alpha: 0.2, yoyo: true, repeat: 2, duration: 80, onComplete: () => aim.destroy() });
+        fx.glow(cx + o.ux * 12, cy - 16, { size: 70, tint, ms: 420 });
+        at(260, () => { fx.shake(160, 0.008); fx.flash(120, 0xffffff, 0.3);
+          this.shot(sk, o, { key: 'td_arrow', scale: 3, tint: 0xffffff, add: false, trail: tint, trailScale: 0.8, wide: 14,
+            onHit: (m, x, y) => { fx.explode(x, y, { r: 34, tint, crack: true }); fx.stars(x, y - 16, { n: 8, tint, r: 24, size: 16 }); H(m); } }); });
+        break;
+      }
+      case 'arch_meteor': {                                     // ศรเพลิงอัคนีบาต: ยิงขึ้นฟ้า → ลูกไฟตกเป็นห่า
+        const c = this.center(sk, o);
+        fx.rune(c.x, c.y, { size: sk.radius * 2.2, tint, ms: sk.hits * sk.interval + 900, spin: 100 });
+        fx.darken(sk.hits * sk.interval + 600, 0x2a0a00, 0.35);
+        for (let k = 0; k < 3; k++) at(k * 60, () => fx.fly('td_arrow', cx, cy - 20, cx + rand(-10, 10), cy - 200, { speed: 900, tint: 0xffe0a0, add: false, trail: tint }));
+        for (let i = 0; i < sk.hits; i++) at(300 + i * sk.interval, () => {
+          for (let k = 0; k < 3; k++) { const x = c.x + rand(-sk.radius, sk.radius) * 0.8, y = c.y + rand(-sk.radius, sk.radius) * 0.4;
+            at(k * 40, () => fx.fly('td_orb', x - 60, y - 220, x, y, { speed: 900, tint, trail: 0xffd070, onArrive: () => { fx.explode(x, y, { r: 30, tint, shake: false }); fx.flames(x, y, { n: 3, tint, r: 8, h: 22, ms: 600 }); } })); }
+          S('skRain'); at(200, () => { fx.shock(c.x, c.y, { r: sk.radius, tint, ms: 320 }); fx.shake(120, 0.006); this.mobsNear(c.x, c.y, sk.radius).forEach(H); });
+        });
+        break;
+      }
+      // ---------- นักมวย: สกิลขั้นสูง ----------
+      case 'boxer_elbow': {                                     // ศอกกลับพลิกล็อก: ศอกฟันเป็นเสี้ยว 2 จังหวะ
+        for (let i = 0; i < sk.hits; i++) at(i * sk.interval, () => {
+          const x = cx + o.ux * 18, y = cy + o.uy * 18 - 14;
+          fx.slash(x, y, ang + (i ? 1.1 : -1.1), { size: 1.2, tint, flip: !!i, ms: 200 }); fx.glow(x, y, { size: 40, tint, ms: 160 });
+          if (i) fx.shake(120, 0.006);
+          const m = this.front(o, sk.range + 12)[0]; if (m) { H(m); if (i) this.dizzy(m, 600); }
+        });
+        break;
+      }
+      case 'boxer_knee': {                                      // เข่าลอยทะลวงฟ้า: กระโดด → เข่ากระแทก + ดาวมึน
+        this.dash(sk, o, { tint, leap: true, onLand: (x, y) => {
+          S('skSlam'); fx.explode(x, y, { r: sk.radius * 0.8, tint, crack: true }); fx.shock(x, y, { r: sk.radius * 1.2, tint: 0xffffff, ms: 420 });
+          fx.flash(120, 0xffe0b0, 0.35); fx.shake(200, 0.01); fx.stars(x, y - 20, { n: 8, tint: 0xffe08a, r: 36, size: 16 });
+          this.mobsNear(x, y, sk.radius).forEach((m) => { H(m); this.dizzy(m, 900); });
+        } });
+        break;
+      }
+      case 'boxer_iron': {                                      // กายเหล็กคาถามหาอุด: ผิวเหล็กเงา + ยันต์หมุน
+        fx.rune(cx, cy, { size: 84, tint, ms: 1500, spin: -120 }); fx.pillar(cx, cy, { tint: 0xd0e0ff, h: 120, ms: 900, w: 28 });
+        at(250, () => { S('skFlash'); fx.flash(160, 0xd0e0ff, 0.25); fx.shock(cx, cy, { r: 56, tint, ms: 520 }); fx.sparks(cx, cy - 20, { n: 14, tint: 0xffffff, speed: [40, 110], life: 500, scale: 0.25 }); });
+        if (dmg) this.buff(sk);
+        if (o.caster) fx.aura(o.caster, { tint, ms: 3000 });
+        break;
+      }
+      case 'boxer_hanuman': {                                   // หนุมานถวายแหวน: 8 จังหวะ หมัด-เท้า-เข่า-ศอก + ลิงเผือกเงา
+        fx.glow(cx, cy - 24, { size: 90, tint: 0xffffff, ms: sk.hits * sk.interval });
+        for (let i = 0; i < sk.hits; i++) at(i * sk.interval, () => {
+          const x = cx + o.ux * 22 + rand(-6, 6), y = cy + o.uy * 22 - 14 + rand(-6, 6);
+          if (i % 2) fx.slash(x, y, ang + rand(-1, 1), { size: 1.2, tint, ms: 180 }); else fx.glow(x, y, { size: 38, tint, ms: 140 });
+          fx.shock(x, y + 12, { r: 20 + i * 3, tint, ms: 200 }); S('punch');
+          const list = this.front(o, sk.range + 14); (sk.all ? list : list.slice(0, 1)).forEach(H);
+          if (i === sk.hits - 1) { fx.flash(160, 0xfff4d0, 0.4); fx.shake(260, 0.012); fx.explode(x, y + 12, { r: 50, tint, crack: true }); fx.stars(x, y - 10, { n: 10, tint, r: 40, size: 18 }); }
+        });
+        break;
+      }
+      // ---------- หมอยา: สกิลปาร์ตี้ขั้นสูง ----------
+      case 'heal_mist':                                         // หมอกยาชโลมใจ
+      case 'heal_tonic':                                        // ยาบำรุงกำลังเจ็ดพลัง
+      case 'heal_mother': {                                     // พรแม่โพสพ
+        fx.rune(cx, cy, { size: sk.radius * 0.9, tint, ms: 1600, spin: 50 });
+        if (sk.id === 'heal_mist') fx.smoke(cx, cy, { n: 14, r: 70, tint });
+        else if (sk.id === 'heal_tonic') fx.flames(cx, cy, { n: 10, tint, r: 24, h: 30, ms: 900 });
+        else { fx.petals(cx, cy, { n: 18, tint: 0xfff0a0, r: 80 }); fx.pillar(cx, cy, { tint, h: 160, ms: 1100, w: 44 }); }
+        at(260, () => { fx.flash(160, tint, 0.2); fx.shock(cx, cy, { r: 90, tint, ms: 600 }); });
+        this.partyTargets(sk, o).forEach((m, i) => at(420 + i * 90, () => {
+          const t = m.spr || m; fx.aura(m, { tint, ms: 2400 }); fx.stars(t.x, t.y - 20, { n: 4, tint, r: 14, size: 14, up: 14 });
+          if (sk.heal) fx.healOn(m, { tint, amount: this.healAmt(m, sk), mp: m === s.player ? Math.round((s.player.derived?.maxMp || 0) * (sk.mpHeal || 0)) : 0 });
+        }));
+        if (dmg) this.buff(sk);
         break;
       }
       default: {                                                // สกิลใหม่ที่ยังไม่มีลายเซ็น → ใช้แบบทั่วไปตามประเภท

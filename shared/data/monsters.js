@@ -249,7 +249,7 @@ for (const [id, L] of Object.entries(TD_LEVELS)) {
 }
 
 // ------------------------------------------------------------
-//  ผีแมพต่างแดน (Lv.30–99) · 3 แมพ × 4 แหล่งผี + บอส 1
+//  ผีแมพต่างแดน (Lv.30–150) · 5 แมพ × 4 แหล่งผี + บอส 1
 //  ค่าพลังคิดจากสูตรเลเวล (ต่อเนื่องจากบึงผีพราย Lv.27) · EXP ≈ ต้องฆ่า 18→45 ตัว/เลเวล
 //  ภาพ: d8 = ใช้สไปรต์ 8 ทิศของผีเดิม + tint ย้อมสี (รอภาพจริงจาก PixelLab)
 // ------------------------------------------------------------
@@ -289,11 +289,39 @@ Object.assign(MONSTERS, {
   phi_ton_ngiw: realmMob(89, { nameTh: 'ผีต้นงิ้ว', nameEn: 'Ngiw Thorn Spirit', desc: 'วิญญาณคนผิดศีลที่ถูกลงโทษให้ปีนต้นงิ้วหนามเหล็ก กลายเป็นส่วนหนึ่งของต้นไม้', d8: 'nang_takhian', scale: 1.1, tint: 0xc0392b, hpK: 1.15, atkK: 1.05, drops: [{ item: 'ngiw_thorn', chance: 0.4 }, { item: 'flask_mp10', chance: 0.003 }] }),
   yommathut: realmMob(94, { nameTh: 'ยมทูตเงา', nameEn: 'Shadow Yamaduta', elite: true, desc: 'ทูตแห่งพญายม มาในเงามืด ขว้างบ่วงบาศคล้องวิญญาณจากระยะไกล', d8: 'tai_hong', scale: 1.25, tint: 0x6c7a89, behavior: 'ranged', projectile: 'film', attackRange: 160, attackCooldown: 1400, hpK: 1.0, atkK: 1.1, drops: [{ item: 'ngiw_thorn', chance: 0.4 }, { item: 'flask_hp10', chance: 0.004 }] }),
   phaya_yom: realmMob(99, { nameTh: 'พญายมราช', nameEn: 'Phaya Yom', boss: true, desc: 'เจ้าแห่งยมโลก ถือบัญชีบุญบาปของทุกดวงวิญญาณ ตัดสินด้วยคทาเพลิง (บอสนรกภูมิ)', d8: 'pret_asura', tint: 0x9b59b6, scale: 1.85, aoe: { cd: 5500, r: 130, mult: 1.6, nameTh: 'คำพิพากษายมโลก' }, drops: [{ item: 'yama_seal', chance: 1 }, { item: 'cs_head_emperor', chance: 0.1 }, { item: 'cs_face_skull', chance: 0.08 }, { item: 'flask_hp10', chance: 0.3 }, { item: 'flask_mp10', chance: 0.25 }] }),
+  // ===== สวรรค์ชั้นดาวดึงส์ Lv.99–125 =====
+  khon_thanpha: realmMob(102, { nameTh: 'คนธรรพ์คลั่ง', nameEn: 'Maddened Gandharva', desc: 'นักดนตรีสวรรค์ที่ถูกเสียงพิณของราหูสะกด ดีดพิณส่งคลื่นเสียงจากระยะไกล', d8: 'phi_ha', tint: 0xffe08a, behavior: 'ranged', projectile: 'film', attackRange: 150, attackCooldown: 1300, hpK: 0.95, drops: [{ item: 'deva_silk', chance: 0.4 }, { item: 'flask_mp10', chance: 0.004 }] }),
+  kinnaree_ngao: realmMob(108, { nameTh: 'กินรีเงา', nameEn: 'Shadow Kinnaree', desc: 'กินรีที่ปีกถูกเงาจันทรคราสกลืน บินโฉบเร็วดั่งลมสวรรค์', d8: 'nang_tani', tint: 0xd7bde2, behavior: 'flyer', speed: 78, evaK: 6, drops: [{ item: 'deva_silk', chance: 0.4 }, { item: 'hp_m', chance: 0.3 }] }),
+  thep_asura: realmMob(114, { nameTh: 'เทพอสูรกบฏ', nameEn: 'Rebel Asura', desc: 'อสูรที่บุกขึ้นสวรรค์ตามพระราหู ถือกระบองเพชรฟาดไม่ยั้ง', d8: 'pret_asura', tint: 0x5dade2, scale: 1.15, hpK: 1.2, atkK: 1.05, speed: 50, drops: [{ item: 'asura_gold', chance: 0.4 }, { item: 'flask_hp10', chance: 0.004 }] }),
+  yak_thawarn: realmMob(120, { nameTh: 'ยักษ์ทวารบาล', nameEn: 'Gate-guardian Yaksha', elite: true, desc: 'ยักษ์เฝ้าประตูสวรรค์ที่ถูกราหูสาปให้คลั่ง กระบองใหญ่เท่าเสาปราสาท', d8: 'pret_asura', tint: 0x48c9b0, scale: 1.3, hpK: 1.4, atkK: 1.1, speed: 44, drops: [{ item: 'asura_gold', chance: 0.5 }, { item: 'flask_hp10', chance: 0.005 }] }),
+  phra_rahu: realmMob(125, { nameTh: 'พระราหู', nameEn: 'Rahu the Eclipse', boss: true, desc: 'อสูรครึ่งร่างผู้กลืนดวงจันทร์ ทำให้สวรรค์มืดมิด (บอสสวรรค์ชั้นดาวดึงส์)', d8: 'pret_asura', tint: 0x34495e, scale: 1.95, aoe: { cd: 5200, r: 140, mult: 1.65, nameTh: 'ราหูอมจันทร์' }, drops: [{ item: 'rahu_eye', chance: 1 }, { item: 'cs_head_emperor', chance: 0.1 }, { item: 'flask_hp10', chance: 0.3 }, { item: 'flask_mp10', chance: 0.25 }] }),
+  // ===== เขาพระสุเมรุ Lv.125–150 =====
+  krut_dam: realmMob(128, { nameTh: 'ครุฑดำ', nameEn: 'Black Garuda', desc: 'ครุฑที่ถูกมารครอบงำ ขนดำสนิท โฉบลงมาจิกด้วยกรงเล็บเหล็ก', d8: 'phi_ha', tint: 0x2c3e50, behavior: 'flyer', speed: 80, evaK: 6, drops: [{ item: 'garuda_plume', chance: 0.4 }, { item: 'flask_hp10', chance: 0.004 }] }),
+  nak_sumeru: realmMob(134, { nameTh: 'นาคเฝ้าเขาสุเมรุ', nameEn: 'Sumeru Naga', desc: 'นาคที่พันรอบเขาพระสุเมรุมาชั่วกัป เกล็ดแข็งดั่งหินผา', d8: 'phi_chamot', tint: 0x85929e, frame: { w: 44, h: 26 }, speed: 70, hpK: 1.2, drops: [{ item: 'sumeru_crystal', chance: 0.4 }, { item: 'mp_m', chance: 0.3 }] }),
+  asura_fire: realmMob(140, { nameTh: 'อสูรเพลิงกัลป์', nameEn: 'Kalpa-fire Asura', desc: 'อสูรที่ลุกเป็นไฟวันสิ้นกัป ขว้างลูกไฟจากไหล่เขา', d8: 'tai_hong', tint: 0xff5733, scale: 1.15, behavior: 'ranged', projectile: 'film', attackRange: 150, attackCooldown: 1300, atkK: 1.1, drops: [{ item: 'garuda_plume', chance: 0.35 }, { item: 'sumeru_crystal', chance: 0.2 }, { item: 'flask_mp10', chance: 0.004 }] }),
+  rakkhasa: realmMob(146, { nameTh: 'รากษสจักรวาล', nameEn: 'Cosmic Rakshasa', elite: true, desc: 'แม่ทัพรากษสของพญามาร ร่างสูงเท่าภูเขา ดาบในมือแยกฟ้าได้', d8: 'saming', tint: 0x8e44ad, scale: 1.3, hpK: 1.45, atkK: 1.12, speed: 46, drops: [{ item: 'sumeru_crystal', chance: 0.5 }, { item: 'flask_hp10', chance: 0.005 }] }),
+  phaya_mara: realmMob(150, { nameTh: 'พญามาราธิราช', nameEn: 'Mara the Tempter King', boss: true, desc: 'ราชาแห่งมารผู้ยึดยอดเขาพระสุเมรุ บัญชาทัพมารทั้งจักรวาล (บอสใหญ่สุดท้าย)', d8: 'pret_asura', tint: 0x1b2631, scale: 2.05, aoe: { cd: 4800, r: 150, mult: 1.75, nameTh: 'มารผจญ' }, drops: [{ item: 'mara_crown', chance: 1 }, { item: 'cs_head_emperor', chance: 0.12 }, { item: 'flask_hp10', chance: 0.35 }, { item: 'flask_mp10', chance: 0.3 }] }),
 });
 // เขี้ยวพญายักษ์ (หินตีบวก +16 ขึ้นไป) เพิ่มจุดดรอปในแมพต่างแดน: ผีทั่วไปโอกาสต่ำตามเลเวล · ผีหัวหน้า (elite) สูงขึ้น · บอสแดนดรอปเยอะ
 for (const [id, m] of Object.entries(MONSTERS)) {
   if (!m.realm) continue;
-  const chance = m.boss ? { kumphakan: 0.6, anantanak: 0.8, phaya_yom: 1 }[id] ?? 0.6 : m.elite ? 0.04 : m.level >= 75 ? 0.015 : m.level >= 50 ? 0.01 : 0.005;
+  const chance = m.boss ? { kumphakan: 0.6, anantanak: 0.8, phaya_yom: 1, phra_rahu: 1, phaya_mara: 1 }[id] ?? 0.6 : m.elite ? 0.04 : m.level >= 75 ? 0.015 : m.level >= 50 ? 0.01 : 0.005;
   m.drops.push({ item: 'yak_fang', chance });
 }
+// ---- บอสโลก: พระราหู ผู้กลืนจันทร์ (อีเวนต์ลานสุริยคราส · ตัวควบคุมใน server/worldboss.js) ----
+// เลือดจริงคำนวณตอนเกิดจากคนออนไลน์ (shared/data/worldboss.js) · ดาเมจเป็น % HP ผู้เล่น · ไม่เกิดเองตามเวลา
+Object.assign(MONSTERS, {
+  rahu_eclipse: { nameTh: 'พระราหู ผู้กลืนจันทร์', nameEn: 'Rahu the Moon-Devourer', level: 150, boss: true, worldBoss: true, count: 1,
+    desc: 'อสูรครึ่งตัวผู้กลืนดวงจันทร์ ลงมาวันละ 2 รอบที่ลานสุริยคราส ทั้งเซิร์ฟต้องช่วยกันปราบภายใน 30 นาที',
+    hp: 1000000, atk: 900, def: 75, eva: 20, acc: 260, speed: 0, behavior: 'floater', attackRange: 60, attackCooldown: 99999,
+    exp: 0, gold: [0, 0], drops: [], respawnMs: 1e12, scale: 2.6, d8: 'phra_rahu', frame: { w: 32, h: 44 } },
+  rahu_shade: { nameTh: 'บริวารราหู', nameEn: 'Rahu Shade', level: 120, count: 1, wbPart: true, pctDmg: 0.06,
+    desc: 'ผีเงาที่ราหูพ่นออกจากปาก เกาะติดตัวแล้วดูดเลือด',
+    hp: 45000, atk: 1, def: 30, eva: 10, acc: 200, speed: 52, behavior: 'walker', attackRange: 18, attackCooldown: 1000,
+    exp: 0, gold: [0, 0], drops: [], respawnMs: 1e12, scale: 1.1, d8: 'phi_phrai', tint: 0x3a2a70, frame: { w: 32, h: 44 } },
+  rahu_crystal: { nameTh: 'ผลึกจันทร์', nameEn: 'Moon Crystal', level: 120, count: 1, wbPart: true, passive: true,
+    desc: 'ผลึกเงินดูดแสงเข้าจันทร์ในมือราหู ต้องตีให้แตกใน 30 วิ',
+    hp: 60000, atk: 0, def: 10, eva: 0, acc: 0, speed: 0, behavior: 'still', attackRange: 0, attackCooldown: 99999,
+    exp: 0, gold: [0, 0], drops: [], respawnMs: 1e12, scale: 1, d8: 'phi_tuay_kaew', tint: 0xe8edf8, frame: { w: 32, h: 44 } },
+});
 export const REALM_MOB_IDS = Object.keys(MONSTERS).filter((id) => MONSTERS[id].realm);

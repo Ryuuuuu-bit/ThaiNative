@@ -22,7 +22,8 @@ export function setupHealer(io, players, { healPlayer, queueSync, social, tdSys 
     const ids = party ? [...party.members] : [p.id];
     return ids.map((id) => players.get(id)).filter((m) => m && sameMap(m, p) && (withDead || !m.dead));
   }
-  const matkOf = (p, now) => combatDerived(p.char || p.save, p.buffs, now).matk || 1;
+  // แรงรักษา = พลังเวทย์ × พลังรักษา (อุปกรณ์สายหมอยา)
+  const matkOf = (p, now) => { const d = combatDerived(p.char || p.save, p.buffs, now); return (d.matk || 1) * (d.healPow || 1); };
 
   /** รักษา + แจ้งตัวเลขสีเขียว */
   function heal(caster, t, amt, fx = 'heal', sk = null) {
@@ -89,7 +90,7 @@ export function setupHealer(io, players, { healPlayer, queueSync, social, tdSys 
           for (const t of allies(p, true)) {
             if (t !== p && dist(t, p) > sk.radius + 40) continue;
             if (t.dead) {
-              t.dead = false; t.hp = Math.max(1, t.maxHp * sk.heal); t.invulnUntil = at + 1500; t.hpDirty = true;
+              t.dead = false; if (t.save) t.save.deadAt = 0; t.hp = Math.max(1, t.maxHp * sk.heal); t.invulnUntil = at + 1500; t.hpDirty = true;
               io.to(t.id).emit('td:revive', { hp: Math.round(t.hp), maxHp: t.maxHp, by: p.name });
               emitRoom(p, 'td:heal', { id: t.id, amt: Math.round(t.hp), fx: 'revive', sk: sk.id, by: p.id });
               queueSync(t);
@@ -105,10 +106,12 @@ export function setupHealer(io, players, { healPlayer, queueSync, social, tdSys 
       case 'mortar': {                                      // ครกยา: รักษาเพื่อนในวงหลังตำครบ
         const tx = Number(d.tx), ty = Number(d.ty), P = posOf(p);
         const c = Number.isFinite(tx) && Number.isFinite(ty) && Math.hypot(tx - P.x, ty - P.y) <= (sk.offset || 0) + 160 ? { x: tx, y: ty } : { x: P.x, y: P.y };
-        const n = Math.max(0, Math.min(5, d.n | 0));
-        const mul = 1 + Math.min(sk.perMax, sk.perHit * n);
+        const t0 = now;
         setTimeout(() => {
           if (!players.has(p.id)) return;
+          const mh = p.mortarHits && p.mortarHits.at >= t0 - 50 ? p.mortarHits.n : 0;   // นับผีที่โดนครกจริงจาก server (ไม่เชื่อ client)
+          const n = Math.max(0, Math.min(5, d.n | 0, mh));
+          const mul = 1 + Math.min(sk.perMax, sk.perHit * n);
           for (const t of allies(p)) { const T = posOf(t); if (Math.hypot(T.x - c.x, T.y - c.y) <= sk.radius + 30) heal(p, t, matk * sk.hmult * mul, 'mortar', sk.id); }
         }, 200 + sk.hits * sk.interval + 250);
         break;

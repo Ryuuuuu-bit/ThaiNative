@@ -70,7 +70,7 @@ export class WeaponOverlay {
     const t = Math.min(1, (time - it.atkAt) / dur), swinging = t < 1;
     const da = Phaser.Math.DegToRad(DIR_ANGLE[dir] ?? 90), ux = Math.cos(da), uy = Math.sin(da);
     const bob = st.anim === 'walk' ? Math.sin(time / 85) * 0.8 : 0;
-    let ang, dx = h.x * k, dy = h.y * k + bob, flip = h.side < 0;
+    let ang, dx = h.x * k, dy = h.y * k + bob, flip = h.side < 0, staff = false;
     if (info.wtype === 'bow') {
       // ธนู: ตั้งขึ้นข้างตัว · ตอนยิงหันไปทางเป้า
       ang = flip ? -12 : 12;
@@ -90,13 +90,15 @@ export class WeaponOverlay {
           g.lineStyle(1, 0xfff3b0, (0.7 - t) * 6).strokeCircle(hx + ux * 4, hy + uy * 3, 3 + (t - 0.55) * 30);
         }
       }
-    } else if (info.wtype === 'staff') {
-      // ไม้เท้า: ถือตั้ง · ตอนร่ายยกขึ้นแล้วชี้ไปข้างหน้า
-      ang = (flip ? -1 : 1) * (8 + (swinging ? Math.sin(t * Math.PI) * 35 : 0));
+    } else if (info.wtype === 'staff' || info.wtype === 'herb') {
+      // ไม้เท้า (จอมขมังเวทย์/หมอยา): ถือตั้งแบบไม้เท้าเดินป่า ยอดสูงกว่าหัว · เดินแกว่งเบา ๆ · ตอนร่ายยกขึ้นแล้วชี้ไปข้างหน้า
+      staff = true; dy -= 2; dx += h.side * 3 * k;                       // กางออกข้างตัวอีกนิด ไม่บังหน้า
+      ang = (flip ? -1 : 1) * (5 + (info.up || 0) + (st.anim === 'walk' ? Math.sin(time / 170) * 4 : 0) + (swinging ? Math.sin(t * Math.PI) * 35 : 0));   // up = หมุนภาพไม้เท้าที่วาดเฉียงให้ตั้งตรง
       dy -= swinging ? Math.sin(t * Math.PI) * 4 : 0;
       if (swinging && t < 0.6) {                                           // พลังรวมที่ปลายไม้เท้า
         const g = it.fx.setVisible(true).setDepth(spr.depth + 0.07), r = 2 + Math.sin(t / 0.6 * Math.PI) * 3;
-        g.fillStyle(0xffb347, 0.35).fillCircle(spr.x + dx + ux * 4, spr.y + dy - 14, r * 1.8).fillStyle(0xfff3b0, 0.9).fillCircle(spr.x + dx + ux * 4, spr.y + dy - 14, r);
+        const c1 = info.wtype === 'herb' ? 0x7dffb0 : 0xffb347, c2 = info.wtype === 'herb' ? 0xe8fff0 : 0xfff3b0;
+        g.fillStyle(c1, 0.35).fillCircle(spr.x + dx + ux * 4, spr.y + dy - 18, r * 1.8).fillStyle(c2, 0.9).fillCircle(spr.x + dx + ux * 4, spr.y + dy - 18, r);
       }
     } else {
       // ดาบ: เอียงพาดไหล่ · ตอนฟันเหวี่ยงโค้งไปทางหน้า
@@ -106,11 +108,11 @@ export class WeaponOverlay {
       else if (t < 0.25) sw = -35 - Phaser.Math.Easing.Quadratic.Out(t / 0.25) * 40;
       else if (t < 0.6) sw = -75 + Phaser.Math.Easing.Cubic.Out((t - 0.25) / 0.35) * 190;
       else sw = 115 - Phaser.Math.Easing.Sine.InOut((t - 0.6) / 0.4) * 150;
-      ang = (flip ? -1 : 1) * sw;
+      ang = (flip ? -1 : 1) * (sw + (info.up || 0));                       // up: ภาพดาบที่วาดเฉียง → หมุนให้ตั้งก่อน
       if (swinging && t > 0.25 && t < 0.62) { dx += ux * 3; dy += uy * 2; }
     }
     img.setOrigin(flip ? 1 - it.ox : it.ox, it.oy);                          // พลิกภาพ → จุดจับต้องพลิกตาม ไม่งั้นอาวุธลอยห่างมือ
-    img.setVisible(true).setFlipX(flip).setScale(info.scale * 0.5 * k).setAngle(ang)
+    img.setVisible(true).setFlipX(flip).setScale(info.scale * 0.5 * k * (staff ? 1.15 : 1)).setAngle(ang)
       .setPosition(spr.x + dx, spr.y + dy).setDepth(spr.depth + (h.behind ? -0.05 : 0.05)).setAlpha(spr.alpha);
     // ออร่าอาวุธตีบวก: เรืองตามขั้น + ประกายลอยขึ้นจากใบอาวุธ (+7 ขึ้นไป)
     const wl = a.wenh || 0;

@@ -22,6 +22,7 @@ import { setupMobs } from './mobs.js';
 import { setupDungeon } from './dungeon.js';
 import { setupTD } from './td.js';
 import { setupHealer } from './healer.js';
+import { setupWorldBoss } from './worldboss.js';
 import { setupAuth, isAdmin } from './auth.js';
 import { MAX_SLOTS } from './store.js';
 import { discordInfo, relayChat, postNews, announcePatch } from './discord.js';
@@ -62,8 +63,9 @@ const nightNow = () => isNight(dayPhase(Date.now(), DAY_MS));
 /** คำนวณค่าที่ขึ้นกับเซฟใหม่ (หลังของ/เลเวล/อุปกรณ์เปลี่ยน) */
 function refresh(p) {
   const d = getDerived(p.save);
-  p.maxHp = d.maxHp;
+  p.maxHp = d.maxHp; p.maxMp = d.maxMp;
   if (p.save.hp > d.maxHp) p.save.hp = d.maxHp;
+  if (p.save.mp > d.maxMp) p.save.mp = d.maxMp;
   p.level = p.save.level;
   p.dirty = true;
   const app = JSON.stringify(p.save.appearance);
@@ -77,11 +79,35 @@ function flushSync(p) {
   io.to(p.id).emit('char:sync', packChar(p.save));
 }
 /** เซฟลงฐานข้อมูล */
+const saving = new Map();                            // acc → promise ของการเซฟล่าสุด (เขียนทีละครั้งตามลำดับ ไม่ให้เซฟเก่าทับเซฟใหม่)
 async function persist(p) {
   if (!p?.dirty || !p.acc) return;
   p.dirty = false;
-  try { await (await storeReady).saveCharacter(p.acc, p.slot || 0, p.save); }
-  catch (e) { p.dirty = true; console.error('[persist]', e.message); }
+  const snap = JSON.parse(JSON.stringify(p.save));  // ภาพ ณ ตอนสั่งเซฟ
+  const run = (saving.get(p.acc) || Promise.resolve()).then(async () => {
+    try { await (await storeReady).saveCharacter(p.acc, p.slot || 0, snap); }
+    catch (e) {
+      console.error('[persist]', e.message);
+      if (players.get(p.id) === p) p.dirty = true;                          // ยังออนไลน์ → รอบหน้าเซฟใหม่
+      else { unsaved.set(`${p.acc}:${p.slot || 0}`, snap); retryUnsaved(); }   // ออกไปแล้ว → เก็บไว้ ลองใหม่เรื่อย ๆ
+    }
+  });
+  saving.set(p.acc, run);
+  run.finally(() => { if (saving.get(p.acc) === run) saving.delete(p.acc); });
+  return run;
+}
+let retryT = null;
+function retryUnsaved() {
+  if (retryT) return;
+  retryT = setTimeout(async () => {
+    retryT = null;
+    for (const [k, snap] of [...unsaved]) {
+      const [acc, slot] = k.split(':');
+      if ([...players.values()].some((q) => String(q.acc) === acc && String(q.slot || 0) === slot)) { unsaved.delete(k); continue; }
+      try { await (await storeReady).saveCharacter(isNaN(+acc) ? acc : +acc, +slot, snap); unsaved.delete(k); } catch { /* ลองใหม่รอบหน้า */ }
+    }
+    if (unsaved.size) retryUnsaved();
+  }, 15000);
 }
 
 /** ผู้เล่นโดนโจมตี (server ตัดสิน) → { applied } */
@@ -99,6 +125,7 @@ function hurtPlayer(p, dmg, info = {}) {
   if (p.hp <= 0) {
     p.dead = true;
     p.buffs = [];
+    p.save.deadAt = now;                                                    // ตายแล้วออกเกม → เข้าใหม่เกิดที่จุดฟื้น (ไม่ฟื้นกลางสนาม)
     p.save.rec ||= {}; p.save.rec.deaths = (p.save.rec.deaths || 0) + 1;
     queueSync(p);
     io.to(p.id).emit('pl:die', {});
@@ -125,6 +152,8 @@ const tdSys = td;                                   // (ในตัวจัด
 /** หมอยา: ฮีล/สายใย/เมล็ด/ชุบชีวิต/กันตาย */
 healer = setupHealer(io, players, { ...helpers, social, tdSys });
 setInterval(() => healer.tick(), 250);
+/** บอสโลกพระราหู (ลานสุริยคราส) */
+const worldBoss = setupWorldBoss(io, players, { td, hurtPlayer, queueSync, social, refresh });
 
 function publicPlayer(p) {
   return {
@@ -142,6 +171,14 @@ function startPos(d) {
   if (m.dungeon) return {};
   return { x: clamp(d.x, m.minX + 8, m.maxX - 8), y: clamp(d.y, -200, WORLD.height) };
 }
+/** อีเวนต์ของโลกเก่า (side-scroller) — client ปัจจุบันไม่ส่งแล้ว เหลือไว้ให้โกงได้เท่านั้น */
+const LEGACY_EV = new Set(['player:update', 'player:warp', 'mob:hit', 'dg:enter', 'dg:hit', 'dg:leave', 'raid:hit']);
+/** กันเข้าเกมซ้อน (2 socket บัญชีเดียวพร้อมกัน = ตัวละคร 2 ร่าง → ปั๊มของ) */
+const joiningAcc = new Set();
+/** เซฟที่เขียนไม่สำเร็จตอนออกเกม → เก็บไว้ในหน่วยความจำ ใช้แทนข้อมูลในฐานข้อมูลตอนเข้าใหม่ + ลองเซฟซ้ำ */
+const unsaved = new Map();
+/** MP ที่ client แจ้งมา: รับได้เฉพาะ ≤ ค่าที่ server นับไว้ (ใช้ไป/ต่ำกว่า = เชื่อ) */
+function takeMp(p, v) { v = +v; if (Number.isFinite(v)) p.save.mp = clamp(v, 0, Math.min(p.save.mp ?? 0, p.maxMp || 99999)); }
 const cleanText = (s, max) => String(s ?? '').replace(/[<>]/g, '').trim().slice(0, max);
 
 process.on('uncaughtException', (e) => console.error('[uncaught]', e));
@@ -156,6 +193,7 @@ io.on('connection', (socket) => {
   // ห่อทุก handler: payload null/undefined → {} และจับ error ไว้ (ไม่ให้ process ตาย)
   const rawOn = socket.on.bind(socket);
   socket.on = (ev, fn) => rawOn(ev, (...args) => {
+    if (LEGACY_EV.has(ev)) return;                                           // โลกเก่า (side-scroller) ไม่มี client ใช้แล้ว → ปิด กันโกง
     if (args[0] === null || args[0] === undefined) args[0] = {};
     try {
       const r = fn(...args);
@@ -167,6 +205,7 @@ io.on('connection', (socket) => {
   mobs.onConnection(socket);
   dungeon.onConnection(socket);
   td.onConnection(socket);
+  worldBoss.onConnection(socket);
   socket.on('td:enter', () => { const p = players.get(socket.id); if (p) socket.broadcast.emit('player:left', p.id); });   // ออกจากสายตาผู้เล่นโลกเดิม
   const me = () => players.get(socket.id);
 
@@ -178,6 +217,8 @@ io.on('connection', (socket) => {
       const store = await storeReady;
       const acc = typeof data.token === 'string' && data.token ? await store.getSession(data.token) : null;
       if (!acc) return socket.emit('player:rejected', { reason: 'auth', msg: 'เซสชันหมดอายุ กรุณาเข้าสู่ระบบใหม่' });
+      if (joiningAcc.has(acc.id)) return socket.emit('player:rejected', { reason: 'busy', msg: 'บัญชีนี้กำลังเข้าเกมอยู่ ลองใหม่อีกครั้ง' });
+      joiningAcc.add(acc.id); socket.data.joinAcc = acc.id;
       // บัญชีเดียวกันเข้าจากที่อื่น → เตะเครื่องเก่า (เซฟก่อน)
       const slot = Number.isInteger(data.slot) && data.slot >= 0 && data.slot < MAX_SLOTS ? data.slot : 0;
       const oldId = byAcc.get(acc.id), old = oldId && players.get(oldId);
@@ -189,7 +230,10 @@ io.on('connection', (socket) => {
         io.sockets.sockets.get(oldId)?.disconnect(true);
       }
       if (!socket.connected) return;
-      save = migrate(save || (await store.getCharacter(acc.id, slot)));
+      await (saving.get(acc.id) || Promise.resolve());                    // รอเซฟครั้งก่อนเขียนเสร็จก่อนโหลด
+      const pend = unsaved.get(`${acc.id}:${slot}`);
+      save = migrate(save || pend || (await store.getCharacter(acc.id, slot)));
+      if (pend) { unsaved.delete(`${acc.id}:${slot}`); }
       if (!save) return socket.emit('player:rejected', { reason: 'nochar', msg: 'ยังไม่มีตัวละคร' });
       const p = {
         id: socket.id, acc: acc.id, slot, admin: isAdmin(acc.username), save, char: save,
@@ -211,8 +255,10 @@ io.on('connection', (socket) => {
       });
       socket.broadcast.emit('player:joined', publicPlayer(p));
       social.onJoin(p);
+      worldBoss.onJoin(p);
       onlineSoon();
-    } finally { socket.data.joining = false; }
+      if (pend) { p.dirty = true; persist(p); }
+    } finally { socket.data.joining = false; if (socket.data.joinAcc) { joiningAcc.delete(socket.data.joinAcc); socket.data.joinAcc = null; } }
   });
 
   // 2) ตำแหน่ง/ท่าทาง (~15 ครั้ง/วินาที) – HP/เลเวลไม่รับจาก client แล้ว
@@ -271,10 +317,10 @@ io.on('connection', (socket) => {
     const a = String(d.a || '');
     if (p.dead && !['lock', 'hotbar', 'title', 'qDrop', 'friendDel'].includes(a)) return done({ r: { ok: false, msg: 'ตายอยู่ – รอฟื้นก่อน' } });
     // โลก top-down: ร้าน/NPC ตรวจจากตำแหน่ง NPC ในอยุธยา (แปลงเป็นพิกัดหมู่บ้านเดิม) · ไม่ใกล้ใคร = นอกหมู่บ้าน
-    const ex = p.world === 'td' ? (td.econX(p) ?? MAPS.m1.minX + 300) : p.x;
+    const ex = p.world === 'td' ? (td.econX(p) ?? MAPS.m1.minX + 700) : p.x;
     if (p.world === 'td' && a === 'recall' && d.to === 'hunt') return done({ r: { ok: false, msg: 'ในโลกใหม่ใช้ได้เฉพาะวาร์ปกลับเมือง' } });
     // MP เป็นของ client: รับค่าล่าสุดมาก่อนรันคำสั่ง (เช่น ดื่มยา MP) แล้วส่งค่าหลังรันกลับไป
-    if (Number.isFinite(+d.mp)) p.save.mp = clamp(+d.mp, 0, 99999);
+    takeMp(p, d.mp);
     const tdCtx = p.world === 'td' ? { td: true, tdPos: td.mapOf(p) === 'ayutthaya' ? { x: p.tx, y: p.ty } : { x: -1e6, y: -1e6 }, tdFish: td.nearWater(p) } : {};   // สมุนไพรมีเฉพาะกรุงศรีฯ
     const r = runAction(p.save, a, d, { rnd: Math.random, now, x: ex, night: nightNow(), admin: p.admin, trade: !!p.tradeId, sess: p.sess, ...tdCtx });
     if (r.warp && r.ok && p.world !== 'td') {
@@ -289,6 +335,7 @@ io.on('connection', (socket) => {
     if (a === 'enhance' && r.slot && r.lv >= 10 && r.success) io.emit('chat', { id: null, name: '🔨 ลุงดำ', text: `${p.name} ตีบวกสำเร็จ +${r.lv}!` });
     refresh(p);
     if (r.ok && r.gmWarp && p.admin && p.world === 'td') td.gmWarp(p, socket, r.gmWarp);
+    if (r.ok && r.gmRahu && p.admin) r.msg = worldBoss.gm(r.gmRahu);
     if (r.ok && r.gmNotice && p.admin) gmNotice(r.gmNotice, p);
     if (r.ok && r.hpPct != null && p.admin) {                                   // GM: ตั้ง HP / สลบ (ทดสอบหมอยา)
       p.invulnUntil = 0;
@@ -315,6 +362,10 @@ io.on('connection', (socket) => {
     const sk = skillStats(base, lv, m0);
     p.skillAt ||= {};
     if (now - (p.skillAt[base.id] || 0) < sk.cd * 0.8) return;         // คูลดาวน์ (server)
+    const cost = sk.mp || 0;                                            // MP: server ถือค่าจริง (client แจ้งได้แค่ต่ำกว่า)
+    if (cost && (p.save.mp || 0) < cost * 0.85) return;
+    p.save.mp = Math.max(0, (p.save.mp || 0) - cost);
+    (p.castTok ||= {})[base.id] = { at: now, mobs: new Map() };        // ใบอนุญาตตีของการร่ายครั้งนี้ (td:hit ต้องมี)
     p.skillAt[base.id] = now;
     p.lastSkill = now;
     skx[base.id] = Math.min(99999, (skx[base.id] || 0) + 1);                   // ความชำนาญสกิล: ยิ่งใช้ยิ่งเก่ง
@@ -325,6 +376,7 @@ io.on('connection', (socket) => {
       p.buffs = (p.buffs || []).filter((b) => b.until > now && b.sk !== base.id);
       p.buffs.push({ buff: sk.buff, until: now + sk.duration, sk: base.id });
       if (sk.heal) healPlayer(p, p.maxHp * sk.heal);
+      if (sk.mpHeal) p.save.mp = Math.min(p.maxMp || 1e9, (p.save.mp || 0) + (p.maxMp || 0) * sk.mpHeal);
     } else if (sk.type === 'party') {                                   // สกิลปาร์ตี้: ตัวเอง + เพื่อนร่วมปาร์ตี้ในรัศมี
       const party = social.partyOf(p);
       const list = [p, ...(party ? [...party.members].filter((id) => id !== p.id).map((id) => players.get(id)).filter(Boolean) : [])];
@@ -335,9 +387,10 @@ io.on('connection', (socket) => {
         m.buffs = (m.buffs || []).filter((b) => b.until > now && b.sk !== base.id);
         m.buffs.push({ buff: sk.buff, until: now + sk.duration, sk: base.id });
         if (sk.heal) healPlayer(m, m.maxHp * sk.heal);
+        if (sk.mpHeal) m.save.mp = Math.min(m.maxMp || 1e9, (m.save.mp || 0) + (m.maxMp || 0) * sk.mpHeal);
         if (m !== p) io.to(m.id).emit('td:pbuff', { from: p.name, fromId: p.id, skillId: base.id, lv: clamp(lv, 1, MAX_SKILL_LV) });
       }
-    } else if (sk.type === 'dash') p.invulnUntil = Math.max(p.invulnUntil || 0, now + 320);
+    } else if (sk.type === 'dash') { p.invulnUntil = Math.max(p.invulnUntil || 0, now + 320); p.dashExtra = (sk.distance || 100) + 40; p.dashUntil = now + 900; p.mvBudget = (p.mvBudget || 0) + p.dashExtra; }   // พุ่ง: ได้งบระยะเดินพิเศษ
     else if (base.job === 'healer') healer.cast(p, sk, d, now);
     (td ? socket.to(tdSys.room(p)) : socket.broadcast).emit('skill:cast', {
       id: p.id, skillId: base.id, lv: clamp(lv, 1, MAX_SKILL_LV),
@@ -353,6 +406,7 @@ io.on('connection', (socket) => {
     if (!p || !p.acc) return reply({ ok: false, msg: 'ยังไม่ได้เข้าเกม' });
     if (invCount(p.save, 'rename_ticket') <= 0) return reply({ ok: false, msg: 'ไม่มีใบเปลี่ยนชื่อ' });
     if (p.renaming) return reply({ ok: false, msg: 'กำลังเปลี่ยนชื่ออยู่' });
+    if (p.tradeId) return reply({ ok: false, msg: 'ปิดหน้าต่างเทรดก่อน' });
     const chk = checkName(d.name);
     if (!chk.ok) return reply({ ok: false, msg: chk.msg });
     const oldName = p.save.name, oldKey = p.save.nk || nameKey(oldName);
@@ -365,7 +419,7 @@ io.on('connection', (socket) => {
         for (const n of nameIdeas(chk.name)) { if (ideas.length >= 4) break; const k = checkName(n); if (k.ok && !(await store.nameTaken(k.key, p.acc))) ideas.push(k.name); }
         return reply({ ok: false, msg: `ชื่อ “${chk.name}” มีคนใช้แล้ว`, ideas });
       }
-      removeItem(p.save, 'rename_ticket', 1);
+      if (!removeItem(p.save, 'rename_ticket', 1)) return reply({ ok: false, msg: 'ไม่มีใบเปลี่ยนชื่อ' });
       p.save.name = chk.name; p.save.nk = chk.key; p.name = chk.name;
       try { await store.saveCharacter(p.acc, p.slot || 0, p.save); }
       catch (e) {
@@ -459,8 +513,11 @@ setInterval(() => {
 setInterval(() => {
   const now = Date.now();
   for (const p of players.values()) {
-    if (p.dead || p.hp >= p.maxHp) continue;
+    if (p.dead) continue;
     const m = mapAt(p.x), safe = p.world === 'td' ? td.inTown(p) : m.safe || (m.fireX != null && Math.abs(p.x - m.fireX) < 70);
+    // MP ฝั่ง server ฟื้นเร็วกว่า client เล็กน้อย (เผื่อ lag) → client ที่เล่นปกติไม่โดนตัด · โกงแจ้ง MP เกินได้ไม่เกินค่านี้
+    if (p.maxMp) p.save.mp = Math.min(p.maxMp, (p.save.mp || 0) + (1 + p.maxMp * (safe ? 0.06 : 0.02)) * 1.3);
+    if (p.hp >= p.maxHp) continue;
     if (safe) healPlayer(p, p.maxHp * 0.05);
     else if (now - (p.lastHurt || 0) > 8000) healPlayer(p, p.maxHp * 0.01);
   }

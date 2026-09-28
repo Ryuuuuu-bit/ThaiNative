@@ -6,6 +6,7 @@
 import { TILE, MAP_W, MAP_H, SPAWN, ZONES as AYT_ZONES, zoneAtTile, inTownXY, buildLayout } from './ayutthaya.js';
 import { REALMS, buildRealm, realmZoneAt } from './realms.js';
 import { MONSTERS } from '../data/monsters.js';
+import { ARENA_DEF, buildArena, arenaZoneAt } from './arena.js';
 
 /**
  * ความหนาแน่นผี: จำนวนผีรวมต่อชนิด × ตัวคูณ · แต่ละกองไม่เกิน CAMP_MAX ตัว
@@ -13,7 +14,7 @@ import { MONSTERS } from '../data/monsters.js';
  * ▸ สุ่มแบบ seed คงที่ → client/server ได้ผังเดียวกัน · ผีเพิ่มต่อท้าย spawns (index เดิมไม่เลื่อน)
  * ▸ ไม่คูณ: บอส · ผีกลางคืน (nightOnly)
  */
-export const MOB_DENSITY = { ayutthaya: 5, himmaphan: 5, nagaphop: 5, naraka: 5 };
+export const MOB_DENSITY = { ayutthaya: 5, himmaphan: 5, nagaphop: 5, naraka: 5, dusit: 5, sumeru: 5 };
 export const CAMP_MAX = 7;
 function densify(L, mult, M) {
   if (!(mult > 1)) return L;
@@ -29,7 +30,8 @@ function densify(L, mult, M) {
   }
   // จุดที่ห้ามตั้งกองใหม่ใกล้ ๆ: กองเดิมทุกกอง · บอส · ประตูมิติ
   const camps = [...groups.values()].map((l) => ({ x: l[0].x / TILE, y: l[0].y / TILE }));
-  const avoid = [...L.spawns.filter((s) => s.boss).map((s) => ({ x: s.x / TILE, y: s.y / TILE, r: 14 })), ...(L.portals || []).map((p) => ({ x: p.x / TILE, y: p.y / TILE, r: 8 }))];
+  const avoid = [...L.spawns.filter((s) => s.boss).map((s) => ({ x: s.x / TILE, y: s.y / TILE, r: 14 })), ...(L.portals || []).map((p) => ({ x: p.x / TILE, y: p.y / TILE, r: 8 })),
+    ...(M.realm ? [{ x: M.spawn.x / TILE, y: M.spawn.y / TILE, r: 22 }] : [])];   // ค่ายพัก: เว้นระยะให้มือใหม่เดินออกมาไม่โดนรุมทันที
   const okSpot = (tx, ty, zone) => {
     for (let dy = -2; dy <= 2; dy++) for (let dx = -2; dx <= 2; dx++) if (!walk(tx + dx, ty + dy)) return false;
     const x = tx * TILE, y = ty * TILE;
@@ -58,7 +60,9 @@ function densify(L, mult, M) {
   return L;
 }
 
-export const TD_MAP_IDS = ['ayutthaya', 'himmaphan', 'nagaphop', 'naraka'];
+export const TD_MAP_IDS = ['ayutthaya', 'himmaphan', 'nagaphop', 'naraka', 'dusit', 'sumeru', 'suriya'];
+/** แมพอีเวนต์ (ไม่อยู่ในรายการวาร์ป/ประตูมิติ · เข้าได้เฉพาะช่วงอีเวนต์) */
+export const EVENT_MAPS = new Set(['suriya']);
 export const DEFAULT_MAP = 'ayutthaya';
 
 const cache = {};
@@ -93,6 +97,15 @@ export const TD_MAPS = {
     layout() { return (cache.ayutthaya ||= densify(buildLayout(), MOB_DENSITY.ayutthaya, this)); },
   },
   ...Object.fromEntries(Object.values(REALMS).map((d) => [d.id, realmEntry(d)])),
+  suriya: {
+    ...(({ hub, ...d }) => d)(ARENA_DEF), realm: true,
+    spawn: { x: ARENA_DEF.hub.x * TILE, y: (ARENA_DEF.hub.y + 2) * TILE },
+    ZONES: { hub: { nameTh: 'ค่ายรอคราส', sub: 'Safe Zone · ลานสุริยคราส', color: '#f7dc6f' }, wild: { nameTh: 'ทางเดินประตูลาน', sub: 'ลานสุริยคราส', color: '#af7ac5' }, lair: { nameTh: 'ลานสุริยคราส', sub: 'บอสโลก · พระราหู Lv.150', color: '#ff8a80' } },
+    zoneAtTile: arenaZoneAt,
+    zoneAt: (x, y) => arenaZoneAt(Math.floor(x / TILE), Math.floor(y / TILE)),
+    inSafe: (x, y) => arenaZoneAt(Math.floor(x / TILE), Math.floor(y / TILE)) === 'hub',
+    layout() { return (cache.suriya ||= buildArena()); },
+  },
 };
 
 export const getMap = (id) => TD_MAPS[id] || TD_MAPS[DEFAULT_MAP];

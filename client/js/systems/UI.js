@@ -39,7 +39,7 @@ const $ = (s) => document.querySelector(s);
 const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 import { SLOT_TH, GEAR_TYPES, TYPE_TH, FLASK_SLOTS } from '/shared/data/slots.js';
 /** ระดับความหายากของอุปกรณ์ (สี): 1 ธรรมดา · 2 ดี · 3 หายาก · 4 มหากาพย์ · 5 ตำนาน */
-const baseRarity = (it) => (!it ? 0 : it.legend ? 5 : GEAR_TYPES.includes(it.type) ? ((it.lv || 1) >= 28 ? 4 : (it.lv || 1) >= 20 ? 3 : (it.lv || 1) >= 10 ? 2 : 1) : it.type === 'costume' && it.rare ? 4 : 0);
+const baseRarity = (it) => (!it ? 0 : it.red ? 6 : it.legend ? 5 : GEAR_TYPES.includes(it.type) ? ((it.lv || 1) >= 28 ? 4 : (it.lv || 1) >= 20 ? 3 : (it.lv || 1) >= 10 ? 2 : 1) : it.type === 'costume' && it.rare ? 4 : 0);
 /** ความหายาก: ของมีค่าสุ่ม 1 บรรทัด = ฟ้า (3) · 2+ บรรทัด = ม่วง (4) · ตำนาน = ทอง (5) */
 export const rarityOf = (it) => Math.max(baseRarity(it), it?.affixN ? (it.affixN >= 2 ? 4 : 3) : 0);
 /** บรรทัดค่าสุ่มของไอเทม (สีฟ้า/ม่วงตามจำนวน) */
@@ -829,6 +829,7 @@ export class UI {
       ['HP สูงสุด', 'maxHp'], ['MP สูงสุด', 'maxMp'], ['พลังโจมตีกายภาพ', 'patk'], ['พลังเวทย์', 'matk'],
       ['ความแม่นยำ', 'accuracy', (v) => `${v}%`], ['โอกาสคริติคอล', 'critRate', pct],
       ['ความแรงคริติคอล', 'critDmg', (v) => `x${v.toFixed(2)}`], ['ป้องกัน', 'def'], ['หลบ', 'eva'],
+      ...((d.healPow || 1) > 1 || c.appearance?.job === 'healer' ? [['พลังรักษา 💚', 'healPow', (v) => `${Math.round(((v || 1) - 1) * 100)}%`]] : []),
     ];
     $('#st-derived').innerHTML = rows.map(([label, key, f = (v) => v]) => {
       const up = after[key] !== d[key];

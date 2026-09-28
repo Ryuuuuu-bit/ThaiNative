@@ -1524,3 +1524,11 @@ body.touch #cb-size { display: none; }
 .sb-buy .btn { padding: .35em 1.1em; }
 .sb-buy .btn.sm { padding: .3em .7em; font-size: .85em; }
 @media (max-width: 760px) { .shop-buy { grid-template-columns: 1fr; } .sb-grid { max-height: 12em; } }
+/* ป้ายอาชีพบนไอคอนอุปกรณ์ */
+.ico-wrap { position: relative; display: inline-grid; place-items: center; width: 100%; height: 100%; line-height: 1; }
+.ico-wrap > img, .ico-wrap > .px-ico { width: 100%; height: 100%; object-fit: contain; }
+.job-badge { position: absolute; right: -2px; top: -2px; width: 1.05em; height: 1.05em; min-width: 11px; min-height: 11px; border-radius: 50%; display: grid; place-items: center;
+  font-size: max(8px, .42em); font-style: normal; font-weight: 700; line-height: 1; color: #fff; border: 1px solid rgba(0,0,0,.6); box-shadow: 0 0 0 1px rgba(255,255,255,.35); pointer-events: none; text-shadow: 0 1px 1px #000; }
+.jb-swordman { background: #c0392b; } .jb-mage { background: #8e44ad; } .jb-archer { background: #229954; } .jb-boxer { background: #d35400; } .jb-healer { background: #17a589; }
+/* อีโมจิบน HUD ที่เปลี่ยนเป็นไอคอนพิกเซล */
+.px-ico.emo-ico { width: 1.35em; height: 1.35em; vertical-align: -0.3em; margin: 0 .05em; }

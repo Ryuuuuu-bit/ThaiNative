@@ -15,7 +15,7 @@ export const STAT_INFO = {
 };
 
 export const POINTS_PER_LEVEL = 5;
-export const MAX_LEVEL = 99;           // เลเวลตัน (ขยายจาก 30 → 99 · แมพต่างแดน 3 แมพ)
+export const MAX_LEVEL = 150;          // เลเวลตัน (30 → 99 → 150 · แมพสวรรค์ดาวดึงส์/เขาพระสุเมรุ)
 
 export const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
 
@@ -56,6 +56,7 @@ export function computeDerived(s, job, level, bonus = {}) {
     critDmg: 1.5 + CRI * 0.02 + (bonus.critDmg || 0),                                          // CRI
     def: Math.round(VIT * 0.5 + (bonus.def || 0)),
     eva: Math.round(DEX * 0.3 + (bonus.eva || 0)),
+    healPow: +(1 + (bonus.healMul || 0)).toFixed(3),                                          // พลังรักษา (อุปกรณ์สายหมอยา)
   };
 }
 

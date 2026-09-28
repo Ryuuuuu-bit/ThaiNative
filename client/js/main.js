@@ -25,3 +25,29 @@ const config = {
 };
 
 window.game = new Phaser.Game(config);
+
+// ------------------------------------------------------------
+//  พับจอ / สลับแท็บ: เบราว์เซอร์หยุด requestAnimationFrame + Phaser หยุดเกมเอง
+//  → บอท (AUTO) หยุดตีแต่ผีบน server ยังตี = ตาย  →  ใช้ Web Worker (ไม่โดนหน่วงเวลาแบบแท็บพื้นหลัง)
+//  เดินเกมต่อแบบไม่วาดภาพ (headlessStep) ทุก ~50ms ระหว่างที่แท็บถูกซ่อน
+// ------------------------------------------------------------
+{
+  const game = window.game;
+  game.events.once('ready', () => {
+    game.events.off('hidden', game.onHidden, game);            // ไม่หยุดเกมตอนแท็บถูกซ่อน
+    game.events.off('visible', game.onVisible, game);
+  });
+  let last = 0, worker = null;
+  try {
+    worker = new Worker(URL.createObjectURL(new Blob(['setInterval(()=>postMessage(0),50)'], { type: 'text/javascript' })));
+  } catch { /* ไม่มี Worker: ใช้ setInterval (ช้าลงแต่ยังเดิน) */ }
+  const tick = () => {
+    if (!document.hidden || !game.isBooted) { last = 0; return; }
+    const now = performance.now(), dt = last ? Math.min(250, now - last) : 16;
+    last = now;
+    try { game.headlessStep(now, dt); } catch (e) { console.warn('bg tick', e); }
+  };
+  if (worker) worker.onmessage = tick; else setInterval(tick, 50);
+  document.addEventListener('visibilitychange', () => { if (!document.hidden) { last = 0; game.loop?.resetDelta?.(); } });
+  window.__bgTick = tick;                                        // ใช้ทดสอบ
+}

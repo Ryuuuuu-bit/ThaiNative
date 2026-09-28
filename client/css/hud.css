@@ -379,3 +379,52 @@ body.td-mode.lowhp #hud::before { content: ''; position: absolute; inset: 0; z-i
 #btn-discord .nb-ic { font-size: 2.3cqh; }
 .news-item .n-link { display: inline-block; margin: .3em 0 .2em 1.2em; padding: .3em .9em; border-radius: 999px; background: #5865f2; color: #fff; text-decoration: none; font-size: .9em; }
 .news-item .n-link:hover { filter: brightness(1.15); }
+
+/* ================= บอสโลกพระราหู (ลานสุริยคราส) ================= */
+#wb-hud { position: absolute; inset: 0; pointer-events: none; font-size: 2.3cqh; z-index: 6; }
+#wb-hud .hidden { display: none !important; }
+#wb-hud button { pointer-events: auto; font: inherit; cursor: pointer; border-radius: 8px; }
+#wb-hud .wb-ann { position: absolute; top: 11%; left: 50%; transform: translateX(-50%); display: flex; align-items: center; gap: .6em; padding: .45em .6em .45em .8em;
+  background: linear-gradient(90deg, rgba(28,12,58,.94), rgba(58,24,96,.94)); border: 2px solid #b57dff; border-radius: 12px; box-shadow: 0 0 18px rgba(181,125,255,.45); pointer-events: auto; animation: wbPulse 2.2s ease-in-out infinite; }
+#wb-hud .wb-ann .wb-ic { font-size: 1.6em; }
+#wb-hud .wb-ann b { color: #ffd35c; display: block; } #wb-hud .wb-ann small { color: #e3d4ff; font-size: .82em; }
+#wb-hud .wb-go { background: linear-gradient(180deg, #ffd35c, #e0a21a); color: #3a2200; border: 2px solid #fff3c4; padding: .35em .9em; font-weight: 700; }
+#wb-hud .wb-go:hover { filter: brightness(1.1); }
+@keyframes wbPulse { 50% { box-shadow: 0 0 30px rgba(181,125,255,.8); } }
+#wb-hud .wb-bar { position: absolute; top: 2%; left: 50%; transform: translateX(-50%); width: min(62%, 48em); padding: .4em .7em .45em; background: rgba(18,8,38,.9); border: 2px solid #8f6cf0; border-radius: 12px; pointer-events: auto; }
+#wb-hud .wb-top { display: flex; align-items: baseline; gap: .8em; }
+#wb-hud .wb-top b { color: #ffd35c; } #wb-hud .wb-top .lv { color: #ff6b5b; font-style: normal; font-size: .85em; }
+#wb-hud .wb-ph { color: #d2b4ff; font-size: .85em; } #wb-hud .wb-time { margin-left: auto; color: #fff; font-variant-numeric: tabular-nums; }
+#wb-hud .wb-hpbar { position: relative; height: 1.25em; margin-top: .3em; background: #1a0c2e; border: 1px solid #5b3fa0; border-radius: 6px; overflow: hidden; }
+#wb-hud .wb-hpbar i { position: absolute; inset: 0 auto 0 0; background: linear-gradient(90deg, #5a2fd0, #b57dff 70%, #e8dcff); transition: width .4s; }
+#wb-hud .wb-hpbar span { position: relative; display: block; text-align: center; font-size: .78em; line-height: 1.6em; color: #fff; text-shadow: 0 1px 2px #000; }
+#wb-hud .wb-btm { display: flex; align-items: center; gap: .6em; margin-top: .25em; }
+#wb-hud .wb-tip { color: #cbb8f2; font-size: .75em; flex: 1; }
+#wb-hud .wb-leave { background: rgba(60,30,90,.9); color: #e3d4ff; border: 1px solid #8f6cf0; padding: .15em .7em; font-size: .8em; }
+#wb-hud .wb-cast { position: absolute; top: 17%; left: 50%; transform: translateX(-50%); text-align: center; padding: .3em 1.2em; border-radius: 10px; background: rgba(14,6,30,.8); animation: wbCast .25s ease-out; }
+#wb-hud .wb-cast b { display: block; font-size: 1.5em; color: #d8c2ff; text-shadow: 0 0 10px #7d4cff; }
+#wb-hud .wb-cast small { color: #fff; font-size: .85em; }
+#wb-hud .wb-cast.c-red b { color: #ff8a80; text-shadow: 0 0 12px #ff2d2d; } #wb-hud .wb-cast.c-silver b { color: #ffffff; text-shadow: 0 0 12px #aac4ff; }
+@keyframes wbCast { from { transform: translateX(-50%) scale(1.3); opacity: 0; } }
+#wb-hud .wb-res { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: min(80%, 30em); padding: 1em 1.2em; text-align: center; pointer-events: auto;
+  background: linear-gradient(180deg, rgba(34,14,70,.97), rgba(16,6,34,.97)); border: 2px solid #ffd35c; border-radius: 14px; box-shadow: 0 0 40px rgba(255,211,92,.35); }
+#wb-hud .wb-res-h { font-size: 1.4em; color: #ffd35c; margin-bottom: .3em; }
+#wb-hud .wb-mvp { font-size: 1.2em; color: #3a2200; background: linear-gradient(90deg, #fff3c4, #ffd35c, #fff3c4); border-radius: 8px; padding: .15em; margin: .3em 0; font-weight: 700; }
+#wb-hud .wb-me { color: #e3d4ff; } #wb-hud .wb-gain { color: #8ff0c0; margin: .3em 0; } #wb-hud .wb-gain.muted { color: #aaa; }
+#wb-hud .wb-items { display: flex; flex-wrap: wrap; justify-content: center; gap: .4em; margin: .4em 0; }
+#wb-hud .wb-it { display: inline-flex; align-items: center; gap: .3em; padding: .2em .5em; background: rgba(255,255,255,.06); border: 1px solid #5b3fa0; border-radius: 8px; font-size: .85em; }
+#wb-hud .wb-it .px-ico { width: 1.8em; height: 1.8em; } #wb-hud .wb-it em { font-style: normal; }
+#wb-hud .wb-it.red { border-color: #ff3b30; box-shadow: 0 0 10px rgba(255,59,48,.6); } #wb-hud .wb-it.card { border-color: #5dade2; }
+#wb-hud .wb-board { list-style: none; margin: .5em auto; padding: 0; max-width: 20em; text-align: left; font-size: .82em; color: #ddd; }
+#wb-hud .wb-board li { display: flex; gap: .5em; padding: .1em .3em; border-bottom: 1px solid rgba(255,255,255,.06); }
+#wb-hud .wb-board li b { color: #ffd35c; width: 1.6em; } #wb-hud .wb-board li i { margin-left: auto; font-style: normal; color: #b57dff; }
+#wb-hud .wb-ok { margin-top: .4em; background: #ffd35c; color: #3a2200; border: 2px solid #fff3c4; padding: .3em 1.5em; font-weight: 700; }
+
+/* ---- อุปกรณ์ขอบแดง (ชุดสุริยคราส) ---- */
+.ico-wrap.red, .red-frame { position: relative; display: inline-block; }
+.ico-wrap.red::after { content: ''; position: absolute; inset: -2px; border: 2px solid #ff3b30; border-radius: 6px; box-shadow: 0 0 8px rgba(255,59,48,.8), inset 0 0 6px rgba(255,59,48,.5); animation: redGlow 1.6s ease-in-out infinite; pointer-events: none; }
+@keyframes redGlow { 50% { box-shadow: 0 0 14px rgba(255,90,60,1), inset 0 0 10px rgba(255,59,48,.7); } }
+.item.r6, .eqs.r6, .ro-slot.r6, .tr-slot.r6, .sb-card.r6 { border-color: #ff3b30 !important; box-shadow: 0 0 10px rgba(255,59,48,.55), inset 0 0 8px rgba(255,59,48,.35); }
+.item.r6 { border-left-color: #ff3b30; }
+.rn6, .item .rn6, .tt-name.rn6 { background: linear-gradient(90deg, #ffd1c9, #ff3b30 40%, #b00020 70%, #ffd1c9); background-size: 200% 100%; -webkit-background-clip: text; background-clip: text; color: transparent; animation: sheen 2s linear infinite; font-weight: 700; }
+#chat .cb-item.r6 { color: #ff6b5b; }
