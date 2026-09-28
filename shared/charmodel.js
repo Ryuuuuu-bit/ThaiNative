@@ -293,6 +293,7 @@ export function migrate(c) {
   if (!Array.isArray(c.inventory)) c.inventory = [];
   c.inventory = c.inventory.filter((s) => s && ITEMS[s.id] && s.qty > 0).map((s) => ({ id: s.id, qty: Math.floor(s.qty) }));
   if (!c.costume || typeof c.costume !== 'object') c.costume = {};
+  for (const k of Object.keys(c.costume)) if (c.costume[k] && ITEMS[c.costume[k]]?.type !== 'costume') c.costume[k] = null;   // ชุดรุ่นเก่าที่ถูกถอดออกจากเกม
   if (!c.enhance || typeof c.enhance !== 'object') c.enhance = {};
   fixCards(c);                                                   // การ์ดในช่องสวมใส่ + สมุดสะสม
   for (const k of Object.keys(c.equipment)) if (c.equipment[k] && (!ITEMS[c.equipment[k]] || ITEMS[c.equipment[k]].type !== SLOT_TYPE[k])) c.equipment[k] = null;

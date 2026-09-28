@@ -535,7 +535,7 @@ function gm(c, { cmd = 'help', a1, a2, rest = '' }, ctx) {
     case 'exp': { const ups = gainExp(c, n(a1, 1000)); return OK(`+EXP ${n(a1, 1000)}`, { gm: true, ups }); }
     case 'item': {
       const id = a1 && ITEMS[a1] ? a1 : Object.keys(ITEMS).find((k) => ITEMS[k].nameTh === a1);
-      if (!id) return NO(`ไม่พบไอเทม "${a1}" (ใช้ id เช่น yant_guard, cos_head_naga)`);
+      if (!id) return NO(`ไม่พบไอเทม "${a1}" (ใช้ id เช่น yant_guard, cs_head_naga)`);
       addItem(c, id, Math.min(9999, n(a2, 1))); return OK(`ได้รับ ${ITEMS[id].nameTh} x${Math.min(9999, n(a2, 1))}`, { gm: true });
     }
     case 'sp': c.sp = (c.sp || 0) + n(a1, 10); return OK(`SP → ${c.sp}`, { gm: true });

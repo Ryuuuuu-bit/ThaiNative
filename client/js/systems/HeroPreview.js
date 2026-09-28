@@ -5,9 +5,13 @@
 // ============================================================
 import { sanitizeAppearance } from '/shared/data/appearance.js';
 import { bakeCharacter } from '../gfx/SpriteFactory.js';
+import { ITEMS } from '/shared/data/items.js';
 
 export const OUTFIT_IDS = ['mohom', 'ruenton', 'jongkraben', 'rajpatan', 'chaona', 'silk', 'warrior', 'hunter', 'isan', 'mahadlek'];
-export const heroId = (a) => `hero_${a.gender}_${OUTFIT_IDS[a.outfit] || 'mohom'}`;
+/** โมเดลพื้นฐานตามเพศ/ชุดเริ่มต้น */
+export const baseHeroId = (a) => `hero_${a.gender}_${OUTFIT_IDS[a.outfit] || 'mohom'}`;
+/** โมเดลที่ควรแสดง: ถ้าสวมชุดเต็มตัว (costume.outfit มี model) → hero_<เพศ>_<model> */
+export const heroId = (a) => { const m = ITEMS[a?.costume?.outfit]?.model; return m ? `hero_${a.gender}_${m}` : baseHeroId(a); };
 /** ลำดับแถวในภาพ PixelLab */
 export const DIRS = ['south', 'south-east', 'east', 'north-east', 'north', 'north-west', 'west', 'south-west'];
 /** ลำดับหมุนตัวตามเข็มนาฬิกา (มองจากบน) */

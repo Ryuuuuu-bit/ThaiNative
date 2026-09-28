@@ -54,7 +54,7 @@ export const CHEST = { everyMs: 150000, lifeMs: 100000 };
 /** ชุดแต่งตัวที่ดรอปจากหีบสมบัติ (ร้านไม่ขาย) */
 import { rollGearDrop } from './gear.js';
 
-export const CHEST_COSTUMES = ['cos_head_peacockq', 'cos_head_jade', 'cos_head_asura', 'cos_face_skull', 'cos_back_bat'];
+export const CHEST_COSTUMES = ['cs_head_peacock', 'cs_head_jade', 'cs_head_asura', 'cs_face_skull', 'cs_back_bat'];
 export function rollChest(level, rnd = Math.random) {
   const items = [];
   const gold = Math.round((40 + rnd() * 120) * (1 + level / 6));

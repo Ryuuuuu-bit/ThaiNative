@@ -40,13 +40,16 @@ import { TouchControls } from '../topdown/TouchControls.js';
 import { ALL_ASSETS } from '/shared/data/td_assets.js';
 import { bakeGround, makeWater, TdAtmosphere, bakeTdFx, TdVfx, TdMinimap } from '../topdown/TdTheme.js';
 import { uiBlocked } from '../systems/uiGuard.js';
+import { heroId, baseHeroId } from '../systems/HeroPreview.js';
+import { CostumeOverlay } from '../topdown/CostumeOverlay.js';
 const NONE = '__none';                                  // autoMobs: ยกเลิกทั้งหมด (Auto ไม่ไล่ตีผี)
 
 const $ = (s) => document.querySelector(s);
-const OUTFIT_IDS = ['mohom', 'ruenton', 'jongkraben', 'rajpatan', 'chaona', 'silk', 'warrior', 'hunter', 'isan', 'mahadlek'];
 /** ท่าโจมตีจริงตามอาวุธ (ถ้ามีภาพ): ดาบ = ฟัน · ธนู = ยิง · ไม้เท้า = ร่าย · มวย = ต่อย */
 const ACTION_ANIM = { swordman: 'slash', archer: 'shoot', mage: 'cast', boxer: 'attack', healer: 'cast' };
 const SPEED = 92;
+/** ความเร็ว/วนซ้ำของท่า 8 ทิศ */
+const D8_RATE = { idle: [5, true], walk: [10, true], attack: [14, false], slash: [20, false], shoot: [18, false], cast: [18, false], hit: [12, false], die: [8, false] };
 /** ระบบ Auto: หาผีเองในรัศมีนี้รอบตัว (px ≈ 10 ช่อง) */
 const AUTO_MARGIN = 24;                                    // Auto: ตีผีทุกตัวที่อยู่ในหน้าจอ (ขอบจอเผื่อไว้นิดหน่อย)
 const AUTO_GIVEUP = 6000;                                  // ไล่เป้า Auto นานเกินนี้โดยไม่ได้ตี (ทางตัน) → ข้ามไปตัวอื่นชั่วคราว                                   // ความเร็วเดิน (px/วิ) – ตรงกับ server/td.js
@@ -60,7 +63,6 @@ const rand = (a, b) => a + Math.random() * (b - a);
 const dist = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
 const DIRS = ['east', 'south-east', 'south', 'south-west', 'west', 'north-west', 'north', 'north-east'];
 const dirOfIndex = (i) => DIRS[((i % 8) + 8) % 8];
-const heroId = (a) => `hero_${a.gender}_${OUTFIT_IDS[a.outfit] || 'mohom'}`;
 
 export class TopDownScene extends Phaser.Scene {
   constructor() { super('ayutthaya'); }
@@ -73,7 +75,7 @@ export class TopDownScene extends Phaser.Scene {
       for (const [id, ent] of Object.entries(data?.sprites || {})) {
         const meta = Array.isArray(ent) ? { anims: ent } : ent;
         this.d8meta[id] = meta;
-        for (const anim of meta.anims) this.load.image(texKey(id, anim), `/assets/td/${id}/${anim}.png`);
+        if (!meta.lazy) for (const anim of meta.anims) this.load.image(texKey(id, anim), `/assets/td/${id}/${anim}.png`);   // ชุดเต็มตัว: โหลดเมื่อมีคนสวม
       }
       for (const id of data?.images || []) this.load.image(id, `/assets/td/${id}.png`);
       for (const id of data?.tilesets || []) this.load.image(`ts_${id}`, `/assets/td/tiles/${id}.png`);
@@ -84,12 +86,7 @@ export class TopDownScene extends Phaser.Scene {
 
   create({ char }) {
     // ภาพ 8 ทิศจาก manifest (จำนวนเฟรมจริงของแต่ละท่า) ก่อน แล้วค่อยใช้ค่าตั้งต้นจากแผน asset
-    const RATE = { idle: [5, true], walk: [10, true], attack: [14, false], slash: [20, false], shoot: [18, false], cast: [18, false], hit: [12, false], die: [8, false] };
-    for (const [id, m] of Object.entries(this.d8meta || {})) {
-      const anims = {};
-      for (const a of m.anims) { const [rate, loop] = RATE[a] || [10, false]; anims[a] = { frames: m.frames?.[a] || (a === 'idle' ? 4 : 6), rate, loop }; }
-      registerDir8(this, { id, anims });
-    }
+    for (const id of Object.keys(this.d8meta || {})) this.registerHero(id);
     for (const a of ALL_ASSETS) if (a.anims) registerDir8(this, { id: a.id, anims: a.anims });
     this.td = true;
     this.sfx = sound; this.settings = loadSettings(); document.body.classList.add('td-mode'); this.sfx.applySettings(this.settings);
@@ -132,10 +129,12 @@ export class TopDownScene extends Phaser.Scene {
     this.vfx = new TdVfx(this);
     this.skills = new TdSkills(this);
     this.weapons = new WeaponOverlay(this);
+    this.costumes = new CostumeOverlay(this);
     this.touch = new TouchControls(this);
     this.ui.chatBox?.load(`${account.slot ?? 0}_${char.name}`);
     if (document.body.classList.contains('touch')) this.ui.chatBox?.collapse(true);
-    this.weapons.attach(this.player, () => this.player.char.appearance, () => ({ anim: this.player.st }));
+    this.weapons.attach(this.player, () => this.player.look(), () => ({ anim: this.player.st }));
+    this.costumes.attach(this.player, () => this.player.look());
     this.minimap = new TdMinimap(this.groundMini);
     this.zone = null;
     this.ui.updateHud();
@@ -175,7 +174,7 @@ export class TopDownScene extends Phaser.Scene {
     this.onAppearanceChanged = () => {
       const p = this.player, key = bakeCharacter(this, p.char.appearance);
       p.texKey = p.legacyKey = key; p.setTexture(key, 'idle_0');
-      p.d8id = heroId(p.char.appearance);
+      this.applyHero(p, p.char.appearance, () => this.playerAnim('idle', true));
       this.playerAnim('idle', true);
     };
     this.saveSoon = () => { if (!this.econ?.server) saveCharacter(this.player.char); };
@@ -389,21 +388,66 @@ export class TopDownScene extends Phaser.Scene {
     const pos = okPos(char.tdPos) ? char.tdPos : this.M.spawn;
     const p = this.physics.add.sprite(pos.x, pos.y, key, 'idle_0').setOrigin(0.5, 1).setDepth(pos.y);
     p.body.setSize(12, 8).setOffset((p.width - 12) / 2, p.height - 8); p.bodyFoot = [12, 8];
-    Object.assign(p, { char, texKey: key, legacyKey: key, d8id: heroId(char.appearance), dir: 'south', facing: 1, st: 'idle', path: [], target: null, nextAtk: 0, buffs: [], dead: false });
+    Object.assign(p, { char, texKey: key, legacyKey: key, d8id: baseHeroId(char.appearance), dir: 'south', facing: 1, st: 'idle', path: [], target: null, nextAtk: 0, buffs: [], dead: false });
     Object.defineProperty(p, 'alive', { get() { return !this.dead; } });
     Object.defineProperty(p, 'derived', { get() { return getDerived(this.char); } });
     p.cooldownLeft = () => 0;
     p.combatStats = () => getDerived(p.char);
     this.addShadow(p, 22);
     p.holdAttack = () => p.char.appearance.job !== 'boxer';
-    p.actionAnim = () => ACTION_ANIM[p.char.appearance.job];      // ดาบ/ไม้เท้า/ธนู ใช้ท่ายืน + อาวุธเหวี่ยง · มวยใช้ท่าต่อยจริง (ถ้ามี)
+    p.actionAnim = () => ACTION_ANIM[p.char.appearance.job];
+    p.look = () => p._previewApp || p.char.appearance;                 // appearance ที่แสดงอยู่ (รวมลองชุดในร้าน)
+    p.previewAppearance = (app, ms = 6000) => {                         // ลองชุดก่อนซื้อ: แค่ภาพ กลับเป็นชุดจริงเมื่อหมดเวลา
+      clearTimeout(p._pvT); p._previewApp = app;
+      this.applyHero(p, app, () => this.playerAnim('idle', true)); this.playerAnim('idle', true);
+      p._pvT = setTimeout(() => { p._previewApp = null; if (p.active) { this.applyHero(p, p.char.appearance, () => this.playerAnim('idle', true)); this.playerAnim('idle', true); } }, ms);
+    };      // ดาบ/ไม้เท้า/ธนู ใช้ท่ายืน + อาวุธเหวี่ยง · มวยใช้ท่าต่อยจริง (ถ้ามี)
     this.player = p;
+    this.applyHero(p, char.appearance, () => this.playerAnim('idle', true));
     this.blockCollider = this.physics.add.collider(p, this.blocks);
     this.nameTag = makeText(this, 0, 0, char.name, { fontSize: '7px', color: '#fff3c4', align: 'center' }).setOrigin(0.5, 1).setDepth(99999);
     this.titleTag = makeText(this, 0, 0, '', { fontSize: '7px', color: '#ffffff', align: 'center' }).setOrigin(0.5, 1).setDepth(99999).setVisible(false);
     this.refreshNameTag();
     p.on('animationcomplete', (anim) => { if (/:(attack|cast|hit|slash|shoot)(:|$)/.test(anim.key) && p.alive) p.st = 'idle'; });
     this.playerAnim('idle');
+  }
+
+  /** ลงทะเบียน animation 8 ทิศของ id จาก manifest (เฉพาะภาพที่โหลดแล้ว) */
+  registerHero(id) {
+    const m = this.d8meta?.[id]; if (!m) return false;
+    const anims = {};
+    for (const a of m.anims) { const [rate, loop] = D8_RATE[a] || [10, false]; anims[a] = { frames: m.frames?.[a] || (a === 'idle' ? 4 : 6), rate, loop }; }
+    return registerDir8(this, { id, anims });
+  }
+
+  /** โหลดโมเดลชุดเต็มตัวแบบ lazy → Promise<boolean> */
+  loadHero(id) {
+    const m = this.d8meta?.[id];
+    if (!m) return Promise.resolve(false);
+    if (hasDir8(this, id)) return Promise.resolve(true);
+    this._heroLoads ||= {};
+    return (this._heroLoads[id] ||= new Promise((res) => {
+      const todo = m.anims.filter((a) => !this.textures.exists(texKey(id, a)));
+      if (!todo.length) return res(this.registerHero(id));
+      let left = todo.length;
+      const done = () => { if (--left === 0) res(this.registerHero(id)); };
+      for (const a of todo) {
+        const k = texKey(id, a);
+        this.load.image(k, `/assets/td/${id}/${a}.png`);
+        this.load.once(`filecomplete-image-${k}`, done);
+        this.load.once(`loaderror`, (f) => { if (f.key === k) done(); });
+      }
+      if (!this.load.isLoading()) this.load.start();
+    }));
+  }
+
+  /** ตั้งโมเดล 8 ทิศของสไปรต์ตาม appearance (ชุดเต็มตัวโหลดทีหลัง ระหว่างนั้นใช้โมเดลพื้นฐาน) */
+  applyHero(spr, a, onReady) {
+    const want = heroId(a), base = baseHeroId(a);
+    spr._wantHero = want;
+    if (want === base || hasDir8(this, want) || !this.d8meta?.[want]) { spr.d8id = this.d8meta?.[want] ? want : base; return; }
+    spr.d8id = base;
+    this.loadHero(want).then((ok) => { if (ok && spr.active && spr._wantHero === want) { spr.d8id = want; spr._d8 = null; onReady?.(); } });
   }
 
   playerAnim(name, restart = false) { const p = this.player; return playDir(p, name, p.dir || 'south', restart); }
@@ -1000,6 +1044,7 @@ export class TopDownScene extends Phaser.Scene {
       .on('td:matk', ({ mid }) => { const m = this.mobs[mid]; if (!m) return; if (!m.alive || m.alpha < 0.5 || !m.visible) { m.alive = true; if (m.sx != null) m.setPosition(m.sx, m.sy); this.setMobVisible(m, true); } playDir(m, 'attack', m.dir, true); })
       .on('td:aoe', (a) => this.bossAoe(a))
       .on('td:title', ({ id, title }) => this.remotes.get(id)?.setTitle(title))
+      .on('appearance', ({ id, appearance }) => { if (id !== this.net.selfId && appearance) this.remotes.get(id)?.setAppearance(appearance); })
       .on('td:pbuff', (d) => this.skills?.partyReceive(d))
       .on('td:heal', (d) => this.skills?.healFx(d))
       .on('td:tether', (d) => this.skills?.tetherFx(d))
@@ -1032,8 +1077,9 @@ export class TopDownScene extends Phaser.Scene {
     if (this.remotes.has(q.id) || q.id === this.net.selfId) return;
     const key = bakeCharacter(this, q.appearance);
     const s = this.add.sprite(q.x, q.y, key, 'idle_0').setOrigin(0.5, 1).setDepth(q.y);
-    s.legacyKey = key; s.d8id = heroId(q.appearance); s.holdAttack = () => q.appearance?.job !== 'boxer'; s.actionAnim = () => ACTION_ANIM[q.appearance?.job];
+    s.legacyKey = key; this.applyHero(s, q.appearance); s.holdAttack = () => q.appearance?.job !== 'boxer'; s.actionAnim = () => ACTION_ANIM[q.appearance?.job];
     this.weapons?.attach(s, () => q.appearance, () => ({ anim: r.anim }));
+    this.costumes?.attach(s, () => q.appearance);
     const tag = makeText(this, q.x, q.y, `${q.name} Lv.${q.level}`, { fontSize: '7px', color: '#aed6f1', align: 'center' }).setOrigin(0.5, 1);
     const ttl = makeText(this, q.x, q.y, '', { fontSize: '7px', color: '#ffffff', align: 'center' }).setOrigin(0.5, 1);   // ฉายา (สีตามฉายา) เหนือชื่อ
     const paintTitle = (t) => { const T = TITLE_BY_ID[t]; ttl.setText(T ? `«${T.nameTh}»` : '').setColor(T?.color || '#ffffff').setVisible(!!T); };
@@ -1052,9 +1098,10 @@ export class TopDownScene extends Phaser.Scene {
         s.setDepth(s.y); tag.setPosition(s.x, s.y - s.displayHeight - 3).setDepth(s.y + 1); if (ttl.visible) ttl.setPosition(s.x, tag.y - tag.displayHeight).setDepth(s.y + 1);
         playDir(s, this.anim, this.dir);
       },
-      destroy: () => { this.weapons?.detach(s); s.destroy(); tag.destroy(); ttl.destroy(); sh.destroy(); this.shadows = this.shadows.filter((x) => x.obj !== s); },
+      destroy: () => { this.weapons?.detach(s); this.costumes?.detach(s); s.destroy(); tag.destroy(); ttl.destroy(); sh.destroy(); this.shadows = this.shadows.filter((x) => x.obj !== s); },
       get x() { return s.x; }, get y() { return s.y; },
       setTitle(t) { paintTitle(t); },
+      setAppearance: (a) => { q.appearance = a; this.applyHero(s, a); },
     };
     this.remotes.set(q.id, r);
   }
@@ -1262,6 +1309,7 @@ export class TopDownScene extends Phaser.Scene {
     for (const m of this.mobs) { if (this.econ.server) this.updateMobOnline(m, dt); else this.updateMobLocal(m, time); this.drawMob(m); }
     this.remotes.forEach((r) => r.update(dt));
     this.weapons?.update(time);
+    this.costumes?.update();
     this.skills?.autoTick(time);
     this.social?.update(time);
     if (time > (this.tagAt || 0)) { this.tagAt = time + 500; this.refreshNameTag(); }

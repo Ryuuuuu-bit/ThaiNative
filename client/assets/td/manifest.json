@@ -35,23 +35,23 @@
   "hero_male_mohom": {
    "anims": [
     "idle",
-    "attack",
-    "shoot",
-    "slash",
-    "die",
-    "cast",
     "walk",
-    "spell"
+    "attack",
+    "slash",
+    "shoot",
+    "cast",
+    "spell",
+    "die"
    ],
    "frames": {
     "idle": 4,
-    "attack": 6,
-    "shoot": 7,
-    "slash": 7,
-    "die": 7,
-    "cast": 6,
     "walk": 6,
-    "spell": 8
+    "attack": 6,
+    "slash": 7,
+    "shoot": 7,
+    "cast": 6,
+    "spell": 8,
+    "die": 7
    },
    "frame": 72,
    "scale": 0.667
@@ -59,23 +59,23 @@
   "hero_female_ruenton": {
    "anims": [
     "idle",
-    "attack",
-    "shoot",
-    "slash",
-    "die",
-    "cast",
     "walk",
-    "spell"
+    "attack",
+    "slash",
+    "shoot",
+    "cast",
+    "spell",
+    "die"
    ],
    "frames": {
     "idle": 4,
-    "attack": 6,
-    "shoot": 7,
-    "slash": 7,
-    "die": 7,
-    "cast": 6,
     "walk": 6,
-    "spell": 8
+    "attack": 6,
+    "slash": 7,
+    "shoot": 7,
+    "cast": 6,
+    "spell": 8,
+    "die": 7
    },
    "frame": 72,
    "scale": 0.667
@@ -713,6 +713,240 @@
    },
    "frame": 72,
    "scale": 0.6
+  },
+  "hero_female_chaona": {
+   "anims": [
+    "idle",
+    "walk"
+   ],
+   "frames": {
+    "idle": 4,
+    "walk": 6
+   },
+   "frame": 72,
+   "scale": 0.667,
+   "lazy": true
+  },
+  "hero_female_hunter": {
+   "anims": [
+    "idle",
+    "walk"
+   ],
+   "frames": {
+    "idle": 4,
+    "walk": 6
+   },
+   "frame": 72,
+   "scale": 0.667,
+   "lazy": true
+  },
+  "hero_female_isan": {
+   "anims": [
+    "idle",
+    "walk"
+   ],
+   "frames": {
+    "idle": 4,
+    "walk": 6
+   },
+   "frame": 72,
+   "scale": 0.667,
+   "lazy": true
+  },
+  "hero_female_jongkraben": {
+   "anims": [
+    "idle",
+    "walk"
+   ],
+   "frames": {
+    "idle": 4,
+    "walk": 6
+   },
+   "frame": 72,
+   "scale": 0.667,
+   "lazy": true
+  },
+  "hero_female_mahadlek": {
+   "anims": [
+    "idle",
+    "walk"
+   ],
+   "frames": {
+    "idle": 4,
+    "walk": 6
+   },
+   "frame": 72,
+   "scale": 0.667,
+   "lazy": true
+  },
+  "hero_female_mohom": {
+   "anims": [
+    "idle",
+    "walk"
+   ],
+   "frames": {
+    "idle": 4,
+    "walk": 6
+   },
+   "frame": 72,
+   "scale": 0.667,
+   "lazy": true
+  },
+  "hero_female_rajpatan": {
+   "anims": [
+    "idle",
+    "walk"
+   ],
+   "frames": {
+    "idle": 4,
+    "walk": 6
+   },
+   "frame": 72,
+   "scale": 0.667,
+   "lazy": true
+  },
+  "hero_female_silk": {
+   "anims": [
+    "idle",
+    "walk"
+   ],
+   "frames": {
+    "idle": 4,
+    "walk": 6
+   },
+   "frame": 72,
+   "scale": 0.667,
+   "lazy": true
+  },
+  "hero_female_warrior": {
+   "anims": [
+    "idle",
+    "walk"
+   ],
+   "frames": {
+    "idle": 4,
+    "walk": 6
+   },
+   "frame": 72,
+   "scale": 0.667,
+   "lazy": true
+  },
+  "hero_male_chaona": {
+   "anims": [
+    "idle",
+    "walk"
+   ],
+   "frames": {
+    "idle": 4,
+    "walk": 6
+   },
+   "frame": 72,
+   "scale": 0.667,
+   "lazy": true
+  },
+  "hero_male_hunter": {
+   "anims": [
+    "idle",
+    "walk"
+   ],
+   "frames": {
+    "idle": 4,
+    "walk": 6
+   },
+   "frame": 72,
+   "scale": 0.667,
+   "lazy": true
+  },
+  "hero_male_isan": {
+   "anims": [
+    "idle",
+    "walk"
+   ],
+   "frames": {
+    "idle": 4,
+    "walk": 6
+   },
+   "frame": 72,
+   "scale": 0.667,
+   "lazy": true
+  },
+  "hero_male_jongkraben": {
+   "anims": [
+    "idle",
+    "walk"
+   ],
+   "frames": {
+    "idle": 4,
+    "walk": 6
+   },
+   "frame": 72,
+   "scale": 0.667,
+   "lazy": true
+  },
+  "hero_male_mahadlek": {
+   "anims": [
+    "idle",
+    "walk"
+   ],
+   "frames": {
+    "idle": 4,
+    "walk": 6
+   },
+   "frame": 72,
+   "scale": 0.667,
+   "lazy": true
+  },
+  "hero_male_rajpatan": {
+   "anims": [
+    "idle",
+    "walk"
+   ],
+   "frames": {
+    "idle": 4,
+    "walk": 6
+   },
+   "frame": 72,
+   "scale": 0.667,
+   "lazy": true
+  },
+  "hero_male_ruenton": {
+   "anims": [
+    "idle",
+    "walk"
+   ],
+   "frames": {
+    "idle": 4,
+    "walk": 6
+   },
+   "frame": 72,
+   "scale": 0.667,
+   "lazy": true
+  },
+  "hero_male_silk": {
+   "anims": [
+    "idle",
+    "walk"
+   ],
+   "frames": {
+    "idle": 4,
+    "walk": 6
+   },
+   "frame": 72,
+   "scale": 0.667,
+   "lazy": true
+  },
+  "hero_male_warrior": {
+   "anims": [
+    "idle",
+    "walk"
+   ],
+   "frames": {
+    "idle": 4,
+    "walk": 6
+   },
+   "frame": 72,
+   "scale": 0.667,
+   "lazy": true
   }
  },
  "images": [
