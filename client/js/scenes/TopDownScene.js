@@ -367,7 +367,7 @@ export class TopDownScene extends Phaser.Scene {
     const bigLabel = (x, y, text, color) => makeText(this, x * TILE, y * TILE, text, { fontSize: '10px', color }).setOrigin(0.5).setDepth(9000).setAlpha(0.8);
     if (this.M.realm) { for (const [x, y, text] of this.layout.labels || []) bigLabel(x, y, text, '#ffe9a6'); return; }
     const zoneLabel = (tx, ty, text) => makeText(this, (tx + OX) * TILE, ty * TILE, text, { fontSize: '8px', color: '#ffe9a6' }).setOrigin(0.5).setDepth(9000).setAlpha(0.85);
-    zoneLabel(86, 16, '✦ วัดพระศรีสรรเพชญ์ ✦'); zoneLabel(33, 14, '✦ วัดไชยวัฒนาราม ✦'); zoneLabel(60, 42, '⛲ ลานเมือง'); zoneLabel(60, 84, '⚔ ประตูเมืองใต้'); zoneLabel(60, 106, '🌾 ทุ่งนาบางปะอิน'); zoneLabel(60, 62, '🧺 ตลาดหัวรอ'); zoneLabel(30, 50, '🥊 สำนักดาบ·มวย'); zoneLabel(92, 50, '🔨 ย่านช่างน้ำพี้');
+    zoneLabel(86, 16, '✦ วัดพระศรีสรรเพชญ์ ✦'); zoneLabel(33, 14, '✦ วัดไชยวัฒนาราม ✦'); zoneLabel(60, 42, '⛲ ลานเมือง'); zoneLabel(60, 84, '⚔ ประตูเมืองใต้'); zoneLabel(60, 106, '🌾 ทุ่งนาบางปะอิน'); zoneLabel(60, 62, '🧺 ตลาดหัวรอ'); zoneLabel(30, 50, '🥊 สำนักดาบ·มวย'); zoneLabel(92, 50, '🔨 ย่านช่างน้ำพี้'); zoneLabel(45, 37, '🪷 สวนหลวง'); zoneLabel(46, 52, '🌿 ศาลาโอสถ'); zoneLabel(60, 76, '🏘 ชุมชนริมซอย');
     bigLabel(28, 60, '🎋 ป่าไผ่ปู่โสม', '#b9f6ca'); bigLabel(204, 58, '🪦 ป่าช้าวัดร้าง', '#e8daef'); bigLabel(OX + 60, 150, '🪷 บึงผีพราย', '#d6eaf8'); bigLabel(132, 176, '🌀 ประตูมิติหิมพานต์', '#e8daef');
   }
 
