@@ -40,7 +40,8 @@
     "slash",
     "die",
     "cast",
-    "walk"
+    "walk",
+    "spell"
    ],
    "frames": {
     "idle": 4,
@@ -49,7 +50,8 @@
     "slash": 7,
     "die": 7,
     "cast": 6,
-    "walk": 6
+    "walk": 6,
+    "spell": 8
    },
    "frame": 72,
    "scale": 0.667
