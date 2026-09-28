@@ -246,6 +246,27 @@ function buy(c, { shop, id, qty = 1 }, ctx) {
   return OK(`ซื้อ ${it.nameTh}${qty > 1 ? ` x${qty}` : ''} (-฿${cost.toLocaleString()})`);
 }
 const nearAnyShop = (x) => Object.values(SHOP_NPC).some((n) => nearNpc(x, n));
+/** ของที่เพิ่งขาย (ซื้อคืนได้ราคาเดิม · เก็บ 10 รายการล่าสุด) */
+const BUYBACK_MAX = 10;
+function pushBuyback(c, id, qty) {
+  c.buyback ||= [];
+  const price = sellPrice(id);
+  if (!price || !qty) return;
+  const top = c.buyback[0];
+  if (top && top.id === id && top.price === price) top.qty += qty; else c.buyback.unshift({ id, qty, price });
+  c.buyback.length = Math.min(c.buyback.length, BUYBACK_MAX);
+}
+function buyback(c, { idx }, ctx) {
+  if (ctx.x != null && !nearAnyShop(ctx.x)) return NO('ต้องซื้อคืนที่ร้านในหมู่บ้าน');
+  const i = int(idx, 0, BUYBACK_MAX - 1, 0), e = c.buyback?.[i];
+  if (!e || !ITEMS[e.id]) return NO('ไม่มีรายการนี้');
+  const cost = e.price * e.qty;
+  if (c.gold < cost) return NO(`เงินไม่พอ (ต้องใช้ ฿${cost.toLocaleString()})`);
+  c.gold -= cost;
+  addItem(c, e.id, e.qty);
+  c.buyback.splice(i, 1);
+  return OK(`ซื้อคืน ${ITEMS[e.id].nameTh}${e.qty > 1 ? ` x${e.qty}` : ''} (-฿${cost.toLocaleString()})`);
+}
 function sell(c, { id, qty = 1 }, ctx) {
   const it = ITEMS[id];
   if (!it) return NO('ไม่มีไอเทมนี้');
@@ -256,6 +277,7 @@ function sell(c, { id, qty = 1 }, ctx) {
   if (qty <= 0 || !removeItem(c, id, qty)) return NO('ไม่มีของพอขาย');
   const gain = sellPrice(id) * qty;
   c.gold += gain;
+  pushBuyback(c, id, qty);
   return OK(`ขาย ${it.nameTh}${qty > 1 ? ` x${qty}` : ''} (+฿${gain.toLocaleString()})`);
 }
 function sellMany(c, { kind }, ctx) {
@@ -263,7 +285,7 @@ function sellMany(c, { kind }, ctx) {
   let gold = 0, n = 0;
   for (const s of bulkSellList(c, kind === 'fish' ? 'fish' : 'drop').map((x) => ({ ...x }))) {
     if (!removeItem(c, s.id, s.qty)) continue;
-    gold += sellPrice(s.id) * s.qty; n += s.qty;
+    gold += sellPrice(s.id) * s.qty; n += s.qty; pushBuyback(c, s.id, s.qty);
   }
   c.gold += gold;
   return n ? OK(`ขาย ${n} ชิ้น (+฿${gold.toLocaleString()})`, { gold }) : NO('ไม่มีของให้ขาย');
@@ -279,7 +301,7 @@ function sellCart(c, { items }, ctx) {
     if (!it || it.type === 'skin' || isLocked(c, id)) continue;
     const q = Math.min(int(q0, 1, 99999, 1), count(c, id));
     if (q <= 0 || !removeItem(c, id, q)) continue;
-    gold += sellPrice(id) * q; n += q; kinds++;
+    gold += sellPrice(id) * q; n += q; kinds++; pushBuyback(c, id, q);
   }
   c.gold += gold;
   return n ? OK(`ขาย ${kinds} ชนิด ${n.toLocaleString()} ชิ้น (+฿${gold.toLocaleString()})`, { gold }) : NO('ไม่มีของให้ขาย');
@@ -678,7 +700,7 @@ function cardTrade(c, { ids }, ctx) {
 
 // ------------------------------------------------------------
 export const ACTIONS = {
-  use, equip, unequip, cosOff, buy, sell, sellMany, sellCart, lock, offer, siamsi, craft, enhance,
+  use, equip, unequip, cosOff, buy, sell, sellMany, sellCart, buyback, lock, offer, siamsi, craft, enhance,
   qAccept, qDrop, qClaim, path, passive, passiveReset, bounty, fishBite, fishLand, fishLose, gather, chest,
   alloc, learn, hotbar, recall, dye, title, friendDel, gm, cardIn, cardOut, cardTrade, flask,
 };

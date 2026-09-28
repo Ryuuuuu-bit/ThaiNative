@@ -153,6 +153,7 @@ export function setupWorldBoss(io, players, { td, hurtPlayer, queueSync, social,
         const R = wbReward(rank, share, isMvp), k = win ? 1 : 0.25;
         out.exp = Math.round(WB_BASE_EXP * R.expK * k); out.gold = Math.round(WB_BASE_GOLD * R.goldK * k);
         out.items.push({ id: WB_STONE, qty: win ? R.stone : 1 });
+        if (win) out.items.push({ id: 'yak_fang', qty: R.fang });
         if (win && Math.random() < R.card) out.items.push({ id: `card_${WB_ID}`, qty: 1, card: true });
         if (win && Math.random() < R.red) out.red = true;                          // ชิ้นขอบแดงสุ่มตามอาชีพตอนรับ
         out.ok = true;

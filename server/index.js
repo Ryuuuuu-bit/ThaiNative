@@ -24,6 +24,7 @@ import { setupTD } from './td.js';
 import { setupHealer } from './healer.js';
 import { setupWorldBoss } from './worldboss.js';
 import { setupAuth, isAdmin } from './auth.js';
+import { setupRanking } from './ranking.js';
 import { MAX_SLOTS } from './store.js';
 import { discordInfo, relayChat, postNews, announcePatch } from './discord.js';
 
@@ -43,6 +44,7 @@ app.get('/api/discord', async (_req, res) => res.json(await discordInfo()));   /
 const storeReady = setupAuth(app, {
   onlineChar: (acc) => { const p = players.get(byAcc.get(acc)); return p ? { slot: p.slot || 0, save: p.save } : null; },
   onlineCount: () => players.size,
+  leaderboard: () => ranking?.publicBoards() || null,
 });
 // no-cache = เบราว์เซอร์ถามทุกครั้ง (ETag → 304 ถ้าไม่เปลี่ยน) · อัปแพตช์แล้วรีโหลดได้ของใหม่แน่นอน
 const NOCACHE = { setHeaders: (res) => res.setHeader('Cache-Control', 'no-cache') };
@@ -142,6 +144,8 @@ function healPlayer(p, amt) {
 const helpers = { players, byAcc, queueSync, refresh, hurtPlayer, healPlayer, persist, warpTo };
 /** ปาร์ตี้ · เทรด · เรดบอส · เพื่อน */
 const social = setupSocial(io, players, helpers);
+/** ตารางอันดับ (ค่าพลังรวม/เลเวล/ตีบวก) + ฉายาอันดับ */
+const ranking = setupRanking({ storeReady, players, social, queueSync, io });
 /** ผีในแมพล่าผี + บอสประจำภาค (server คุม) */
 const mobs = setupMobs(io, players, { dayMs: DAY_MS, shareExp: social.shareExp, ...helpers });
 /** ดันเจี้ยนปาร์ตี้ (ห้องแยก) */
@@ -256,6 +260,7 @@ io.on('connection', (socket) => {
       socket.broadcast.emit('player:joined', publicPlayer(p));
       social.onJoin(p);
       worldBoss.onJoin(p);
+      ranking.apply(p);                 // ฉายาอันดับ: ตรวจตามอันดับล่าสุด (หลุดอันดับตอนออฟไลน์ = ถอด)
       onlineSoon();
       if (pend) { p.dirty = true; persist(p); }
     } finally { socket.data.joining = false; if (socket.data.joinAcc) { joiningAcc.delete(socket.data.joinAcc); socket.data.joinAcc = null; } }

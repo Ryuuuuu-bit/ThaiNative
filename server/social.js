@@ -325,7 +325,7 @@ export function setupSocial(io, players, H = {}) {
       const t = TITLE_BY_ID[id];
       if (!t || id === 'rookie') continue;
       emitTo(p.id, 'title:new', { id });
-      if (!['rich'].includes(id)) io.emit('chat', { id: null, name: '🏅 ฉายา', text: `${p.name} ได้รับฉายา “${t.nameTh}”` });
+      if (!['rich'].includes(id) && (!t.dynamic || ['cp_top1', 'lv_top1', 'enh_top1'].includes(id))) io.emit('chat', { id: null, name: '🏅 ฉายา', text: `${p.name} ได้รับฉายา “${t.nameTh}”` });
     }
   }
 

@@ -305,14 +305,16 @@ Object.assign(MONSTERS, {
 // เขี้ยวพญายักษ์ (หินตีบวก +16 ขึ้นไป) เพิ่มจุดดรอปในแมพต่างแดน: ผีทั่วไปโอกาสต่ำตามเลเวล · ผีหัวหน้า (elite) สูงขึ้น · บอสแดนดรอปเยอะ
 for (const [id, m] of Object.entries(MONSTERS)) {
   if (!m.realm) continue;
-  const chance = m.boss ? { kumphakan: 0.6, anantanak: 0.8, phaya_yom: 1, phra_rahu: 1, phaya_mara: 1 }[id] ?? 0.6 : m.elite ? 0.04 : m.level >= 75 ? 0.015 : m.level >= 50 ? 0.01 : 0.005;
+  const chance = m.boss ? { kumphakan: 0.6, anantanak: 0.8, phaya_yom: 1, phra_rahu: 1, phaya_mara: 1 }[id] ?? 0.6
+    : m.elite ? (m.level >= 100 ? 0.06 : 0.04) : m.level >= 100 ? 0.02 : m.level >= 75 ? 0.015 : m.level >= 50 ? 0.01 : 0.005;
   m.drops.push({ item: 'yak_fang', chance });
+  if (m.boss && m.level >= 125) m.drops.push({ item: 'yak_fang', chance: 0.5 });   // บอสสวรรค์/สุเมรุ: ลุ้นชิ้นที่ 2 (อุปกรณ์ขอบแดงต้องใช้ 12)
 }
 // ---- บอสโลก: พระราหู ผู้กลืนจันทร์ (อีเวนต์ลานสุริยคราส · ตัวควบคุมใน server/worldboss.js) ----
 // เลือดจริงคำนวณตอนเกิดจากคนออนไลน์ (shared/data/worldboss.js) · ดาเมจเป็น % HP ผู้เล่น · ไม่เกิดเองตามเวลา
 Object.assign(MONSTERS, {
   rahu_eclipse: { nameTh: 'พระราหู ผู้กลืนจันทร์', nameEn: 'Rahu the Moon-Devourer', level: 150, boss: true, worldBoss: true, count: 1,
-    desc: 'อสูรครึ่งตัวผู้กลืนดวงจันทร์ ลงมาวันละ 2 รอบที่ลานสุริยคราส ทั้งเซิร์ฟต้องช่วยกันปราบภายใน 30 นาที',
+    desc: 'อสูรครึ่งตัวผู้กลืนดวงจันทร์ ลงมาทุก 2 ชั่วโมงที่ลานสุริยคราส ทั้งเซิร์ฟต้องช่วยกันปราบภายใน 30 นาที',
     hp: 1000000, atk: 900, def: 75, eva: 20, acc: 260, speed: 0, behavior: 'floater', attackRange: 60, attackCooldown: 99999,
     exp: 0, gold: [0, 0], drops: [], respawnMs: 1e12, scale: 2.6, d8: 'phra_rahu', frame: { w: 32, h: 44 } },
   rahu_shade: { nameTh: 'บริวารราหู', nameEn: 'Rahu Shade', level: 120, count: 1, wbPart: true, pctDmg: 0.06,

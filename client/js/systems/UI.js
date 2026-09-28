@@ -9,9 +9,10 @@ import { JOBS, JOB_IDS, PATH_LV, STAT_PLAN } from '/shared/data/classes.js';
 import { ITEMS, SHOPS, sellPrice, WTYPE_JOB } from '/shared/data/items.js';
 import { STAT_KEYS, STAT_INFO, expToNext, MAX_LEVEL } from '/shared/stats.js';
 import { getDerived, pathName } from './Character.js';
+import { combatPower } from '/shared/character.js';
 import * as Inv from './Inventory.js';
 import { setInfo, SET_TEXT } from '/shared/data/gear.js';
-import { TITLES, TITLE_BY_ID } from '/shared/data/titles.js';
+import { TITLES, TITLE_BY_ID, TITLE_CATS } from '/shared/data/titles.js';
 import { DYE_PRICE } from '/shared/economy.js';
 import { OUTFITS, HAIRSTYLES } from '/shared/data/appearance.js';
 import { SKILLS, SKILL_SLOTS, SKILL_BY_ID, MAX_SKILL_LV, skillStats, canLearn, skillCap, isItemSlot, slotItemId, skillUsable, skillWeaponTh, masteryOf, skillMastery, MASTERY_MAX as SK_MMAX } from '/shared/data/skills.js';
@@ -31,17 +32,16 @@ import { itemIcon, skillIcon, uiIcon } from './util.js';
 import { bindAccountSettings } from './AuthScreen.js';
 import { account } from '../net/Account.js';
 import { CardUI } from './Cards.js';
-import { CARD_BY_ID } from '/shared/data/cards.js';
+import { CARD_BY_ID, SLOT_CARD, CARD_SLOT_TH, socketCount, cardText } from '/shared/data/cards.js';
+import { KINDS, rarityOf, newFilter, applyFilter, filterBarHtml, bindFilterBar, gainBadge, gainText, cpGain, bestSlotFor, bestLoadout, cardGain, bestCardSlot, baseCp, canWear } from './ItemFilter.js';
 import { ItemTip, impactLine, inlineStats, itemCard } from './ItemTip.js';
 import { ChatBox } from './ChatBox.js';
 
 const $ = (s) => document.querySelector(s);
 const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 import { SLOT_TH, GEAR_TYPES, TYPE_TH, FLASK_SLOTS } from '/shared/data/slots.js';
-/** ระดับความหายากของอุปกรณ์ (สี): 1 ธรรมดา · 2 ดี · 3 หายาก · 4 มหากาพย์ · 5 ตำนาน */
-const baseRarity = (it) => (!it ? 0 : it.red ? 6 : it.legend ? 5 : GEAR_TYPES.includes(it.type) ? ((it.lv || 1) >= 28 ? 4 : (it.lv || 1) >= 20 ? 3 : (it.lv || 1) >= 10 ? 2 : 1) : it.type === 'costume' && it.rare ? 4 : 0);
-/** ความหายาก: ของมีค่าสุ่ม 1 บรรทัด = ฟ้า (3) · 2+ บรรทัด = ม่วง (4) · ตำนาน = ทอง (5) */
-export const rarityOf = (it) => Math.max(baseRarity(it), it?.affixN ? (it.affixN >= 2 ? 4 : 3) : 0);
+import { ask, notice } from './Dialog.js';
+export { rarityOf };
 /** บรรทัดค่าสุ่มของไอเทม (สีฟ้า/ม่วงตามจำนวน) */
 export const affixHtml = (it) => (it?.affixes?.length ? `<div class="affixes a${Math.min(3, it.affixN)}">${it.affixes.map((a) => `<span>◆ ${a.text}</span>`).join('')}</div>` : '');
 const rcls = (it) => { const r = rarityOf(it); return r ? ` r${r}` : ''; };
@@ -519,8 +519,8 @@ export class UI {
     const cost = passiveResetCost(c);
     $('#sk-passive-foot').innerHTML = `<span>แต้มพรสวรรค์ <b>${free}</b> / ${totalPassivePoints(c.level)} (ได้ 1 แต้มต่อเลเวล)</span>
       <button class="btn ghost sm" id="sk-preset" ${owned.length > 1 ? '' : 'disabled'}>↺ ล้างต้นไม้ ${cost ? `(฿${cost})` : '(ฟรีก่อน Lv.10)'}</button>`;
-    $('#sk-preset').onclick = () => {
-      if (!confirm(`ล้างต้นไม้พรสวรรค์ทั้งหมด${cost ? ` เสียเงิน ฿${cost}` : ''}? (สกิลที่เลเวลเกินเพดานจะคืน SP)`)) return;
+    $('#sk-preset').onclick = async () => {
+      if (!(await ask({ title: 'ล้างต้นไม้พรสวรรค์ทั้งหมด?', icon: '↺', ok: 'ล้างต้นไม้', text: `${cost ? `ค่าล้าง ฿${cost}` : 'ฟรี (ก่อน Lv.10)'}\nสกิลที่เลเวลเกินเพดานจะคืน SP` }))) return;
       this.scene.econ.act('passiveReset').then((r) => { this.toast(r.msg, r.ok ? '' : 'warn'); this.scene.sfx.play(r.ok ? 'blessing' : 'error'); if (r.ok) this.scene.onJobChanged?.(); this.refreshPanels(); });
     };
   }
@@ -831,7 +831,8 @@ export class UI {
       ['ความแรงคริติคอล', 'critDmg', (v) => `x${v.toFixed(2)}`], ['ป้องกัน', 'def'], ['หลบ', 'eva'],
       ...((d.healPow || 1) > 1 || c.appearance?.job === 'healer' ? [['พลังรักษา 💚', 'healPow', (v) => `${Math.round(((v || 1) - 1) * 100)}%`]] : []),
     ];
-    $('#st-derived').innerHTML = rows.map(([label, key, f = (v) => v]) => {
+    const cp0 = combatPower(c, d), cp1 = used ? combatPower(c, after) : cp0, rk = c.rec?.cpRank;
+    $('#st-derived').innerHTML = `<div class="cp-line"><span>⚔ ค่าพลังรวม</span><b>${cp0.toLocaleString('en-US')}${cp1 !== cp0 ? ` <em class="up">→ ${cp1.toLocaleString('en-US')}</em>` : ''}${rk ? ` <small>อันดับ #${rk}</small>` : ''}</b></div>` + rows.map(([label, key, f = (v) => v]) => {
       const up = after[key] !== d[key];
       return `<div><span>${label}</span><b>${f(d[key])}${up ? ` <em class="up">→ ${f(after[key])}</em>` : ''}</b></div>`;
     }).join('')
@@ -872,18 +873,29 @@ export class UI {
 
   _renderInventory() {
     const c = this.char;
+    const f = (this.invF ||= newFilter());
     const EMPTY_IC = { weapon: '⚔️', helm: '⛑️', armor: '🥋', gloves: '🧤', boots: '👢', belt: '🎗️', accessory: '💍', accessory2: '📿', flask: '🧪', flask2: '🧪' };
-    const cell = (slot) => {
-      const id = c.equipment[slot], it = id && ITEMS[id];
-      if (!it) return `<div class="eqs eqs-${slot} empty" title="${SLOT_TH[slot]} (ว่าง)"><span class="ph">${EMPTY_IC[slot]}</span><small>${SLOT_TH[slot]}</small></div>`;
-      const enh = c.enhance?.[slot], cards = (c.cards?.[slot] || []).filter((x) => CARD_BY_ID[x]);
-      const ch = FLASK_SLOTS.includes(slot) && it.flask ? `<span class="fl-ch">${Math.floor(c.flaskCh?.[slot] || 0)}/${it.flask.max}</span>` : '';
-      return `<div class="eqs eqs-${slot}${rcls(it)}" data-tip-item="${id}" data-tip-slot="${slot}" data-unequip="${slot}">
-        <span class="ico">${itemIcon(id, it.icon)}</span>${enh ? `<b class="enh t${ENHANCE.auraTier(enh)}">+${enh}</b>` : ''}${ch}
-        ${cards.length ? `<span class="eqs-cards">${cards.map((x) => `<i title="${esc(CARD_BY_ID[x].nameTh)}"></i>`).join('')}</span>` : ''}
-        <small>${esc(it.nameTh)}</small></div>`;
+    const typeOfSlot = (slot) => (slot === 'accessory2' ? 'accessory' : slot === 'flask2' ? 'flask' : slot);
+    // ช่องการ์ดบนหุ่น (อาวุธ/เสื้อ/เครื่องประดับ): จุดทอง = มีการ์ด · ＋ = ช่องว่าง (คลิกเพื่อเลือกการ์ด)
+    const pips = (slot) => {
+      if (!SLOT_CARD[slot] || !c.equipment[slot]) return '';
+      const n = socketCount(slot, c.enhance?.[slot] || 0), list = c.cards?.[slot] || [];
+      if (!n) return '';
+      return `<span class="eqs-cards">${Array.from({ length: n }, (_, i) => (CARD_BY_ID[list[i]] ? `<i class="on" title="${esc(CARD_BY_ID[list[i]].nameTh)}"></i>` : `<b class="sock-add" data-cardpick="${slot}" title="ใส่การ์ด${CARD_SLOT_TH[SLOT_CARD[slot]]}">＋</b>`)).join('')}</span>`;
     };
-    $('#inv-equip').innerHTML = `<div class="eq-grid">${['weapon', 'helm', 'accessory', 'armor', 'accessory2', 'gloves', 'boots', 'flask', 'belt', 'flask2'].map(cell).join('')}</div>`;
+    const cell = (slot) => {
+      const id = c.equipment[slot], it = id && ITEMS[id], active = f.slot === typeOfSlot(slot) && f.kind === 'gear';
+      if (!it) return `<div class="eqs eqs-${slot} empty${active ? ' pick' : ''}" data-eqslot="${slot}" title="${SLOT_TH[slot]} (ว่าง) · คลิก = ดูของที่ใส่ช่องนี้ได้ · ลากของมาวางได้"><span class="ph">${EMPTY_IC[slot]}</span><small>${SLOT_TH[slot]}</small></div>`;
+      const enh = c.enhance?.[slot];
+      const ch = FLASK_SLOTS.includes(slot) && it.flask ? `<span class="fl-ch">${Math.floor(c.flaskCh?.[slot] || 0)}/${it.flask.max}</span>` : '';
+      return `<div class="eqs eqs-${slot}${rcls(it)}${active ? ' pick' : ''}" data-tip-item="${id}" data-tip-slot="${slot}" data-eqslot="${slot}" title="คลิก = ดูของที่ใส่แทนได้ · ดับเบิลคลิก/✕ = ถอด">
+        <span class="ico">${itemIcon(id, it.icon)}</span>${enh ? `<b class="enh t${ENHANCE.auraTier(enh)}">+${enh}</b>` : ''}${ch}${pips(slot)}
+        <button class="eqs-x" data-unequip="${slot}" title="ถอด">✕</button><small>${esc(it.nameTh)}</small></div>`;
+    };
+    const cpNow = baseCp(c), plan = bestLoadout(c);
+    $('#inv-equip').innerHTML = `<div class="eq-head"><span class="eq-cp">⚔ ค่าพลังรวม <b>${cpNow.toLocaleString('en-US')}</b></span>
+      <button class="btn sm ${plan.length ? 'primary' : 'ghost'}" data-bestgear ${plan.length ? '' : 'disabled'} title="สวมของในกระเป๋าที่ให้ค่าพลังรวมสูงสุดทุกช่อง">⚡ ใส่ชุดที่ดีที่สุด${plan.length ? ` (${plan.length})` : ''}</button></div>
+      <div class="eq-grid">${['weapon', 'helm', 'accessory', 'armor', 'accessory2', 'gloves', 'boots', 'flask', 'belt', 'flask2'].map(cell).join('')}</div>`;
     const COS_TH = { head: 'หมวก/มงกุฎ', face: 'หน้ากาก', back: 'ของหลัง', outfit: 'ชุดแต่งตัว' };
     $('#inv-equip').innerHTML += `<div class="eq-cos">${Object.entries(COS_TH).map(([slot, th]) => { const id = c.costume?.[slot];
       return `<div class="eq cos"><small>${th}</small>${id ? `${itemIcon(id, ITEMS[id].icon)} ${ITEMS[id].nameTh} <button class="close" data-uncos="${slot}">✕</button>` : '—'}</div>`; }).join('')}</div>`;
@@ -894,73 +906,111 @@ export class UI {
       ? `<div class="set-box"><b>✦ ${esc(si.nameTh)}</b> <span class="meta">${si.n} ชิ้น · ระดับ Lv.${si.lv}</span>
           ${si.tiers.map((t) => `<div class="${t.on ? 'on' : ''}">${t.on ? '✔' : '○'} ${SET_TEXT[t.n]}: ${fmt(t.bonus)}</div>`).join('')}</div>`
       : '<div class="set-box off"><span class="meta">✦ โบนัสชุด: สวมอุปกรณ์สายเดียวกัน 2/3/4/6 ชิ้น (ซื้อจากครูประจำสาย) จะได้โบนัสเพิ่ม · ยิ่งเลเวลของสูงยิ่งแรง</span></div>';
-    $('#inv-equip').querySelectorAll('[data-unequip]').forEach((b) => (b.onclick = () => this.result(this.scene.econ.act('unequip', { slot: b.dataset.unequip }))));
-    $('#inv-equip').querySelectorAll('[data-uncos]').forEach((b) => (b.onclick = () => this.result(this.scene.econ.act('cosOff', { slot: b.dataset.uncos }))));
-
-    // ---------- กระเป๋าแบบ Ragnarok: แท็บ ไอเทม/อุปกรณ์/อื่นๆ · ตารางช่องไอคอน + จำนวนมุมขวาล่าง ----------
-    //  คลิก = เลือก (แถบคำสั่งด้านล่าง) · ดับเบิลคลิก = ใช้/สวม · คลิกขวา = ล็อก/ปลดล็อก · ลากไป Hotbar ได้
-    const CAT = { use: ['ไอเทม', (t) => ['consumable', 'home', 'food', 'reset', 'reskill', 'rename', 'offering', 'flask'].includes(t)],
-      equip: ['อุปกรณ์', (t) => GEAR_TYPES.includes(t) || t === 'costume' || t === 'card'],
-      etc: ['อื่นๆ', (t) => ['material', 'herb', 'fish'].includes(t)], all: ['ทั้งหมด', () => true] };
-    const ORDER = ['card', 'weapon', 'helm', 'armor', 'gloves', 'boots', 'belt', 'accessory', 'flask', 'costume', 'home', 'consumable', 'food', 'reset', 'reskill', 'rename', 'offering', 'herb', 'fish', 'material'];
-    let cat = this.invCat || 'use'; if (!CAT[cat]) cat = 'use';
-    const sort = this.invSort || 'type';
-    const list = c.inventory.filter((st) => CAT[cat][1](ITEMS[st.id].type)).sort((a, b) => {
-      const A = ITEMS[a.id], B = ITEMS[b.id];
-      if (sort === 'name') return A.nameTh.localeCompare(B.nameTh, 'th');
-      if (sort === 'price') return sellPrice(b.id) * b.qty - sellPrice(a.id) * a.qty;
-      return ORDER.indexOf(A.type) - ORDER.indexOf(B.type) || A.nameTh.localeCompare(B.nameTh, 'th');
+    const eqEl = $('#inv-equip');
+    eqEl.querySelectorAll('[data-unequip]').forEach((b) => (b.onclick = (e) => { e.stopPropagation(); this.result(this.scene.econ.act('unequip', { slot: b.dataset.unequip })); }));
+    eqEl.querySelectorAll('[data-uncos]').forEach((b) => (b.onclick = () => this.result(this.scene.econ.act('cosOff', { slot: b.dataset.uncos }))));
+    eqEl.querySelectorAll('[data-eqslot]').forEach((d) => {
+      const slot = d.dataset.eqslot, t = typeOfSlot(slot);
+      // คลิก = กรองกระเป๋าให้เหลือของที่ใส่ช่องนี้ได้ (คลิกซ้ำ = ยกเลิก) · ดับเบิลคลิก = ถอด
+      d.onclick = (e) => {
+        if (e.target.closest('[data-cardpick],[data-unequip]')) return;
+        const on = f.kind === 'gear' && f.slot === t;
+        Object.assign(f, on ? { kind: 'all', slot: 'any', wear: false } : { kind: 'gear', slot: t, wear: true });
+        this.invSel = null; this.scene.sfx.play('click'); this.renderInventory();
+      };
+      d.ondblclick = () => { if (c.equipment[slot]) this.result(this.scene.econ.act('unequip', { slot })); };
+      // ลากจากกระเป๋ามาวาง: อุปกรณ์ = สวมช่องนี้ · การ์ด = ใส่การ์ดช่องนี้
+      d.addEventListener('dragover', (e) => { if (e.dataTransfer.types.includes('text/item')) { e.preventDefault(); d.classList.add('drop'); } });
+      d.addEventListener('dragleave', () => d.classList.remove('drop'));
+      d.addEventListener('drop', (e) => {
+        e.preventDefault(); d.classList.remove('drop');
+        const id = e.dataTransfer.getData('text/item'), it = ITEMS[id];
+        if (!it) return;
+        if (CARD_BY_ID[id]) return this.result(this.scene.econ.act('cardIn', { slot, id }));
+        if (typeOfSlot(slot) !== it.type) return this.toast(`${it.nameTh} ใส่ช่อง${SLOT_TH[slot]}ไม่ได้`, 'warn');
+        this.result(this.scene.econ.act('equip', { id, slot }));
+      });
     });
-    const ACT = { home: 'ใช้', consumable: 'ใช้', food: 'กิน', offering: 'ถวาย', weapon: 'ถือ', armor: 'สวม', helm: 'สวม', gloves: 'สวม', boots: 'สวม', belt: 'คาด', accessory: 'สวม', flask: 'ใส่', costume: 'แต่ง', reset: 'ใช้', reskill: 'ใช้', rename: 'ใช้', card: 'ใส่' };
+    eqEl.querySelectorAll('[data-cardpick]').forEach((b) => (b.onclick = (e) => { e.stopPropagation(); this.invCardPick = this.invCardPick === b.dataset.cardpick ? null : b.dataset.cardpick; this.scene.sfx.play('click'); this.renderInventory(); }));
+    eqEl.querySelector('[data-bestgear]')?.addEventListener('click', async () => {
+      const todo = bestLoadout(this.char);
+      if (!todo.length) return;
+      const before = baseCp(this.char);
+      for (const { slot, id } of todo) { const r = await this.scene.econ.act('equip', { id, slot }); if (!r?.ok) { this.result(r); break; } if (r.jobChanged) this.scene.onAppearanceChanged(); }
+      this.scene.sfx.play('buff'); this.refreshPanels(); this.scene.saveSoon();
+      const after = baseCp(this.char);
+      this.toast(`⚡ สวมชุดที่ดีที่สุด ${todo.length} ชิ้น · ค่าพลังรวม ${before.toLocaleString('en-US')} → ${after.toLocaleString('en-US')}`);
+    });
+
+    // ---------- กระเป๋าแบบ Ragnarok + ตัวกรองมาตรฐาน (หมวด · ช่อง · สายฉัน · ใส่ได้ · ▲ ดีกว่า · หายาก · เรียง · ค้นหา) ----------
+    //  คลิก = เลือก · ดับเบิลคลิก = ใช้/สวม · คลิกขวา = ล็อก · ลากไปหุ่น/Hotbar ได้
+    const list = applyFilter(c, c.inventory, f);
+    const ACT = { home: 'ใช้', consumable: 'ใช้', food: 'กิน', offering: 'ถวาย', weapon: 'ถือ', armor: 'สวม', helm: 'สวม', gloves: 'สวม', boots: 'สวม', belt: 'คาด', accessory: 'สวม', flask: 'ใส่', costume: 'แต่ง', reset: 'ใช้', reskill: 'ใช้', rename: 'ใช้', card: 'ใส่การ์ด' };
     const actOf = (id) => { const it = ITEMS[id]; return it.type === 'skin' ? (c.path === it.job ? null : 'เปลี่ยนสาย') : ACT[it.type] || null; };
-    const count = (k) => c.inventory.filter((st) => CAT[k][1](ITEMS[st.id].type)).length;
     const cells = Math.max(40, Math.ceil((list.length + 1) / 8) * 8);
     const sel = list.some((st) => st.id === this.invSel) ? this.invSel : null;
     const slots = Array.from({ length: cells }, (_, i) => {
       const st = list[i];
       if (!st) return '<div class="ro-slot empty"></div>';
-      const it = ITEMS[st.id], lock = Inv.isLocked(c, st.id), hb = hotbarItemOk(st.id);
-      return `<div class="ro-slot${rcls(it)}${st.id === sel ? ' sel' : ''}" data-slot="${st.id}" data-tip-item="${st.id}"${hb ? ` draggable="true" data-hbitem="${st.id}"` : ''}>
-        ${itemIcon(st.id, it.icon)}${st.qty > 1 ? `<b class="ro-q">${st.qty > 9999 ? '9999+' : st.qty}</b>` : ''}${lock ? '<i class="ro-lock">🔒</i>' : ''}</div>`;
+      const it = ITEMS[st.id], lock = Inv.isLocked(c, st.id), under = it.lv && c.level < it.lv;
+      return `<div class="ro-slot${rcls(it)}${st.id === sel ? ' sel' : ''}${under ? ' under' : ''}" data-slot="${st.id}" data-tip-item="${st.id}" draggable="true" data-hbitem="${st.id}">
+        ${itemIcon(st.id, it.icon)}${st.qty > 1 ? `<b class="ro-q">${st.qty > 9999 ? '9999+' : st.qty}</b>` : ''}${lock ? '<i class="ro-lock">🔒</i>' : ''}${gainBadge(c, st.id)}</div>`;
     }).join('');
+    // ตัวเลือกการ์ด (จากจุด ＋ บนหุ่น หรือเลือกการ์ดในกระเป๋า)
+    let pick = '';
+    if (this.invCardPick && c.equipment[this.invCardPick]) {
+      const slot = this.invCardPick, type = SLOT_CARD[slot];
+      const cards = c.inventory.filter((s) => CARD_BY_ID[s.id]?.slot === type).map((s) => ({ ...s, g: cardGain(c, slot, s.id) ?? 0 })).sort((a, b) => b.g - a.g);
+      pick = `<div class="inv-cardpick"><div class="h">🃏 ใส่การ์ด${CARD_SLOT_TH[type]} → <b>${SLOT_TH[slot]}</b> <button class="btn ghost sm" data-cpx>ยกเลิก</button></div>
+        ${cards.length ? `<div class="list">${cards.map((s) => `<button class="cp-card" data-cardin="${s.id}" data-tip-item="${s.id}">${itemIcon(s.id, ITEMS[s.id].icon)}<span>${esc(CARD_BY_ID[s.id].monTh || ITEMS[s.id].nameTh)}<small>${esc(cardText(CARD_BY_ID[s.id]))}</small></span><b class="${s.g > 0 ? 'up' : ''}">⚔ ${s.g > 0 ? '+' : ''}${s.g.toLocaleString('en-US')}</b></button>`).join('')}</div>`
+          : `<p class="empty">ไม่มีการ์ด${CARD_SLOT_TH[type]}ในกระเป๋า · ล่าผีเพื่อสะสม</p>`}</div>`;
+    }
     const si2 = sel && ITEMS[sel], selSt = sel && c.inventory.find((st) => st.id === sel);
-    const bar = si2 ? `<div class="ro-bar"><span class="ic">${itemIcon(sel, si2.icon)}</span><span class="ro-name">${rname(si2, esc(si2.nameTh))} <span class="meta">x${selSt.qty}${itemTag(si2) || ''}</span>${impactLine(c, sel)}</span>
+    const cardTo = si2 && CARD_BY_ID[sel] ? bestCardSlot(c, sel) : null;
+    const bar = si2 ? `<div class="ro-bar"><span class="ic">${itemIcon(sel, si2.icon)}</span><span class="ro-name">${rname(si2, esc(si2.nameTh))} <span class="meta">x${selSt.qty}${itemTag(si2) || ''}</span>${gainText(c, sel)}${impactLine(c, sel)}
+        ${CARD_BY_ID[sel] ? `<span class="cp-gain ${cardTo?.gain > 0 ? 'up' : 'same'}">${cardTo ? `🃏 ใส่ช่อง${SLOT_TH[cardTo.slot]} · ⚔ ${cardTo.gain >= 0 ? '+' : ''}${cardTo.gain.toLocaleString('en-US')}` : '🃏 ไม่มีช่องการ์ดว่างที่ใส่ได้'}</span>` : ''}</span>
         <span class="ro-acts"><span class="price">฿${sellPrice(sel)}</span>
         <button class="lock ${Inv.isLocked(c, sel) ? 'on' : ''}" data-lock="${sel}" title="ล็อกกันขาย">${Inv.isLocked(c, sel) ? '🔒' : '🔓'}</button>
         <button class="hb-add" data-share="${sel}" title="แชร์ไอเทมลงแชท (Shift+คลิก ก็ได้)">💬</button>
         ${hotbarItemOk(sel) ? `<button class="hb-add" data-hbadd="${sel}" title="ใส่ Hotbar ช่องว่างแรก">⌨</button>` : ''}
         ${actOf(sel) ? `<button class="primary" data-use="${sel}">${actOf(sel)}</button>` : ''}</span></div>`
-      : '<div class="ro-bar hint">คลิกไอเทมเพื่อเลือก · ดับเบิลคลิก = ใช้/สวม · คลิกขวา = ล็อก · Shift+คลิก = แชร์ลงแชท · ลากไปวางที่ Hotbar ได้</div>';
-    $('#inv-list').innerHTML = `<div class="ro-bag">
-      <div class="ro-tabs">${Object.entries(CAT).map(([k, [l]]) => `<button data-cat="${k}" class="${k === cat ? 'active' : ''}">${l}<small>${count(k)}</small></button>`).join('')}
-        <select id="inv-sort" title="เรียงลำดับ"><option value="type">ประเภท</option><option value="name">ชื่อ</option><option value="price">มูลค่า</option></select></div>
-      <div class="ro-grid">${slots}</div>
+      : `<div class="ro-bar hint"><b class="up">▲</b> ใส่แล้วแรงขึ้น · ดับเบิลคลิก = ใช้/สวม · คลิกขวา = ล็อก · ลากไปวางบนหุ่นได้ · คลิกช่องบนหุ่น = หาของใส่ช่องนั้น</div>`;
+    $('#inv-list').innerHTML = `<div class="ro-bag">${filterBarHtml(c, f, c.inventory)}
+      ${pick}<div class="ro-grid">${list.length ? slots : `<div class="empty" style="grid-column:1/-1">ไม่พบไอเทมตามตัวกรอง <button class="btn ghost sm" data-ifreset>ล้างตัวกรอง</button></div>`}</div>
       ${bar}
-      <div class="ro-foot"><span>ช่องที่ใช้ ${c.inventory.length}</span><span class="ro-zeny">฿ ${c.gold.toLocaleString()}</span></div></div>`;
-    $('#inv-sort').value = sort;
-    $('#inv-sort').onchange = (e) => { this.invSort = e.target.value; this.renderInventory(); };
-    $('#inv-list').querySelectorAll('[data-cat]').forEach((b) => (b.onclick = () => { this.invCat = b.dataset.cat; this.invSel = null; this.scene.sfx.play('click'); this.renderInventory(); }));
+      <div class="ro-foot"><span>ช่องที่ใช้ ${c.inventory.length}${list.length !== c.inventory.length ? ` · แสดง ${list.length}` : ''}</span><span class="ro-zeny">฿ ${c.gold.toLocaleString()}</span></div></div>`;
+    const inv = $('#inv-list');
+    bindFilterBar(inv, f, () => { this.invSel = null; this.renderInventory(); }, this.scene);
+    inv.querySelector('[data-ifreset]')?.addEventListener('click', () => { this.invF = newFilter(); this.renderInventory(); });
     const toggleLock = (id) => this.scene.econ.act('lock', { id }).then((r) => {
       this.toast(r.locked ? `🔒 ล็อก ${ITEMS[id].nameTh} (จะไม่ถูกขาย)` : `🔓 ปลดล็อก ${ITEMS[id].nameTh}`);
       this.scene.sfx.play('click'); this.renderInventory(); this.scene.saveSoon();
     });
-    const use = (id) => (CARD_BY_ID[id] ? this.cards.open('sockets', id) : this.result(this.scene.econ.act('use', { id })));
-    $('#inv-list').querySelectorAll('.ro-slot[data-slot]').forEach((el) => {
+    const use = (id) => {
+      if (CARD_BY_ID[id]) { const t = bestCardSlot(this.char, id); return t ? this.result(this.scene.econ.act('cardIn', { slot: t.slot, id })) : this.cards.open('sockets', id); }
+      const it = ITEMS[id];
+      if (it.type === 'accessory') return this.result(this.scene.econ.act('equip', { id, slot: bestSlotFor(this.char, id) }));
+      return this.result(this.scene.econ.act('use', { id }));
+    };
+    inv.querySelectorAll('.ro-slot[data-slot]').forEach((el) => {
       const id = el.dataset.slot;
       el.onclick = () => { if (this.invSel !== id) { this.invSel = id; this.scene.sfx.play('click'); this.renderInventory(); } };
       el.ondblclick = () => { if (actOf(id)) use(id); };
       el.oncontextmenu = (e) => { e.preventDefault(); toggleLock(id); };
     });
-    $('#inv-list').querySelectorAll('[data-lock]').forEach((b) => (b.onclick = () => toggleLock(b.dataset.lock)));
-    $('#inv-list').querySelectorAll('[data-share]').forEach((b) => (b.onclick = () => this.chatBox?.linkItem(b.dataset.share)));
-    $('#inv-list').querySelectorAll('[data-use]').forEach((b) => (b.onclick = () => use(b.dataset.use)));
-    $('#inv-list').querySelectorAll('[data-hbadd]').forEach((b) => (b.onclick = () => this.assignFirstFree(b.dataset.hbadd)));
-    $('#inv-list').querySelectorAll('[data-hbitem]').forEach((el) => el.addEventListener('dragstart', (e) => { e.dataTransfer.setData('text/item', el.dataset.hbitem); e.dataTransfer.effectAllowed = 'copy'; }));
+    inv.querySelectorAll('[data-lock]').forEach((b) => (b.onclick = () => toggleLock(b.dataset.lock)));
+    inv.querySelectorAll('[data-share]').forEach((b) => (b.onclick = () => this.chatBox?.linkItem(b.dataset.share)));
+    inv.querySelectorAll('[data-use]').forEach((b) => (b.onclick = () => use(b.dataset.use)));
+    inv.querySelectorAll('[data-hbadd]').forEach((b) => (b.onclick = () => this.assignFirstFree(b.dataset.hbadd)));
+    inv.querySelectorAll('[data-hbitem]').forEach((el) => el.addEventListener('dragstart', (e) => { e.dataTransfer.setData('text/item', el.dataset.hbitem); e.dataTransfer.effectAllowed = 'copy'; }));
+    inv.querySelector('[data-cpx]')?.addEventListener('click', () => { this.invCardPick = null; this.renderInventory(); });
+    inv.querySelectorAll('[data-cardin]').forEach((b) => (b.onclick = () => { const slot = this.invCardPick; this.invCardPick = null; this.scene.sfx.play('buy'); this.result(this.scene.econ.act('cardIn', { slot, id: b.dataset.cardin })); }));
   }
 
   // ---------------- ร้านค้า NPC ----------------
   openShop(shopId, npc = null) {
     this.shopId = shopId; this.shopSel = null;
+    for (const f of [this.shopF, this.sellF]) if (f) Object.assign(f, { kind: 'all', slot: 'any', q: '' });   // ร้านใหม่: ล้างหมวด/ค้นหา (คงตัวเลือกสายฉัน/เรียง)
     this.shopQty = 1;                        // เปิดร้านใหม่ทุกครั้ง → จำนวนกลับเป็น x1 (กันซื้อพลาดจากค่าที่ค้างจากร้านก่อน)
     const shop = SHOPS[shopId];
     $('#shop-title').textContent = shop.nameTh;
@@ -973,8 +1023,9 @@ export class UI {
     try { const spr = npc?.spr; if (spr?.texture && this.scene.textures.getBase64) port = this.scene.textures.getBase64(spr.texture.key, spr.frame?.name); } catch { port = ''; }
     $('#shop-port').src = port || ''; $('#shop-port').style.display = port ? '' : 'none';
     $('#shop-port-ic').textContent = port ? '' : (npc?.icon || '🛒');
-    const TAB_TH = { buy: '🛒 ซื้อ', sell: '💰 ขาย', enhance: `${uiIcon('anvil', '🔨')} ตีบวก`, cook: `${uiIcon('soup', '🍳')} ทำอาหาร`, brew: `${uiIcon('herb', '🌿')} ปรุงยา`, forge: '⚒️ หลอมอุปกรณ์', dye: '🎨 ย้อมสี', cards: '🃏 แลกการ์ด', quests: '📜 เควสอาชีพ' };
-    const tabs = shop.tabs || ['buy', 'sell'];
+    const TAB_TH = { buy: '🛒 ซื้อ', sell: '💰 ขาย', enhance: `${uiIcon('anvil', '🔨')} ตีบวก`, cook: `${uiIcon('soup', '🍳')} ทำอาหาร`, brew: `${uiIcon('herb', '🌿')} ปรุงยา`, forge: '⚒️ หลอมอุปกรณ์', dye: '🎨 ย้อมสี', cards: '🃏 แลกการ์ด', quests: '📜 เควสอาชีพ', buyback: '↩ ซื้อคืน' };
+    const tabs = [...(shop.tabs || ['buy', 'sell'])];
+    if (tabs.includes('sell') && !tabs.includes('buyback')) tabs.splice(tabs.indexOf('sell') + 1, 0, 'buyback');   // ซื้อคืนของที่เพิ่งขาย (กันขายพลาด)
     this.shopTab = tabs[0];
     $('#shop-tabs').innerHTML = tabs.map((t, i) => `<button data-tab="${t}" class="${i ? '' : 'active'}">${TAB_TH[t]}</button>`).join('');
     this.closeAll();
@@ -984,6 +1035,7 @@ export class UI {
   renderShop() {
     const c = this.char, shop = SHOPS[this.shopId];
     $('#shop-gold').textContent = c.gold.toLocaleString();
+    $('#shop-panel').classList.toggle('selling', this.shopTab === 'sell');     // แท็บขาย: หน้าต่างสูงพอดีจอ ตารางไอเทมเลื่อนในตัว (ท้ายหน้าต่างไม่ทับตาราง)
     let html;
     if (this.shopTab === 'enhance') return this.scene.village.renderEnhance($('#shop-list'));
     if (this.shopTab === 'cards') return this.cards.renderTrade($('#shop-list'));
@@ -992,6 +1044,7 @@ export class UI {
     if (this.shopTab === 'forge') return this.scene.village.renderForge($('#shop-list'));
     if (this.shopTab === 'dye') return this.renderDye($('#shop-list'));
     if (this.shopTab === 'quests') return this.scene.village.renderQuestList($('#shop-list'), this.shopId);
+    if (this.shopTab === 'buyback') return this.renderBuyback($('#shop-list'));
     // เลือกจำนวน: x1 / x5 / x10 / สูงสุด (ใช้ทั้งซื้อและขาย)
     const QTY = [[1, 'x1'], [5, 'x5'], [10, 'x10'], [9999, 'สูงสุด']];
     // ร้านครูอาชีพไม่มีแถบจำนวน → ซื้อทีละชิ้นเสมอ
@@ -1000,18 +1053,20 @@ export class UI {
     const qtyBar = `<div class="qty-bar"><span>จำนวน:</span>${QTY.map(([n, l]) => `<button data-qty="${n}" class="${q === n ? 'active' : ''}">${l}</button>`).join('')}
       <label class="qty-custom ${custom ? 'active' : ''}">ระบุ <input type="number" id="shop-qty-in" min="1" max="9999" value="${custom ? q : ''}" placeholder="เช่น 25" /></label></div>`;
     if (this.shopTab === 'buy') {
-      // ร้านครูอาชีพ: กรองตามประเภท
-      const GF = { all: 'ทั้งหมด', weapon: 'อาวุธ', armor: 'ชุดเกราะ', accessory: 'เครื่องประดับ', ok: 'สวมได้ตอนนี้' };
-      const gf = shop.job ? (this.gearFilter || 'all') : 'all';
-      const filterBar = shop.job ? `<div class="qty-bar gear-filter"><span>แสดง:</span>${Object.entries(GF).map(([k, l]) => `<button data-gf="${k}" class="${k === gf ? 'active' : ''}">${l}</button>`).join('')}</div>` : '';
-      const stock = shop.stock.filter((id) => gf === 'all' || (gf === 'ok' ? (ITEMS[id].lv || 1) <= c.level : ITEMS[id].type === gf));
+      // ตัวกรองมาตรฐาน (หมวด · ช่อง · สายฉัน · ใส่ได้ · ▲ ดีกว่า · หายาก · เรียง · ค้นหา)
+      const f = (this.shopF ||= newFilter());
+      const kinds = ['all', 'gear', 'use', 'card', 'etc'].filter((k) => k === 'all' || shop.stock.some((id) => ITEMS[id] && KINDS[k][1](ITEMS[id])));
+      if (!kinds.includes(f.kind)) f.kind = 'all';
+      const hasGear = shop.stock.some((id) => KINDS.gear[1](ITEMS[id]));
+      const filterBar = filterBarHtml(c, f, shop.stock, { kinds, gear: hasGear });
+      const stock = applyFilter(c, shop.stock, f, { price: (id) => ITEMS[id].price || 0 });
       // แบบ 2 ฝั่ง: ซ้าย = ตารางสินค้า · ขวา = รายละเอียด + จำนวน + ปุ่มซื้อ
       if (!stock.includes(this.shopSel)) this.shopSel = stock.find((id) => !(ITEMS[id].lv && c.level < ITEMS[id].lv)) || stock[0];
       const sel = this.shopSel, si = ITEMS[sel];
       const cards = stock.map((id) => {
         const it = ITEMS[id], under = it.lv && c.level < it.lv, have = Inv.count(c, id);
         return `<button class="sb-card${id === sel ? ' on' : ''}${under ? ' under' : ''}${rcls(it)}" data-sel="${id}"><span class="ic">${itemIcon(id, it.icon)}</span>
-          <span class="nm">${rname(it, esc(it.nameTh))}</span><span class="pr">฿${it.price.toLocaleString()}</span>${have ? `<i class="hv">มี ${have}</i>` : ''}${under ? `<i class="lk">🔒 Lv.${it.lv}</i>` : ''}</button>`;
+          <span class="nm">${rname(it, esc(it.nameTh))}</span><span class="pr">฿${it.price.toLocaleString()}</span>${have ? `<i class="hv">มี ${have}</i>` : ''}${under ? `<i class="lk">🔒 Lv.${it.lv}</i>` : ''}${gainBadge(c, id)}</button>`;
       }).join('');
       let detail = '<p class="empty">เลือกสินค้าทางซ้าย</p>';
       if (si) {
@@ -1020,16 +1075,16 @@ export class UI {
         const afford = c.gold >= si.price * n;
         const prev = ['costume', 'armor', 'weapon'].includes(si.type) ? `<button class="btn ghost sm" data-prev="${sel}">👁 ลองใส่</button>` : '';
         detail = `<div class="item-tip sb-tip"><div class="tt-card">${itemCard(c, sel, { rarityOf: this.itemTip?.rarityOf || (() => 0) })}</div></div>
-          ${impactLine(c, sel)}
+          ${gainText(c, sel)}${impactLine(c, sel)}
           ${shop.job || si.type === 'skin' ? '' : qtyBar}
           <div class="sb-buy"><span class="tot">รวม <b class="${afford ? '' : 'bad'}">฿${(si.price * n).toLocaleString()}</b>${n > 1 ? ` <small>(${n} ชิ้น)</small>` : ''}</span>${prev}
           <button class="btn primary" data-buy="${sel}" data-n="${n}" ${owned || !afford ? 'disabled' : ''}>${owned ? 'มีแล้ว' : !afford ? 'เงินไม่พอ' : n > 1 ? `ซื้อ x${n}` : 'ซื้อ'}</button></div>`;
       }
-      html = (shop.job ? filterBar : '') + `<div class="shop-buy"><div class="sb-grid">${cards || '<p class="empty">ไม่มีสินค้าในหมวดนี้</p>'}</div><div class="sb-detail">${detail}</div></div>`;
+      html = filterBar + `<div class="shop-buy"><div class="sb-grid">${cards || '<p class="empty">ไม่มีสินค้าในหมวดนี้</p>'}</div><div class="sb-detail">${detail}</div></div>`;
     } else return this.renderSell();
     $('#shop-list').innerHTML = html;
     const trade = (r) => { this.scene.sfx.play(r.ok ? 'buy' : 'error'); this.result(r); };
-    $('#shop-list').querySelectorAll('[data-gf]').forEach((b) => (b.onclick = () => { this.gearFilter = b.dataset.gf; this.scene.sfx.play('click'); this.renderShop(); }));
+    bindFilterBar($('#shop-list'), this.shopF, () => this.renderShop(), this.scene);
     $('#shop-list').querySelectorAll('[data-qty]').forEach((b) => (b.onclick = () => { this.shopQty = +b.dataset.qty; this.scene.sfx.play('click'); this.renderShop(); }));
     const qin = $('#shop-qty-in');
     if (qin) {
@@ -1051,12 +1106,23 @@ export class UI {
     $('#shop-list').querySelectorAll('[data-sell]').forEach((b) => (b.onclick = () => E.act('sell', { id: b.dataset.sell, qty: +b.dataset.n || 1 }).then(trade)));
     $('#shop-list').querySelectorAll('[data-prev]').forEach((b) => (b.onclick = () => this.preview(b.dataset.prev)));
     $('#shop-list').querySelectorAll('[data-sel]').forEach((b) => (b.onclick = () => { this.shopSel = b.dataset.sel; this.scene.sfx.play('click'); const y = $('.sb-grid')?.scrollTop; this.renderShop(); const g = $('.sb-grid'); if (g && y) g.scrollTop = y; }));
-    $('#shop-list').querySelectorAll('[data-bulk]').forEach((b) => (b.onclick = () => {
+    $('#shop-list').querySelectorAll('[data-bulk]').forEach((b) => (b.onclick = async () => {
       const list = Inv.bulkSellList(c, b.dataset.bulk);
       const total = list.reduce((a, s) => a + sellPrice(s.id) * s.qty, 0), n = list.reduce((a, s) => a + s.qty, 0);
-      if (!list.length || !confirm(`ขาย${b.dataset.bulk === 'fish' ? 'ปลา' : 'ของดรอป'} ${list.length} ชนิด (${n} ชิ้น) ได้ ฿${total.toLocaleString()}\n(ของที่ล็อก 🔒 จะไม่ถูกขาย) ยืนยันไหม?`)) return;
+      if (!list.length || !(await ask({ title: `ขาย${b.dataset.bulk === 'fish' ? 'ปลา' : 'ของดรอป'}ทั้งหมด?`, icon: '💰', ok: 'ขาย', text: `${list.length} ชนิด (${n} ชิ้น) ได้ ฿${total.toLocaleString()}\nของที่ล็อก 🔒 จะไม่ถูกขาย` }))) return;
       E.act('sellMany', { kind: b.dataset.bulk }).then(trade);
     }));
+  }
+
+  /** แท็บซื้อคืน: ของที่เพิ่งขาย 10 รายการล่าสุด (ราคาเดิม) */
+  renderBuyback(el) {
+    const c = this.char, list = c.buyback || [];
+    el.innerHTML = `<p class="greet">ขายพลาด? ซื้อคืนได้ในราคาที่ขายไป (เก็บ 10 รายการล่าสุด · ออกจากเกมแล้วยังอยู่)</p>
+      ${list.length ? `<div class="bb-list">${list.map((e, i) => { const it = ITEMS[e.id]; if (!it) return ''; const cost = e.price * e.qty, ok = c.gold >= cost;
+        return `<div class="bb-row${rcls(it)}" data-tip-item="${e.id}"><span class="ic">${itemIcon(e.id, it.icon)}</span><span class="nm">${rname(it, esc(it.nameTh))}${e.qty > 1 ? ` <small>x${e.qty}</small>` : ''}</span>
+          <b class="pr ${ok ? '' : 'bad'}">฿${cost.toLocaleString()}</b><button class="btn sm ${ok ? 'primary' : ''}" data-bb="${i}" ${ok ? '' : 'disabled'}>${ok ? 'ซื้อคืน' : 'เงินไม่พอ'}</button></div>`; }).join('')}</div>`
+        : '<p class="empty">ยังไม่มีของที่ขายไป</p>'}`;
+    el.querySelectorAll('[data-bb]').forEach((b) => (b.onclick = () => this.scene.econ.act('buyback', { idx: +b.dataset.bb }).then((r) => { this.scene.sfx.play(r.ok ? 'buy' : 'error'); this.result(r); })));
   }
 
   /** แท็บขาย (แบบ RO): ตารางไอคอน → คลิกใส่ตะกร้า → กดขายทีเดียว · ตัวกรอง/ค้นหา/เลือกด่วน */
@@ -1064,28 +1130,24 @@ export class UI {
     const c = this.char, el = $('#shop-list'), E = this.scene.econ;
     const cart = (this.sellCart ||= new Map());
     for (const [id, n] of cart) { const have = Inv.count(c, id); if (!have || Inv.isLocked(c, id)) cart.delete(id); else if (n > have) cart.set(id, have); }
-    const CAT = { all: 'ทั้งหมด', equip: 'อุปกรณ์', drop: 'ของดรอป', use: 'ไอเทม', etc: 'อื่นๆ' };
-    const inCat = (it, k) => k === 'all' || (k === 'equip' ? GEAR_TYPES.includes(it.type) || ['costume', 'card'].includes(it.type)
-      : k === 'drop' ? (it.type === 'material' && !it.price) || it.type === 'fish'
-      : k === 'use' ? ['consumable', 'home', 'food', 'reset', 'offering', 'flask'].includes(it.type) : ['material', 'herb', 'fish'].includes(it.type));
-    const cat = CAT[this.sellCat] ? this.sellCat : 'all', q = (this.sellQ || '').trim().toLowerCase();
-    const list = c.inventory.filter((st) => { const it = ITEMS[st.id]; return it.type !== 'skin' && sellPrice(st.id) > 0 && inCat(it, cat) && (!q || it.nameTh.toLowerCase().includes(q)); })
-      .sort((a, b) => sellPrice(b.id) * b.qty - sellPrice(a.id) * a.qty);
+    const sf = (this.sellF ||= newFilter({ sort: 'price' }));
+    const sellable = c.inventory.filter((st) => ITEMS[st.id] && ITEMS[st.id].type !== 'skin' && sellPrice(st.id) > 0);
+    const list = applyFilter(c, sellable, sf);
     const cells = Math.max(16, Math.ceil(list.length / 8) * 8);
     const slots = Array.from({ length: cells }, (_, i) => {
       const st = list[i]; if (!st) return '<div class="ro-slot empty"></div>';
       const it = ITEMS[st.id], lock = Inv.isLocked(c, st.id), n = cart.get(st.id) || 0;
       return `<div class="ro-slot${rcls(it)}${n ? ' sel sell-on' : ''}${lock ? ' locked' : ''}${st.id === this.sellFocus ? ' focus' : ''}" data-sslot="${st.id}" data-tip-item="${st.id}">
-        ${itemIcon(st.id, it.icon)}${st.qty > 1 ? `<b class="ro-q">${st.qty > 9999 ? '9999+' : st.qty}</b>` : ''}${lock ? '<i class="ro-lock">🔒</i>' : ''}${n ? `<i class="sell-n">${n === st.qty ? '✔' : n}</i>` : ''}</div>`;
+        ${itemIcon(st.id, it.icon)}${st.qty > 1 ? `<b class="ro-q">${st.qty > 9999 ? '9999+' : st.qty}</b>` : ''}${lock ? '<i class="ro-lock">🔒</i>' : ''}${n ? `<i class="sell-n">${n === st.qty ? '✔' : n}</i>` : ''}${gainBadge(c, st.id)}</div>`;
     }).join('');
     let cnt = 0, pcs = 0, total = 0, rare = 0;
-    for (const [id, n] of cart) { cnt++; pcs += n; total += sellPrice(id) * n; if (rarityOf(ITEMS[id]) >= 3) rare++; }
+    let better = 0;
+    for (const [id, n] of cart) { cnt++; pcs += n; total += sellPrice(id) * n; if (rarityOf(ITEMS[id]) >= 3) rare++; if ((cpGain(c, id) || 0) > 0 && canWear(c, ITEMS[id])) better++; }
     const f = this.sellFocus && cart.has(this.sellFocus) ? this.sellFocus : null, fIt = f && ITEMS[f], fHave = f && Inv.count(c, f);
     const qtyEd = f && fHave > 1 ? `<div class="sell-qty"><span class="ic">${itemIcon(f, fIt.icon)}</span><span class="nm">${rname(fIt, esc(fIt.nameTh))}</span>
         <button data-sq="-10">−10</button><button data-sq="-1">−</button><input id="sell-qty" type="number" min="1" max="${fHave}" value="${cart.get(f)}"><button data-sq="1">+</button><button data-sq="10">+10</button><button data-sq="max">หมด (${fHave})</button></div>` : '';
     el.innerHTML = `<div class="sell-ui">
-      <div class="ro-tabs sell-tabs">${Object.entries(CAT).map(([k, l]) => `<button data-scat="${k}" class="${k === cat ? 'active' : ''}">${l}</button>`).join('')}
-        <input id="sell-q" type="search" placeholder="🔍 ค้นหา" value="${esc(this.sellQ || '')}"></div>
+      ${filterBarHtml(c, sf, sellable)}
       <div class="sell-quick"><span>เลือกด่วน:</span>
         <button data-pick="drop">💰 ของดรอป</button><button data-pick="fish">🐟 ปลา</button><button data-pick="gear1">⚔️ อุปกรณ์ธรรมดา</button><button data-pick="view">☑ ทั้งหมดที่แสดง</button><button data-pick="clear" ${cnt ? '' : 'disabled'}>✖ ล้าง</button></div>
       <div class="ro-grid sell-grid">${list.length ? slots : '<div class="empty" style="grid-column:1/-1">ไม่มีของให้ขายในหมวดนี้</div>'}</div>
@@ -1094,12 +1156,7 @@ export class UI {
         <b class="price">฿${total.toLocaleString()}</b><button class="btn primary sell-go" ${cnt ? '' : 'disabled'}>ขาย</button></div></div>`;
     const redraw = () => { const g = el.querySelector('.sell-grid'), top = g?.scrollTop || 0; this.renderSell(); const g2 = el.querySelector('.sell-grid'); if (g2) g2.scrollTop = top; };
     const click = () => this.scene.sfx.play('click');
-    el.querySelectorAll('[data-scat]').forEach((b) => (b.onclick = () => { this.sellCat = b.dataset.scat; click(); this.renderSell(); }));
-    const qi = $('#sell-q');
-    qi.addEventListener('keydown', (e) => e.stopPropagation());
-    qi.addEventListener('focus', () => (this.scene.input.keyboard.enabled = false));
-    qi.addEventListener('blur', () => (this.scene.input.keyboard.enabled = true));
-    qi.addEventListener('input', () => { this.sellQ = qi.value; const pos = qi.selectionStart; this.renderSell(); const q2 = $('#sell-q'); q2.focus(); try { q2.setSelectionRange(pos, pos); } catch { /* */ } });
+    bindFilterBar(el, sf, redraw, this.scene);
     el.querySelectorAll('[data-sslot]').forEach((d) => {
       const id = d.dataset.sslot;
       d.onclick = (e) => {
@@ -1130,9 +1187,10 @@ export class UI {
     const qn = $('#sell-qty');
     if (qn) { qn.addEventListener('keydown', (e) => { e.stopPropagation(); if (e.key === 'Enter') setQ(+qn.value); }); qn.addEventListener('change', () => setQ(+qn.value));
       qn.addEventListener('focus', () => (this.scene.input.keyboard.enabled = false)); qn.addEventListener('blur', () => (this.scene.input.keyboard.enabled = true)); }
-    el.querySelector('.sell-go').onclick = () => {
+    el.querySelector('.sell-go').onclick = async () => {
       if (!cnt) return;
-      if ((rare || total >= 50000) && !confirm(`ขาย ${cnt} ชนิด (${pcs.toLocaleString()} ชิ้น) ได้ ฿${total.toLocaleString()}${rare ? `\n⚠ มีอุปกรณ์หายาก ${rare} ชิ้นในตะกร้า` : ''}\nยืนยันไหม?`)) return;
+      if ((rare || better || total >= 50000) && !(await ask({ title: `ขาย ${cnt} ชนิด (${pcs.toLocaleString()} ชิ้น)?`, icon: '💰', ok: `ขาย ฿${total.toLocaleString()}`,
+        text: `ได้เงิน ฿${total.toLocaleString()}${rare ? `\n⚠ มีอุปกรณ์หายาก ${rare} ชิ้นในตะกร้า` : ''}${better ? `\n⚠ มีของที่ดีกว่าที่ใส่อยู่ ${better} ชิ้น (▲)` : ''}\nขายพลาดซื้อคืนได้ที่แท็บ "ซื้อคืน"` }))) return;
       E.act('sellCart', { items: [...cart] }).then((r) => { this.scene.sfx.play(r.ok ? 'buy' : 'error'); this.result(r); if (r.ok) { cart.clear(); this.sellFocus = null; } this.renderSell(); });
     };
   }
@@ -1157,20 +1215,28 @@ export class UI {
     el.innerHTML = `<p class="hint">ย้อมสีผม ครั้งละ ฿${DYE_PRICE} · ชุดตัวละครกำหนดตามเพศ (อยากแต่งตัวใช้ชุดแต่งตัวจากแท็บร้าน)</p>` + row('hair', HAIRSTYLES, '💇 สีผม');
     el.querySelectorAll('[data-dye]').forEach((b) => {
       b.onmouseenter = () => this.scene.player.previewAppearance({ ...a, [b.dataset.dye]: +b.dataset.v }, 1500);
-      b.onclick = () => {
-        if (!confirm(`ย้อม${b.dataset.dye === 'hair' ? 'ผม' : 'ชุด'}เป็นแบบที่ ${+b.dataset.v + 1} (฿${DYE_PRICE})?`)) return;
+      b.onclick = async () => {
+        if (!(await ask({ title: `ย้อม${b.dataset.dye === 'hair' ? 'ผม' : 'ชุด'}เป็นแบบที่ ${+b.dataset.v + 1}?`, icon: '🎨', ok: 'ย้อมสี', text: `ค่าย้อม ฿${DYE_PRICE}` }))) return;
         this.scene.econ.act('dye', { part: b.dataset.dye, v: +b.dataset.v }).then((r) => { this.scene.sfx.play(r.ok ? 'buy' : 'error'); this.result(r); });
       };
     });
   }
 
-  /** เลือกฉายา (แผงสังคม) */
+  /** เลือกฉายา (แผงสังคม) · แบ่งหมวด */
   renderTitles(el) {
     const c = this.char, have = new Set(c.titles || []);
-    el.innerHTML = `<div class="title-list">${TITLES.map((t) => {
+    const row = (t) => {
       const on = c.title === t.id, ok = have.has(t.id);
-      return `<button class="title-row ${ok ? '' : 'locked'} ${on ? 'active' : ''}" data-title="${t.id}" ${ok ? '' : 'disabled'} style="--tc:${t.color}"><b>${ok ? '' : '🔒 '}${esc(t.nameTh)}</b><small>${esc(t.hint)}</small>${on ? '<i>✔ ใช้อยู่</i>' : ''}</button>`;
-    }).join('')}</div><button class="btn ghost sm" data-title="">ซ่อนฉายา</button>`;
+      return `<button class="title-row ${ok ? '' : 'locked'} ${on ? 'active' : ''} ${t.dynamic ? 'dyn' : ''}" data-title="${t.id}" ${ok ? '' : 'disabled'} style="--tc:${t.color}"><b>${ok ? '' : '🔒 '}${esc(t.nameTh)}</b><small>${esc(t.hint)}</small>${on ? '<i>✔ ใช้อยู่</i>' : ''}</button>`;
+    };
+    const cp = combatPower(c);
+    el.innerHTML = `<div class="title-sum">ปลดแล้ว <b>${TITLES.filter((t) => have.has(t.id)).length}/${TITLES.length}</b> · ค่าพลังรวม <b>⚔ ${cp.toLocaleString('en-US')}</b>${c.rec?.cpRank ? ` · อันดับ #${c.rec.cpRank}` : ''}</div>`
+      + TITLE_CATS.map(([cat, name]) => {
+        const list = TITLES.filter((t) => (t.cat || 'misc') === cat);
+        if (!list.length) return '';
+        const n = list.filter((t) => have.has(t.id)).length;
+        return `<div class="title-cat"><h5>${name} <small>${n}/${list.length}</small></h5><div class="title-list">${list.map(row).join('')}</div></div>`;
+      }).join('') + `<button class="btn ghost sm" data-title="">ซ่อนฉายา</button>`;
     el.querySelectorAll('[data-title]').forEach((b) => (b.onclick = () => this.scene.econ.act('title', { id: b.dataset.title || null }).then((r) => { this.scene.sfx.play(r.ok ? 'buff' : 'error'); this.result(r); this.renderTitles(el); })));
   }
 }

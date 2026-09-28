@@ -4,6 +4,8 @@
 import { ITEMS } from '/shared/data/items.js';
 import { CARDS, CARD_BY_ID, CARD_SLOT_TH, SLOT_CARD, CARD_SOCKET_ENH, BOOK_TIERS, socketCount, cardRemoveCost, cardText, cardBonus, bookCount } from '/shared/data/cards.js';
 import * as Inv from './Inventory.js';
+import { cardGain } from './ItemFilter.js';
+import { ask, notice } from './Dialog.js';
 
 const $ = (s) => document.querySelector(s);
 const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -82,9 +84,9 @@ export class CardUI {
     let picker = '';
     if (this.pickSlot) {
       const type = SLOT_CARD[this.pickSlot];
-      const have = c.inventory.filter((s) => CARD_BY_ID[s.id]?.slot === type);
+      const have = c.inventory.filter((s) => CARD_BY_ID[s.id]?.slot === type).map((s) => ({ ...s, g: cardGain(c, this.pickSlot, s.id) ?? 0 })).sort((a, b) => b.g - a.g);   // ดีสุดก่อน
       picker = `<div class="cs-pick"><div class="cs-pick-h">เลือกการ์ด${CARD_SLOT_TH[type]}ใส่ช่อง <b>${EQ_TH[this.pickSlot]}</b> <button class="btn ghost sm" data-cancel>ยกเลิก</button></div>
-        ${have.length ? `<div class="tc-grid">${have.map((s) => cardHtml(CARD_BY_ID[s.id], { count: s.qty, pick: true })).join('')}</div>`
+        ${have.length ? `<div class="tc-grid">${have.map((s) => `<div class="tc-wrap">${cardHtml(CARD_BY_ID[s.id], { count: s.qty, pick: true })}<b class="tc-gain ${s.g > 0 ? 'up' : ''}">⚔ ${s.g > 0 ? '+' : ''}${s.g.toLocaleString('en-US')}</b></div>`).join('')}</div>`
           : `<div class="empty">ไม่มีการ์ด${CARD_SLOT_TH[type]}ในกระเป๋า · ล่าผีเพื่อสะสม (ดรอป 0.5%)</div>`}</div>`;
     }
     const { bonus, econ } = cardBonus(c);
@@ -102,10 +104,10 @@ export class CardUI {
       this.pickSlot = null; this.scene.sfx.play('buy');
       this.ui.result(this.scene.econ.act('cardIn', { slot, id: b.dataset.pick }));
     }));
-    el.querySelectorAll('[data-out]').forEach((b) => (b.onclick = () => {
+    el.querySelectorAll('[data-out]').forEach((b) => (b.onclick = async () => {
       const slot = b.dataset.out, i = +b.dataset.i, cd = CARD_BY_ID[c.cards?.[slot]?.[i]];
       if (!cd) return;
-      if (!confirm(`ถอด${cd.nameTh}คืนกระเป๋า?\nค่าถอด ฿${cardRemoveCost(cd.id).toLocaleString()}`)) return;
+      if (!(await ask({ title: `ถอด${cd.nameTh}คืนกระเป๋า?`, icon: '🃏', ok: 'ถอดการ์ด', text: `ค่าถอด ฿${cardRemoveCost(cd.id).toLocaleString()}` }))) return;
       this.ui.result(this.scene.econ.act('cardOut', { slot, idx: i }));
     }));
   }

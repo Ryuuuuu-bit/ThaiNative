@@ -14,6 +14,7 @@ import { sound } from '../systems/Sound.js';
 import { titleScreen } from '../systems/TitleScreen.js';
 import { loadSettings } from '../systems/Settings.js';
 import { HeroView, loadHeroMeta, clearHeroViews } from '../systems/HeroPreview.js';
+import { ask, notice } from '../systems/Dialog.js';
 
 const $ = (s) => document.querySelector(s);
 /** อาวุธเริ่มต้นให้เลือก (ได้ทั้งหมดในกระเป๋า เปลี่ยนถือได้ตลอด) */
@@ -120,7 +121,7 @@ export class CreateScene extends Phaser.Scene {
           await account.createCharacter(this.slot, name, this.a, this.a.weapon || null);
           await account.refresh();
           return this.scene.start('lobby', { select: this.slot, created: true });
-        } catch (e) { btn.disabled = false; if (e.ideas) { show(false, `✖ ${e.message}`, e.ideas); sound.play('error'); return; } alert(e.message || 'สร้างตัวละครไม่สำเร็จ'); return; }
+        } catch (e) { btn.disabled = false; if (e.ideas) { show(false, `✖ ${e.message}`, e.ideas); sound.play('error'); return; } notice({ title: 'สร้างตัวละครไม่สำเร็จ', icon: '⚠', text: `${e.message || 'ลองใหม่อีกครั้ง'}` }); return; }
       }
       const char = newCharacter(name, this.a);
       if (this.a.weapon) runAction(char, 'equip', { id: this.a.weapon });

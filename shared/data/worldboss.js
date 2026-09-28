@@ -1,6 +1,6 @@
 // ============================================================
 //  บอสโลก "พระราหู ผู้กลืนจันทร์" – อีเวนต์ลานสุริยคราส (ใช้ร่วม client + server)
-//  ▸ ลงมาวันละ 2 รอบ (เวลาไทย) · ทั้งเซิร์ฟช่วยกันปราบใน 30 นาที · คนปิดฉากได้ป้าย MVP เหนือหัว
+//  ▸ ลงมาทุก 2 ชั่วโมง (เวลาไทย 00:00, 02:00 … 22:00) · ทั้งเซิร์ฟช่วยกันปราบใน 30 นาที · คนปิดฉากได้ป้าย MVP เหนือหัว
 //  ▸ ดาเมจของบอส = % ของ HP ผู้เล่น (ทุกเลเวลเจ็บเท่ากัน) · ทุกท่าเตือนก่อนเสมอ
 //     สีเตือน: ม่วง = ดาเมจทั่วไป · เงิน = จุดปลอดภัย/เป้าที่ต้องตี · แดง = อันตรายสูง
 // ============================================================
@@ -22,7 +22,7 @@ export const ARENA_C = arenaPx(ARENA.cx, ARENA.cy);
 
 // ---------------- เวลา ----------------
 /** รอบเกิด (ชั่วโมง:นาที เวลาไทย UTC+7) */
-export const WB_TIMES = [[13, 0], [21, 0]];
+export const WB_TIMES = Array.from({ length: 12 }, (_, i) => [i * 2, 0]);   // ทุก 2 ชม. (00:00 02:00 … 22:00)
 export const WB_FIGHT_MS = 30 * 60e3;        // เวลาสู้
 export const WB_ANNOUNCE_MS = 10 * 60e3;     // ประกาศล่วงหน้า (เปิดลาน/วาร์ปได้)
 export const WB_CLOSE_MS = 3 * 60e3;         // หลังจบ → แจกรางวัล แล้วปิดลาน
@@ -99,7 +99,8 @@ export function wbReward(rank, share, isMvp) {
   const card = isMvp ? 0.25 : rank === 1 ? 0.15 : rank <= 10 ? 0.08 : 0.05;
   const red = isMvp ? 0.30 : rank === 1 ? 0.20 : rank <= 10 ? 0.10 : 0.03;   // อุปกรณ์ขอบแดงสุ่ม 1 ชิ้น
   const mul = isMvp ? 1.5 : 1;
-  return { stone: base.stone + (isMvp ? 3 : 0), expK: base.exp * mul, goldK: base.gold * mul, card: Math.max(card, isMvp ? 0.25 : 0), red, share };
+  const fang = (rank === 1 ? 3 : rank <= 10 ? 2 : 1) + (isMvp ? 1 : 0);   // เขี้ยวพญายักษ์ (ใช้หลอมขอบแดง/ตีบวก +15)
+  return { fang, stone: base.stone + (isMvp ? 3 : 0), expK: base.exp * mul, goldK: base.gold * mul, card: Math.max(card, isMvp ? 0.25 : 0), red, share };
 }
 export const WB_MIN_SHARE = 0.005;          // ต้องทำดาเมจอย่างน้อย 0.5% ของเลือดบอสถึงได้ของ
 export const WB_BASE_EXP = 150_000, WB_BASE_GOLD = 30_000;

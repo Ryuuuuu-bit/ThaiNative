@@ -176,6 +176,8 @@ export function setupAuth(app, hooks = {}) {
   // ตารางอันดับ (สาธารณะ · แคช 30 วิ): เลเวลสูงสุด / ตีบวกสูงสุด
   let lbCache = null, lbAt = 0;
   api.get('/leaderboard', wrap(async (req, res) => {
+    const live = await hooks.leaderboard?.();
+    if (live?.at) return res.json(live);                                // ตารางจาก server/ranking.js (ค่าพลังรวม · เลเวล · ตีบวก)
     if (!lbCache || Date.now() - lbAt > 15000) {
       const rows = (await req.store.topCharacters(300)).filter((r) => r && r.name);
       const clean = rows.map((r) => {

@@ -41,6 +41,16 @@ export function getDerived(c) {
   return computeDerived(c.stats, VILLAGER, c.level, bonus);
 }
 
+/**
+ * ค่าพลังรวม (CP) – ตัวเลขเดียวไว้จัดอันดับ/ปลดฉายา (ไม่รวมพร/บัฟชั่วคราว)
+ * ▸ รุก: พลังโจมตีสูงสุด × ค่าคริเฉลี่ย  ▸ รับ: HP · ป้องกัน · หลบ  ▸ อื่น ๆ: MP · แม่นยำ · พลังรักษา
+ * ▸ ประมาณการ: Lv.1 ≈ 150 · Lv.50 ≈ 6k · Lv.99 ≈ 15k · Lv.150 ของครบ ≈ 27k+
+ */
+export function combatPower(c, d = getDerived(c)) {
+  const off = Math.max(d.patk, d.matk) * (1 + d.critRate * Math.max(0, d.critDmg - 1));
+  return Math.max(0, Math.round(off * 3 + d.maxHp * 0.4 + d.maxMp * 0.15 + d.def * 6 + d.eva * 4 + Math.max(0, d.accuracy - 85) * 2 + Math.max(0, (d.healPow || 1) - 1) * 1500));
+}
+
 /** ค่าพลังตอนต่อสู้ = ค่าพลังรวม × พร (เซียมซี/ศาลพระภูมิ) × บัฟสกิล [{ buff, until }] */
 export function combatDerived(c, buffs = [], now = Date.now()) {
   const d = { ...getDerived(c) };

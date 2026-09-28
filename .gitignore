@@ -2,3 +2,6 @@ node_modules/
 .DS_Store
 *.log
 __pycache__/
+
+# ไฟล์ส่งออกจาก Claude (ภาพตัวอย่าง/คอนฟิกในเครื่อง) — ไม่ขึ้น repo
+Claude outputs/

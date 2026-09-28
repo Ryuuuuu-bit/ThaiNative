@@ -15,6 +15,7 @@ import { titleScreen } from '../systems/TitleScreen.js';
 import { loadSettings } from '../systems/Settings.js';
 import { HeroView, loadHeroMeta, clearHeroViews } from '../systems/HeroPreview.js';
 import { getMap } from '/shared/td/maps.js';
+import { ask, notice } from '../systems/Dialog.js';
 
 const $ = (s) => document.querySelector(s);
 const LAST_SLOT = 'thainative_last_slot';
@@ -59,7 +60,7 @@ export class LobbyScene extends Phaser.Scene {
     $('#lb-acc').innerHTML = acc ? (acc.guest ? 'บัญชี <b>Guest</b> <small class="acc-badge guest">ยังไม่เชื่อม ID</small>' : `บัญชี <b>${esc(acc.display)}</b>`) : 'โหมดออฟไลน์ · เซฟในเครื่อง';
     $('#lb-logout').classList.toggle('hidden', !acc);
     $('#lb-logout').onclick = async () => {
-      if (account.isGuest && !confirm('บัญชี Guest ยังไม่ได้เชื่อม ID — ถ้าออกจากระบบจะกลับมาเล่นตัวละครในบัญชีนี้ไม่ได้อีก ต้องการออกจริงไหม?')) return;
+      if (account.isGuest && !(await ask({ title: 'ออกจากระบบ?', icon: '⚠', danger: true, ok: 'ออกจากระบบ', text: 'บัญชี Guest ยังไม่ได้เชื่อม ID\n⚠ ถ้าออกจากระบบจะกลับมาเล่นตัวละครในบัญชีนี้ไม่ได้อีก' }))) return;
       await account.logout();
       location.reload();
     };

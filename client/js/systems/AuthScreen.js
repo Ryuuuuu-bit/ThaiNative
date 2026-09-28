@@ -6,6 +6,7 @@ import { account } from '../net/Account.js';
 import { sound } from './Sound.js';
 import { titleScreen } from './TitleScreen.js';
 import { loadSettings } from './Settings.js';
+import { ask, notice } from './Dialog.js';
 
 const $ = (s) => document.querySelector(s);
 
@@ -86,7 +87,7 @@ export function bindAccountSettings(ui) {
   };
   $('#acc-switch').onclick = () => { ui.scene.saveNow?.(); setTimeout(() => location.reload(), 150); };   // โหลดใหม่ → หน้าเลือกตัวละคร
   $('#acc-logout').onclick = async () => {
-    if (account.isGuest && !confirm('บัญชี Guest ยังไม่ได้เชื่อม ID — ถ้าออกจากระบบจะกลับมาเล่นตัวละครนี้ไม่ได้อีก ต้องการออกจริงไหม?')) return;
+    if (account.isGuest && !(await ask({ title: 'ออกจากระบบ?', icon: '⚠', danger: true, ok: 'ออกจากระบบ', text: 'บัญชี Guest ยังไม่ได้เชื่อม ID\n⚠ ถ้าออกจากระบบจะกลับมาเล่นตัวละครนี้ไม่ได้อีก' }))) return;
     ui.scene.saveNow?.();
     await account.logout();
     location.reload();

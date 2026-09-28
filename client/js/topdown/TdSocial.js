@@ -9,6 +9,9 @@ import { itemIcon, makeText } from '../systems/util.js';
 import { inlineStats } from '../systems/ItemTip.js';
 import { baseItemId } from '/shared/data/items.js';
 import { TITLE_BY_ID } from '/shared/data/titles.js';
+import { newFilter, applyFilter, filterBarHtml, bindFilterBar } from '../systems/ItemFilter.js';
+import { combatPower } from '/shared/character.js';
+import { ask } from '../systems/Dialog.js';
 
 const $ = (s) => document.querySelector(s);
 const JOB_ICON = { swordman: '⚔️', mage: '🔮', archer: '🏹', boxer: '🥊', healer: '🌿' };
@@ -79,14 +82,8 @@ export class TdSocial {
     $('#tr-my').addEventListener('dragover', (e) => { if (e.dataTransfer.types.includes('text/tn-item')) { e.preventDefault(); $('#tr-my').classList.add('drop'); } });
     $('#tr-my').addEventListener('dragleave', () => $('#tr-my').classList.remove('drop'));
     $('#tr-my').addEventListener('drop', (e) => { e.preventDefault(); $('#tr-my').classList.remove('drop'); addToOffer(e.dataTransfer.getData('text/tn-item'), e.shiftKey); });
-    // แท็บ/ค้นหาในกระเป๋า
-    this.trInvTab = 'all';
-    $('#tr-invtabs').onclick = (e) => { const b = e.target.closest('[data-tt]'); if (!b) return; this.trInvTab = b.dataset.tt; this.renderTrade(); };
-    const q = $('#tr-inv-q');
-    q.addEventListener('keydown', (e) => e.stopPropagation());
-    q.addEventListener('focus', () => (this.scene.input.keyboard.enabled = false));
-    q.addEventListener('blur', () => (this.scene.input.keyboard.enabled = true));
-    q.addEventListener('input', () => this.renderTrade());
+    // ตัวกรองกระเป๋า: วาดใน renderTrade (ItemFilter)
+    $('#tr-inv-q')?.classList.add('hidden');
     $('#tr-my').onclick = (e) => {
       const b = e.target.closest('[data-id]');
       if (!b || this.trade?.locked?.[this.selfId]) return;
@@ -109,7 +106,7 @@ export class TdSocial {
       if (act === 'leave') this.net.send('party:leave');
       if (act === 'kick') this.net.send('party:kick', { id });
       if (act === 'friend') this.addFriend(id);
-      if (act === 'unfriend') { if (confirm('ลบเพื่อนคนนี้?')) this.net.send('friends:del', { acc: +b.dataset.acc }); }
+      if (act === 'unfriend') { ask({ title: 'ลบเพื่อนคนนี้?', icon: '👥', danger: true, ok: 'ลบเพื่อน' }).then((y) => { if (y) this.net.send('friends:del', { acc: +b.dataset.acc }); }); }
     });
     // แท็บแผงสังคม
     document.querySelectorAll('[data-soctab]').forEach((b) => (b.onclick = () => {
@@ -291,12 +288,20 @@ export class TdSocial {
       try { this.lb = await fetch('/api/leaderboard').then((r) => r.json()); this.lbAt = Date.now(); } catch { this.lb = null; }
       this.lbLoading = false;
     }
-    const tab = this.lbTab || 'level', rows = this.lb?.[tab] || [];
+    const tab = this.lbTab || 'power', rows = this.lb?.[tab] || [];
     const medal = (i) => ['🥇', '🥈', '🥉'][i] || `${i + 1}.`;
-    const mine = this.player.char.name;
-    el.innerHTML = rows.length ? rows.map((r, i) => `<div class="soc-row lb ${r.name === mine ? 'me' : ''}"><span>${medal(i)} ${esc(r.name)}${TITLE_BY_ID[r.title] ? ` <em class="lb-title" style="color:${TITLE_BY_ID[r.title].color}">«${esc(TITLE_BY_ID[r.title].nameTh)}»</em>` : ''}</span>
-      <small>${tab === 'level' ? `Lv.${r.level}` : `<b class="enh t${Math.min(5, Math.floor(r.enh / 4))}">+${r.enh}</b> · Lv.${r.level}`} · ${JOBS[r.path]?.nameTh ?? 'ชาวบ้าน'}</small></div>`).join('')
+    const c = this.player.char, mine = c.name, fmt = (n) => (+n || 0).toLocaleString('en-US');
+    const stat = (r) => tab === 'power' ? `<b class="lb-cp">⚔ ${fmt(r.cp)}</b> · Lv.${r.level}`
+      : tab === 'enhance' ? `<b class="enh t${Math.min(5, Math.floor(r.enh / 4))}">+${r.enh}</b> · Lv.${r.level}` : `Lv.${r.level} · ⚔ ${fmt(r.cp)}`;
+    el.innerHTML = rows.length ? rows.map((r, i) => `<div class="soc-row lb ${r.name === mine ? 'me' : ''} ${i < 3 ? `top${i + 1}` : ''}"><span>${medal(i)} ${esc(r.name)}${TITLE_BY_ID[r.title] ? ` <em class="lb-title" style="color:${TITLE_BY_ID[r.title].color}">«${esc(TITLE_BY_ID[r.title].nameTh)}»</em>` : ''}</span>
+      <small>${stat(r)} · ${JOBS[r.path]?.nameTh ?? 'ชาวบ้าน'}</small></div>`).join('')
       : `<p class="empty">${this.net.online ? 'ยังไม่มีข้อมูล' : 'ออฟไลน์อยู่'}</p>`;
+    // อันดับของฉัน (จาก server · อัปเดตทุก 1 นาที)
+    const me = $('#soc-lb-me');
+    if (me) {
+      const rec = c.rec || {}, rk = { power: rec.cpRank, level: rec.lvRank, enhance: rec.enhRank }[tab];
+      me.innerHTML = `<span>อันดับของฉัน: <b>${rk ? `#${fmt(rk)}` : '–'}</b>${this.lb?.total ? ` <small>จาก ${fmt(this.lb.total)} ตัวละคร</small>` : ''}</span><span>ค่าพลังรวม <b class="lb-cp">⚔ ${fmt(combatPower(c))}</b></span>`;
+    }
   }
 
   // ============================================================
@@ -389,13 +394,17 @@ export class TdSocial {
       if (!bothNow || left <= 0) clearInterval(this.readyT);
     };
     clearInterval(this.readyT); tick(); if (both) this.readyT = setInterval(tick, 250);
-    // กระเป๋า: แท็บ + ค้นหา (ไม่รวมที่ใส่ในข้อเสนอแล้ว)
-    const TABS = [['all', 'ทั้งหมด'], ['gear', 'อุปกรณ์'], ['use', 'ใช้ได้'], ['etc', 'วัตถุดิบ/อื่นๆ']];
-    const catOf = (I) => (GEAR_TYPES.has(I.type) ? 'gear' : USE_TYPES.has(I.type) ? 'use' : 'etc');
-    $('#tr-invtabs').innerHTML = TABS.map(([k, l]) => `<button data-tt="${k}" class="${this.trInvTab === k ? 'active' : ''}">${l}</button>`).join('');
-    const qq = ($('#tr-inv-q').value || '').trim().toLowerCase();
+    // กระเป๋า: ตัวกรองมาตรฐาน (เหมือนกระเป๋า/ร้านค้า)
+    const tf = (this.trF ||= newFilter());
+    const bag = c.inventory.filter((it) => ITEMS[it.id]);
+    if (!this.trBarDrawn || this.trBarSig !== JSON.stringify(tf) + bag.length) {
+      this.trBarSig = JSON.stringify(tf) + bag.length; this.trBarDrawn = true;
+      $('#tr-invtabs').innerHTML = filterBarHtml(c, tf, bag);
+      bindFilterBar($('#tr-invtabs'), tf, () => { this.trBarDrawn = false; this.renderTrade(); }, this.scene);
+    }
     $('#tr-inv').classList.toggle('disabled', !!locked);
-    const inv = c.inventory.filter((it) => { const I = ITEMS[it.id]; return I && (this.trInvTab === 'all' || catOf(I) === this.trInvTab) && (!qq || I.nameTh.toLowerCase().includes(qq)); });
+    const inv = applyFilter(c, bag, tf);
+    const qq = tf.q;
     $('#tr-inv').innerHTML = inv.map((it) => {
       const I = ITEMS[it.id], used = mine.items.find((x) => x.id === it.id)?.qty || 0, left = it.qty - used, r = rar(I);
       const ok = left > 0 && !locked && I.type !== 'skin';
