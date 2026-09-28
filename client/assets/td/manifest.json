@@ -806,6 +806,8 @@
   "env/b_citygate",
   "env/b_citygate_closed",
   "env/b_gatetower",
+  "env/b_citygate_pl",
+  "env/b_palacegate_pl",
   "env/b_forge",
   "env/b_forge3",
   "env/b_forge2",

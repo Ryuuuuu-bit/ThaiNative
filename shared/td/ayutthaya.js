@@ -139,8 +139,8 @@ function buildTown() {
 
   // === พระราชวังหลวง (เหนือ) ===
   P('env/b_thronehall', 60, 22, { foot: [8, 4], scale: 1.45, alt: 'env/b_viharn', altScale: 1.45, label: 'พระที่นั่งสรรเพชญ์ปราสาท', glow: [-50, 100, 0xffe1a0, 0.8] });
-  P('env/b_citygate_closed', 60, 30, { foot: [6, 2], scale: 1.1, alt: 'env/b_palacegate3', altScale: 0.95, label: 'ประตูพระราชวัง', glow: [-40, 60, 0xffe1a0, 0.6] });
-  for (const x of [48.15, 51.15, 54.15, 65.85, 68.85, 71.85]) P('env/p_brickwall', x, 30, { foot: [3, 1], scale: 48 / 42, alt: 'td_ruin' });   // กำแพงแก้วหน้าวัง ต่อชิดประตูเป็นแนวเดียว
+  P('env/b_palacegate_pl', 60, 30, { foot: [6, 2], scale: 1.2, alt: 'env/b_citygate_closed', altScale: 1.1, label: 'ประตูพระราชวัง', glow: [-40, 60, 0xffe1a0, 0.6] });
+  for (const x of [47.93, 50.93, 53.93, 66.07, 69.07, 72.07]) P('env/p_brickwall', x, 30, { foot: [3, 1], scale: 48 / 42, alt: 'td_ruin' });   // กำแพงแก้วหน้าวัง ต่อชิดประตูเป็นแนวเดียว
   P('env/b_pavilion', 51, 21, { foot: [4, 2], scale: 0.65, glow: [-20, 40, 0xffe1a0, 0.5] }); P('env/b_pavilion', 69, 21, { foot: [4, 2], scale: 0.65, flip: true, glow: [-20, 40, 0xffe1a0, 0.5] });
   for (const x of [51, 55, 65, 69]) { small('p_banner', x, 33, { alt: 'env/p_lantern' }); }
   for (const x of [49, 71]) { small('p_lion', x, 27, { scale: 1.3, flip: x > 60 }); tree(x, 18, 'pink', 1); }
@@ -218,8 +218,10 @@ function buildTown() {
   reserve(43, 60, 77, 72);
   // ประตูใต้
   // ซุ้มประตูเมืองใต้: กำแพงใต้หันหน้าออกนอกเมือง (หน้ากำแพง = แถว y90) → ฐานซุ้มชิดขอบล่างหน้ากำแพง · ช่องทางเดินกว้างเท่าถนน 4 ไทล์
-  P('env/b_citygate', 60, 91, { foot: [0, 0], scale: 64 / 48, alt: 'env/p_arch', altScale: 2, label: 'ประตูเมืองใต้', glow: [-60, 80, 0xffe1a0, 0.7] });
-  P('none', 56, 89, { foot: [3, 3] }); P('none', 63, 89, { foot: [3, 3] });            // ตัวป้อม (ชนได้ · ไม่มีภาพ)
+  //  ภาพ PixelLab ช่องโค้ง 18px × 1.78 ≈ 2 ไทล์ → ทางเดินผ่านประตูกว้าง 2 ไทล์ (x59–60) ตรงกลางถนนหลวง
+  P('env/b_citygate_pl', 60, 91, { foot: [0, 0], scale: 1.78, alt: 'env/b_citygate', altScale: 64 / 48, label: 'ประตูเมืองใต้', glow: [-60, 90, 0xffe1a0, 0.7] });
+  P('none', 56, 89, { foot: [5, 4] }); P('none', 63, 89, { foot: [5, 4] });            // ตัวป้อมซ้าย/ขวา (ชนได้ · ไม่มีภาพ)
+  P('none', 58, 91, { foot: [1, 2] }); P('none', 61, 91, { foot: [1, 2] });            // ขอบช่องประตูบนแนวกำแพง
   small('p_torch', 55, 83, { glow: TORCH }); small('p_torch', 65, 83, { glow: TORCH });
   P('env/p_board', 69, 82, { foot: [2, 1], scale: 0.9, alt: 'bounty_board', altScale: 1, label: 'ป้ายประกาศค่าหัว' });
   small('p_bench', 53, 83); small('p_well2', 53, 81, { alt: 'env/p_well' });
