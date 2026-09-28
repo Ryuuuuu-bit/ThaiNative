@@ -16,12 +16,13 @@ export const NPCS = [
   { id: 'kru_mage',   key: 'npc_kru_mage',   x: -125, nameTh: 'หลวงตาเผือก', role: 'หมอธรรม·อาคม', color: '#bb8fce', tint: 0xd2b4de, flip: true, icon: '🔮' },
   { id: 'kru_archer', key: 'npc_kru_archer', x: -50,  nameTh: 'พรานแก้ว',   role: 'ค่ายพรานไพร',  color: '#82e0aa', tint: 0xa9dfbf, flip: true, icon: '🏹' },
   { id: 'kru_boxer',  key: 'npc_kru_boxer',  x: 25,   nameTh: 'ครูแดง',     role: 'ค่ายมวย',      color: '#f5b041', tint: 0xf5cba7, flip: true, icon: '🥊' },
+  { id: 'kru_healer', key: 'npc_pa_sa',      x: 100,  nameTh: 'หมอพร',      role: 'ศาลาโอสถ·หมอยา', color: '#48c9b0', tint: 0xa3e4d7, flip: true, icon: '🌿' },
   { id: 'dungeon', key: 'npc_kru_mage', x: 610, nameTh: 'หลวงพ่อทอง', role: 'ประตูสุสานใต้ดิน', color: '#d2b4de', tint: 0xf8e0a0, forceTint: true, flip: true, icon: '🕯️' },
 ];
 export const NPC_BY_ID = Object.fromEntries(NPCS.map((n) => [n.id, n]));
 
 /** ร้าน → NPC ที่ยืนขาย */
-export const SHOP_NPC = { mae_kha: 'shop', lung_dam: 'smith', tailor: 'tailor', pa_sa: 'cook', kru_sword: 'kru_sword', kru_mage: 'kru_mage', kru_archer: 'kru_archer', kru_boxer: 'kru_boxer' };
+export const SHOP_NPC = { mae_kha: 'shop', lung_dam: 'smith', tailor: 'tailor', pa_sa: 'cook', kru_sword: 'kru_sword', kru_mage: 'kru_mage', kru_archer: 'kru_archer', kru_boxer: 'kru_boxer', kru_healer: 'kru_healer' };
 
 /** จุดโต้ตอบอื่น ๆ ในหมู่บ้าน */
 export const SPOTS = {

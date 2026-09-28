@@ -1,7 +1,7 @@
 // ============================================================
 //  สายอาชีพ (Paths) + แนวต่อสู้ตามอาวุธ
 //  ▸ ทุกคนเริ่มเป็น "ชาวบ้าน" (ตัวละครแบบเดียวกัน)
-//  ▸ อาวุธที่ถือ = แนวต่อสู้ (ดาบ → ขุนศึก, ไม้เท้า → จอมขมังเวทย์, ธนู → พราน, มือเปล่า/ผ้าพันมือ → มวย)
+//  ▸ อาวุธที่ถือ = แนวต่อสู้ (ดาบ → ขุนศึก, ไม้เท้า → จอมขมังเวทย์, ธนู → พราน, มือเปล่า/ผ้าพันมือ → มวย, ไม้เท้าสมุนไพร → หมอยา)
 //    ใช้สกิลของแนวนั้นได้เฉพาะตอนถืออาวุธที่ตรงกัน
 //  ▸ Lv.10 เลือก "สายหลัก" กับผู้ใหญ่ชัย → สกิลสายหลักอัปได้ถึง Lv.5 + โบนัสติดตัว
 //    สกิลสายรองอัปได้ถึง Lv.2 และใช้ท่าไม้ตาย (★) ไม่ได้
@@ -14,6 +14,7 @@ export const STAT_PLAN = {
   mage:     { INT: 0.6, VIT: 0.25, DEX: 0.15 },
   archer:   { DEX: 0.4, STR: 0.35, CRI: 0.15, VIT: 0.1 },
   boxer:    { STR: 0.4, DEX: 0.25, VIT: 0.25, CRI: 0.1 },
+  healer:   { INT: 0.5, VIT: 0.35, DEX: 0.15 },
 };          // เลเวลที่เลือกสายหลักได้
 export const SUB_CAP = 2;           // เลเวลสกิลสูงสุดของสายรอง / ก่อนเลือกสาย
 
@@ -63,6 +64,16 @@ export const JOBS = {
     startStats: { STR: 8, DEX: 7, INT: 1, CRI: 4, VIT: 7 },
     weapon: 'wraps', color: '#e67e22',
     attack: { kind: 'physical', style: 'melee', range: 22, cooldown: 300, mult: 0.75, mpCost: 0, comboEvery: 3, comboMult: 1.8 },
+  },
+  healer: {
+    id: 'healer', nameTh: 'หมอยา', nameEn: 'Herbal Healer',
+    pathTitle: 'หมอเทวดาแห่งกรุงศรี', pathBonus: { mpMul: 0.15, hpMul: 0.08 }, pathTextTh: 'MP +15% · HP +8%',
+    weaponTh: 'ไม้เท้าสมุนไพร', icon: '🌿', support: true,
+    desc: 'สายซัพพอร์ต รักษาเพื่อน ชุบชีวิต บัฟทั้งทีม ปาลูกกลอนสมุนไพรใส่ผี ใช้ INT',
+    baseHp: 95, baseMp: 55, hpPerLevel: 10,
+    startStats: { STR: 2, DEX: 4, INT: 8, CRI: 3, VIT: 7 },
+    weapon: 'staff', color: '#2ecc71',          // ท่าทาง/ภาพตัวละครแบบถือไม้เท้า (ชนิดอาวุธในกระเป๋า = 'herb')
+    attack: { kind: 'magic', style: 'projectile', range: 200, cooldown: 720, mult: 1.1, mpCost: 2, projectile: 'pill', speed: 240 },
   },
 };
 

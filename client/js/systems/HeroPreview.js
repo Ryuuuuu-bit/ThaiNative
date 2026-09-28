@@ -15,7 +15,7 @@ export const TURN = ['south', 'south-west', 'west', 'north-west', 'north', 'nort
 const RATE = { idle: 5, walk: 10, attack: 14, slash: 16, shoot: 14, cast: 13, spell: 10, die: 8 };
 /** ท่าโจมตีจริงตามอาวุธ (ดาบ = ฟัน · ธนู = ยิง · ไม้เท้า = ร่าย · มือเปล่า = ต่อย) — แบบเดียวกับในเกม */
 // นักเวทย์: ท่า 'spell' (ร่ายเวทถือไม้เท้า) ถ้ายังไม่มีสไปรต์ → ยืน idle + วงเวท/ประกายแทน (ท่า cast เดิมเป็นท่าวิ่งปาลูกไฟ ไม่เหมาะกับหน้าสร้างตัว)
-const ACTION = { swordman: 'slash', archer: 'shoot', mage: 'spell', boxer: 'attack' };
+const ACTION = { swordman: 'slash', archer: 'shoot', mage: 'spell', boxer: 'attack', healer: 'spell' };
 const BORROW = { attack: 'walk', die: 'idle' };
 
 let metaP = null, meta = {};

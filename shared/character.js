@@ -54,6 +54,7 @@ export function combatDerived(c, buffs = [], now = Date.now()) {
     if (buff.critAdd) d.critRate = Math.min(0.9, d.critRate + buff.critAdd);
     if (buff.def) d.def += buff.def;
   }
+  for (const { buff, until } of buffs) if (buff?.defMul && until > now) d.def = Math.round(d.def * (1 + buff.defMul));   // % ป้องกัน (ยาต้มพยัคฆ์เหิน) คิดหลังค่าตรง
   return d;
 }
 

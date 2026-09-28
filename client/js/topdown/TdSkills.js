@@ -8,6 +8,7 @@ import { JOBS } from '/shared/data/classes.js';
 import { popupNumber, yantCircle } from '../gfx/Fx.js';
 import { dirFromVector } from './Dir8.js';
 import { TILE, MAP_W, MAP_H } from '/shared/td/ayutthaya.js';
+import { HealerKit, HEAL_TINT } from './TdHealer.js';
 
 const ADD = () => Phaser.BlendModes.ADD;
 const TOP = 99985;                           // ชั้นเอฟเฟกต์ลอย (เหนือตัวละคร)
@@ -21,6 +22,7 @@ const TINT = {
   sword_twin: 0xdff6ff, sword_thrust: 0xaee4ff, sword_wind: 0x8fe8ff, sword_guard: 0x6ec8ff, sword_pikat: 0xc9f2ff,
   arch_quick: 0xfff2c0, arch_poison: 0x7dff6a, arch_pierce: 0xffd35c, arch_hawk: 0xffe9a6, arch_rain: 0xff9a3c,
   mage_holy: 0x9dffcf, boxer_drum: 0xffa040, sword_banner: 0xffd35c, arch_garuda: 0xfff0a0,
+  ...HEAL_TINT,
 };
 
 // ------------------------------------------------------------
@@ -335,7 +337,11 @@ export class TdSkills {
     p.cooldowns = {};
     p.cooldownLeft = (id, time = scene.time.now) => Math.max(0, (p.cooldowns[id] || 0) - time);
     p.trySkill = (time, key) => this.cast(key, time);
+    this.heal = new HealerKit(this);                             // หมอยา: เป้าเพื่อน + เอฟเฟกต์
   }
+  healFx(d) { this.heal.healFx(d); }
+  tetherFx(d) { this.heal.tetherFx(d); }
+  seedFx(d) { this.heal.seedFx(d); }
 
   /** เสียงชั้นพิเศษ (ของผู้เล่นอื่นเบากว่า/ข้ามถ้าไกล) */
   snd(name) { this.s.sfx?.play(name); }
@@ -375,7 +381,7 @@ export class TdSkills {
 
   // ---------------- Auto Skill (แบบบอทร่ายสกิลตามลำดับ Q→T) ----------------
   /** ระยะที่สกิลนี้ถึงเป้า */
-  reachOf(sk) { if (sk.type === 'party') return 60; return sk.type === 'projectile' || sk.type === 'strike' ? sk.range : sk.type === 'aoe' ? (sk.offset ? 220 : sk.radius + 40) : sk.type === 'dash' ? sk.distance + 30 : 60; }
+  reachOf(sk) { if (sk.type === 'party' || sk.type === 'revive') return 60; if (sk.type === 'tether' || sk.type === 'seed' || sk.type === 'bounce') return sk.range; if (sk.type === 'mortar') return 220; return sk.type === 'projectile' || sk.type === 'strike' ? sk.range : sk.type === 'aoe' ? (sk.offset ? 220 : sk.radius + 40) : sk.type === 'dash' ? sk.distance + 30 : 60; }
 
   /** สกิลช่อง key ร่ายได้ทันทีไหม (เงียบ ไม่แจ้งเตือน) → { id, sk } | null */
   ready(key, time) {
@@ -398,7 +404,9 @@ export class TdSkills {
     for (const key of SKILL_SLOTS) {
       const r = this.ready(key, time);
       if (!r) continue;
-      if (r.sk.type === 'buff' || r.sk.type === 'party') { if ((p.buffs || []).some((b) => b.sk === r.id && b.until > time)) continue; }
+      if (r.sk.type === 'tether' || r.sk.type === 'seed') { if (!this.heal.needHeal(0.75, r.sk.range)) continue; }
+      else if (r.sk.type === 'revive') { if (!this.heal.anyDead(r.sk.radius) && !this.heal.needHeal(0.35, r.sk.radius)) continue; }
+      else if (r.sk.type === 'buff' || r.sk.type === 'party') { if ((p.buffs || []).some((b) => b.sk === r.id && b.until > time)) continue; }
       else if (dist(t, p) > this.reachOf(r.sk)) continue;
       this.cast(key, time);
       this.autoAt = time + 600;          // เว้นจังหวะให้ท่าร่ายเล่นจบ
@@ -425,12 +433,15 @@ export class TdSkills {
     c.mp -= sk.mp; p.cooldowns[id] = time + sk.cd;
     const reach = this.reachOf(sk);
     const aim = this.aim(reach);
+    const healer = base.job === 'healer', prep = healer ? this.heal.prep(sk, aim) : null;
+    if (prep?.ally && prep.ally !== p) { const v = { x: prep.ally.x - p.x, y: prep.ally.y - p.y }, l = Math.hypot(v.x, v.y) || 1; aim.ux = v.x / l; aim.uy = v.y / l; }
     p.dir = dirFromVector(aim.ux, aim.uy, p.dir); p.setVelocity(0, 0); p.path = []; p.st = 'attack';
-    s.playerAnim(sk.type === 'buff' || sk.type === 'party' || sk.kind === 'magic' ? 'cast' : 'attack', true) || s.playerAnim('attack', true);
-    s.time.delayedCall(420, () => { if (p.st === 'attack') p.st = 'idle'; });
+    s.playerAnim(healer || sk.type === 'buff' || sk.type === 'party' || sk.kind === 'magic' ? 'cast' : 'attack', true) || s.playerAnim('attack', true);
+    s.time.delayedCall(sk.castMs || 420, () => { if (p.st === 'attack') p.st = 'idle'; });
     s.sfx.play(sk.sfx);
-    if (s.econ.server) s.net.socket?.emit('skill:cast', { skillId: id, lv: sk.lv, x: Math.round(p.x), y: Math.round(p.y), dir: aim.ux < 0 ? -1 : 1, tx: aim.t ? Math.round(aim.t.x) : Math.round(p.x + aim.ux * 100), ty: aim.t ? Math.round(aim.t.y) : Math.round(p.y + aim.uy * 100) });
-    this.play(sk, { x: p.x, y: p.y, ux: aim.ux, uy: aim.uy, t: aim.t, caster: p, local: true });
+    if (s.econ.server) s.net.socket?.emit('skill:cast', { skillId: id, lv: sk.lv, x: Math.round(p.x), y: Math.round(p.y), dir: aim.ux < 0 ? -1 : 1, tx: aim.t ? Math.round(aim.t.x) : Math.round(p.x + aim.ux * 100), ty: aim.t ? Math.round(aim.t.y) : Math.round(p.y + aim.uy * 100),
+      ...(prep ? { allies: prep.allies, ...(prep.tx != null ? { tx: prep.tx, ty: prep.ty, n: prep.n } : {}) } : {}) });
+    this.play(sk, { x: p.x, y: p.y, ux: aim.ux, uy: aim.uy, t: aim.t, caster: p, local: true, prep });
   }
 
   /** ผู้เล่นอื่นร่าย (ภาพอย่างเดียว) */
@@ -453,6 +464,7 @@ export class TdSkills {
     const at = (ms, f) => s.time.delayedCall(ms, f);
     const cx = o.x, cy = o.y, ang = Math.atan2(o.uy, o.ux);
     if (sk.ultimate) { yantCircle(s, cx, cy, { tint, size: 90, ms: 1100, rise: true }); fx.darken(700); S('skFlash'); }
+    if (SKILL_BY_ID[sk.id]?.job === 'healer' && this.heal.play(sk, o)) return;
 
     switch (sk.id) {
       // ======================= จอมขมังเวทย์ =======================
@@ -826,7 +838,8 @@ export class TdSkills {
     const base = SKILL_BY_ID[skillId]; if (!base) return;
     const sk = skillStats(base, lv), s = this.s, p = s.player, tint = TINT[sk.id] || 0xffffff;
     p.buffs = (p.buffs || []).filter((b) => b.until > s.time.now && b.sk !== sk.id);
-    p.buffs.push({ buff: sk.buff, until: s.time.now + sk.duration, sk: sk.id, icon: sk.icon, name: `${sk.nameTh} (${from})` });
+    if (sk.type === 'revive') p.buffs.push({ buff: { undying: true }, until: s.time.now + sk.undying, sk: sk.id, icon: sk.icon, name: `ขวัญกันตาย (${from})` });
+    else p.buffs.push({ buff: sk.buff, until: s.time.now + sk.duration, sk: sk.id, icon: sk.icon, name: `${sk.nameTh} (${from})` });
     if (sk.mpHeal) { const d = p.derived; p.char.mp = Math.min(d.maxMp, p.char.mp + Math.round(d.maxMp * sk.mpHeal)); }
     s.ui.toast?.(`${sk.icon} ${from} ใช้ ${sk.nameTh} ให้คุณ!`, 'ok', 1800);
     this.snd('skRise');

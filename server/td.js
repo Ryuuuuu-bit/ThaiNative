@@ -143,7 +143,7 @@ export function setupTD(io, players, opts = {}) {
     const job = p.appearance?.job, atk = JOBS[job]?.attack;
     const sk = typeof d.sk === 'string' ? d.sk : null;
     const skb = sk ? SKILL_BY_ID[sk] : null;            // สกิลระยะไกล/วงกว้าง/พุ่ง → เอื้อมได้ไกลกว่าตีปกติ
-    const range = Math.max(atk?.range || 30, skb ? (skb.range || 0) + (skb.distance || 0) + (skb.offset ? 240 : 0) + (skb.radius || 0) : 0) + 30;
+    const range = Math.max(atk?.range || 30, skb ? (skb.range || 0) + (skb.distance || 0) + (skb.offset ? 240 : 0) + (skb.radius || 0) + (skb.hop || 0) * (skb.bounces || 0) : 0) + 30;
     if (dist(m, { x: p.tx, y: p.ty }) > range) return;
     const gate = attackGate(p, sk, !!d.combo, now);
     if (!gate) return;

@@ -23,9 +23,9 @@ const GRIP = {
   oak_staff: { g: [23, 30], s: 0.95, ox: 2 }, yant_staff: { g: [24, 30], s: 0.95, ox: 2 },
   bamboo_bow: { g: [26, 24], s: 0.72, ox: 4, oy: -5 }, horn_bow: { g: [27, 24], s: 0.72, ox: 4, oy: -5 },
 };
-const WTYPE_GRIP = { sword: GRIP.wood_sword, staff: GRIP.oak_staff, bow: GRIP.bamboo_bow };
+const WTYPE_GRIP = { sword: GRIP.wood_sword, staff: GRIP.oak_staff, bow: GRIP.bamboo_bow, herb: GRIP.oak_staff };
 /** มุมเหวี่ยงอาวุธระหว่างท่าโจมตี 6 เฟรม */
-const SWING = { sword: [-0.7, -1.0, 0.2, 0.9, 0.7, 0.2], staff: [-0.25, -0.4, 0.05, 0.4, 0.25, 0.05], bow: [0, 0, 0, 0, 0, 0] };
+const SWING = { sword: [-0.7, -1.0, 0.2, 0.9, 0.7, 0.2], staff: [-0.25, -0.4, 0.05, 0.4, 0.25, 0.05], herb: [-0.25, -0.4, 0.05, 0.4, 0.25, 0.05], bow: [0, 0, 0, 0, 0, 0] };
 
 /** จุดวางชุดแต่งตัว: g = จุดยึดในภาพไอคอน 48px, s = ขนาด, at = ตำแหน่งบนตัว (สัดส่วนของภาพตัวละคร) */
 const WEAR = {

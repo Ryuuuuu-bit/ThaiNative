@@ -544,6 +544,7 @@ function gm(c, { cmd = 'help', a1, a2 }, ctx) {
       return OK(`ตีบวก ${slot} → +${c.enhance[slot]}`, { gm: true, jobChanged: syncAppearance(c) });
     }
     case 'heal': { const d = getDerived(c); c.hp = d.maxHp; c.mp = d.maxMp; return OK('ฟื้น HP/MP เต็ม', { gm: true }); }
+    case 'hp': { const pct = Math.max(0, Math.min(100, Number(a1) || 0)); return OK(pct ? `ตั้ง HP → ${pct}%` : 'สลบทันที (ทดสอบชุบชีวิต)', { gm: true, hpPct: pct }); }
     default: return OK('คำสั่ง: /gm gold [จำนวน] · /gm lv [เลเวล] · /gm exp [จำนวน] · /gm item <id> [จำนวน] · /gm sp [n] · /gm stat [n] · /gm enh <weapon|armor|accessory|accessory2> [ขั้น] · /gm heal', { gm: true });
   }
 }

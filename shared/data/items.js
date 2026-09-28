@@ -24,6 +24,7 @@ const ITEMS_BASE = {
   bamboo_bow:  { nameTh: 'ธนูไม้ไผ่',         type: 'weapon', icon: '🏹', price: 80,  sell: 10, wtype: 'bow', bonus: { atk: 5, DEX: 2 } },
   horn_bow:    { nameTh: 'ธนูเขาควาย',        type: 'weapon', icon: '🎯', price: 330, wtype: 'bow', bonus: { atk: 15, DEX: 4 } },
   hand_wrap:   { nameTh: 'ผ้าพันมือคาดเชือก',   type: 'weapon', icon: '🥊', price: 80,  wtype: 'wraps', bonus: { atk: 5, STR: 1 } },
+  herb_staff:  { nameTh: 'ไม้เท้าเถาบอระเพ็ด', type: 'weapon', icon: '🌿', price: 80,  sell: 10, wtype: 'herb', art: 'g_healer_w01', bonus: { matk: 7, mp: 10, hp: 10 } },
   mongkol:     { nameTh: 'มงคลศักดิ์สิทธิ์',     type: 'weapon', icon: '🪢', price: 320, wtype: 'wraps', bonus: { atk: 14, VIT: 3, crit: 0.02 } },
 
   // ---------- เกราะ / เครื่องประดับ ----------
@@ -33,6 +34,7 @@ const ITEMS_BASE = {
   armor_mage:     { nameTh: 'ผ้ายันต์หมอผีเจ็ดป่าช้า', type: 'armor', icon: '🧥', price: 350, path: 'mage', bonus: { def: 5, mp: 50, matk: 6 }, look: { top: '#1c1c1c', bottom: '#4a235a' } },
   armor_archer:   { nameTh: 'ชุดพรานไพรลายพราง', type: 'armor', icon: '🦺', price: 350, path: 'archer', bonus: { def: 6, hp: 40, DEX: 2 }, look: { top: '#3d6b35', bottom: '#5b4a2e' } },
   armor_boxer:    { nameTh: 'กางเกงมวยผ้าประเจียด', type: 'armor', icon: '🩳', price: 350, path: 'boxer', bonus: { def: 7, hp: 60, STR: 2 }, look: { top: '#c0392b', bottom: '#c0392b' } },
+  armor_healer:   { nameTh: 'เสื้อม่อฮ่อมหมอยา', type: 'armor', icon: '🥼', price: 350, path: 'healer', art: 'g_healer_a01', bonus: { def: 6, hp: 45, mp: 35, INT: 1 }, look: { top: '#2e6b4f', bottom: '#3b2f22' } },
   takrut:      { nameTh: 'ตะกรุดโทน',        type: 'accessory', icon: '📿', price: 220, bonus: { def: 2, CRI: 4 } },
   prajiad:     { nameTh: 'ประเจียดแขน',       type: 'accessory', icon: '🎗️', price: 200, bonus: { STR: 2, DEX: 2 } },
   // เครื่องรางพระเครื่อง (ลุงดำ)
@@ -88,6 +90,7 @@ const ITEMS_BASE = {
   skin_swordman: { nameTh: 'คัมภีร์ล้างต้นไม้พรสวรรค์', desc: 'ใช้แล้วคืนแต้มพรสวรรค์ทั้งหมด (ฟรี ไม่เสียเงิน)',  type: 'skin', icon: '📜', price: 800, job: 'swordman' },
   skin_mage: { nameTh: 'คัมภีร์ล้างต้นไม้พรสวรรค์', desc: 'ใช้แล้วคืนแต้มพรสวรรค์ทั้งหมด (ฟรี ไม่เสียเงิน)', type: 'skin', icon: '📜', price: 800, job: 'mage' },
   skin_archer: { nameTh: 'คัมภีร์ล้างต้นไม้พรสวรรค์', desc: 'ใช้แล้วคืนแต้มพรสวรรค์ทั้งหมด (ฟรี ไม่เสียเงิน)',  type: 'skin', icon: '📜', price: 800, job: 'archer' },
+  skin_healer: { nameTh: 'คัมภีร์ล้างต้นไม้พรสวรรค์', desc: 'ใช้แล้วคืนแต้มพรสวรรค์ทั้งหมด (ฟรี ไม่เสียเงิน)', type: 'skin', icon: '📜', price: 800, job: 'healer' },
   skin_boxer: { nameTh: 'คัมภีร์ล้างต้นไม้พรสวรรค์', desc: 'ใช้แล้วคืนแต้มพรสวรรค์ทั้งหมด (ฟรี ไม่เสียเงิน)', type: 'skin', icon: '📜', price: 800, job: 'boxer' },
 
   // ---------- ของดรอปจากผี (ขายได้อย่างเดียว) ----------
@@ -265,6 +268,11 @@ export const SHOPS = {
     greeting: 'ไหว้ครูให้ดี ใจสู้ให้ถึง! อุปกรณ์มวยครบ มาเลือกเอา',
     stock: ['armor_boxer', ...gearShopStock('boxer')], tabs: ['buy', 'sell'],
   },
+  kru_healer: {
+    nameTh: 'หมอพร ศาลาโอสถ', job: 'healer',
+    greeting: 'ยาดีต้องรู้จักต้น รู้จักราก รู้จักใจคนป่วย… มาเลือกเครื่องมือหมอยาได้เลยลูก',
+    stock: ['herb_staff', 'armor_healer', ...gearShopStock('healer')], tabs: ['buy', 'sell'],
+  },
   pa_sa: {
     nameTh: 'ป้าสา ครัวริมน้ำ',
     greeting: 'ได้ปลามาเหรอลูก เอามาให้ป้าทำกับข้าวให้ อร่อยจนผีต้องร้องขอ!',
@@ -275,11 +283,11 @@ export const SHOPS = {
 
 export const STARTING_GOLD = 150;
 export const STARTING_ITEMS = [{ id: 'hp_s', qty: 3 }, { id: 'mp_s', qty: 2 }, { id: 'yant_home', qty: 3 },
-  { id: 'wood_sword', qty: 1 }, { id: 'oak_staff', qty: 1 }, { id: 'bamboo_bow', qty: 1 }];   // อาวุธฝึกให้ลองทุกแนว
+  { id: 'wood_sword', qty: 1 }, { id: 'oak_staff', qty: 1 }, { id: 'bamboo_bow', qty: 1 }, { id: 'herb_staff', qty: 1 }];   // อาวุธฝึกให้ลองทุกแนว
 
 /** แนวต่อสู้ตามชนิดอาวุธ → id สายใน classes.js */
-export const WTYPE_JOB = { sword: 'swordman', staff: 'mage', bow: 'archer', wraps: 'boxer' };
+export const WTYPE_JOB = { sword: 'swordman', staff: 'mage', bow: 'archer', wraps: 'boxer', herb: 'healer' };
 /** อาวุธที่ถือ → แนวต่อสู้ (มือเปล่า = มวย) */
 export const weaponStyle = (weaponId) => WTYPE_JOB[ITEMS[weaponId]?.wtype] || 'boxer';
 /** อาวุธเริ่มต้นของแต่ละสาย (ใช้ตอนแปลงเซฟเก่า) */
-export const STARTER_WEAPON = { swordman: 'wood_sword', mage: 'oak_staff', archer: 'bamboo_bow', boxer: 'hand_wrap' };
+export const STARTER_WEAPON = { swordman: 'wood_sword', mage: 'oak_staff', archer: 'bamboo_bow', boxer: 'hand_wrap', healer: 'herb_staff' };

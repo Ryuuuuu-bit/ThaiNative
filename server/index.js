@@ -20,6 +20,7 @@ import { setupSocial } from './social.js';
 import { setupMobs } from './mobs.js';
 import { setupDungeon } from './dungeon.js';
 import { setupTD } from './td.js';
+import { setupHealer } from './healer.js';
 import { setupAuth, isAdmin } from './auth.js';
 import { MAX_SLOTS } from './store.js';
 
@@ -78,12 +79,14 @@ async function persist(p) {
 }
 
 /** ผู้เล่นโดนโจมตี (server ตัดสิน) → { applied } */
+let healer = null;
 function hurtPlayer(p, dmg, info = {}) {
   const now = Date.now();
   if (!p || p.dead || now < (p.invulnUntil || 0) || p.x <= (mapAt(p.x).safeEndX ?? -1e9) && !info.force) return false;
   if (info.hit === false) { io.to(p.id).emit('pl:hit', { hit: false, dmg: 0, x: info.x ?? p.x }); return false; }
   dmg = Math.max(1, Math.round(dmg));
   p.hp = Math.max(0, p.hp - dmg);
+  if (p.hp <= 0 && healer?.undying(p, now)) p.hp = 1;                     // ขวัญกันตาย (พิธีสู่ขวัญของหมอยา)
   p.invulnUntil = now + (info.iframe ?? 700);
   p.lastHurt = now;
   io.to(p.id).emit('pl:hit', { hit: true, dmg, crit: !!info.crit, x: info.x ?? p.x, hp: p.hp, stun: info.stun || 0 });
@@ -113,6 +116,9 @@ const dungeon = setupDungeon(io, players, { social, ...helpers });
 /** โลก New Version (top-down อยุธยา) */
 const td = setupTD(io, players, { dayMs: DAY_MS, shareExp: social.shareExp, ...helpers });
 const tdSys = td;                                   // (ในตัวจัดการสกิล ชื่อ td ถูกใช้เป็นธงโลก top-down)
+/** หมอยา: ฮีล/สายใย/เมล็ด/ชุบชีวิต/กันตาย */
+healer = setupHealer(io, players, { ...helpers, social, tdSys });
+setInterval(() => healer.tick(), 250);
 
 function publicPlayer(p) {
   return {
@@ -270,6 +276,11 @@ io.on('connection', (socket) => {
     if (a === 'title' && r.ok) io.emit('td:title', { id: p.id, title: p.save.title || null });   // ฉายาเหนือชื่อ → ทุกคนเห็นทันที
     if (a === 'enhance' && r.slot && r.lv >= 10 && r.success) io.emit('chat', { id: null, name: '🔨 ลุงดำ', text: `${p.name} ตีบวกสำเร็จ +${r.lv}!` });
     refresh(p);
+    if (r.ok && r.hpPct != null && p.admin) {                                   // GM: ตั้ง HP / สลบ (ทดสอบหมอยา)
+      p.invulnUntil = 0;
+      if (r.hpPct <= 0) hurtPlayer(p, p.hp + 1, { force: true });
+      else { p.hp = Math.max(1, p.maxHp * r.hpPct / 100); p.hpDirty = true; }
+    }
     p.syncDue = false;
     done({ r, s: packChar(p.save), mp: p.save.mp });
     if (r.titles?.length) social.announceTitles(p, r.titles);
@@ -308,6 +319,7 @@ io.on('connection', (socket) => {
         if (m !== p) io.to(m.id).emit('td:pbuff', { from: p.name, fromId: p.id, skillId: base.id, lv: clamp(lv, 1, MAX_SKILL_LV) });
       }
     } else if (sk.type === 'dash') p.invulnUntil = Math.max(p.invulnUntil || 0, now + 320);
+    else if (base.job === 'healer') healer.cast(p, sk, d, now);
     (td ? socket.to(tdSys.room(p)) : socket.broadcast).emit('skill:cast', {
       id: p.id, skillId: base.id, lv: clamp(lv, 1, MAX_SKILL_LV),
       x: Math.round(x), y: Math.round(y), dir: d.dir === -1 ? -1 : 1,
@@ -353,6 +365,7 @@ async function leave(id) {
   social.onDisconnect(id);
   dungeon.onDisconnect(id);
   td.onLeave(p);
+  healer?.forget(id);
   players.delete(id);
   if (byAcc.get(p.acc) === id) byAcc.delete(p.acc);
   io.emit('player:left', id);

@@ -40,7 +40,7 @@ import { bakeGround, makeWater, TdAtmosphere, bakeTdFx, TdVfx, TdMinimap } from 
 const $ = (s) => document.querySelector(s);
 const OUTFIT_IDS = ['mohom', 'ruenton', 'jongkraben', 'rajpatan', 'chaona', 'silk', 'warrior', 'hunter', 'isan', 'mahadlek'];
 /** ท่าโจมตีจริงตามอาวุธ (ถ้ามีภาพ): ดาบ = ฟัน · ธนู = ยิง · ไม้เท้า = ร่าย · มวย = ต่อย */
-const ACTION_ANIM = { swordman: 'slash', archer: 'shoot', mage: 'cast', boxer: 'attack' };
+const ACTION_ANIM = { swordman: 'slash', archer: 'shoot', mage: 'cast', boxer: 'attack', healer: 'cast' };
 const SPEED = 92;
 /** ระบบ Auto: หาผีเองในรัศมีนี้รอบตัว (px ≈ 10 ช่อง) */
 const AUTO_MARGIN = 24;                                    // Auto: ตีผีทุกตัวที่อยู่ในหน้าจอ (ขอบจอเผื่อไว้นิดหน่อย)
@@ -49,8 +49,8 @@ const AYT_SPAWN = TD_SPAWN;                                 // ลานน้�
 const HP_POTS = ['hp_s', 'hp_m', 'pot_aloe', 'pot_turmeric'];
 const MP_POTS = ['mp_s', 'mp_m', 'pot_anchan'];
 /** NPC → หน้าต่างบริการ (ชุดเดียวกับโลกเดิม) */
-const NPC_OPEN = { shop: 'mae_kha', smith: 'lung_dam', cook: 'pa_sa', tailor: 'tailor', kru_sword: 'kru_sword', kru_mage: 'kru_mage', kru_archer: 'kru_archer', kru_boxer: 'kru_boxer' };
-const NPC_ICON = { shop: '🧪', quest: '❗', smith: '🔨', tailor: '👘', cook: '🍲', kru_sword: '⚔️', kru_mage: '🔮', kru_archer: '🏹', kru_boxer: '🥊' };
+const NPC_OPEN = { shop: 'mae_kha', smith: 'lung_dam', cook: 'pa_sa', tailor: 'tailor', kru_sword: 'kru_sword', kru_mage: 'kru_mage', kru_archer: 'kru_archer', kru_boxer: 'kru_boxer', kru_healer: 'kru_healer' };
+const NPC_ICON = { shop: '🧪', quest: '❗', smith: '🔨', tailor: '👘', cook: '🍲', kru_sword: '⚔️', kru_mage: '🔮', kru_archer: '🏹', kru_boxer: '🥊', kru_healer: '🌿' };
 const rand = (a, b) => a + Math.random() * (b - a);
 const dist = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
 const DIRS = ['east', 'south-east', 'south', 'south-west', 'west', 'north-west', 'north', 'north-east'];
@@ -676,7 +676,7 @@ export class TopDownScene extends Phaser.Scene {
     const fireAt = real ? ({ slash: 170, shoot: 300, cast: 260, attack: 150 }[act] || 150) : ranged ? (magic ? 150 : 170) : 110;
     if (!ranged) { const k = Math.min(1, 4 / Math.max(1, dist(p, m))); this.tweens.add({ targets: p, x: p.x + (m.x - p.x) * k, y: p.y + (m.y - p.y) * k, duration: 90, yoyo: true, ease: 'Quad.easeOut' }); }
     this.time.delayedCall(ranged ? fireAt - 40 : 0, () => this.sfx.play(ranged ? 'arrow' : 'swing'));
-    if (ranged) this.time.delayedCall(fireAt, () => m.alive && p.alive && this.vfx.shoot(p, m, magic ? 'magic' : 'arrow'));
+    if (ranged) this.time.delayedCall(fireAt, () => m.alive && p.alive && this.vfx.shoot(p, m, JOBS[p.char.appearance.job]?.attack?.projectile === 'pill' ? 'pill' : magic ? 'magic' : 'arrow'));
     else this.time.delayedCall(fireAt, () => m.alive && this.vfx.slash(p, m, false));
     if (this.econ.server) { this.time.delayedCall(fireAt + (ranged ? 60 : 40), () => m.alive && this.net.send('td:hit', { mid: m.mid })); return; }
     this.time.delayedCall(180, () => {
@@ -786,11 +786,24 @@ export class TopDownScene extends Phaser.Scene {
     if (p.dead) return;
     p.dead = true; p.char.hp = 0; p.target = null; p.path = []; p.setVelocity(0, 0);
     this.playerAnim('die', true); this.sfx.play('die');
-    this.ui.banner('💀 คุณสลบไป…', this.M.realm ? `ฟื้นที่${this.M.ZONES.hub.nameTh}ใน 3 วินาที` : 'ฟื้นที่ประตูเมืองใน 3 วินาที');
-    this.time.delayedCall(3000, () => {
+    const doc = (this.social?.party?.members || []).some((m) => m.id !== this.net?.selfId && m.wj === 'healer' && !m.dead);
+    const wait = doc ? 10000 : 3000, where = this.M.realm ? `ฟื้นที่${this.M.ZONES.hub.nameTh}` : 'ฟื้นที่ประตูเมือง';
+    this.ui.banner('💀 คุณสลบไป…', doc ? `🌿 มีหมอยาในปาร์ตี้ — รอพิธีสู่ขวัญ… (${where}ใน 10 วินาที)` : `${where}ใน 3 วินาที`);
+    this.time.delayedCall(wait, () => {
+      if (!p.dead) return;
       if (this.econ.server) return this.net.send('td:respawn');
       this.onRespawn({ x: this.M.spawn.x, y: this.M.spawn.y, hp: p.derived.maxHp });
     });
+  }
+
+  /** หมอยาชุบชีวิต (พิธีสู่ขวัญ) → ฟื้นตรงที่สลบ ไม่ต้องกลับเมือง */
+  onRevive({ hp, by }) {
+    const p = this.player;
+    if (!p.dead) return;
+    p.dead = false; p.st = 'idle'; p.char.hp = hp;
+    this.playerAnim('idle', true);
+    this.ui.toast(`🪷 ${by || 'หมอยา'} ทำพิธีสู่ขวัญ เรียกขวัญคุณกลับมาแล้ว!`, 'ok', 3000);
+    this.sfx.play('blessing'); this.ui.hudCache = '';
   }
 
   onRespawn({ x, y, hp }) {
@@ -924,6 +937,10 @@ export class TopDownScene extends Phaser.Scene {
       .on('td:aoe', (a) => this.bossAoe(a))
       .on('td:title', ({ id, title }) => this.remotes.get(id)?.setTitle(title))
       .on('td:pbuff', (d) => this.skills?.partyReceive(d))
+      .on('td:heal', (d) => this.skills?.healFx(d))
+      .on('td:tether', (d) => this.skills?.tetherFx(d))
+      .on('td:seed', (d) => this.skills?.seedFx(d))
+      .on('td:revive', (d) => this.onRevive(d))
       .on('td:fx', ({ id, kind, big }) => { const r = this.remotes.get(id); if (r && r.visible !== false) this.vfx.potion(r, kind, big); })
       .on('td:reward', (r) => this.showReward({ ...r, x: this.mobs[r.mid]?.x, y: this.mobs[r.mid]?.y }))
       .on('td:respawn', (d) => this.onRespawn(d))
@@ -1162,7 +1179,8 @@ export class TopDownScene extends Phaser.Scene {
       if (p.st === 'attack') p.setVelocity(0, 0);
       else if (vx || vy) {
         const len = Math.hypot(vx, vy) || 1;
-        p.setVelocity(vx / len * SPEED, vy / len * SPEED);
+        const now = this.time.now, sp = SPEED * (1 + Math.min(0.4, (p.buffs || []).reduce((a, b) => a + (b.until > now && b.buff?.speed || 0), 0)));   // ยาต้มพยัคฆ์เหิน: วิ่งเร็วขึ้น
+        p.setVelocity(vx / len * sp, vy / len * sp);
         p.dir = stableDir(vx, vy, p.dir); p.st = 'walk'; this.playerAnim('walk');
       } else { p.setVelocity(0, 0); p.st = 'idle'; this.playerAnim('idle'); }
       this.unstick(p, time, !!(k.RIGHT.isDown || k.LEFT.isDown || k.DOWN.isDown || k.UP.isDown || this.touch?.vec));

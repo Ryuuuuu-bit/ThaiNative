@@ -87,7 +87,7 @@ button { font-family: inherit; cursor: pointer; }
 .row { display: flex; align-items: center; gap: .5em; }
 .label { color: var(--muted); min-width: 4.5em; }
 .picker .val { flex: 1; text-align: center; background: #140b1d; border-radius: 6px; padding: .2em; }
-.jobs { display: grid; grid-template-columns: repeat(4, 1fr); gap: .4em; }
+.jobs { display: grid; grid-template-columns: repeat(5, 1fr); gap: .4em; }
 .job {
   background: var(--panel-2); color: var(--text); border: 2px solid transparent; border-radius: 8px;
   padding: .35em .2em; font-size: .9em; text-align: center;

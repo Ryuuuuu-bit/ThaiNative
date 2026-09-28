@@ -21,6 +21,7 @@ const START_WEAPONS = [
   { id: 'wood_sword', icon: '⚔️', art: 'it_wood_sword', job: 'swordman' },
   { id: 'oak_staff', icon: '🔮', art: 'it_oak_staff', job: 'mage' },
   { id: 'bamboo_bow', icon: '🏹', art: 'it_bamboo_bow', job: 'archer' },
+  { id: 'herb_staff', icon: '🌿', art: 'it_g_healer_w01', job: 'healer' },
 ];
 const NAMES = { male: ['ขุนแผน', 'ไอ้ขวัญ', 'นายขนมต้ม', 'พระไวย', 'ไอ้เสือ', 'ทองดี'], female: ['วันทอง', 'อีเรียม', 'แม่พลอย', 'บุษบา', 'สร้อยฟ้า', 'จันทร์เจ้า'] };
 
@@ -83,7 +84,7 @@ export class CreateScene extends Phaser.Scene {
     $('#cc-random').onclick = () => {
       const r = (n) => Math.floor(Math.random() * n);
       const gender = GENDERS[r(2)].id;
-      this.a = { ...this.a, gender, outfit: startOutfit(gender), hair: r(HAIRSTYLES.length), weapon: START_WEAPONS[r(4)].id };
+      this.a = { ...this.a, gender, outfit: startOutfit(gender), hair: r(HAIRSTYLES.length), weapon: START_WEAPONS[r(START_WEAPONS.length)].id };
       if (!$('#cc-name').value.trim()) $('#cc-name').value = NAMES[gender][r(NAMES[gender].length)];
       this.refresh();
     };

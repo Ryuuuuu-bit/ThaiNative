@@ -9,7 +9,7 @@ import { itemIcon, makeText } from '../systems/util.js';
 import { TITLE_BY_ID } from '/shared/data/titles.js';
 
 const $ = (s) => document.querySelector(s);
-const JOB_ICON = { swordman: '⚔️', mage: '🔮', archer: '🏹', boxer: '🥊' };
+const JOB_ICON = { swordman: '⚔️', mage: '🔮', archer: '🏹', boxer: '🥊', healer: '🌿' };
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
 export class TdSocial {

@@ -1,5 +1,5 @@
 // ============================================================
-//  ระบบสกิล 24 แบบ (4 อาชีพ × 6 สกิล · สกิลที่ 6 = สกิลปาร์ตี้) + Skill Tree
+//  ระบบสกิล 30 แบบ (5 อาชีพ × 6 สกิล · สกิลที่ 6 = สกิลปาร์ตี้) + Skill Tree
 //  ▸ เรียน/อัปเลเวลสกิลด้วย Skill Point (SP) ได้ 1 SP ต่อเลเวลตัวละคร
 //  ▸ สกิลละ 5 เลเวล: ตัวคูณดาเมจ +15%/เลเวล, คูลดาวน์ -4%/เลเวล, MP +10%/เลเวล
 //  ▸ ติดตั้งลง Hotbar Q W E R T (ลาก-วาง หรือคลิกเลือก)
@@ -12,6 +12,12 @@
 //   strike     ฟ้าผ่าเป้าที่ใกล้สุด { range }
 //   buff       บัฟตัวเอง    { buff:{atkMul,critAdd,def}, duration, heal }
 //   party      บัฟ/ฮีลทั้งปาร์ตี้ในรัศมี { radius, buff, duration, heal, mpHeal } (เล่นคนเดียวก็ได้ผลกับตัวเอง)
+//   ── หมอยา (ฮีลคิดที่ server จาก พลังเวทย์ × hmult · "เพื่อน" = ตัวเอง + ปาร์ตี้ในแมพเดียวกัน) ──
+//   tether     สายใยผูกเพื่อน 1 คน { range, near, nearMul, breakAt, duration, tick, hmult }
+//   bounce     ลูกกลอนเด้ง เพื่อน↔ผี { bounces, hop, range, hmult, mult }
+//   seed       เมล็ดฝังเพื่อน บานเมื่อครบเวลา/เลือดต่ำ { range, delay, lowHp, hmult }
+//   revive     พิธีชุบชีวิต/รักษา% + กันตาย { radius, heal, undying, castMs }
+//   mortar     ครกยาลงพื้น ตีผีในวง แล้วรักษาเพื่อนในวง { offset, radius, hits, interval, mult, hmult, perHit, perMax }
 //  effect (ติดกับศัตรูที่โดน):
 //   stun   { ms }              ศัตรูขยับ/โจมตีไม่ได้
 //   poison { ticks, every, ratio } ดาเมจต่อเนื่อง ratio × ดาเมจครั้งแรก ต่อ tick
@@ -50,6 +56,27 @@ export const SKILLS = {
     { id: 'mage_holy', nameTh: 'น้ำมนต์ธาราทิพย์', icon: '🪷', reqLv: 10, type: 'party', party: true,
       mp: 30, cd: 24000, radius: 220, buff: { def: 12 }, duration: 10000, heal: 0.25, mpHeal: 0.15, sfx: 'buff',
       desc: '[ปาร์ตี้] บัวทิพย์บานกลางวง ฟื้น HP 25% + MP 15% ทั้งปาร์ตี้ · ป้องกัน +12 นาน 10 วิ' },
+  ],
+  // ---------------- หมอยา (ซัพพอร์ต) ----------------
+  healer: [
+    { id: 'heal_vine', nameTh: 'สายใยสมุนไพร', icon: '🌿', reqLv: 1, type: 'tether', kind: 'magic', element: 'water', heals: true,
+      mp: 8, cd: 9000, range: 220, near: 90, nearMul: 1.5, breakAt: 230, duration: 6000, tick: 500, hmult: 0.2, sfx: 'buff',
+      desc: 'เถาสมุนไพรผูกเพื่อนที่เลือดน้อยสุด 6 วิ รักษาทุก 0.5 วิ · ใกล้กว่า 90 แรง ×1.5 · ห่างเกิน 230 ขาด' },
+    { id: 'heal_pill', nameTh: 'ลูกกลอนเด้งห้าทิศ', icon: '🟢', reqLv: 2, type: 'bounce', kind: 'magic', element: 'wind', heals: true,
+      mp: 10, cd: 6000, range: 220, hop: 170, bounces: 5, mult: 0.9, hmult: 0.75, sfx: 'fireball',
+      desc: 'ปายาเม็ดเด้ง 5 ครั้ง สลับเพื่อน → ผี → เพื่อน · โดนเพื่อนรักษา · โดนผีระเบิดฝุ่นยา' },
+    { id: 'heal_seed', nameTh: 'เมล็ดพันธุ์ชีวา', icon: '🌱', reqLv: 4, type: 'seed', kind: 'magic', element: 'earth', heals: true,
+      mp: 12, cd: 11000, range: 220, delay: 4000, lowHp: 0.3, hmult: 2.2, sfx: 'buff',
+      desc: 'ฝังเมล็ดบนเพื่อน 4 วิแล้วบานรักษาก้อนใหญ่ · ถ้าเลือดต่ำกว่า 30% บานทันที' },
+    { id: 'heal_tiger', nameTh: 'ยาต้มพยัคฆ์เหิน', icon: '🐯', reqLv: 6, type: 'party', party: true, element: 'fire',
+      mp: 18, cd: 16000, radius: 200, buff: { defMul: 0.2, speed: 0.25, cleanse: true }, grow: { defMul: 0.03, speed: 0.025 }, duration: 8000, sfx: 'buff',
+      desc: '[ทีม] ต้มยาพยัคฆ์ ไอยาแผ่ 200 รอบตัว · ป้องกัน +20% วิ่งเร็ว +25% ลบอาการช้า 8 วิ (เลเวล 5 = +32% / +35%)' },
+    { id: 'heal_khwan', nameTh: 'พิธีสู่ขวัญ', icon: '🪷', reqLv: 8, type: 'revive', ultimate: true, element: 'light', heals: true,
+      mp: 35, cd: 40000, radius: 220, castMs: 1200, heal: 0.4, undying: 10000, sfx: 'buff',
+      desc: '★ ร่าย 1.2 วิ บายศรีสู่ขวัญ รักษา 40% ทุกคนในวง · ชุบชีวิตเพื่อนที่สลบ · ขวัญกันตาย 10 วิ (เลือดไม่ลดต่ำกว่า 1)' },
+    { id: 'heal_mortar', nameTh: 'ครกยาระเบิดสมุนไพร', icon: '🪨', reqLv: 10, type: 'mortar', kind: 'magic', element: 'earth', heals: true,
+      mp: 28, cd: 16000, offset: 110, radius: 110, hits: 3, interval: 280, mult: 1.4, hmult: 1.2, perHit: 0.1, perMax: 0.5, effect: { stun: { ms: 400 } }, sfx: 'thunder',
+      desc: 'ตำครกยา 3 ที ลงกลางวง 110 · ผีในวงโดน ×1.4 + มึน · แล้วผงยาเขียววนเข้ารักษาเพื่อนในวง (+10% ต่อผีที่โดน สูงสุด +50%)' },
   ],
   // ---------------- นักมวยคาดเชือก ----------------
   boxer: [
@@ -130,7 +157,9 @@ export function skillStats(skill, lv = 1) {
     mp: Math.round(skill.mp * (1 + 0.1 * L)),
     cd: Math.round(skill.cd * (1 - 0.04 * L)),
     duration: skill.duration ? Math.round(skill.duration * (1 + 0.1 * L)) : undefined,
-    heal: skill.heal ? +(skill.heal * (1 + 0.1 * L)).toFixed(3) : skill.heal,
+    heal: typeof skill.heal === 'number' ? +(skill.heal * (1 + 0.1 * L)).toFixed(3) : skill.heal,
+    hmult: skill.hmult ? +(skill.hmult * (1 + 0.15 * L)).toFixed(3) : undefined,
+    buff: skill.buff && skill.grow ? Object.fromEntries(Object.entries(skill.buff).map(([k, v]) => [k, typeof v === 'number' ? +(v + (skill.grow[k] || 0) * L).toFixed(3) : v])) : skill.buff,
   };
 }
 

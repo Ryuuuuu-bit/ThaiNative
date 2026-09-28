@@ -364,9 +364,11 @@ export class TdVfx {
   shoot(p, m, kind = 'arrow') {
     const s = this.s, tx = m.x, ty = m.y - m.displayHeight * 0.5, a0 = Math.atan2(ty - (p.y - 14), tx - p.x);
     const sx = p.x + Math.cos(a0) * 8, sy = p.y - 14 + Math.sin(a0) * 5, a = Math.atan2(ty - sy, tx - sx);
-    const b = s.add.image(sx, sy, kind === 'magic' ? 'td_orb' : 'td_arrow').setRotation(a).setDepth(99990).setScale(kind === 'magic' ? 1.2 : 1);
-    if (kind === 'magic') b.setBlendMode(Phaser.BlendModes.ADD);
-    const trail = s.add.particles(0, 0, 'fx_spark', { follow: b, lifespan: 250, scale: { start: kind === 'magic' ? 0.3 : 0.12, end: 0 }, alpha: { start: 0.8, end: 0 }, tint: kind === 'magic' ? 0xff9a3c : 0xfff2c0, frequency: 20, blendMode: 'ADD' }).setDepth(99989);
+    const pill = kind === 'pill', orb = kind === 'magic' || pill;           // หมอยา: ลูกกลอนสมุนไพรสีเขียว
+    const b = s.add.image(sx, sy, orb ? 'td_orb' : 'td_arrow').setRotation(a).setDepth(99990).setScale(pill ? 0.95 : orb ? 1.2 : 1);
+    if (orb) b.setBlendMode(Phaser.BlendModes.ADD);
+    if (pill) b.setTint(0x7dffa0);
+    const trail = s.add.particles(0, 0, 'fx_spark', { follow: b, lifespan: 250, scale: { start: orb ? 0.3 : 0.12, end: 0 }, alpha: { start: 0.8, end: 0 }, tint: pill ? 0x7dffa0 : orb ? 0xff9a3c : 0xfff2c0, frequency: 20, blendMode: 'ADD' }).setDepth(99989);
     s.tweens.add({ targets: b, x: tx, y: ty, duration: Math.min(260, Math.hypot(tx - sx, ty - sy) * 1.8), onComplete: () => { b.destroy(); s.time.delayedCall(200, () => trail.destroy()); trail.stop(); } });
   }
 

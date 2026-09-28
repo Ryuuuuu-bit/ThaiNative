@@ -591,6 +591,18 @@
    },
    "frame": 72,
    "scale": 0.6
+  },
+  "mob_niraiyaban": {
+   "anims": [
+    "idle",
+    "walk"
+   ],
+   "frames": {
+    "idle": 4,
+    "walk": 6
+   },
+   "frame": 72,
+   "scale": 0.6
   }
  },
  "images": [

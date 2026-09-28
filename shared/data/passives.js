@@ -1,15 +1,17 @@
 // ============================================================
 //  ต้นไม้พรสวรรค์ (Passive Tree) – แบบ PoE2 ย่อส่วน
 //  ▸ ได้ 1 แต้มต่อเลเวล (Lv.2 เป็นต้นไป) · ลงได้เฉพาะจุดที่ติดกับจุดที่ลงแล้ว (เริ่มจากกลาง)
-//  ▸ 4 กิ่งตามแนวอาวุธ: เหนือ = ดาบ (ขุนศึก) · ตะวันออก = ไม้เท้า (ขมังเวทย์) · ใต้ = ธนู (พราน) · ตะวันตก = มวย
+//  ▸ 5 กิ่งตามแนวอาวุธ (ห้าแฉก): บน = ดาบ (ขุนศึก) · ขวาบน = ไม้เท้า (ขมังเวทย์) · ขวาล่าง = ไม้เท้าสมุนไพร (หมอยา) · ซ้ายล่าง = ธนู (พราน) · ซ้ายบน = มวย
 //  ▸ ปลายกิ่ง = คีย์สโตน (ฉายาประจำสาย) · แต้มในกิ่ง = ปลดเลเวลสกิลอาวุธนั้น + ท่าไม้ตาย ★ ต้องมีคีย์สโตน
 //  ▸ ระหว่างกิ่งมีจุดผสม (ไฮบริด) เชื่อมกิ่งข้างเคียง
 // ============================================================
+const D5 = (i) => { const a = -Math.PI / 2 + i * Math.PI * 2 / 5; return [+Math.cos(a).toFixed(3), +Math.sin(a).toFixed(3)]; };
 export const BRANCHES = {
-  swordman: { dir: [0, -1], nameTh: 'กิ่งขุนศึก', color: '#e74c3c' },
-  mage:     { dir: [1, 0],  nameTh: 'กิ่งขมังเวทย์', color: '#a569bd' },
-  archer:   { dir: [0, 1],  nameTh: 'กิ่งพรานไพร', color: '#52be80' },
-  boxer:    { dir: [-1, 0], nameTh: 'กิ่งมวยคาดเชือก', color: '#eb984e' },
+  swordman: { dir: D5(0), nameTh: 'กิ่งขุนศึก', color: '#e74c3c' },
+  mage:     { dir: D5(1), nameTh: 'กิ่งขมังเวทย์', color: '#a569bd' },
+  healer:   { dir: D5(2), nameTh: 'กิ่งหมอยา', color: '#48c9b0' },
+  archer:   { dir: D5(3), nameTh: 'กิ่งพรานไพร', color: '#52be80' },
+  boxer:    { dir: D5(4), nameTh: 'กิ่งมวยคาดเชือก', color: '#eb984e' },
 };
 
 // โบนัสที่ใช้ได้: STR DEX INT CRI VIT (แต้มสถานะ) · hp mp atk matk def (ค่าตรง) · crit (อัตราคริ) · hpMul mpMul patkMul matkMul (%)
@@ -47,6 +49,17 @@ const ARM = {
     { n: 'ใจพราน', b: { DEX: 2, CRI: 2 } },
     { n: 'พรานไพรตาเหยี่ยว', b: { crit: 0.08, patkMul: 0.06 }, k: 'key' },
   ],
+  healer: [
+    { n: 'ใจเมตตา', b: { INT: 1, VIT: 1 } },
+    { n: 'รู้จักสมุนไพร', b: { mp: 15 } },
+    { n: 'มือหมอยา', b: { matkMul: 0.06, INT: 2 }, k: 'notable' },
+    { n: 'ตำรายาโบราณ', b: { INT: 2 } },
+    { n: 'กายสะอาด', b: { hp: 30 } },
+    { n: 'ศาลาโอสถ', b: { mpMul: 0.1, hpMul: 0.05 }, k: 'notable' },
+    { n: 'รากลึกใบหนา', b: { def: 4, VIT: 2 }, k: 'notable' },
+    { n: 'สมาธิหมอเทวดา', b: { INT: 2, VIT: 2 } },
+    { n: 'หมอเทวดาแห่งกรุงศรี', b: { mpMul: 0.15, hpMul: 0.08, matkMul: 0.06 }, k: 'key' },
+  ],
   boxer: [
     { n: 'หมัดหนัก', b: { STR: 1, DEX: 1 } },
     { n: 'ร่างเหล็ก', b: { VIT: 2 } },
@@ -65,7 +78,8 @@ const INNER = [[0, 1], [1, 2], [2, 3], [2, 4], [3, 5], [4, 6], [5, 7], [6, 7], [
 // จุดผสมระหว่างกิ่งข้างเคียง (ต่อกับจุดที่ 2 ของทั้งสองกิ่ง)
 const HYBRID = [
   ['swordman', 'mage', 'ดาบลงอาคม', { STR: 1, INT: 1, hp: 10 }],
-  ['mage', 'archer', 'ศรลงยันต์', { INT: 1, DEX: 1, mp: 10 }],
+  ['mage', 'healer', 'ยาลงยันต์', { INT: 2, mp: 10 }],
+  ['healer', 'archer', 'สมุนไพรพรานป่า', { VIT: 1, DEX: 1, hp: 15 }],
   ['archer', 'boxer', 'ว่องไวดั่งลิง', { DEX: 1, STR: 1, CRI: 1 }],
   ['boxer', 'swordman', 'กระบี่กระบอง', { STR: 1, VIT: 1, def: 2 }],
 ];
@@ -103,7 +117,7 @@ export function canAllocate(owned, id) {
 
 /** แต้มในแต่ละกิ่ง */
 export function branchPoints(owned) {
-  const out = { swordman: 0, mage: 0, archer: 0, boxer: 0 };
+  const out = { swordman: 0, mage: 0, archer: 0, boxer: 0, healer: 0 };
   for (const id of owned) { const b = PASSIVES[id]?.branch; if (b) out[b]++; }
   return out;
 }
