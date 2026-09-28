@@ -233,6 +233,12 @@ function buildTown() {
   reserve(51, 80, 68, 92);
   // ประตูตะวันตก/ตะวันออก
   for (const [x, f] of [[20, false], [100, true]]) { small('p_torch', x, 46, { glow: TORCH }); small('p_torch', x, 53, { glow: TORCH }); small('p_lion', x + (f ? -2 : 2), 46, { scale: 1.1, flip: f }); }
+  // ป้อมกำแพงหน้าตรง (PixelLab): กำแพงใต้ (หน้ากำแพงแถว y90) และกำแพงเหนือ (หน้ากำแพงแถว y11) ฐานชิดขอบล่างหน้ากำแพง
+  for (const [x, y, k] of [[40, 91, 1], [80, 91, 1], [44, 12, 2], [76, 12, 2]]) {
+    P(`env/b_walltower_${k}`, x, y, { foot: [0, 0], scale: 1, alt: 'env/b_gatetower', altScale: 1, glow: [-40, 50, 0xffe1a0, 0.4] });
+    P('none', x, y - 1, { foot: [3, 4] });
+    reserve(x - 2, y - 7, x + 2, y);
+  }
   // ประตูตะวันตก/ตะวันออก: กำแพงแนวตั้ง (หนา 2 ไทล์) → ป้อมคู่ขนาบถนนบน/ล่าง ฐานป้อมชิดขอบถนน
   //  มุมกล้อง 3/4 มองจากใต้ → ป้อมฝั่งใต้ถนนจะบังถนน จึงตั้งป้อมเฉพาะฝั่งเหนือ (ฐานชิดขอบบนถนน) ฝั่งใต้ปล่อยปลายกำแพงเป็นเสาประตู
   for (const wx of [17, 104]) P('env/b_gatetower', wx, 48, { foot: [0, 0], scale: 1, alt: 'env/p_arch', label: wx < 60 ? 'ประตูเมืองตะวันตก' : 'ประตูเมืองตะวันออก' });
@@ -253,6 +259,11 @@ function buildTown() {
     if (free(hx + w + 1, hy, hx + w + 1, hy)) { (extra === 'p_plants' || extra === 'p_frangipani' ? deco : small)(extra, hx + w + 1, hy); reserve(hx + w + 1, hy, hx + w + 1, hy); }
     return true;
   };
+  // เรือนแถวร้านค้าไม้ 2 ชั้น (PixelLab) เลียบฝั่งใต้ถนนตลาด
+  for (const [x, k] of [[29, 1], [46, 3], [67, 4], [85, 1], [74, 2]]) if (free(x - 3, 74, x + 3, 77)) {
+    P(`env/b_shophouse_${k}`, x, 77, { foot: [6, 2], scale: 0.78, alt: 'env/b_ruenthai', altScale: 0.9, glow: WIN, flip: x > 60 });
+    reserve(x - 3, 73, x + 3, 77);
+  }
   // แถวเหนือซอยใต้ (หน้าบ้าน = ซอย y78) · แถวใต้ซอย (หลังกำแพงเมือง)
   for (const x of [29, 36, 46, 53, 67, 74, 85, 92]) home(x, 77);
   for (const x of [31, 37, 46, 52, 68, 74, 84, 90]) home(x, 84, x !== 31 && x !== 90);
