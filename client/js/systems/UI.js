@@ -1230,13 +1230,15 @@ export class UI {
       return `<button class="title-row ${ok ? '' : 'locked'} ${on ? 'active' : ''} ${t.dynamic ? 'dyn' : ''}" data-title="${t.id}" ${ok ? '' : 'disabled'} style="--tc:${t.color}"><b>${ok ? '' : '🔒 '}${esc(t.nameTh)}</b><small>${esc(t.hint)}</small>${on ? '<i>✔ ใช้อยู่</i>' : ''}</button>`;
     };
     const cp = combatPower(c);
-    el.innerHTML = `<div class="title-sum">ปลดแล้ว <b>${TITLES.filter((t) => have.has(t.id)).length}/${TITLES.length}</b> · ค่าพลังรวม <b>⚔ ${cp.toLocaleString('en-US')}</b>${c.rec?.cpRank ? ` · อันดับ #${c.rec.cpRank}` : ''}</div>`
+    const html = `<div class="title-sum">ปลดแล้ว <b>${TITLES.filter((t) => have.has(t.id)).length}/${TITLES.length}</b> · ค่าพลังรวม <b>⚔ ${cp.toLocaleString('en-US')}</b>${c.rec?.cpRank ? ` · อันดับ #${c.rec.cpRank}` : ''}</div>`
       + TITLE_CATS.map(([cat, name]) => {
         const list = TITLES.filter((t) => (t.cat || 'misc') === cat);
         if (!list.length) return '';
         const n = list.filter((t) => have.has(t.id)).length;
         return `<div class="title-cat"><h5>${name} <small>${n}/${list.length}</small></h5><div class="title-list">${list.map(row).join('')}</div></div>`;
       }).join('') + `<button class="btn ghost sm" data-title="">ซ่อนฉายา</button>`;
+    if (el._html === html) return;                               // แผงสังคมวาดซ้ำทุก 1 วิ → ไม่เปลี่ยนก็ไม่แตะ DOM (กันไอคอน/ตัวเลขกระพริบ)
+    el._html = html; el.innerHTML = html;
     el.querySelectorAll('[data-title]').forEach((b) => (b.onclick = () => this.scene.econ.act('title', { id: b.dataset.title || null }).then((r) => { this.scene.sfx.play(r.ok ? 'buff' : 'error'); this.result(r); this.renderTitles(el); })));
   }
 }

@@ -78,6 +78,7 @@ export class WorldBossUI {
     if (showAnn) ann.querySelector('small').textContent = S.state === 'open' ? `ลงมาในอีก ${mmss(S.at - now)} · วาร์ปรอที่ค่ายรอคราสได้เลย` : `กำลังสู้อยู่! เลือดเหลือ ${S.maxHp ? Math.round(S.hp / S.maxHp * 100) : 100}% · เหลือเวลา ${mmss(S.fightEnd - now)}`;
     const showBar = this.here && S.state !== 'idle';
     bar.classList.toggle('hidden', !showBar);
+    document.body.classList.toggle('wb-on', showBar);           // แถบบอสโลกแสดงอยู่ → ซ่อนกรอบเป้าหมาย/บาร์บอสทั่วไป (กันทับกัน)
     if (showBar) {
       const pctv = S.state === 'fight' && S.maxHp ? S.hp / S.maxHp : S.state === 'open' ? 1 : 0;
       bar.querySelector('.wb-hpbar i').style.width = `${Math.max(0, pctv * 100)}%`;

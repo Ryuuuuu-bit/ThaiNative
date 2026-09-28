@@ -391,7 +391,7 @@ body.td-mode.lowhp #hud::before { content: ''; position: absolute; inset: 0; z-i
 #wb-hud .wb-go { background: linear-gradient(180deg, #ffd35c, #e0a21a); color: #3a2200; border: 2px solid #fff3c4; padding: .35em .9em; font-weight: 700; }
 #wb-hud .wb-go:hover { filter: brightness(1.1); }
 @keyframes wbPulse { 50% { box-shadow: 0 0 30px rgba(181,125,255,.8); } }
-#wb-hud .wb-bar { position: absolute; top: 2%; left: 50%; transform: translateX(-50%); width: min(62%, 48em); padding: .4em .7em .45em; background: rgba(18,8,38,.9); border: 2px solid #8f6cf0; border-radius: 12px; pointer-events: auto; }
+#wb-hud .wb-bar { position: absolute; top: 2%; left: 50%; transform: translateX(-50%); width: min(44%, 36em); padding: .4em .7em .45em; background: rgba(18,8,38,.9); border: 2px solid #8f6cf0; border-radius: 12px; pointer-events: auto; }
 #wb-hud .wb-top { display: flex; align-items: baseline; gap: .8em; }
 #wb-hud .wb-top b { color: #ffd35c; } #wb-hud .wb-top .lv { color: #ff6b5b; font-style: normal; font-size: .85em; }
 #wb-hud .wb-ph { color: #d2b4ff; font-size: .85em; } #wb-hud .wb-time { margin-left: auto; color: #fff; font-variant-numeric: tabular-nums; }
@@ -401,7 +401,7 @@ body.td-mode.lowhp #hud::before { content: ''; position: absolute; inset: 0; z-i
 #wb-hud .wb-btm { display: flex; align-items: center; gap: .6em; margin-top: .25em; }
 #wb-hud .wb-tip { color: #cbb8f2; font-size: .75em; flex: 1; }
 #wb-hud .wb-leave { background: rgba(60,30,90,.9); color: #e3d4ff; border: 1px solid #8f6cf0; padding: .15em .7em; font-size: .8em; }
-#wb-hud .wb-cast { position: absolute; top: 17%; left: 50%; transform: translateX(-50%); text-align: center; padding: .3em 1.2em; border-radius: 10px; background: rgba(14,6,30,.8); animation: wbCast .25s ease-out; }
+#wb-hud .wb-cast { position: absolute; top: 24%; left: 50%; transform: translateX(-50%); text-align: center; padding: .3em 1.2em; border-radius: 10px; background: rgba(14,6,30,.8); animation: wbCast .25s ease-out; }
 #wb-hud .wb-cast b { display: block; font-size: 1.5em; color: #d8c2ff; text-shadow: 0 0 10px #7d4cff; }
 #wb-hud .wb-cast small { color: #fff; font-size: .85em; }
 #wb-hud .wb-cast.c-red b { color: #ff8a80; text-shadow: 0 0 12px #ff2d2d; } #wb-hud .wb-cast.c-silver b { color: #ffffff; text-shadow: 0 0 12px #aac4ff; }
@@ -428,3 +428,8 @@ body.td-mode.lowhp #hud::before { content: ''; position: absolute; inset: 0; z-i
 .item.r6 { border-left-color: #ff3b30; }
 .rn6, .item .rn6, .tt-name.rn6 { background: linear-gradient(90deg, #ffd1c9, #ff3b30 40%, #b00020 70%, #ffd1c9); background-size: 200% 100%; -webkit-background-clip: text; background-clip: text; color: transparent; animation: sheen 2s linear infinite; font-weight: 700; }
 #chat .cb-item.r6 { color: #ff6b5b; }
+
+/* บอสโลก: แถบเลือดพระราหูอยู่กลางบน → ไม่แสดงกรอบเป้าหมาย/บาร์บอสปกติซ้อน · ข่าววิ่งเลื่อนลงใต้แถบ */
+body.wb-on #target, body.wb-on #boss-bar { display: none !important; }
+body.wb-on #ticker { top: 17cqh; }
+@media (max-aspect-ratio: 4/3) { #wb-hud .wb-bar { width: min(92%, 36em); top: 22%; } body.wb-on #ticker { top: 33cqh; } }

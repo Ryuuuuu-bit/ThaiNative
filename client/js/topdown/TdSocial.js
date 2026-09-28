@@ -293,14 +293,16 @@ export class TdSocial {
     const c = this.player.char, mine = c.name, fmt = (n) => (+n || 0).toLocaleString('en-US');
     const stat = (r) => tab === 'power' ? `<b class="lb-cp">⚔ ${fmt(r.cp)}</b> · Lv.${r.level}`
       : tab === 'enhance' ? `<b class="enh t${Math.min(5, Math.floor(r.enh / 4))}">+${r.enh}</b> · Lv.${r.level}` : `Lv.${r.level} · ⚔ ${fmt(r.cp)}`;
-    el.innerHTML = rows.length ? rows.map((r, i) => `<div class="soc-row lb ${r.name === mine ? 'me' : ''} ${i < 3 ? `top${i + 1}` : ''}"><span>${medal(i)} ${esc(r.name)}${TITLE_BY_ID[r.title] ? ` <em class="lb-title" style="color:${TITLE_BY_ID[r.title].color}">«${esc(TITLE_BY_ID[r.title].nameTh)}»</em>` : ''}</span>
+    const lbHtml = rows.length ? rows.map((r, i) => `<div class="soc-row lb ${r.name === mine ? 'me' : ''} ${i < 3 ? `top${i + 1}` : ''}"><span>${medal(i)} ${esc(r.name)}${TITLE_BY_ID[r.title] ? ` <em class="lb-title" style="color:${TITLE_BY_ID[r.title].color}">«${esc(TITLE_BY_ID[r.title].nameTh)}»</em>` : ''}</span>
       <small>${stat(r)} · ${JOBS[r.path]?.nameTh ?? 'ชาวบ้าน'}</small></div>`).join('')
       : `<p class="empty">${this.net.online ? 'ยังไม่มีข้อมูล' : 'ออฟไลน์อยู่'}</p>`;
+    if (el._html !== lbHtml) { el._html = lbHtml; el.innerHTML = lbHtml; }   // ไม่เปลี่ยน = ไม่วาดใหม่ (กันกระพริบ)
     // อันดับของฉัน (จาก server · อัปเดตทุก 1 นาที)
     const me = $('#soc-lb-me');
     if (me) {
       const rec = c.rec || {}, rk = { power: rec.cpRank, level: rec.lvRank, enhance: rec.enhRank }[tab];
-      me.innerHTML = `<span>อันดับของฉัน: <b>${rk ? `#${fmt(rk)}` : '–'}</b>${this.lb?.total ? ` <small>จาก ${fmt(this.lb.total)} ตัวละคร</small>` : ''}</span><span>ค่าพลังรวม <b class="lb-cp">⚔ ${fmt(combatPower(c))}</b></span>`;
+      const meHtml = `<span>อันดับของฉัน: <b>${rk ? `#${fmt(rk)}` : '–'}</b>${this.lb?.total ? ` <small>จาก ${fmt(this.lb.total)} ตัวละคร</small>` : ''}</span><span>ค่าพลังรวม <b class="lb-cp">⚔ ${fmt(combatPower(c))}</b></span>`;
+      if (me._html !== meHtml) { me._html = meHtml; me.innerHTML = meHtml; }
     }
   }
 
