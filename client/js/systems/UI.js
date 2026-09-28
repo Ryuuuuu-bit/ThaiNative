@@ -762,6 +762,14 @@ export class UI {
 
   // ---------------- กระเป๋า ----------------
   renderInventory() {
+    // จำตำแหน่งเลื่อนของตาราง/แผง ไว้คืนหลังวาดใหม่ (กันกระเป๋าเด้งกลับบนสุดทุกครั้งที่คลิก)
+    const g0 = document.querySelector('#inv-list .ro-grid'), keep = { g: g0?.scrollTop || 0, l: $('#inv-list')?.scrollTop || 0 };
+    this._renderInventory();
+    const g1 = document.querySelector('#inv-list .ro-grid'); if (g1) g1.scrollTop = keep.g;
+    if ($('#inv-list')) $('#inv-list').scrollTop = keep.l;
+  }
+
+  _renderInventory() {
     const c = this.char;
     const EMPTY_IC = { weapon: '⚔️', helm: '⛑️', armor: '🥋', gloves: '🧤', boots: '👢', belt: '🎗️', accessory: '💍', accessory2: '📿', flask: '🧪', flask2: '🧪' };
     const cell = (slot) => {
@@ -899,20 +907,7 @@ export class UI {
           <span class="price">${prev}฿${(it.price * n).toLocaleString()}</span>
           <button data-buy="${id}" data-n="${n}" ${owned || c.gold < it.price ? 'disabled' : ''}>${owned ? 'มีแล้ว' : n > 1 ? `ซื้อ x${n}` : 'ซื้อ'}</button></div>`;
       }).join('');
-    } else {
-      const sellable = c.inventory.filter((s) => ITEMS[s.id].type !== 'skin');
-      const drops = Inv.bulkSellList(c, 'drop'), fish = Inv.bulkSellList(c, 'fish');
-      const sum = (l) => l.reduce((a, s) => a + sellPrice(s.id) * s.qty, 0);
-      const bulk = `<div class="bulk-bar">
-        <button class="btn ghost sm" data-bulk="drop" ${drops.length ? '' : 'disabled'}>💰 ขายของดรอปทั้งหมด (฿${sum(drops).toLocaleString()})</button>
-        <button class="btn ghost sm" data-bulk="fish" ${fish.length ? '' : 'disabled'}>🐟 ขายปลาทั้งหมด (฿${sum(fish).toLocaleString()})</button>
-        <span class="meta">🔒 = ล็อกไว้ ไม่ถูกขาย</span></div>`;
-      html = qtyBar + bulk + (sellable.length ? sellable.map((s) => {
-        const it = ITEMS[s.id], lock = Inv.isLocked(c, s.id), n = Math.min(q, s.qty);
-        return `<div class="item ${lock ? 'locked' : ''}" data-tip-item="${s.id}"><span class="ic">${itemIcon(s.id, it.icon)}</span><span>${lock ? '🔒 ' : ''}${esc(it.nameTh)} <span class="meta">x${s.qty}</span></span>
-          <span class="price">฿${(sellPrice(s.id) * n).toLocaleString()}</span><button data-sell="${s.id}" data-n="${n}" ${lock ? 'disabled' : ''}>${n > 1 ? `ขาย x${n}` : 'ขาย'}</button></div>`;
-      }).join('') : '<div class="empty">ไม่มีของให้ขาย</div>');
-    }
+    } else return this.renderSell();
     $('#shop-list').innerHTML = html;
     const trade = (r) => { this.scene.sfx.play(r.ok ? 'buy' : 'error'); this.result(r); };
     $('#shop-list').querySelectorAll('[data-gf]').forEach((b) => (b.onclick = () => { this.gearFilter = b.dataset.gf; this.scene.sfx.play('click'); this.renderShop(); }));
@@ -942,6 +937,84 @@ export class UI {
       if (!list.length || !confirm(`ขาย${b.dataset.bulk === 'fish' ? 'ปลา' : 'ของดรอป'} ${list.length} ชนิด (${n} ชิ้น) ได้ ฿${total.toLocaleString()}\n(ของที่ล็อก 🔒 จะไม่ถูกขาย) ยืนยันไหม?`)) return;
       E.act('sellMany', { kind: b.dataset.bulk }).then(trade);
     }));
+  }
+
+  /** แท็บขาย (แบบ RO): ตารางไอคอน → คลิกใส่ตะกร้า → กดขายทีเดียว · ตัวกรอง/ค้นหา/เลือกด่วน */
+  renderSell() {
+    const c = this.char, el = $('#shop-list'), E = this.scene.econ;
+    const cart = (this.sellCart ||= new Map());
+    for (const [id, n] of cart) { const have = Inv.count(c, id); if (!have || Inv.isLocked(c, id)) cart.delete(id); else if (n > have) cart.set(id, have); }
+    const CAT = { all: 'ทั้งหมด', equip: 'อุปกรณ์', drop: 'ของดรอป', use: 'ไอเทม', etc: 'อื่นๆ' };
+    const inCat = (it, k) => k === 'all' || (k === 'equip' ? GEAR_TYPES.includes(it.type) || ['costume', 'card'].includes(it.type)
+      : k === 'drop' ? (it.type === 'material' && !it.price) || it.type === 'fish'
+      : k === 'use' ? ['consumable', 'home', 'food', 'reset', 'offering', 'flask'].includes(it.type) : ['material', 'herb', 'fish'].includes(it.type));
+    const cat = CAT[this.sellCat] ? this.sellCat : 'all', q = (this.sellQ || '').trim().toLowerCase();
+    const list = c.inventory.filter((st) => { const it = ITEMS[st.id]; return it.type !== 'skin' && sellPrice(st.id) > 0 && inCat(it, cat) && (!q || it.nameTh.toLowerCase().includes(q)); })
+      .sort((a, b) => sellPrice(b.id) * b.qty - sellPrice(a.id) * a.qty);
+    const cells = Math.max(16, Math.ceil(list.length / 8) * 8);
+    const slots = Array.from({ length: cells }, (_, i) => {
+      const st = list[i]; if (!st) return '<div class="ro-slot empty"></div>';
+      const it = ITEMS[st.id], lock = Inv.isLocked(c, st.id), n = cart.get(st.id) || 0;
+      return `<div class="ro-slot${rcls(it)}${n ? ' sel sell-on' : ''}${lock ? ' locked' : ''}${st.id === this.sellFocus ? ' focus' : ''}" data-sslot="${st.id}" data-tip-item="${st.id}">
+        ${itemIcon(st.id, it.icon)}${st.qty > 1 ? `<b class="ro-q">${st.qty > 9999 ? '9999+' : st.qty}</b>` : ''}${lock ? '<i class="ro-lock">🔒</i>' : ''}${n ? `<i class="sell-n">${n === st.qty ? '✔' : n}</i>` : ''}</div>`;
+    }).join('');
+    let cnt = 0, pcs = 0, total = 0, rare = 0;
+    for (const [id, n] of cart) { cnt++; pcs += n; total += sellPrice(id) * n; if (rarityOf(ITEMS[id]) >= 3) rare++; }
+    const f = this.sellFocus && cart.has(this.sellFocus) ? this.sellFocus : null, fIt = f && ITEMS[f], fHave = f && Inv.count(c, f);
+    const qtyEd = f && fHave > 1 ? `<div class="sell-qty"><span class="ic">${itemIcon(f, fIt.icon)}</span><span class="nm">${rname(fIt, esc(fIt.nameTh))}</span>
+        <button data-sq="-10">−10</button><button data-sq="-1">−</button><input id="sell-qty" type="number" min="1" max="${fHave}" value="${cart.get(f)}"><button data-sq="1">+</button><button data-sq="10">+10</button><button data-sq="max">หมด (${fHave})</button></div>` : '';
+    el.innerHTML = `<div class="sell-ui">
+      <div class="ro-tabs sell-tabs">${Object.entries(CAT).map(([k, l]) => `<button data-scat="${k}" class="${k === cat ? 'active' : ''}">${l}</button>`).join('')}
+        <input id="sell-q" type="search" placeholder="🔍 ค้นหา" value="${esc(this.sellQ || '')}"></div>
+      <div class="sell-quick"><span>เลือกด่วน:</span>
+        <button data-pick="drop">💰 ของดรอป</button><button data-pick="fish">🐟 ปลา</button><button data-pick="gear1">⚔️ อุปกรณ์ธรรมดา</button><button data-pick="view">☑ ทั้งหมดที่แสดง</button><button data-pick="clear" ${cnt ? '' : 'disabled'}>✖ ล้าง</button></div>
+      <div class="ro-grid sell-grid">${list.length ? slots : '<div class="empty" style="grid-column:1/-1">ไม่มีของให้ขายในหมวดนี้</div>'}</div>
+      <div class="sell-foot">${qtyEd}<span class="hint">คลิก = ใส่/เอาออกทั้งกอง · คลิกขวา = ทีละ 1 · 🔒 ของล็อกขายไม่ได้</span>
+        <span class="sum">${cnt ? `เลือก ${cnt} ชนิด · ${pcs.toLocaleString()} ชิ้น` : 'ยังไม่ได้เลือก'}</span>
+        <b class="price">฿${total.toLocaleString()}</b><button class="btn primary sell-go" ${cnt ? '' : 'disabled'}>ขาย</button></div></div>`;
+    const redraw = () => { const g = el.querySelector('.sell-grid'), top = g?.scrollTop || 0; this.renderSell(); const g2 = el.querySelector('.sell-grid'); if (g2) g2.scrollTop = top; };
+    const click = () => this.scene.sfx.play('click');
+    el.querySelectorAll('[data-scat]').forEach((b) => (b.onclick = () => { this.sellCat = b.dataset.scat; click(); this.renderSell(); }));
+    const qi = $('#sell-q');
+    qi.addEventListener('keydown', (e) => e.stopPropagation());
+    qi.addEventListener('focus', () => (this.scene.input.keyboard.enabled = false));
+    qi.addEventListener('blur', () => (this.scene.input.keyboard.enabled = true));
+    qi.addEventListener('input', () => { this.sellQ = qi.value; const pos = qi.selectionStart; this.renderSell(); const q2 = $('#sell-q'); q2.focus(); try { q2.setSelectionRange(pos, pos); } catch { /* */ } });
+    el.querySelectorAll('[data-sslot]').forEach((d) => {
+      const id = d.dataset.sslot;
+      d.onclick = (e) => {
+        if (e.shiftKey) return;                                               // Shift+คลิก = แชร์ลงแชท (จัดการที่อื่น)
+        if (Inv.isLocked(c, id)) { this.toast('🔒 ไอเทมนี้ล็อกไว้ (ปลดล็อกในกระเป๋า)', 'warn'); return; }
+        if (cart.has(id)) { cart.delete(id); if (this.sellFocus === id) this.sellFocus = null; } else { cart.set(id, Inv.count(c, id)); this.sellFocus = id; }
+        click(); redraw();
+      };
+      d.oncontextmenu = (e) => {
+        e.preventDefault();
+        if (Inv.isLocked(c, id)) return;
+        cart.set(id, Math.min(Inv.count(c, id), (cart.get(id) || 0) + 1)); this.sellFocus = id; click(); redraw();
+      };
+    });
+    el.querySelectorAll('[data-pick]').forEach((b) => (b.onclick = () => {
+      const k = b.dataset.pick;
+      if (k === 'clear') cart.clear();
+      else {
+        const src = k === 'view' ? list : c.inventory.filter((st) => { const it = ITEMS[st.id]; if (!sellPrice(st.id) || it.type === 'skin') return false;
+          return k === 'drop' ? it.type === 'material' && !it.price : k === 'fish' ? it.type === 'fish' : GEAR_TYPES.includes(it.type) && rarityOf(it) <= 1; });
+        let n = 0; for (const st of src) if (!Inv.isLocked(c, st.id) && !cart.has(st.id)) { cart.set(st.id, st.qty); n++; }
+        if (!n) this.toast('ไม่มีของเพิ่มให้เลือก', '', 1500);
+      }
+      click(); redraw();
+    }));
+    const setQ = (v) => { if (!f) return; cart.set(f, Math.max(1, Math.min(fHave, Math.floor(v) || 1))); redraw(); };
+    el.querySelectorAll('[data-sq]').forEach((b) => (b.onclick = () => setQ(b.dataset.sq === 'max' ? fHave : cart.get(f) + +b.dataset.sq)));
+    const qn = $('#sell-qty');
+    if (qn) { qn.addEventListener('keydown', (e) => { e.stopPropagation(); if (e.key === 'Enter') setQ(+qn.value); }); qn.addEventListener('change', () => setQ(+qn.value));
+      qn.addEventListener('focus', () => (this.scene.input.keyboard.enabled = false)); qn.addEventListener('blur', () => (this.scene.input.keyboard.enabled = true)); }
+    el.querySelector('.sell-go').onclick = () => {
+      if (!cnt) return;
+      if ((rare || total >= 50000) && !confirm(`ขาย ${cnt} ชนิด (${pcs.toLocaleString()} ชิ้น) ได้ ฿${total.toLocaleString()}${rare ? `\n⚠ มีอุปกรณ์หายาก ${rare} ชิ้นในตะกร้า` : ''}\nยืนยันไหม?`)) return;
+      E.act('sellCart', { items: [...cart] }).then((r) => { this.scene.sfx.play(r.ok ? 'buy' : 'error'); this.result(r); if (r.ok) { cart.clear(); this.sellFocus = null; } this.renderSell(); });
+    };
   }
 
   /** ลองชุด/อาวุธก่อนซื้อ: สวมทับตัวละคร 6 วิ (แค่ภาพ ไม่มีผลค่าพลัง) */

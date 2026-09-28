@@ -257,6 +257,22 @@ function sellMany(c, { kind }, ctx) {
   c.gold += gold;
   return n ? OK(`ขาย ${n} ชิ้น (+฿${gold.toLocaleString()})`, { gold }) : NO('ไม่มีของให้ขาย');
 }
+/** ขายหลายอย่างในครั้งเดียว (ตะกร้าขาย) · items = [[id, qty], ...] */
+function sellCart(c, { items }, ctx) {
+  if (ctx.x != null && !nearAnyShop(ctx.x)) return NO('ต้องขายที่ร้านในหมู่บ้าน');
+  if (!Array.isArray(items) || !items.length) return NO('ยังไม่ได้เลือกของ');
+  let gold = 0, n = 0, kinds = 0;
+  for (const e of items.slice(0, 200)) {
+    const [id, q0] = Array.isArray(e) ? e : [];
+    const it = ITEMS[id];
+    if (!it || it.type === 'skin' || isLocked(c, id)) continue;
+    const q = Math.min(int(q0, 1, 99999, 1), count(c, id));
+    if (q <= 0 || !removeItem(c, id, q)) continue;
+    gold += sellPrice(id) * q; n += q; kinds++;
+  }
+  c.gold += gold;
+  return n ? OK(`ขาย ${kinds} ชนิด ${n.toLocaleString()} ชิ้น (+฿${gold.toLocaleString()})`, { gold }) : NO('ไม่มีของให้ขาย');
+}
 function lock(c, { id }) {
   if (!ITEMS[id]) return NO('');
   c.locked ||= [];
@@ -638,7 +654,7 @@ function cardTrade(c, { ids }, ctx) {
 
 // ------------------------------------------------------------
 export const ACTIONS = {
-  use, equip, unequip, cosOff, buy, sell, sellMany, lock, offer, siamsi, craft, enhance,
+  use, equip, unequip, cosOff, buy, sell, sellMany, sellCart, lock, offer, siamsi, craft, enhance,
   qAccept, qDrop, qClaim, path, passive, passiveReset, bounty, fishBite, fishLand, fishLose, gather, chest,
   alloc, learn, hotbar, recall, dye, title, friendDel, gm, cardIn, cardOut, cardTrade, flask,
 };
