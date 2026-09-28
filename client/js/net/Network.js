@@ -4,6 +4,7 @@
 //  • รับ snapshot ของผู้เล่นคนอื่น แล้วส่งต่อให้ GameScene
 //  • ถ้าไม่มี server (เปิดไฟล์ตรงๆ) จะทำงานแบบออฟไลน์อัตโนมัติ
 // ============================================================
+import { ticker } from '../systems/Notify.js';
 import { NET } from '/shared/constants.js';
 
 export class Network {
@@ -67,7 +68,7 @@ export class Network {
     // ระบบ MMO: ปาร์ตี้ · เทรด · เรดบอส → ส่งต่อด้วยชื่อ event เดิม
     for (const ev of ['party:invite', 'party:state', 'party:exp', 'trade:request', 'trade:state', 'trade:closed', 'trade:complete',
       'raid:state', 'raid:spawn', 'raid:attack', 'raid:impact', 'raid:dmg', 'raid:reward', 'raid:defeated',
-      'char:load', 'char:sync', 'pl:hit', 'pl:die', 'pl:hp', 'friends:state', 'title:new',
+      'news:live', 'news:add', 'news:del', 'char:load', 'char:sync', 'pl:hit', 'pl:die', 'pl:hp', 'friends:state', 'title:new',
       'rboss:spawn', 'rboss:list', 'rboss:down', 'rboss:slam', 'rboss:reward',
       'dg:start', 'dg:state', 'dg:wave', 'dg:cleared', 'dg:dmg', 'dg:die', 'dg:exp', 'dg:slam', 'dg:end', 'dg:exit',
       // โลก New Version (top-down)
@@ -131,9 +132,8 @@ function noticeBanner({ kind, text = '', at }) {
   if (!el) { el = document.createElement('div'); el.id = 'notice-banner'; document.body.appendChild(el); }
   const esc = (t) => String(t).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
   el.dataset.kind = kind;
-  if (kind === 'say') {
-    el.innerHTML = `<span>📢 ${esc(text)}</span>`;
-    noticeBanner.hide = setTimeout(() => el.remove(), 9000);
+  if (kind === 'say') {                                               // ประกาศ GM → แถบวิ่งด้านบน (ต่อคิว)
+    el.remove(); ticker(text.replace(/^📢\s*/, ''), /^📰/.test(text) ? 'news' : 'gm');
     return;
   }
   const draw = () => {

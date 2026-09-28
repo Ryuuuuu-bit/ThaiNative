@@ -448,6 +448,16 @@ export class Sound {
   }
 
   /** เล่นเสียงจริง → คืน true ถ้าไม่ต้องใช้เสียงสังเคราะห์ต่อ */
+  /** เล่นเสียงแบบลดความดัง (0..1) เช่นเสียงผู้เล่นอื่นตามระยะห่าง */
+  playAt(name, vol = 1) {
+    if (!this.ctx || vol <= 0.02) return;
+    if (vol >= 0.98) return this.play(name);
+    const g = this.ctx.createGain(); g.gain.value = vol; g.connect(this.sfxBus);
+    const keep = this.sfxBus; this.sfxBus = g;
+    try { this.play(name); } finally { this.sfxBus = keep; }
+    setTimeout(() => { try { g.disconnect(); } catch { /* */ } }, 5000);
+  }
+
   playSample(name) {
     const ent = this.samples?.[name];
     if (!ent?.bufs.length) return false;

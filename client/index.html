@@ -173,6 +173,7 @@
 
         <!-- ขวาบน: เขต / ออนไลน์ / มินิแมป / เมนู -->
         <div class="hud-right">
+          <button id="btn-news" class="news-btn" title="ข่าวสาร (N)"><span class="nb-ic">📰</span><span class="nb-lb">ข่าวสาร</span><i class="nb-n"></i></button>
           <div class="zone"><b id="zone-name"></b><span id="net-status" class="net off">● ออฟไลน์</span></div>
           <div class="clock" id="clock">☀️ 12:00</div>
           <div class="minimap"><div class="mm-town"></div><div class="mm-arena"></div><div id="mm-dots"></div></div>
@@ -229,6 +230,11 @@
       </section>
 
       <!-- เควสผู้ใหญ่ชัย (J) -->
+      <section id="news-panel" class="panel window wide hidden">
+        <header>📰 ข่าวสาร · กรุงศรีอยุธยา <button class="close">✕</button></header>
+        <div id="news-tabs" class="news-tabs"></div>
+        <div id="news-list" class="news-list"></div>
+      </section>
       <section id="quest-panel" class="panel window wide hidden">
         <header>📋 เควสผู้ใหญ่ชัย · กรุงศรีอยุธยา <button class="close">✕</button></header>
         <p class="greet">“รอบกรุงศรีฯ มีแต่เรื่องผี ๆ ช่วยลุงหน่อยนะหลาน ทำเสร็จแล้วกลับมารับรางวัลที่ลุง”</p>
@@ -374,6 +380,7 @@
           <div class="set-row"><label><input type="checkbox" id="set-dmg" /> แสดงตัวเลขดาเมจ</label></div>
           <div class="set-row"><label><input type="checkbox" id="set-mm" /> แสดงมินิแมป</label></div>
           <div class="set-row"><label><input type="checkbox" id="set-shake" /> จอสั่น (สกิล/โดนตี)</label></div>
+          <div class="set-row"><span>🔊 เสียงผู้เล่นอื่น</span><select id="set-othersfx"><option value="full">ปกติ</option><option value="soft">เบา</option><option value="off">ปิด</option></select></div>
           <div class="set-row"><span>✨ แสงวาบของสกิล</span><select id="set-flash"><option value="full">เต็ม</option><option value="soft">ลดลง</option><option value="off">ปิด</option></select></div>
           <div class="set-row"><button id="set-fullscreen" class="btn ghost">⛶ เต็มจอ (Fullscreen)</button></div>
         </div>

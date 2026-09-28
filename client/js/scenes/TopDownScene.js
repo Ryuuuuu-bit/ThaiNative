@@ -4,6 +4,7 @@
 //  ▸ ออฟไลน์ (เปิดไฟล์ตรง ไม่มี server): จำลองผีในเครื่อง + เซฟในเครื่อง
 //  ▸ ภาพ: ใช้สไปรต์ 8 ทิศจาก assets/td เมื่อมี · ไม่มี → ใช้สไปรต์ด้านข้างชุดเดิม
 // ============================================================
+import { RENDER_SCALE } from '/shared/constants.js';
 import { MONSTERS } from '/shared/data/monsters.js';
 import { ITEMS } from '/shared/data/items.js';
 import { JOBS } from '/shared/data/classes.js';
@@ -11,7 +12,7 @@ import { getDerived } from '/shared/character.js';
 import { gainExp } from '/shared/charmodel.js';
 import { bakeCharacter } from '../gfx/SpriteFactory.js';
 import { bakeFx, popupNumber, hitSpark, yantCircle, squash } from '../gfx/Fx.js';
-import { makeText, uiIcon } from '../systems/util.js';
+import { makeText, uiIcon, itemIcon as itemIconHtml } from '../systems/util.js';
 import { sound } from '../systems/Sound.js';
 import { loadSettings, saveSettings } from '../systems/Settings.js';
 import { saveCharacter } from '../systems/Character.js';
@@ -123,7 +124,7 @@ export class TopDownScene extends Phaser.Scene {
     $('#td-hud').classList.remove('hidden');
 
     const cam = this.cameras.main;
-    cam.setBounds(0, 0, this.mapW * TILE, this.mapH * TILE).setZoom(1.5).startFollow(this.player, false, 0.14, 0.14).setRoundPixels(false);
+    cam.setBounds(0, 0, this.mapW * TILE, this.mapH * TILE).setZoom(1.5 * RENDER_SCALE).startFollow(this.player, false, 0.14, 0.14).setRoundPixels(false);
     this.atmo = new TdAtmosphere(this, this.layout); this.atmo.setLayout(this.layout, this.M.style);
     this.life.setMap(this.M);
     this.vfx = new TdVfx(this);
@@ -139,6 +140,7 @@ export class TopDownScene extends Phaser.Scene {
     this.zone = null;
     this.ui.updateHud();
     this.setupNetwork();
+    this.ui.news?.autoOpen();                                         // มีข่าวใหม่ที่ยังไม่อ่าน → เปิดกระดานข่าวให้ครั้งเดียว
     if (this.econ.server) this.social = new TdSocial(this);           // ปาร์ตี้ · เทรด · เพื่อน · อันดับ · ฉายา (ต้องออนไลน์)
     this.ui.toast(this.M.realm ? `${this.M.icon} ${this.M.nameTh} · ${this.M.sub}` : '🏯 ยินดีต้อนรับสู่กรุงศรีอยุธยา · คลิกพื้นเพื่อเดิน คลิกผีเพื่อโจมตี · คลิก NPC เพื่อเปิดร้าน', '', 6000);
     if (!this.econ.server) this.time.addEvent({ delay: 5000, loop: true, callback: () => this.saveSoon() });
@@ -176,6 +178,7 @@ export class TopDownScene extends Phaser.Scene {
       p.texKey = p.legacyKey = key; p.setTexture(key, 'idle_0');
       this.applyHero(p, p.char.appearance, () => this.playerAnim('idle', true));
       this.playerAnim('idle', true);
+      this.updateQuestMark();                                         // เปลี่ยนอาวุธ → ป้าย ! ของครูอาชีพเปลี่ยนตาม
     };
     this.saveSoon = () => { if (!this.econ?.server) saveCharacter(this.player.char); };
     // ยันต์คืนถิ่น: ร่าย 2.5 วิ (ขยับ/โดนตี = ยกเลิก) แล้ววาร์ปกลับลานน้ำพุกลางเมือง
@@ -188,10 +191,14 @@ export class TopDownScene extends Phaser.Scene {
       p.path = []; p.target = null;
       this.recalling = true;
       yantCircle(this, p.x, p.y, { tint: 0x9fe0ff, size: 60, ms: 2500 });
-      this.ui.toast('🏠 กำลังร่ายยันต์คืนถิ่น… (อย่าขยับ)', '', 2500);
-      this.time.delayedCall(2500, async () => {
+      const cast = this.ui.castBar('ยันต์คืนถิ่น · กลับกรุงศรีฯ', 2500, uiIcon('menu_home') || itemIconHtml('yant_home', '📜'));
+      // ขยับ/โดนตีระหว่างร่าย → ยกเลิกทันที (ไม่ต้องรอครบ 2.5 วิ)
+      const watch = this.time.addEvent({ delay: 100, loop: true, callback: () => { if (!p.alive || dist(p, start) > 6 || (p.hurtAt || 0) !== hurt) { watch.remove(); this.recalling = false; cast.cancel(); this.ui.toast('การร่ายถูกขัดจังหวะ', 'warn'); this.recallT?.remove(); } } });
+      this.recallT = this.time.delayedCall(2500, async () => {
+        watch.remove();
         this.recalling = false;
-        if (!p.alive || dist(p, start) > 6 || (p.hurtAt || 0) !== hurt) return this.ui.toast('การร่ายถูกขัดจังหวะ', 'warn');
+        if (!p.alive || dist(p, start) > 6 || (p.hurtAt || 0) !== hurt) { cast.cancel(); return this.ui.toast('การร่ายถูกขัดจังหวะ', 'warn'); }
+        cast.done();
         const r = await this.econ.act('recall', {});
         if (!r.ok) return this.ui.result(r);
         if (this.M.id !== 'ayutthaya') this.loadMap('ayutthaya', AYT_SPAWN);    // ออนไลน์: server ส่ง td:warp มาก่อนแล้ว (ซ้ำได้ ไม่มีผล)
@@ -466,14 +473,14 @@ export class TopDownScene extends Phaser.Scene {
       spr.on('pointerdown', (ptr) => { if (uiBlocked(ptr)) return; ptr.event.stopPropagation(); this.talk(n); });
       spr.on('pointerover', () => { this.hovered = spr; document.body.dataset.cursor = 'talk'; });
       spr.on('pointerout', () => { if (this.hovered === spr) this.hovered = null; delete document.body.dataset.cursor; });
-      if (n.id === 'quest') {                                                              // เครื่องหมาย ! ทองลอยเหนือป้ายชื่อ
+      if (n.id === 'quest' || /^kru_/.test(n.id)) {                                        // เครื่องหมาย !/? ทองลอยเหนือป้ายชื่อ (ผู้ใหญ่ชัย + ครูประจำอาชีพ)
         const y0 = plateTop - 9;                                                          // ลอยเหนือกรอบป้าย ไม่ทับ
         const g = this.add.graphics().setDepth(n.y + 3);
         g.fillStyle(0x5a1611, 1).fillCircle(0, 0, 6).lineStyle(1.5, 0xf4d03f).strokeCircle(0, 0, 6);
         const t = makeText(this, 0, 1, '!', { fontSize: '9px', color: '#ffe082' }).setOrigin(0.5);
         const q = this.add.container(n.x, y0, [g, t]).setDepth(n.y + 3);
         this.tweens.add({ targets: q, y: y0 - 4, duration: 650, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
-        this.questMark = { q, g, t }; this.updateQuestMark();
+        (this.questMarks ||= {})[n.id] = { q, g, t }; this.updateQuestMark();
       }
       return { ...n, icon: NPC_ICON[n.id], spr, line: 0 };
     });
@@ -481,10 +488,19 @@ export class TopDownScene extends Phaser.Scene {
 
   /** เครื่องหมายเหนือผู้ใหญ่ชัย: ? = มีเควสส่งได้ · ! = มีเควสใหม่ให้รับ · ไม่มี = ซ่อน */
   updateQuestMark() {
-    const m = this.questMark, c = this.player?.char;
-    if (!m || !m.q.active || !c?.quests) return;
-    const st = QUESTS.map((q) => qState(c, q));
-    const kind = st.includes('ready') ? 'ready' : st.includes('open') ? 'open' : null;
+    const c = this.player?.char;
+    if (!c?.quests) return;
+    for (const [giver, m] of Object.entries(this.questMarks || {})) {
+      if (!m.q.active) continue;
+      // ครูอาชีพ: แสดง ! เฉพาะเมื่อถืออาวุธสายนั้นอยู่ (กันป้าย ! เต็มเมือง) · ? แสดงเสมอเมื่อส่งได้
+      const qs = QUESTS.filter((q) => (q.giver || 'quest') === giver), st = qs.map((q) => qState(c, q));
+      const openOk = giver === 'quest' || qs.some((q, i) => st[i] === 'open' && q.job === c.appearance?.job);
+      const kind = st.includes('ready') ? 'ready' : openOk && st.includes('open') ? 'open' : null;
+      this.paintQuestMark(m, kind);
+    }
+  }
+
+  paintQuestMark(m, kind) {
     if (m.kind === kind) return;
     m.kind = kind;
     m.q.setVisible(!!kind);
@@ -775,6 +791,7 @@ export class TopDownScene extends Phaser.Scene {
     const mine = d.by === 'me' || d.by === this.net?.selfId;
     if (Number.isFinite(d.hp)) m.hp = d.hp;
     if (!d.hit) { popupNumber(this, m.x, m.y - m.displayHeight, 'MISS', 'miss'); if (mine) this.sfx.play('miss'); return; }
+    if (d.dot) { popupNumber(this, m.x + 6, m.y - m.displayHeight, `☠${d.dmg}`, 'miss'); m.setTint(0x9dff8a); this.time.delayedCall(120, () => m.clearTint()); return; }   // พิษต่อเนื่อง
     popupNumber(this, m.x, m.y - m.displayHeight - 4, d.crit ? `${d.dmg}!` : `${d.dmg}`, d.crit ? 'crit' : 'normal');
     hitSpark(this, m.x, m.y - m.displayHeight * 0.5, { crit: d.crit, dir: m.x >= this.player.x ? 1 : -1 });
     squash(this, m, d.crit ? 0.25 : 0.15, 90); m.setTintFill(d.crit ? 0xffd35c : 0xffffff); this.time.delayedCall(60, () => { m.clearTint(); m.setTint(d.crit ? 0xffe9a6 : 0xffd0d0); }); this.time.delayedCall(140, () => m.clearTint());
@@ -800,13 +817,22 @@ export class TopDownScene extends Phaser.Scene {
     }
   }
 
+  /** ความดังของเสียงที่เกิดรอบตัว (ผู้เล่นอื่น/ผีตาย): ใกล้ = ดังเต็ม · ค่อย ๆ เบาลง · เกิน ~300px เงียบ · คูณตามตั้งค่า "เสียงผู้เล่นอื่น" */
+  worldVol(x, y) {
+    const k = { full: 1, soft: 0.4, off: 0 }[this.settings?.otherSfx || 'full'] ?? 1;
+    if (!k) return 0;
+    const d = Math.hypot(x - this.player.x, y - this.player.y);
+    return k * (d <= 70 ? 1 : Math.max(0, 1 - (d - 70) / 230));
+  }
+
   onMobDie(m) {
     if (!m || !m.alive) return;
     m.alive = false; m.hp = 0; m.setVelocity(0, 0); m.disableInteractive();
     if (this.player.target === m) this.player.target = null;
     if (!playDir(m, 'die', m.dir, true)) m.setTint(0x777777);
     this.vfx?.soul(m);
-    this.sfx.play('ghostDie'); this.time.delayedCall(150, () => this.sfx.play('soul'));
+    // เสียงผีตายเฉพาะตัวที่อยู่ใกล้ (ไม่ได้ยินผีที่คนอื่นตีตายไกล ๆ หรือผีกลางคืนสลายตอนเช้า ตอนยืน AFK)
+    { const v = this.worldVol(m.x, m.y); if (v) { this.sfx.playAt('ghostDie', v); this.time.delayedCall(150, () => this.sfx.playAt('soul', v)); } }
     this.tweens.add({ targets: m, alpha: 0, duration: 900, delay: 300, onComplete: () => { if (!m.alive) this.setMobVisible(m, false); } });
     if (!this.econ.server) this.time.delayedCall(9000, () => this.respawnLocal(m));
   }
@@ -989,7 +1015,10 @@ export class TopDownScene extends Phaser.Scene {
     for (const b of [...this.bubbles.values()]) {
       if (b.fading) continue;
       if (!b.spr.active || time > b.until) { b.fading = true; this.tweens.add({ targets: b.c, alpha: 0, duration: 250, onComplete: () => b.destroy() }); continue; }
-      const top = b.spr.y - b.spr.displayHeight - (b.spr === this.player ? (this.titleTag?.visible ? 20 : 12) : 20);
+      // ลอยเหนือป้ายชื่อ/ฉายาจริง (ความสูงตัวอักษรไทยไม่คงที่ → วัดจากป้ายที่แสดงอยู่)
+      const tags = b.spr === this.player ? [this.nameTag, this.titleTag] : b.spr._tags || [];
+      let top = b.spr.y - b.spr.displayHeight - 4;
+      for (const t of tags) if (t?.visible && t.active) top = Math.min(top, t.y - t.displayHeight * t.originY - 2);
       b.c.setPosition(b.spr.x, top);
     }
   }
@@ -1044,6 +1073,9 @@ export class TopDownScene extends Phaser.Scene {
       .on('td:matk', ({ mid }) => { const m = this.mobs[mid]; if (!m) return; if (!m.alive || m.alpha < 0.5 || !m.visible) { m.alive = true; if (m.sx != null) m.setPosition(m.sx, m.sy); this.setMobVisible(m, true); } playDir(m, 'attack', m.dir, true); })
       .on('td:aoe', (a) => this.bossAoe(a))
       .on('td:title', ({ id, title }) => this.remotes.get(id)?.setTitle(title))
+      .on('news:live', (l) => this.ui.news?.setLive(l))
+      .on('news:add', (it) => this.ui.news?.add(it))
+      .on('news:del', (id) => this.ui.news?.del(id))
       .on('appearance', ({ id, appearance }) => { if (id !== this.net.selfId && appearance) this.remotes.get(id)?.setAppearance(appearance); })
       .on('td:pbuff', (d) => this.skills?.partyReceive(d))
       .on('td:heal', (d) => this.skills?.healFx(d))
@@ -1084,6 +1116,7 @@ export class TopDownScene extends Phaser.Scene {
     const ttl = makeText(this, q.x, q.y, '', { fontSize: '7px', color: '#ffffff', align: 'center' }).setOrigin(0.5, 1);   // ฉายา (สีตามฉายา) เหนือชื่อ
     const paintTitle = (t) => { const T = TITLE_BY_ID[t]; ttl.setText(T ? `«${T.nameTh}»` : '').setColor(T?.color || '#ffffff').setVisible(!!T); };
     paintTitle(q.title);
+    s._tags = [tag, ttl];
     s.setInteractive({ useHandCursor: true });                                   // คลิกผู้เล่น → เมนู เชิญ/เทรด/เพื่อน/กระซิบ
     s.on('pointerdown', (ptr) => { if (uiBlocked(ptr)) return; ptr.event?.stopPropagation?.(); this.social?.openPlayerMenu(r, { x: ptr.x, y: ptr.y }); });
     const sh = this.addShadow(s, 22);
@@ -1095,7 +1128,7 @@ export class TopDownScene extends Phaser.Scene {
         const dx = this.tx - s.x, dy = this.ty - s.y;
         if (Math.hypot(dx, dy) > 120) s.setPosition(this.tx, this.ty); else { const k = Math.min(1, dt * 12); s.x += dx * k; s.y += dy * k; }
         if (this._lv !== this.level) { this._lv = this.level; tag.setText(`${q.name} Lv.${this.level}`); }
-        s.setDepth(s.y); tag.setPosition(s.x, s.y - s.displayHeight - 3).setDepth(s.y + 1); if (ttl.visible) ttl.setPosition(s.x, tag.y - tag.displayHeight).setDepth(s.y + 1);
+        s.setDepth(s.y); tag.setPosition(s.x, Math.min(s.y - s.displayHeight - 3, s._cosTop ?? Infinity)).setDepth(s.y + 1); if (ttl.visible) ttl.setPosition(s.x, tag.y - tag.displayHeight).setDepth(s.y + 1);
         playDir(s, this.anim, this.dir);
       },
       destroy: () => { this.weapons?.detach(s); this.costumes?.detach(s); s.destroy(); tag.destroy(); ttl.destroy(); sh.destroy(); this.shadows = this.shadows.filter((x) => x.obj !== s); },
@@ -1154,6 +1187,7 @@ export class TopDownScene extends Phaser.Scene {
     kb.on('keydown-O', () => (document.querySelector('#card-panel').classList.contains('hidden') ? this.ui.cards.open() : this.ui.toggle('card-panel', false)));
     kb.on('keydown-J', () => this.village.openQuests());
     kb.on('keydown-H', () => this.ui.toggle('help-panel'));
+    kb.on('keydown-N', () => { if (!this.ui.typing) this.ui.news?.toggle(); });
     kb.on('keydown-M', () => this.world.toggleMap());
     kb.on('keydown-ENTER', () => this.ui.focusChat());
     kb.on('keydown-ESC', () => (this.ui.anyOpen() ? this.ui.closeAll() : this.ui.toggle('settings-panel', true)));
@@ -1302,7 +1336,7 @@ export class TopDownScene extends Phaser.Scene {
       if (!this.econ.server && this.inTown() && p.char.hp < p.derived.maxHp) p.char.hp = Math.min(p.derived.maxHp, p.char.hp + p.derived.maxHp * 0.04 * dt);
     } else p.setVelocity(0, 0);
     p.setDepth(p.y);
-    this.nameTag.setPosition(p.x, p.y - p.displayHeight - 3);
+    this.nameTag.setPosition(p.x, Math.min(p.y - p.displayHeight - 3, p._cosTop ?? Infinity));   // สวมหมวก/มงกุฎสูง → ยกป้ายชื่อขึ้น
     if (this.titleTag?.visible) this.titleTag.setPosition(p.x, this.nameTag.y - this.nameTag.displayHeight);
     if (time > (this.nextAutoMenu || 0)) { this.nextAutoMenu = time + 1000; this.refreshAutoMenuCounts(); }
     for (const sh of this.shadows) sh.img.setPosition(sh.obj.x, sh.obj.y + 1).setVisible(sh.obj.visible && sh.obj.alpha > 0.2);

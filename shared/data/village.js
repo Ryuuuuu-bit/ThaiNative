@@ -138,13 +138,45 @@ export const QUESTS = [
     goal: { kill: 'grave', n: 20 }, reward: { exp: 3200, gold: 1500, items: [{ id: 'black_iron', qty: 3 }] } },
   { id: 'q_buek', lv: 8, nameTh: 'ตำนานปลาบึก', text: 'ปู่เล่าว่ามีปลาบึกยักษ์ในแม่น้ำรอบเกาะเมือง ตกมาให้ดูสักตัว',
     goal: { fish: 'pla_buek', n: 1 }, reward: { exp: 1200, gold: 1000, items: [{ id: 'takrut', qty: 1 }] } },
-  // ---- สายหมอยา (ไม่บังคับ · ถือไม้เท้าสมุนไพรแล้วรักษาเพื่อนในปาร์ตี้) ----
-  { id: 'q_heal1', lv: 3, optional: true, job: 'healer', nameTh: 'ศิษย์ศาลาโอสถ', text: 'หมอพรที่ศาลาโอสถ (ข้างค่ายมวย) อยากลองฝีมือ ถือไม้เท้าสมุนไพรแล้วรักษาเพื่อนร่วมปาร์ตี้ให้ได้รวม 500 HP',
+  // ==== เควสอาชีพ: รับ/ส่งกับครูประจำอาชีพ (giver) · นับเฉพาะตอนถืออาวุธสายนั้น (goal.job) ====
+  // ---- ครูเหม · สำนักดาบ ----
+  { id: 'j_sw1', lv: 3, giver: 'kru_sword', job: 'swordman', nameTh: 'ดาบแรกของศิษย์', text: 'ครูเหมอยากเห็นฝีมือ ถือดาบออกไปฟันผีตัวไหนก็ได้ 30 ตัว',
+    goal: { kill: 'any', n: 30, job: 'swordman' }, reward: { exp: 400, gold: 300, items: [{ id: 'hp_m', qty: 5 }] } },
+  { id: 'j_sw2', lv: 9, giver: 'kru_sword', job: 'swordman', nameTh: 'ดาบปราบปอบ', text: 'ปอบในป่าไผ่ปู่โสมกินตับชาวบ้าน ใช้ดาบฟันให้สิ้น 20 ตัว',
+    goal: { kill: 'phi_pob', n: 20, job: 'swordman' }, reward: { exp: 1600, gold: 900, items: [{ id: 'black_iron', qty: 2 }] } },
+  { id: 'j_sw3', lv: 18, giver: 'kru_sword', job: 'swordman', nameTh: 'ศิษย์เอกสำนักดาบ', text: 'ศิษย์เอกต้องผ่านป่าช้า ใช้ดาบปราบผีในป่าช้าวัดร้าง/บึงผีพราย 60 ตัว',
+    goal: { kill: 'grave', n: 60, job: 'swordman' }, reward: { exp: 6000, gold: 3000, items: [{ id: 'black_iron', qty: 5 }, { id: 'yant_guard', qty: 1 }] } },
+  // ---- หลวงตาเผือก · หมอธรรม ----
+  { id: 'j_mg1', lv: 3, giver: 'kru_mage', job: 'mage', nameTh: 'คาถาบทแรก', text: 'หลวงตาให้ลองอาคม ถือไม้เท้าปราบผีตัวไหนก็ได้ 30 ตัว',
+    goal: { kill: 'any', n: 30, job: 'mage' }, reward: { exp: 400, gold: 300, items: [{ id: 'mp_m', qty: 5 }] } },
+  { id: 'j_mg2', lv: 5, giver: 'kru_mage', job: 'mage', nameTh: 'ไล่กระสือ', text: 'กระสือออกกลางคืนในทุ่งนา ใช้อาคมไล่ให้หมด 15 ตัว',
+    goal: { kill: 'krasue', n: 15, job: 'mage' }, reward: { exp: 1400, gold: 800, items: [{ id: 'mp_m', qty: 8 }] } },
+  { id: 'j_mg3', lv: 18, giver: 'kru_mage', job: 'mage', nameTh: 'หมอธรรมแห่งป่าช้า', text: 'ป่าช้าวัดร้างมีวิญญาณร้ายสะสม ใช้อาคมปราบผีในป่าช้า/บึงผีพราย 60 ตัว',
+    goal: { kill: 'grave', n: 60, job: 'mage' }, reward: { exp: 6000, gold: 3000, items: [{ id: 'black_iron', qty: 5 }, { id: 'yant_guard', qty: 1 }] } },
+  // ---- พรานแก้ว · ค่ายพรานไพร ----
+  { id: 'j_ar1', lv: 3, giver: 'kru_archer', job: 'archer', nameTh: 'ลูกศรดอกแรก', text: 'พรานแก้วอยากดูฝีมือ ยิงธนูปราบผีตัวไหนก็ได้ 30 ตัว',
+    goal: { kill: 'any', n: 30, job: 'archer' }, reward: { exp: 400, gold: 300, items: [{ id: 'hp_m', qty: 5 }] } },
+  { id: 'j_ar2', lv: 9, giver: 'kru_archer', job: 'archer', nameTh: 'ล่าเปรตยักษ์', text: 'เปรตตัวสูงเท่าต้นตาลในป่าไผ่ ยิงจากระยะไกลให้ล้ม 15 ตัว',
+    goal: { kill: 'pret', n: 15, job: 'archer' }, reward: { exp: 1800, gold: 1000, items: [{ id: 'black_iron', qty: 2 }] } },
+  { id: 'j_ar3', lv: 18, giver: 'kru_archer', job: 'archer', nameTh: 'นายพรานแห่งป่าช้า', text: 'พรานตัวจริงต้องล่าได้แม้ในป่าช้า ยิงผีในป่าช้า/บึงผีพราย 60 ตัว',
+    goal: { kill: 'grave', n: 60, job: 'archer' }, reward: { exp: 6000, gold: 3000, items: [{ id: 'black_iron', qty: 5 }, { id: 'yant_guard', qty: 1 }] } },
+  // ---- ครูแดง · ค่ายมวย ----
+  { id: 'j_bx1', lv: 3, giver: 'kru_boxer', job: 'boxer', nameTh: 'หมัดแรกบนสังเวียน', text: 'ครูแดงให้ลองของจริง ใช้หมัดมวยไทยปราบผีตัวไหนก็ได้ 30 ตัว',
+    goal: { kill: 'any', n: 30, job: 'boxer' }, reward: { exp: 400, gold: 300, items: [{ id: 'hp_m', qty: 5 }] } },
+  { id: 'j_bx2', lv: 7, giver: 'kru_boxer', job: 'boxer', nameTh: 'ต่อยปอบให้หลาบจำ', text: 'ปอบในป่าไผ่ปู่โสมชอบรังแกคน ใช้แม่ไม้มวยไทยจัดการ 20 ตัว',
+    goal: { kill: 'phi_pob', n: 20, job: 'boxer' }, reward: { exp: 1600, gold: 900, items: [{ id: 'black_iron', qty: 2 }] } },
+  { id: 'j_bx3', lv: 18, giver: 'kru_boxer', job: 'boxer', nameTh: 'นักมวยใจเหล็ก', text: 'นักมวยใจเหล็กไม่กลัวผี ต่อยผีในป่าช้า/บึงผีพรายให้ได้ 60 ตัว',
+    goal: { kill: 'grave', n: 60, job: 'boxer' }, reward: { exp: 6000, gold: 3000, items: [{ id: 'black_iron', qty: 5 }, { id: 'yant_guard', qty: 1 }] } },
+  // ---- หมอพร · ศาลาโอสถ (ถือไม้เท้าสมุนไพรแล้วรักษาเพื่อนในปาร์ตี้) ----
+  { id: 'q_heal1', lv: 3, optional: true, giver: 'kru_healer', job: 'healer', nameTh: 'ศิษย์ศาลาโอสถ', text: 'หมอพรที่ศาลาโอสถ (ข้างค่ายมวย) อยากลองฝีมือ ถือไม้เท้าสมุนไพรแล้วรักษาเพื่อนร่วมปาร์ตี้ให้ได้รวม 500 HP',
     goal: { heal: 'any', n: 500 }, reward: { exp: 300, gold: 300, items: [{ id: 'mp_m', qty: 5 }, { id: 'herb_honey', qty: 2 }] } },
-  { id: 'q_heal2', lv: 12, optional: true, job: 'healer', nameTh: 'หมอประจำขบวน', text: 'ขบวนล่าผีต้องมีหมอคอยดูแล ออกล่ากับเพื่อนแล้วรักษาเพื่อนให้ได้รวม 8,000 HP',
+  { id: 'q_heal2', lv: 12, optional: true, giver: 'kru_healer', job: 'healer', nameTh: 'หมอประจำขบวน', text: 'ขบวนล่าผีต้องมีหมอคอยดูแล ออกล่ากับเพื่อนแล้วรักษาเพื่อนให้ได้รวม 8,000 HP',
     goal: { heal: 'any', n: 8000 }, reward: { exp: 4000, gold: 2000, items: [{ id: 'hp_m', qty: 10 }, { id: 'black_iron', qty: 3 }] } },
-  { id: 'q_revive', lv: 8, optional: true, job: 'healer', nameTh: 'เรียกขวัญคืนร่าง', text: 'หมอพรสอนพิธีสู่ขวัญ (★ ต้องมีคีย์สโตนกิ่งหมอยา) ชุบชีวิตเพื่อนที่สลบให้ได้ 1 ครั้ง',
+  { id: 'q_revive', lv: 8, optional: true, giver: 'kru_healer', job: 'healer', nameTh: 'เรียกขวัญคืนร่าง', text: 'หมอพรสอนพิธีสู่ขวัญ (★ ต้องมีคีย์สโตนกิ่งหมอยา) ชุบชีวิตเพื่อนที่สลบให้ได้ 1 ครั้ง',
     goal: { revive: 'any', n: 1 }, reward: { exp: 2500, gold: 1500, items: [{ id: 'yant_guard', qty: 1 }] } },
 ];
 
 export const QUEST_BY_ID = Object.fromEntries(QUESTS.map((q) => [q.id, q]));
+/** ผู้ให้เควส: 'quest' = ผู้ใหญ่ชัย (เควสทั่วไป ทุกอาชีพ) · kru_* = ครูประจำอาชีพ */
+export const questGiver = (q) => q?.giver || 'quest';
+export const GIVER_TH = { quest: 'ผู้ใหญ่ชัย', kru_sword: 'ครูเหม', kru_mage: 'หลวงตาเผือก', kru_archer: 'พรานแก้ว', kru_boxer: 'ครูแดง', kru_healer: 'หมอพร' };

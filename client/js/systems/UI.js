@@ -2,6 +2,9 @@
 //  UI – จัดการ HUD และหน้าต่าง DOM (สถานะ, กระเป๋า, ร้านค้า, แชท)
 //  ใช้ HTML/CSS ซ้อนบน Canvas เพื่อให้ตัวหนังสือไทยคมชัด
 // ============================================================
+import { toast as notifyToast, ticker } from './Notify.js';
+import { NewsBoard } from './NewsBoard.js';
+import { skillCalcHtml } from './SkillInfo.js';
 import { JOBS, JOB_IDS, PATH_LV, STAT_PLAN } from '/shared/data/classes.js';
 import { ITEMS, SHOPS, sellPrice, WTYPE_JOB } from '/shared/data/items.js';
 import { STAT_KEYS, STAT_INFO, expToNext, MAX_LEVEL } from '/shared/stats.js';
@@ -78,7 +81,8 @@ export class UI {
 
     // แชท (กรอบ MMO แบบแท็บ)
     this.rarityOf = rarityOf;
-    this.chatBox = ChatBox.attach(this);                           // ตัวเดียวตลอดเกม (ฉากเริ่มใหม่ก็ไม่หายประวัติ)
+    this.chatBox = ChatBox.attach(this);
+    this.news = new NewsBoard(this);                               // กระดานข่าวสาร (📰)                           // ตัวเดียวตลอดเกม (ฉากเริ่มใหม่ก็ไม่หายประวัติ)
     // Shift+คลิกไอเทมใดก็ได้ (กระเป๋า/ช่องสวม/ร้าน) → แชร์ลงแชท (ของที่สวมอยู่แนบขั้นตีบวกไปด้วย)
     document.addEventListener('click', (e) => {
       if (!e.shiftKey) return;
@@ -128,7 +132,7 @@ export class UI {
   updateHud() {
     const c = this.char, d = getDerived(c);
     const need = expToNext(c.level);
-    const sig = [c.hp, c.mp, d.maxHp, d.maxMp, c.exp, c.level, c.gold, c.appearance.job, c.path, c.statPoints, c.sp, JSON.stringify(c.skills), (c.passives || []).length, Inv.count(c, 'hp_s'), Inv.count(c, 'mp_s')].join('|');
+    const sig = [c.hp, c.mp, d.maxHp, d.maxMp, c.exp, c.level, c.gold, c.appearance.job, c.path, c.statPoints, c.sp, JSON.stringify(c.skills), (c.passives || []).length, Inv.count(c, 'hp_s'), Inv.count(c, 'mp_s'), this.scene.player?.d8id, this.scene.textures?.exists(`td:${this.scene.player?.d8id}:idle`)].join('|');
     if (sig === this.hudCache) return;
     this.hudCache = sig;
 
@@ -149,6 +153,7 @@ export class UI {
     $('#hud-hp-fill').style.width = `${(c.hp / d.maxHp) * 100}%`;
     $('#hud-hp-ghost').style.width = `${(c.hp / d.maxHp) * 100}%`;
     $('#hud-hp-fill').parentElement.classList.toggle('low', c.hp / d.maxHp < 0.3);
+    document.body.classList.toggle('lowhp', c.hp > 0 && c.hp / d.maxHp < 0.3);          // ขอบจอแดงเตือนเลือดน้อย
     $('#hud-mp-fill').style.width = `${(c.mp / d.maxMp) * 100}%`;
     const maxed = c.level >= MAX_LEVEL;
     $('#hud-exp-fill').style.width = maxed ? '100%' : `${(c.exp / need) * 100}%`;
@@ -177,7 +182,29 @@ export class UI {
 
   /** รูปโปรไฟล์: ครอปส่วนหัวจากภาพตัวละครที่ย้อมสีแล้ว */
   drawPortrait() {
-    const key = this.scene.player.texKey;
+    const p = this.scene.player, d8 = p.d8id, tk = d8 && `td:${d8}:idle`;
+    // โมเดล 8 ทิศ (ชุดที่สวมจริง): ครอปหัว-ไหล่จากท่ายืนหันหน้า
+    if (tk && this.scene.textures.exists(tk) && this.scene.textures.get(tk).has('south_0')) {
+      if (this.portraitKey === tk) return;
+      const fr = this.scene.textures.getFrame(tk, 'south_0'), img = fr.source.image;
+      const tmp = document.createElement('canvas'); tmp.width = fr.cutWidth; tmp.height = fr.cutHeight;
+      const tc = tmp.getContext('2d', { willReadFrequently: true }); tc.drawImage(img, fr.cutX, fr.cutY, fr.cutWidth, fr.cutHeight, 0, 0, fr.cutWidth, fr.cutHeight);
+      const px = tc.getImageData(0, 0, tmp.width, tmp.height).data;
+      let top = -1, bot = -1, sx = 0, n = 0;
+      for (let y = 0; y < tmp.height && top < 0; y++) for (let x = 0; x < tmp.width; x++) if (px[(y * tmp.width + x) * 4 + 3] > 60) { top = y; break; }
+      for (let y = tmp.height - 1; y > top && bot < 0; y--) for (let x = 0; x < tmp.width; x++) if (px[(y * tmp.width + x) * 4 + 3] > 60) { bot = y; break; }
+      if (top >= 0) {
+        const hh = (bot - top) / 5.2;
+        for (let y = top; y < top + hh; y++) for (let x = 0; x < tmp.width; x++) if (px[(y * tmp.width + x) * 4 + 3] > 60) { sx += x; n++; }
+        const cx = n ? sx / n : tmp.width / 2, size = Math.round(hh * 2.1), y0 = Math.max(0, Math.round(top - hh * 0.25));
+        this.portraitKey = tk;
+        const cv = $('#hud-portrait'), ctx = cv.getContext('2d');
+        ctx.imageSmoothingEnabled = false; ctx.clearRect(0, 0, cv.width, cv.height);
+        ctx.drawImage(tmp, Math.round(cx - size / 2), y0, size, size, 0, 0, cv.width, cv.height);
+        return;
+      }
+    }
+    const key = p.texKey;
     if (this.portraitKey === key) return;
     this.portraitKey = key;
     const cv = $('#hud-portrait'), ctx = cv.getContext('2d');
@@ -265,6 +292,8 @@ export class UI {
       const b = document.querySelector(`.hud-buttons [data-open="${panel}"]`), ic = uiIcon(key);
       if (b && ic) b.innerHTML = `${ic}${b.querySelector('small')?.outerHTML || ''}`;
     }
+    { const hb = $('#btn-home'), ic = uiIcon('menu_home'); if (hb && ic) hb.innerHTML = `${ic}${hb.querySelector('small')?.outerHTML || ''}`; }
+    { const nb = document.querySelector('#btn-news .nb-ic'), ic = uiIcon('menu_news'); if (nb && ic) nb.innerHTML = ic; }
     const f = document.querySelector('#fish-ui');
     if (f && uiIcon('fish') && !f.querySelector('.px-ico')) f.insertAdjacentHTML('afterbegin', uiIcon('fish'));
   }
@@ -518,6 +547,7 @@ export class UI {
     }).join('') + (HY ? `<span class="sk-note">เคล็ดวิชาผสม: ลงจุดผสมระหว่างสองกิ่ง + ลงทั้งสองกิ่งอย่างละ 3 แต้ม · ใช้ได้เมื่อถืออาวุธของกิ่งใดกิ่งหนึ่ง · สกิลทุกท่าชำนาญขึ้นเองเมื่อใช้ (สูงสุดขั้น ${SK_MMAX})</span>`
       : `<span class="sk-note">${PASSIVES_ON ? `เพดานเลเวลสกิล = 2 + (แต้ม${BRANCHES[job].nameTh} ${bp[job]} ÷ 2) · ★ ต้องมีคีย์สโตน · ` : 'อัปสกิลได้ถึง Lv.5 (ต้องถึงเลเวลตัวละครที่กำหนด) · '}ใช้ได้เมื่อถือ${JOBS[job].weaponTh}${c.appearance.job === job ? ' ✔' : ''} · ยิ่งใช้ยิ่งชำนาญ (ขั้นละ +2% แรง −1% คูลดาวน์)</span>`);
     tabs.querySelectorAll('[data-sktab]').forEach((b) => (b.onclick = () => { this.skTab = b.dataset.sktab; this.scene.sfx.play('click'); this.renderSkillTree(); }));
+    const dStat = getDerived(c);
     $('#sk-tree').innerHTML = SKILLS[job].map((base) => {
       const lv = c.skills[base.id] || 0;
       const cap = skillCap(c, { ...base, job });
@@ -535,6 +565,7 @@ export class UI {
         <div class="sk-mast" title="ความชำนาญ: ร่ายสำเร็จ 1 ครั้ง = 1 แต้ม · ขั้นละ +2% ความแรง −1% คูลดาวน์">✨ ชำนาญ ${mm.m}/${SK_MMAX}<i style="width:${mm.need ? Math.round(mm.cur / mm.need * 100) : 100}%"></i></div>
         <div class="sk-desc">${base.desc}</div>
         <div class="sk-stat">${lv ? stat(cur) : stat(skillStats(base, 1))}${next && lv ? `<br><span style="color:#58d68d">→ Lv.${lv + 1}: ${next.mult ? `x${next.mult}` : `MP ${next.mp}`}</span>` : ''}</div>
+        <button class="sk-calc-btn" data-calc="${base.id}" title="ดูวิธีคิดดาเมจ/ผลของสกิลด้วยค่าสถานะปัจจุบัน">📐 วิธีคิดดาเมจ</button>
         <span class="sk-ups"><button class="sk-up" data-learn="${base.id}" ${chk.ok ? '' : 'disabled'}>${lv ? '+ อัป' : '+ เรียน'}</button><button class="sk-up max" data-learnmax="${base.id}" ${chk.ok ? '' : 'disabled'} title="อัปจนสุดเท่าที่ SP/เลเวลให้">MAX</button></span>
         <div class="sk-req">${chk.ok || lv >= MAX_SKILL_LV ? '' : chk.reason}</div>
         <div class="sk-assign">${SKILL_SLOTS.map((k) => `<button data-as="${k}" data-id="${base.id}" class="${slotKey === k ? 'on' : ''}" ${lv ? '' : 'disabled'}>${k}</button>`).join('')}</div>
@@ -547,6 +578,21 @@ export class UI {
       this.refreshPanels(); this.scene.saveSoon();
     });
     $('#sk-tree').querySelectorAll('[data-learn]').forEach((b) => (b.onclick = () => learn(b.dataset.learn, false)));
+    $('#sk-tree').querySelectorAll('[data-calc]').forEach((b) => (b.onclick = (e) => {
+      e.stopPropagation();
+      const base = SKILL_BY_ID[b.dataset.calc], lv = c.skills[base.id] || 0, mm = skillMastery(c.skx?.[base.id] || 0);
+      const cur = skillStats(base, Math.max(1, lv), mm.m), next = lv && lv < MAX_SKILL_LV ? skillStats(base, lv + 1, mm.m) : null;
+      let pop = $('#sk-calc-pop');
+      if (!pop) { pop = document.createElement('div'); pop.id = 'sk-calc-pop'; document.body.appendChild(pop); document.addEventListener('pointerdown', (ev) => { if (!ev.target.closest('#sk-calc-pop, [data-calc]')) pop.classList.add('hidden'); }); }
+      pop.innerHTML = `<header>${skillIcon(base.id, base.icon)}<b>${base.nameTh}${base.ultimate ? ' ★' : ''}</b><span>Lv.${Math.max(1, lv)}${lv ? '' : ' (ยังไม่ได้เรียน · แสดงค่า Lv.1)'}</span><button class="x">✕</button></header>
+        <p class="d">${base.desc}</p>${skillCalcHtml(cur, dStat, { lv: Math.max(1, lv), next })}
+        <p class="f">สูตร: ดาเมจ = พลัง × ตัวคูณ × สุ่ม 0.9–1.1 − DEF ศัตรู × (กายภาพ 50% / เวทย์ 25%) · คริ × ดาเมจคริ · ตัวเลขคิดจากค่าสถานะตอนนี้ (ยังไม่รวมบัฟชั่วคราว)</p>`;
+      pop.querySelector('.x').onclick = () => pop.classList.add('hidden');
+      pop.classList.remove('hidden');
+      const r = b.getBoundingClientRect(), W = Math.min(440, window.innerWidth - 16);
+      pop.style.width = `${W}px`; pop.style.left = `${Math.max(8, Math.min(window.innerWidth - W - 8, r.left + r.width / 2 - W / 2))}px`;
+      const h = pop.offsetHeight; pop.style.top = `${r.top - h - 8 > 8 ? r.top - h - 8 : Math.min(window.innerHeight - h - 8, r.bottom + 8)}px`;
+    }));
     $('#sk-tree').querySelectorAll('[data-learnmax]').forEach((b) => (b.onclick = () => learn(b.dataset.learnmax, true)));
     $('#sk-tree').querySelectorAll('[data-as]').forEach((b) => (b.onclick = () => this.assign(b.dataset.as, b.dataset.id)));
     $('#sk-tree').querySelectorAll('.sk-icon[draggable="true"]').forEach((ic) => {
@@ -593,7 +639,7 @@ export class UI {
       $('#set-bgm-on').checked = st.bgmOn; $('#set-bgm').value = Math.round(st.bgmVol * 100); $('#set-bgm-v').textContent = `${Math.round(st.bgmVol * 100)}`;
       $('#set-sfx-on').checked = st.sfxOn; $('#set-sfx').value = Math.round(st.sfxVol * 100); $('#set-sfx-v').textContent = `${Math.round(st.sfxVol * 100)}`;
       $('#set-dmg').checked = st.damageNumbers; $('#set-mm').checked = st.minimap;
-      $('#set-shake').checked = st.fxShake !== false; $('#set-flash').value = st.fxFlash || 'full';
+      $('#set-shake').checked = st.fxShake !== false; $('#set-flash').value = st.fxFlash || 'full'; $('#set-othersfx').value = st.otherSfx || 'full';
       $('#set-auto-hp').value = String(st.autoHp || 0); $('#set-auto-mp').value = String(st.autoMp || 0);
       document.querySelector('.minimap').classList.toggle('hidden', !st.minimap);
     };
@@ -607,6 +653,7 @@ export class UI {
     $('#set-mm').onchange = (e) => { st.minimap = e.target.checked; apply(); };
     $('#set-shake').onchange = (e) => { st.fxShake = e.target.checked; apply(); };
     $('#set-flash').onchange = (e) => { st.fxFlash = e.target.value; apply(); };
+    $('#set-othersfx').onchange = (e) => { st.otherSfx = e.target.value; apply(); };
     $('#set-auto-hp').onchange = (e) => { st.autoHp = +e.target.value; apply(); };
     $('#set-auto-mp').onchange = (e) => { st.autoMp = +e.target.value; apply(); };
     $('#set-fullscreen').onclick = () => toggleFullscreen();
@@ -633,16 +680,30 @@ export class UI {
     setTimeout(() => el.remove(), 6000);
   }
 
-  toast(msg, kind = '', ms = 2400) {
-    const el = document.createElement('div');
-    if (!kind) kind = /^(✔|🏆|🎖|🔨 ตีบวกสำเร็จ)/.test(msg) ? 'ok' : /^(🎁|✨|ได้รับ|🎣 ได้)/.test(msg) ? 'loot' : /^(รับเควส|📜|👑)/.test(msg) ? 'quest' : '';
-    el.className = `toast ${kind}`;
-    el.textContent = msg;
-    $('#toasts').appendChild(el);
-    setTimeout(() => el.remove(), ms);
+  toast(msg, kind = '', ms = 2600) { notifyToast(msg, kind, ms); }
+
+  /** แถบร่าย (กลางล่าง) เช่น ยันต์คืนถิ่น → { done(), cancel(msg) } */
+  castBar(label, ms, icon = '') {
+    let el = $('#castbar');
+    if (!el) { el = document.createElement('div'); el.id = 'castbar'; ($('#hud') || document.body).appendChild(el); }
+    el.className = 'on';
+    el.innerHTML = `<span class="cb-ic">${icon}</span><div class="cb-body"><div class="cb-top"><b>${esc(label)}</b><span class="cb-t"></span></div><div class="cb-bar"><i></i></div></div>`;
+    const fill = el.querySelector('.cb-bar i'), tEl = el.querySelector('.cb-t'), t0 = performance.now();
+    const tick = () => { const k = Math.min(1, (performance.now() - t0) / ms); fill.style.width = `${k * 100}%`; tEl.textContent = `${Math.max(0, (ms - (performance.now() - t0)) / 1000).toFixed(1)} วิ`; if (k < 1 && el.classList.contains('on')) this._castRaf = requestAnimationFrame(tick); };
+    cancelAnimationFrame(this._castRaf); tick();
+    const end = (cls) => { cancelAnimationFrame(this._castRaf); el.className = `on ${cls}`; setTimeout(() => { if (el.classList.contains(cls)) el.className = ''; }, 700); };
+    return { done: () => end('ok'), cancel: () => end('fail') };
   }
 
-  chat(m) { this.chatBox?.add(m); }
+  chat(m) {
+    this.chatBox?.add(m);
+    // ประกาศระดับเซิร์ฟเวอร์ → แถบวิ่งด้านบน (ประกาศ GM มาทาง server:notice แล้ว ไม่ซ้ำ)
+    if (m && m.id == null && m.name) {
+      const K = [['👑', 'boss'], ['🔨', 'enh'], ['✨ ของหายาก', 'rare'], ['🃏', 'rare'], ['🏅', 'enh'], ['🕯️ สุสานใต้ดิน', 'boss'], ['👹', 'boss']];
+      const k = K.find(([p]) => m.name.startsWith(p));
+      if (k && !/ออกจากดันเจี้ยน|หมดเวลา/.test(m.text || '')) ticker(`${m.name.replace(/^\S+\s*/, '')}: ${m.text}`, k[1]);
+    }
+  }
 
   /** ผลลัพธ์จาก Inventory → แจ้งเตือน + รีเฟรช */
   result(r) {
@@ -863,7 +924,7 @@ export class UI {
     const shop = SHOPS[shopId];
     $('#shop-title').textContent = shop.nameTh;
     $('#shop-greet').textContent = `“${shop.greeting}”`;
-    const TAB_TH = { buy: 'ซื้อ', sell: 'ขาย', enhance: `${uiIcon('anvil', '🔨')} ตีบวก`, cook: `${uiIcon('soup', '🍳')} ทำอาหาร`, brew: `${uiIcon('herb', '🌿')} ปรุงยา`, forge: '⚒️ หลอมอุปกรณ์', dye: '🎨 ย้อมสี', cards: '🃏 แลกการ์ด' };
+    const TAB_TH = { buy: 'ซื้อ', sell: 'ขาย', enhance: `${uiIcon('anvil', '🔨')} ตีบวก`, cook: `${uiIcon('soup', '🍳')} ทำอาหาร`, brew: `${uiIcon('herb', '🌿')} ปรุงยา`, forge: '⚒️ หลอมอุปกรณ์', dye: '🎨 ย้อมสี', cards: '🃏 แลกการ์ด', quests: '📜 เควสอาชีพ' };
     const tabs = shop.tabs || ['buy', 'sell'];
     this.shopTab = tabs[0];
     $('#shop-tabs').innerHTML = tabs.map((t, i) => `<button data-tab="${t}" class="${i ? '' : 'active'}">${TAB_TH[t]}</button>`).join('');
@@ -881,6 +942,7 @@ export class UI {
     if (this.shopTab === 'brew') return this.scene.village.renderBrew($('#shop-list'));
     if (this.shopTab === 'forge') return this.scene.village.renderForge($('#shop-list'));
     if (this.shopTab === 'dye') return this.renderDye($('#shop-list'));
+    if (this.shopTab === 'quests') return this.scene.village.renderQuestList($('#shop-list'), this.shopId);
     // เลือกจำนวน: x1 / x5 / x10 / สูงสุด (ใช้ทั้งซื้อและขาย)
     const QTY = [[1, 'x1'], [5, 'x5'], [10, 'x10'], [9999, 'สูงสุด']];
     const q = this.shopQty || 1;

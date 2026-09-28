@@ -16,6 +16,9 @@ export const WORLD = {
 };
 
 export const VIEW = { width: 960, height: 540, zoom: 2 };
+/** ความละเอียดภายในของ canvas (คูณจาก VIEW) → ตัวหนังสือในโลกคมชัด ไม่แตกเป็นพิกเซลตอนขยายเต็มจอ
+ *  จอเล็ก/เครื่องอ่อน ใช้ 1 · จอทั่วไปใช้ 2 (ภาพเท่าเดิม แค่ละเอียดขึ้น) */
+export const RENDER_SCALE = typeof window === 'undefined' ? 1 : ((window.screen?.height || 720) * (window.devicePixelRatio || 1) >= 900 ? 2 : 1);
 
 export const CURRENCY = { nameTh: 'บาท', symbol: '฿' };
 

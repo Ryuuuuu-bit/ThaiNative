@@ -304,7 +304,7 @@ export function setupMobs(io, players, opts = {}) {
     const now = Date.now(), dt = Math.min(0.2, (now - last) / 1000);
     last = now;
     const here = {};
-    for (const p of players.values()) { roomOf(p); (here[p.mapRoom] ||= []).push(p); }
+    for (const p of players.values()) { if (p.world === 'td') continue; roomOf(p); (here[p.mapRoom] ||= []).push(p); }   // ผู้เล่นโลก 8 ทิศ ไม่อยู่ในโลกเดิม (กันผีล่องหนโลกเก่าตีคนยืน AFK)
     for (const [mapId, list] of Object.entries(here)) {
       const ms = byMap[mapId];
       if (!ms) continue;

@@ -13,6 +13,7 @@ export const DEFAULT_SETTINGS = {
   autoHp: 0, autoMp: 0,         // กินยาอัตโนมัติเมื่อต่ำกว่า % (0 = ปิด)
   autoSkill: false,             // Auto: ตีผีในหน้าจอ + ร่ายสกิลในแถบอัตโนมัติ (ปุ่ม A)
   chatBubble: true,             // ฟองคำพูดเหนือหัวผู้เล่น
+  otherSfx: 'full',             // เสียงของผู้เล่นอื่น/ผีตายรอบตัว: full | soft | off (ดังเบาตามระยะเสมอ)
   autoMobs: [],                 // ชนิดผีที่ Auto จะตี (ว่าง = ตีทุกตัว) · เลือกที่ปุ่ม ▾ / Shift+A
 };
 

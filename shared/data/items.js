@@ -98,7 +98,7 @@ const ITEMS_BASE = {
   pret_bone:    { nameTh: 'กระดูกเปรต',       type: 'material', icon: '🦴', sell: 18 },
   saming_fang:  { nameTh: 'เขี้ยวเสือสมิง',     type: 'material', icon: '🦷', sell: 24 },
   dark_mist:    { nameTh: 'หมอกดำผีห่า',      type: 'material', icon: '🌫️', sell: 30 },
-  yak_fang:     { nameTh: 'เขี้ยวพญายักษ์',     type: 'material', icon: '🐗', sell: 120 },
+  yak_fang:     { nameTh: 'เขี้ยวพญายักษ์',     type: 'material', icon: '🐗', sell: 120, desc: 'ใช้ตีบวก +15 ขึ้นไป · ดรอปจากบอสภาค (ปู่โสม อสุรกาย ชาละวัน) บอสแดนต่างแดน และผีในหิมพานต์ บาดาล นรกภูมิ' },
   ha_essence:   { nameTh: 'แก่นวิญญาณผีห่า',    type: 'material', icon: '🔥', sell: 60, desc: 'ดรอปจากผีห่า (ป่าช้าวัดร้าง) · ยายติ๋มใช้ปรุงยาอายุวัฒนะ' },
   // ป่าช้าผีตายโหง
   rice_basket:  { nameTh: 'กระด้งผีกระหัง',     type: 'material', icon: '🧺', sell: 34 },
@@ -244,27 +244,27 @@ export const SHOPS = {
   kru_sword: {
     nameTh: 'ครูเหม สำนักดาบกรุงศรี', job: 'swordman',
     greeting: 'ดาบดีต้องคู่กับใจนิ่ง… เลือกอาวุธและเกราะที่เหมาะกับฝีมือเจ้าเถิด',
-    stock: ['armor_swordman', ...gearShopStock('swordman')], tabs: ['buy', 'sell'],
+    stock: ['armor_swordman', ...gearShopStock('swordman')], tabs: ['quests', 'buy', 'sell'],
   },
   kru_mage: {
     nameTh: 'หลวงตาเผือก หมอธรรมป่าช้า', job: 'mage',
     greeting: 'อาคมจะขลังได้ ต้องมีของดีติดตัว… มาดูเครื่องรางของข้าก่อน',
-    stock: ['armor_mage', ...gearShopStock('mage')], tabs: ['buy', 'sell'],
+    stock: ['armor_mage', ...gearShopStock('mage')], tabs: ['quests', 'buy', 'sell'],
   },
   kru_archer: {
     nameTh: 'พรานแก้ว ค่ายพรานไพร', job: 'archer',
     greeting: 'ตาไว มือนิ่ง ลมไม่แรง… ธนูดี ๆ ต้องแบบนี้เลยจ้ะ',
-    stock: ['armor_archer', ...gearShopStock('archer')], tabs: ['buy', 'sell'],
+    stock: ['armor_archer', ...gearShopStock('archer')], tabs: ['quests', 'buy', 'sell'],
   },
   kru_boxer: {
     nameTh: 'ครูแดง ค่ายมวยกรุงศรี', job: 'boxer',
     greeting: 'ไหว้ครูให้ดี ใจสู้ให้ถึง! อุปกรณ์มวยครบ มาเลือกเอา',
-    stock: ['armor_boxer', ...gearShopStock('boxer')], tabs: ['buy', 'sell'],
+    stock: ['armor_boxer', ...gearShopStock('boxer')], tabs: ['quests', 'buy', 'sell'],
   },
   kru_healer: {
     nameTh: 'หมอพร ศาลาโอสถ', job: 'healer',
     greeting: 'ยาดีต้องรู้จักต้น รู้จักราก รู้จักใจคนป่วย… มาเลือกเครื่องมือหมอยาได้เลยลูก',
-    stock: ['herb_staff', 'armor_healer', ...gearShopStock('healer')], tabs: ['buy', 'sell'],
+    stock: ['herb_staff', 'armor_healer', ...gearShopStock('healer')], tabs: ['quests', 'buy', 'sell'],
   },
   pa_sa: {
     nameTh: 'ป้าสา ครัวริมน้ำ',

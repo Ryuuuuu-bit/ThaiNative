@@ -12,7 +12,7 @@ import { JOBS } from './data/classes.js';
 import { MONSTERS } from './data/monsters.js';
 import { WORLD } from './constants.js';
 import { MAPS, mapAt } from './data/maps.js';
-import { rollFish, RECIPES, BREWS, ENHANCE, QUESTS, QUEST_BY_ID, HERB_RESPAWN_MS, rollChest, dailyBounties } from './data/village.js';
+import { rollFish, RECIPES, BREWS, ENHANCE, QUESTS, QUEST_BY_ID, questGiver, GIVER_TH, HERB_RESPAWN_MS, rollChest, dailyBounties } from './data/village.js';
 import { FORGE } from './data/crafting.js';
 import { NPCS, SHOP_NPC, FISH_SPOT, CAMP, HERB_NODES, nearNpc, nearSpot } from './data/npcs.js';
 import { TITLE_BY_ID, checkTitles } from './data/titles.js';
@@ -69,6 +69,7 @@ export function questEvent(c, type, id, amt = 1) {
   for (const qid of Object.keys(Q.active)) {
     const q = QUEST_BY_ID[qid], g = q?.goal;
     if (!g || Q.active[qid] >= g.n) continue;
+    if (g.job && type === 'kill' && c.appearance?.job !== g.job) continue;             // เควสอาชีพ: นับเฉพาะตอนถืออาวุธสายนั้น
     const match = type === 'kill' ? g.kill && (g.kill === 'any' || g.kill === id || (g.kill === 'grave' && MONSTERS[id]?.zone?.[0] >= WORLD.graveX))
       : type === 'herb' ? g.herb && (g.herb === 'any' || g.herb === id)
       : type === 'fish' ? g.fish && (g.fish === 'any' ? id !== 'junk_boot' : g.fish === id)
@@ -367,10 +368,14 @@ function enhance(c, { slot, guard }, ctx) {
 // ------------------------------------------------------------
 //  เควส / เลือกสาย / ค่าหัว
 // ------------------------------------------------------------
-function qAccept(c, { id }) {
+function qAccept(c, { id }, ctx = {}) {
   const q = QUEST_BY_ID[id], Q = c.quests;
   if (!q || questState(c, q) !== 'open') return NO('รับเควสนี้ไม่ได้');
-  if (Object.keys(Q.active).length >= MAX_ACTIVE_QUESTS) return NO(`รับเควสได้พร้อมกัน ${MAX_ACTIVE_QUESTS} เควส`);
+  const giver = questGiver(q);
+  if (giver !== 'quest' && ctx.x != null && !nearNpc(ctx.x, giver)) return NO(`รับเควสนี้กับ${GIVER_TH[giver]}`);
+  // เควสทั่วไป (ผู้ใหญ่ชัย) กับเควสอาชีพนับโควตาแยกกัน อย่างละ ${MAX_ACTIVE_QUESTS}
+  const same = Object.keys(Q.active).filter((k) => (questGiver(QUEST_BY_ID[k]) === 'quest') === (giver === 'quest')).length;
+  if (same >= MAX_ACTIVE_QUESTS) return NO(`รับ${giver === 'quest' ? 'เควสทั่วไป' : 'เควสอาชีพ'}ได้พร้อมกัน ${MAX_ACTIVE_QUESTS} เควส`);
   Q.active[id] = 0;
   return OK(`รับเควส: ${q.nameTh}`);
 }
@@ -382,7 +387,8 @@ function qDrop(c, { id }) {
 function qClaim(c, { id }, ctx) {
   const q = QUEST_BY_ID[id], Q = c.quests;
   if (!q || questState(c, q) !== 'ready') return NO('เควสยังไม่สำเร็จ');
-  if (ctx.x != null && !nearSpot(ctx.x, 'chai')) return NO('กลับไปรับรางวัลกับผู้ใหญ่ชัยที่หมู่บ้าน');
+  const giver = questGiver(q);
+  if (ctx.x != null && !(giver === 'quest' ? nearSpot(ctx.x, 'chai') : nearNpc(ctx.x, giver))) return NO(`กลับไปส่งเควสกับ${GIVER_TH[giver]}`);
   delete Q.active[id];
   Q.done.push(id);
   c.gold += q.reward.gold;
@@ -568,6 +574,12 @@ function gm(c, { cmd = 'help', a1, a2, rest = '' }, ctx) {
       const text = String(rest || '').slice(0, 200).trim();
       if (!text) return NO('ใช้: /gm say <ข้อความ>');
       return OK('ประกาศถึงทุกคนแล้ว', { gm: true, gmNotice: { kind: 'say', text } });
+    }
+    case 'news': {                                                          // ข่าวด่วนบนกระดานข่าว: /gm news <หัวข้อ> | <รายละเอียด> · /gm news del
+      if (String(a1).toLowerCase() === 'del') return OK('ลบข่าวด่วนล่าสุดแล้ว', { gm: true, gmNotice: { kind: 'newsDel' } });
+      const [title, ...body] = String(rest || '').split('|').map((x) => x.trim()).filter(Boolean);
+      if (!title) return NO('ใช้: /gm news <หัวข้อ> | <รายละเอียด> | <บรรทัดถัดไป>  ·  /gm news del');
+      return OK('ลงข่าวบนกระดานแล้ว', { gm: true, gmNotice: { kind: 'news', title: title.slice(0, 80), body: body.map((b) => b.slice(0, 200)).slice(0, 8) } });
     }
     case 'patch': {                                                         // นับถอยหลังอัปแพตช์: /gm patch [นาที] [ข้อความ] · /gm patch cancel
       if (String(a1).toLowerCase() === 'cancel') return OK('ยกเลิกประกาศอัปแพตช์', { gm: true, gmNotice: { kind: 'cancel' } });

@@ -63,7 +63,7 @@ export function setupTD(io, players, opts = {}) {
   function spawn(m, quiet = false) {
     let x, y, n = 0;
     do { x = m.s.x + rand(-m.s.r, m.s.r); y = m.s.y + rand(-m.s.r, m.s.r); } while (solidAt(x, y) && ++n < 20);
-    Object.assign(m, { x, y, hp: m.d.hp, st: 'wander', target: null, nextThink: 0, wx: null, wy: null, nextAtk: 0, pending: [], dmgBy: new Map(), respawnAt: 0, dir: 0, nextAoe: Date.now() + 4000, aoe: null });
+    Object.assign(m, { x, y, hp: m.d.hp, st: 'wander', target: null, nextThink: 0, wx: null, wy: null, nextAtk: 0, pending: [], dmgBy: new Map(), respawnAt: 0, dir: 0, nextAoe: Date.now() + 4000, aoe: null, stunUntil: 0, poison: null });
     if (m.boss && !quiet) io.emit('chat', { id: null, name: '👑 บอส', text: `${m.d.nameTh} Lv.${m.d.level} ปรากฏตัวที่${M.ZONES[M.zoneAt(m.x, m.y)]?.nameTh || M.nameTh}${M.realm ? ` (${M.nameTh})` : ''}!` });
     return m;
   }
@@ -81,6 +81,17 @@ export function setupTD(io, players, opts = {}) {
     for (const m of mobs) {
       const d = m.d;
       if (m.st === 'dead') { if (now >= m.respawnAt && (!d.nightOnly || nightNow())) spawn(m); continue; }
+      // พิษ (สกิล): ดาเมจต่อเนื่องทุก every ms · คิดจากดาเมจครั้งที่โดน × ratio
+      if (m.poison && now >= m.poison.next) {
+        const P = m.poison, by = players.get(P.by);
+        m.hp -= P.dmg; P.left--; P.next = now + P.every;
+        if (by) m.dmgBy.set(by.id, (m.dmgBy.get(by.id) || 0) + P.dmg);
+        io.to(room).emit('td:dmg', { mid: m.mid, by: P.by, hit: true, dot: true, dmg: P.dmg, hp: Math.max(0, Math.round(m.hp)) });
+        if (P.left <= 0) m.poison = null;
+        if (m.hp <= 0) { if (by && sameMap(by)) kill(m, by); else { m.hp = 1; } continue; }
+      }
+      // ติดมึน (สกิล): ไม่เดิน ไม่ตี · ท่าตีที่ค้างถูกยกเลิก
+      if (now < m.stunUntil) { m.pending = []; continue; }
       if (d.nightOnly && m.st !== 'chase' && !nightNow()) { m.st = 'dead'; m.hp = 0; m.respawnAt = now + 30000; m.pending = []; m.dmgBy.clear(); continue; }   // ผีกลางคืน: สว่างแล้วหายไป
       // บอส: ท่าวงกว้าง (เตือนวงแดงก่อน AOE_WARN_MS แล้วลงดาเมจทุกคนในวง)
       if (m.boss && m.aoe && now >= m.aoe.at) {
@@ -155,6 +166,9 @@ export function setupTD(io, players, opts = {}) {
     if (!r.hit) return io.to(room).emit('td:dmg', { mid: m.mid, by: p.id, hit: false, dmg: 0 });
     m.hp -= r.dmg;
     m.dmgBy.set(p.id, (m.dmgBy.get(p.id) || 0) + r.dmg);
+    // ผลพิเศษของสกิล: มึน (บอสติดครึ่งเวลา) · พิษ (ต่อเนื่อง ticks ครั้ง ครั้งละ ratio × ดาเมจที่โดน)
+    if (spec.effect?.stun && m.hp > 0) m.stunUntil = Math.max(m.stunUntil || 0, now + spec.effect.stun.ms * (m.boss ? 0.5 : 1));
+    if (spec.effect?.poison && m.hp > 0) { const P = spec.effect.poison; m.poison = { by: p.id, dmg: Math.max(1, Math.round(r.dmg * P.ratio)), left: P.ticks, every: P.every, next: now + P.every }; }
     if (m.st !== 'chase') { m.st = 'chase'; m.target = p.id; }
     io.to(room).emit('td:dmg', { mid: m.mid, by: p.id, hit: true, crit: r.crit, dmg: r.dmg, hp: Math.max(0, Math.round(m.hp)) });
     if (m.hp <= 0) kill(m, p);

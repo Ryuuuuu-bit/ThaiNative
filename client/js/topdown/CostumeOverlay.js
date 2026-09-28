@@ -92,6 +92,7 @@ export class CostumeOverlay {
       }
     }
     const dir = spr.dir || 'south', sc = spr.scaleX || 0.667;
+    spr._cosTop = null;                                                  // ขอบบนของของที่สวมบนหัว (ให้ป้ายชื่อหลบ)
     for (const slot of SLOTS) {
       const img = imgs[slot], id = cos[slot], def = ITEMS[id];
       if (!A || !def || (fit0(def, slot).frontOnly && NORTH.has(dir)) || !this.ensure(id)) { img.setVisible(false); continue; }
@@ -107,6 +108,7 @@ export class CostumeOverlay {
       img.setTexture(k, dir).setOrigin(0.5, fit.ay).setScale(w / fr.cutWidth, (w / fr.cutWidth) * (fit.sy || 1)).setPosition(Math.round(x * 2) / 2, Math.round(y * 2) / 2)
         .setDepth(spr.depth + (slot === 'back' ? (NORTH.has(dir) ? 0.03 : -0.03) : slot === 'face' ? 0.04 : 0.045))
         .setAlpha(spr.alpha).setVisible(true);
+      { const t = img.y - img.displayHeight * img.originY - 1; spr._cosTop = Math.min(spr._cosTop ?? Infinity, t); }
     }
   }
 }

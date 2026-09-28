@@ -148,6 +148,7 @@ const BUILD = (process.env.RAILWAY_GIT_COMMIT_SHA || '').slice(0, 7) || `dev-${D
 io.on('connection', (socket) => {
   socket.emit('server:build', { v: BUILD });
   if (patchNotice && patchNotice.at > Date.now() - 120000) socket.emit('server:notice', { kind: 'soon', ...patchNotice });
+  socket.emit('news:live', liveNews);
   // ห่อทุก handler: payload null/undefined → {} และจับ error ไว้ (ไม่ให้ process ตาย)
   const rawOn = socket.on.bind(socket);
   socket.on = (ev, fn) => rawOn(ev, (...args) => {
@@ -423,7 +424,19 @@ setInterval(() => { for (const p of players.values()) persist(p); }, 5000);
 // ประกาศจาก GM: say = ข้อความถึงทุกคน · soon = นับถอยหลังอัปแพตช์ (แจ้งซ้ำ 5/3/1 นาที, 30/10 วิ) · cancel = ยกเลิก
 let patchNotice = null;            // { at, text } ที่กำลังนับอยู่ (คนที่เพิ่งเข้าเกมก็ได้รับ)
 const patchTimers = [];
+/** ข่าวด่วนจาก GM (เก็บในฐานข้อมูล meta 'news') */
+let liveNews = [];
+storeReady.then(async (s) => { try { liveNews = JSON.parse((await s.getMeta?.('news')) || '[]'); } catch { liveNews = []; } });
+const saveNews = () => storeReady.then((s) => s.setMeta?.('news', JSON.stringify(liveNews))).catch(() => {});
 function gmNotice(n, by) {
+  if (n.kind === 'news') {
+    const it = { id: `g${Date.now()}`, date: new Date(Date.now() + 7 * 3600e3).toISOString().slice(0, 10), tag: 'gm', title: n.title, body: n.body || [], by: by?.name };
+    liveNews = [it, ...liveNews].slice(0, 20); saveNews();
+    io.emit('news:add', it);
+    io.emit('server:notice', { kind: 'say', text: `📰 ${n.title}` });
+    return;
+  }
+  if (n.kind === 'newsDel') { const [gone] = liveNews.splice(0, 1); saveNews(); if (gone) io.emit('news:del', gone.id); return; }
   if (n.kind === 'say') {
     io.emit('chat', { id: null, name: '📢 ประกาศ', text: n.text });
     io.emit('server:notice', { kind: 'say', text: n.text });

@@ -381,7 +381,16 @@ export class TdSkills {
 
   // ---------------- Auto Skill (แบบบอทร่ายสกิลตามลำดับ Q→T) ----------------
   /** ระยะที่สกิลนี้ถึงเป้า */
-  reachOf(sk) { if (sk.type === 'party' || sk.type === 'revive') return 60; if (sk.type === 'tether' || sk.type === 'seed' || sk.type === 'bounce') return sk.range; if (sk.type === 'mortar') return 220; return sk.type === 'projectile' || sk.type === 'strike' ? sk.range : sk.type === 'aoe' ? (sk.offset ? 220 : sk.radius + 40) : sk.type === 'dash' ? sk.distance + 30 : 60; }
+  /** ระยะที่ Auto จะเริ่มร่าย (ต้องโดนจริง): ประชิด = ระยะอาวุธสกิล · วงรอบตัว = ศูนย์กลาง(offset) + 70% รัศมี · พุ่ง = ระยะพุ่ง */
+  reachOf(sk) {
+    const T = sk.type;
+    if (T === 'party' || T === 'revive') return 60;
+    if (T === 'tether' || T === 'seed' || T === 'bounce' || T === 'projectile' || T === 'strike') return sk.range;
+    if (T === 'aoe' || T === 'mortar') return (sk.offset || 0) + (sk.radius || 40) * 0.7;
+    if (T === 'dash') return (sk.distance || 60) + 8;
+    if (T === 'melee') return (sk.range || 30) + 6;
+    return 40;
+  }
 
   /** สกิลช่อง key ร่ายได้ทันทีไหม (เงียบ ไม่แจ้งเตือน) → { id, sk } | null */
   ready(key, time) {
@@ -451,7 +460,7 @@ export class TdSkills {
     if (!sk) return;
     const tx = d.tx ?? d.x + d.dir * 80, ty = d.ty ?? d.y, l = Math.hypot(tx - d.x, ty - d.y) || 1;
     const t = { x: tx, y: ty, alive: true, displayHeight: 30 };
-    if (Math.hypot(d.x - this.s.player.x, d.y - this.s.player.y) < 300) this.s.sfx.play(sk.sfx);
+    this.s.sfx?.playAt(sk.sfx, this.s.worldVol?.(d.x, d.y) ?? 0);
     this.play(sk, { x: d.x, y: d.y, ux: (tx - d.x) / l, uy: (ty - d.y) / l, t, caster: spr, local: false });
   }
 
@@ -459,9 +468,18 @@ export class TdSkills {
   //  เล่นสกิล: ภาพ + (ถ้าเป็นของเรา) ดาเมจ
   // ------------------------------------------------------------
   play(sk, o) {
-    const fx = this.fx, s = this.s, tint = TINT[sk.id] || 0xffffff, dmg = o.local;
+    const s = this.s, tint = TINT[sk.id] || 0xffffff, dmg = o.local;
+    // สกิลผู้เล่นอื่น: เอฟเฟกต์เต็มจอ (วาบ/สั่น/มืด) เฉพาะเมื่ออยู่ใกล้และเบาลง · ไกลกว่านั้นไม่กระทบจอเรา (กันรู้สึกเหมือนโดนตีตอนยืน AFK)
+    const near = o.local || dist(o, s.player) < 260, base = this.fx;
+    const fx = o.local ? base : new Proxy(base, { get: (t, k) => {
+      if (k === 'shake') return near ? (ms = 180, i = 0.006) => t.shake(ms * 0.5, i * 0.3) : () => {};
+      if (k === 'flash') return near ? (ms = 120, c = 0xffffff, al = 0.55) => t.flash(ms, c, al * 0.3) : () => {};
+      if (k === 'darken') return () => {};
+      if (k === 'explode') return (x, y, opt = {}) => { t.explode(x, y, { ...opt, shake: false }); if (near && opt.shake !== false) t.shake(90, 0.002); };
+      const v = t[k]; return typeof v === 'function' ? v.bind(t) : v;
+    } });
     const H = (m) => dmg && this.hit(m, o.hitSk || sk, tint);
-    const S = (n) => { if (o.local || dist(o, s.player) < 300) this.snd(n); };
+    const S = (n) => { if (o.local) this.snd(n); else s.sfx?.playAt(n, s.worldVol?.(o.x, o.y) ?? 0); };   // เสียงสกิลคนอื่น: เบาลงตามระยะ
     const at = (ms, f) => s.time.delayedCall(ms, f);
     const cx = o.x, cy = o.y, ang = Math.atan2(o.uy, o.ux);
     if (sk.ultimate) { yantCircle(s, cx, cy, { tint, size: 90, ms: 1100, rise: true }); fx.darken(700); S('skFlash'); }

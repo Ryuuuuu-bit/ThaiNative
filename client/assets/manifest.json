@@ -725,6 +725,25 @@
     "it_cs_back_kinnari": "assets/icons/it_cs_back_kinnari.png",
     "it_cs_back_umbrella": "assets/icons/it_cs_back_umbrella.png",
     "it_cs_back_flag": "assets/icons/it_cs_back_flag.png",
-    "it_cs_back_bat": "assets/icons/it_cs_back_bat.png"
+    "it_cs_back_bat": "assets/icons/it_cs_back_bat.png",
+    "ui_menu_home": "assets/icons/ui_menu_home.png",
+    "ui_menu_news": "assets/icons/ui_menu_news.png",
+    "ui_nt_news": "assets/icons/ui_nt_news.png",
+    "ui_nt_gong": "assets/icons/ui_nt_gong.png",
+    "ui_news_notice": "assets/icons/ui_news_notice.png",
+    "ui_news_event": "assets/icons/ui_news_event.png",
+    "ui_news_patch": "assets/icons/ui_news_patch.png",
+    "ui_nt_warn": "assets/icons/ui_nt_warn.png",
+    "ui_nt_loot": "assets/icons/ui_nt_loot.png",
+    "ui_nt_level": "assets/icons/ui_nt_level.png",
+    "ui_nt_quest": "assets/icons/ui_nt_quest.png",
+    "ui_nt_boss": "assets/icons/ui_nt_boss.png",
+    "ui_nt_buff": "assets/icons/ui_nt_buff.png",
+    "ui_nt_ok": "assets/icons/ui_nt_ok.png",
+    "ui_news_fix": "assets/icons/ui_news_fix.png",
+    "ui_nt_party": "assets/icons/ui_nt_party.png",
+    "ui_nt_trade": "assets/icons/ui_nt_trade.png",
+    "ui_nt_death": "assets/icons/ui_nt_death.png",
+    "ui_nt_exp": "assets/icons/ui_nt_exp.png"
   }
 }

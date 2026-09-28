@@ -114,7 +114,7 @@ export function setupSocial(io, players, H = {}) {
     alive: false, hp: 0, maxHp: RB.maxHp, x: RB.spawnX, y: WORLD.groundY, dir: -1, anim: 'walk',
     respawnAt: Date.now() + Number(process.env.RAID_SPAWN_MS ?? 15000), nextAttackAt: 0, attacking: null, contrib: new Map(), lastTick: Date.now(), waves: [],
   };
-  const inArena = (p) => p.x >= RB.arena[0] - 40 && p.x <= RB.arena[1] && !p.dead && p.hp > 0;
+  const inArena = (p) => p.world !== 'td' && p.x >= RB.arena[0] - 40 && p.x <= RB.arena[1] && !p.dead && p.hp > 0;
 
   function spawnBoss() {
     const n = [...players.values()].filter(inArena).length;

@@ -6,7 +6,7 @@
 import { ITEMS } from '/shared/data/items.js';
 import { MONSTERS } from '/shared/data/monsters.js';
 import { WORLD } from '/shared/constants.js';
-import { ENHANCE, QUESTS, QUEST_BY_ID } from '/shared/data/village.js';
+import { ENHANCE, QUESTS, QUEST_BY_ID, questGiver, GIVER_TH } from '/shared/data/village.js';
 import { count, tradeLock, questState as qState } from './Inventory.js';
 import { craftList, canCraft, MAX_ACTIVE_QUESTS } from '/shared/economy.js';
 import { FISH_SPOT } from '/shared/data/npcs.js';
@@ -292,7 +292,7 @@ export class Village {
     if (g.herb) return `เก็บ${g.herb === 'any' ? 'สมุนไพรอะไรก็ได้' : ITEMS[g.herb]?.nameTh} ${g.n} ครั้ง`;
     if (g.heal) return `รักษาเพื่อนร่วมปาร์ตี้รวม ${g.n.toLocaleString()} HP`;
     if (g.revive) return `ชุบชีวิตเพื่อน ${g.n} ครั้ง`;
-    if (g.kill) return `ปราบ ${g.kill === 'any' ? 'ผีตัวไหนก็ได้' : g.kill === 'grave' ? 'ผีในป่าช้า' : MONSTERS[g.kill]?.nameTh} ${g.n} ตัว`;
+    if (g.kill) return `ปราบ ${g.kill === 'any' ? 'ผีตัวไหนก็ได้' : g.kill === 'grave' ? 'ผีในป่าช้า' : MONSTERS[g.kill]?.nameTh} ${g.n} ตัว${g.job ? ` (ถือ${{ swordman: 'ดาบ', mage: 'ไม้เท้าอาคม', archer: 'ธนู', boxer: 'มือเปล่า/สนับมือ', healer: 'ไม้เท้าสมุนไพร' }[g.job]})` : ''}`;
     return `ตก${g.fish === 'any' ? 'ปลาอะไรก็ได้' : ITEMS[g.fish]?.nameTh} ${g.n} ตัว`;
   }
 
@@ -314,19 +314,29 @@ export class Village {
 
   renderQuests() {
     this.renderPathBox();
-    const Q = this.char.quests, order = { ready: 0, active: 1, open: 2, locked: 3, done: 4 };
-    const list = QUESTS.map((q) => ({ q, st: this.questState(q) })).sort((a, b) => order[a.st] - order[b.st]);
-    const nActive = Object.keys(Q.active).length;
-    $('#quest-list').innerHTML = list.map(({ q, st }) => {
+    this.renderQuestList($('#quest-list'), 'quest');
+  }
+
+  /** รายการเควสของผู้ให้เควสคนหนึ่ง · 'quest' = ผู้ใหญ่ชัย (สมุดเควส J แสดงเควสอาชีพที่รับไว้ด้วย) · kru_* = แท็บเควสในร้านครู */
+  renderQuestList(el, giver) {
+    const c = this.char, Q = c.quests, order = { ready: 0, active: 1, open: 2, locked: 3, done: 4 };
+    const mine = (q) => questGiver(q) === giver || (giver === 'quest' && q.id in Q.active);
+    const list = QUESTS.filter(mine).map((q) => ({ q, st: this.questState(q) })).sort((a, b) => order[a.st] - order[b.st]);
+    const isJob = giver !== 'quest';
+    const nActive = Object.keys(Q.active).filter((k) => (questGiver(QUEST_BY_ID[k]) === 'quest') !== isJob).length;
+    const JOB_TH = { swordman: 'ดาบ', mage: 'ไม้เท้าอาคม', archer: 'ธนู', boxer: 'มือเปล่า/สนับมือ', healer: 'ไม้เท้าสมุนไพร' };
+    const head = isJob ? `<p class="hint">📜 เควสอาชีพของ${GIVER_TH[giver]} · นับเฉพาะตอนถือ${JOB_TH[QUESTS.find((q) => questGiver(q) === giver)?.job] || 'อาวุธสายนี้'} · รับได้พร้อมกัน ${MAX_ACTIVE} เควส (ตอนนี้ ${nActive})</p>` : '';
+    el.innerHTML = head + list.map(({ q, st }) => {
       const prog = q.id in Q.active ? `${Math.min(Q.active[q.id], q.goal.n)}/${q.goal.n}` : '';
       const btn = st === 'ready' ? `<button data-q="claim:${q.id}" class="gold">รับรางวัล</button>`
         : st === 'active' ? `<button data-q="drop:${q.id}" class="ghost">ยกเลิก</button>`
         : st === 'open' ? `<button data-q="accept:${q.id}" ${nActive >= MAX_ACTIVE ? 'disabled' : ''}>รับเควส</button>`
         : st === 'locked' ? `<span class="meta">Lv.${q.lv}</span>` : '<span class="meta">✔ สำเร็จ</span>';
       return `<div class="quest ${st}"><div><b>${esc(q.nameTh)}</b> <span class="meta">Lv.${q.lv}+</span>
-        <p>${esc(q.text)}</p><small>🎯 ${esc(this.goalText(q))} ${prog ? `<b>${prog}</b>` : ''}</small><small>🎁 ${esc(this.rewardText(q))}</small></div>${btn}</div>`;
+        <p>${esc(q.text)}</p><small>🎯 ${esc(this.goalText(q))} ${prog ? `<b>${prog}</b>` : ''}</small><small>🎁 ${esc(this.rewardText(q))}</small>${questGiver(q) !== 'quest' && giver === 'quest' ? `<small>👤 ส่งเควสกับ${GIVER_TH[questGiver(q)]}</small>` : ''}</div>${btn}</div>`;
     }).join('');
-    $('#quest-note').textContent = `รับเควสได้พร้อมกัน ${MAX_ACTIVE} เควส (ตอนนี้ ${nActive})`;
+    if (!isJob) $('#quest-note').textContent = `เควสทั่วไปรับได้พร้อมกัน ${MAX_ACTIVE} เควส (ตอนนี้ ${nActive}) · เควสอาชีพรับกับครูประจำอาชีพ`;
+    el.onclick = isJob ? (e) => { const b = e.target.closest('button[data-q]'); if (!b) return; const [act, id] = b.dataset.q.split(':'); if (act === 'accept') this.accept(id); else if (act === 'claim') this.claim(id); else if (act === 'drop') this.drop(id); } : el.onclick;
   }
 
   accept(id) {
@@ -341,12 +351,13 @@ export class Village {
   drop(id) { this.econ.act('qDrop', { id }).then(() => this.afterChange()); }
 
   /** ยืนอยู่ใกล้ผู้ใหญ่ชัย (หมู่บ้าน x520) */
+  nearGiver(q) { const g = questGiver(q); return g === 'quest' ? this.nearChai() : !!this.scene.nearNpc?.(g); }
   nearChai() { if (this.scene.td) return this.scene.nearNpc('quest'); return this.scene.map?.id === 'village' && Math.abs(this.scene.player.x - 520) < 140; }
 
   claim(id) {
     const q = QUEST_BY_ID[id];
     if (!q) return;
-    if (!this.nearChai()) return this.ui.toast('กลับไปรับรางวัลกับผู้ใหญ่ชัยที่ลานน้ำพุกลางกรุงศรีฯ', 'warn');
+    if (!this.nearGiver(q)) return this.ui.toast(questGiver(q) === 'quest' ? 'กลับไปรับรางวัลกับผู้ใหญ่ชัยที่ลานน้ำพุกลางกรุงศรีฯ' : `กลับไปส่งเควสกับ${GIVER_TH[questGiver(q)]}`, 'warn');
     if (this.claiming) return;                                         // กันกดซ้ำระหว่างรอ server
     this.claiming = id;
     document.querySelectorAll(`[data-q="claim:${id}"]`).forEach((b) => { b.disabled = true; b.textContent = 'กำลังส่ง…'; });
@@ -364,6 +375,7 @@ export class Village {
   afterChange() {
     this.renderTracker();
     if (!$('#quest-panel').classList.contains('hidden')) this.renderQuests();
+    if (this.ui.shopTab === 'quests' && !$('#shop-panel').classList.contains('hidden')) this.renderQuestList($('#shop-list'), this.ui.shopId);
     this.ui.result({ ok: true });
   }
 

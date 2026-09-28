@@ -148,6 +148,16 @@ class PgStore {
   async deleteCharacter(accountId, slot) {
     await this.pool.query('DELETE FROM characters WHERE account_id = $1 AND slot = $2', [accountId, slotOf(slot)]);
   }
+  /** ค่าเก็บถาวรทั่วไป (เช่น ข่าวจาก GM) */
+  async getMeta(key) {
+    await this.pool.query('CREATE TABLE IF NOT EXISTS meta (key TEXT PRIMARY KEY, value TEXT)');
+    const { rows } = await this.pool.query('SELECT value FROM meta WHERE key = $1', [key]);
+    return rows[0]?.value ?? null;
+  }
+  async setMeta(key, value) {
+    await this.pool.query('CREATE TABLE IF NOT EXISTS meta (key TEXT PRIMARY KEY, value TEXT)');
+    await this.pool.query('INSERT INTO meta (key, value) VALUES ($1, $2) ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value', [key, value]);
+  }
   /** ตารางอันดับ: เลเวล/EXP + ตีบวกสูงสุด (ข้อมูลย่อ) */
   async topCharacters(limit = 300) {
     const { rows } = await this.pool.query(
@@ -177,6 +187,8 @@ class MemoryStore {
     return a;
   }
   async touch() {}
+  async getMeta(k) { return (this.meta ||= new Map()).get(k) ?? null; }
+  async setMeta(k, v) { (this.meta ||= new Map()).set(k, v); }
   async createSession(accountId) { const t = newToken(); this.sessions.set(t, accountId); return t; }
   async getSession(token) { const id = this.sessions.get(token); return id ? this.accounts.get(id) : null; }
   async deleteSession(token) { this.sessions.delete(token); }

@@ -290,4 +290,10 @@ Object.assign(MONSTERS, {
   yommathut: realmMob(94, { nameTh: 'ยมทูตเงา', nameEn: 'Shadow Yamaduta', elite: true, desc: 'ทูตแห่งพญายม มาในเงามืด ขว้างบ่วงบาศคล้องวิญญาณจากระยะไกล', d8: 'tai_hong', scale: 1.25, tint: 0x6c7a89, behavior: 'ranged', projectile: 'film', attackRange: 160, attackCooldown: 1400, hpK: 1.0, atkK: 1.1, drops: [{ item: 'ngiw_thorn', chance: 0.4 }, { item: 'flask_hp10', chance: 0.004 }] }),
   phaya_yom: realmMob(99, { nameTh: 'พญายมราช', nameEn: 'Phaya Yom', boss: true, desc: 'เจ้าแห่งยมโลก ถือบัญชีบุญบาปของทุกดวงวิญญาณ ตัดสินด้วยคทาเพลิง (บอสนรกภูมิ)', d8: 'pret_asura', tint: 0x9b59b6, scale: 1.85, aoe: { cd: 5500, r: 130, mult: 1.6, nameTh: 'คำพิพากษายมโลก' }, drops: [{ item: 'yama_seal', chance: 1 }, { item: 'cs_head_emperor', chance: 0.1 }, { item: 'cs_face_skull', chance: 0.08 }, { item: 'flask_hp10', chance: 0.3 }, { item: 'flask_mp10', chance: 0.25 }] }),
 });
+// เขี้ยวพญายักษ์ (หินตีบวก +16 ขึ้นไป) เพิ่มจุดดรอปในแมพต่างแดน: ผีทั่วไปโอกาสต่ำตามเลเวล · ผีหัวหน้า (elite) สูงขึ้น · บอสแดนดรอปเยอะ
+for (const [id, m] of Object.entries(MONSTERS)) {
+  if (!m.realm) continue;
+  const chance = m.boss ? { kumphakan: 0.6, anantanak: 0.8, phaya_yom: 1 }[id] ?? 0.6 : m.elite ? 0.04 : m.level >= 75 ? 0.015 : m.level >= 50 ? 0.01 : 0.005;
+  m.drops.push({ item: 'yak_fang', chance });
+}
 export const REALM_MOB_IDS = Object.keys(MONSTERS).filter((id) => MONSTERS[id].realm);
