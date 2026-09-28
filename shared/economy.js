@@ -5,6 +5,7 @@
 //  ▸ ออฟไลน์: client รันเองในเครื่อง
 //  ทุก action คืน { ok, msg, ...ข้อมูลสำหรับเอฟเฟกต์ }
 // ============================================================
+import { PASSIVES_ON } from './data/passives.js';
 import { ITEMS, SHOPS, sellPrice } from './data/items.js';
 import { OFFERINGS, SIAMSI, todayKey, endOfToday } from './data/blessings.js';
 import { JOBS } from './data/classes.js';
@@ -384,6 +385,7 @@ function passive(c, { id }) {
 /** ล้างต้นไม้พรสวรรค์: ต่ำกว่า Lv.10 ฟรี · จากนั้นเสียเงิน 60 × เลเวล */
 export const passiveResetCost = (c) => (c.level < 10 ? 0 : c.level * 60);
 function passiveReset(c) {
+  if (!PASSIVES_ON) return NO('ต้นไม้พรสวรรค์ปิดใช้งานชั่วคราว');
   if ((c.passives?.length || 1) <= 1) return NO('ยังไม่ได้ลงแต้มพรสวรรค์');
   const cost = passiveResetCost(c);
   if (c.gold < cost) return NO(`ต้องใช้เงิน ฿${cost}`);

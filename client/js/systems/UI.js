@@ -13,7 +13,7 @@ import { DYE_PRICE } from '/shared/economy.js';
 import { OUTFITS, HAIRSTYLES } from '/shared/data/appearance.js';
 import { SKILLS, SKILL_SLOTS, SKILL_BY_ID, MAX_SKILL_LV, skillStats, canLearn, skillCap, isItemSlot, slotItemId, skillUsable, skillWeaponTh, masteryOf, skillMastery, MASTERY_MAX as SK_MMAX } from '/shared/data/skills.js';
 import { hotbarItemOk, passiveFree, classTitle } from '/shared/charmodel.js';
-import { PASSIVES, BRANCHES, KEYSTONE, canAllocate, branchPoints, bonusText, totalPassivePoints } from '/shared/data/passives.js';
+import { PASSIVES, BRANCHES, KEYSTONE, canAllocate, branchPoints, bonusText, totalPassivePoints, PASSIVES_ON } from '/shared/data/passives.js';
 import { LIFE, LIFE_IDS, lifeLevel, masteryLevel, MASTERY_MAX } from '/shared/data/life.js';
 import { passiveResetCost } from '/shared/economy.js';
 import { MONSTERS } from '/shared/data/monsters.js';
@@ -413,7 +413,11 @@ export class UI {
   // ============================================================
   renderSkillTree() {
     const c = this.char;
-    this.skMode ||= 'passive';
+    this.skMode ||= PASSIVES_ON ? 'passive' : 'active';
+    if (!PASSIVES_ON && this.skMode === 'passive') this.skMode = 'active';
+    document.querySelector('#sk-modes [data-mode=passive]')?.classList.toggle('hidden', !PASSIVES_ON);
+    $('#sk-pp-lbl')?.classList.toggle('hidden', !PASSIVES_ON);
+    if (!PASSIVES_ON && this.skTab === 'hybrid') this.skTab = null;
     $('#sk-job').textContent = classTitle(c);
     $('#sk-sp').textContent = c.sp;
     $('#sk-pp').textContent = passiveFree(c);
@@ -516,12 +520,12 @@ export class UI {
     const bp = branchPoints(c.passives || []);
     let tabs = $('#sk-tabs');
     const HY = job === 'hybrid';
-    tabs.innerHTML = [...JOB_IDS, 'hybrid'].map((j) => {
+    tabs.innerHTML = [...JOB_IDS, ...(PASSIVES_ON ? ['hybrid'] : [])].map((j) => {
       const learned = SKILLS[j].reduce((a, sk) => a + (c.skills[sk.id] || 0), 0);
       const label = j === 'hybrid' ? '⚡ เคล็ดวิชาผสม' : `${JOBS[j].icon} ${JOBS[j].weaponTh}`;
       return `<button data-sktab="${j}" class="${j === job ? 'active' : ''} ${c.appearance.job === j ? 'main' : ''}">${label}${learned ? ` <small>${learned}</small>` : ''}</button>`;
     }).join('') + (HY ? `<span class="sk-note">เคล็ดวิชาผสม: ลงจุดผสมระหว่างสองกิ่ง + ลงทั้งสองกิ่งอย่างละ 3 แต้ม · ใช้ได้เมื่อถืออาวุธของกิ่งใดกิ่งหนึ่ง · สกิลทุกท่าชำนาญขึ้นเองเมื่อใช้ (สูงสุดขั้น ${SK_MMAX})</span>`
-      : `<span class="sk-note">เพดานเลเวลสกิล = 2 + (แต้ม${BRANCHES[job].nameTh} ${bp[job]} ÷ 2) · ★ ต้องมีคีย์สโตน · ใช้ได้เมื่อถือ${JOBS[job].weaponTh}${c.appearance.job === job ? ' ✔' : ''} · ยิ่งใช้ยิ่งชำนาญ (ขั้นละ +2% แรง −1% คูลดาวน์)</span>`);
+      : `<span class="sk-note">${PASSIVES_ON ? `เพดานเลเวลสกิล = 2 + (แต้ม${BRANCHES[job].nameTh} ${bp[job]} ÷ 2) · ★ ต้องมีคีย์สโตน · ` : 'อัปสกิลได้ถึง Lv.5 (ต้องถึงเลเวลตัวละครที่กำหนด) · '}ใช้ได้เมื่อถือ${JOBS[job].weaponTh}${c.appearance.job === job ? ' ✔' : ''} · ยิ่งใช้ยิ่งชำนาญ (ขั้นละ +2% แรง −1% คูลดาวน์)</span>`);
     tabs.querySelectorAll('[data-sktab]').forEach((b) => (b.onclick = () => { this.skTab = b.dataset.sktab; this.scene.sfx.play('click'); this.renderSkillTree(); }));
     $('#sk-tree').innerHTML = SKILLS[job].map((base) => {
       const lv = c.skills[base.id] || 0;
@@ -747,7 +751,7 @@ export class UI {
       const up = after[key] !== d[key];
       return `<div><span>${label}</span><b>${f(d[key])}${up ? ` <em class="up">→ ${f(after[key])}</em>` : ''}</b></div>`;
     }).join('')
-      + `<div class="path-line"><span>อาชีพ (พรสวรรค์ + อาวุธ)</span><b>${classTitle(c)} · แต้มพรสวรรค์เหลือ ${passiveFree(c)} (K)</b></div>`
+      + `<div class="path-line"><span>อาชีพ${PASSIVES_ON ? ' (พรสวรรค์ + อาวุธ)' : ' (ความชำนาญอาวุธ)'}</span><b>${classTitle(c)}${PASSIVES_ON ? ` · แต้มพรสวรรค์เหลือ ${passiveFree(c)} (K)` : ''}</b></div>`
       + `<div class="path-line"><span>แนวต่อสู้ (ตามอาวุธ)</span><b>${JOBS[c.appearance.job].icon} ${JOBS[c.appearance.job].nameTh}</b></div>`;
   }
 

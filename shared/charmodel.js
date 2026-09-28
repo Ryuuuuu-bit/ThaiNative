@@ -12,7 +12,7 @@ import { sanitizeAppearance } from './data/appearance.js';
 import { expToNext, POINTS_PER_LEVEL, STAT_KEYS, MAX_LEVEL } from './stats.js';
 import { getDerived } from './character.js';
 import { SKILL_SLOTS, OLD_SKILL_SLOTS, SP_PER_LEVEL, START_SP, SKILL_BY_ID, canLearn, isItemSlot, slotItemId, skillCap, skillUsable } from './data/skills.js';
-import { PASSIVES, KEYSTONE, canAllocate, branchPoints, totalPassivePoints } from './data/passives.js';
+import { PASSIVES, KEYSTONE, canAllocate, branchPoints, totalPassivePoints, PASSIVES_ON } from './data/passives.js';
 import { LIFE, LIFE_IDS, lifeLevel, masteryLevel } from './data/life.js';
 import { fixCards } from './data/cards.js';
 import { EQUIP_SLOTS, FLASK_SLOTS, SLOT_TYPE, emptyEquipment } from './data/slots.js';
@@ -96,23 +96,23 @@ export const pathName = (c) => (c.path ? JOBS[c.path].nameTh : VILLAGER.nameTh);
 //  ต้นไม้พรสวรรค์ / อาชีพจากการใช้อาวุธ / ทักษะชีวิต
 // ------------------------------------------------------------
 /** แต้มพรสวรรค์ที่ยังไม่ได้ลง */
-export const passiveFree = (c) => Math.max(0, totalPassivePoints(c.level) - ((c.passives?.length || 1) - 1));
+export const passiveFree = (c) => !PASSIVES_ON ? 0 : Math.max(0, totalPassivePoints(c.level) - ((c.passives?.length || 1) - 1));
 
 /** อาชีพ (สาย) = กิ่งพรสวรรค์ที่ลงมากสุด × 3 + ความชำนาญอาวุธ · ต้องถึงเกณฑ์ก่อนถึงได้ฉายา ไม่งั้นเป็นชาวบ้าน */
 export function recomputePath(c) {
   const bp = branchPoints(c.passives || []);
   let best = null, score = 0;
   for (const j of Object.keys(JOBS)) {
-    const s = bp[j] * 3 + masteryLevel(c.wm?.[j] || 0).lv;
+    const s = (PASSIVES_ON ? bp[j] * 3 : 0) + masteryLevel(c.wm?.[j] || 0).lv;
     if (s > score) { score = s; best = j; }
   }
-  c.path = score >= 9 ? best : null;
+  c.path = score >= (PASSIVES_ON ? 9 : 3) ? best : null;
   return c.path;
 }
 /** ฉายาเต็ม: มีคีย์สโตนของสาย = ฉายาประจำสาย */
 export function classTitle(c) {
   if (!c.path) return VILLAGER.nameTh;
-  return c.passives?.includes(KEYSTONE[c.path]) ? JOBS[c.path].pathTitle : JOBS[c.path].nameTh;
+  return PASSIVES_ON && c.passives?.includes(KEYSTONE[c.path]) ? JOBS[c.path].pathTitle : JOBS[c.path].nameTh;
 }
 
 /** สกิลที่เลเวลเกินเพดานใหม่ (หลังล้าง/ย้ายพรสวรรค์) → คืน SP */
@@ -129,6 +129,7 @@ export function clampSkills(c) {
 }
 
 export function allocPassive(c, id) {
+  if (!PASSIVES_ON) return { ok: false, msg: 'ต้นไม้พรสวรรค์ปิดใช้งานชั่วคราว' };
   c.passives ||= ['root'];
   if (!PASSIVES[id]) return { ok: false, msg: 'ไม่มีจุดนี้' };
   if (c.passives.includes(id)) return { ok: false, msg: 'ลงจุดนี้แล้ว' };

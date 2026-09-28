@@ -23,7 +23,7 @@
 //   poison { ticks, every, ratio } ดาเมจต่อเนื่อง ratio × ดาเมจครั้งแรก ต่อ tick
 // ============================================================
 import { SUB_CAP } from './classes.js';
-import { PASSIVES, KEYSTONE, BRANCHES, branchPoints } from './passives.js';
+import { PASSIVES, KEYSTONE, BRANCHES, branchPoints, PASSIVES_ON } from './passives.js';
 
 // Hotbar 10 ช่อง (ปุ่มตัวเลขแถวบน 1–0) · ใส่ได้ทั้งสกิล (id สกิล) และไอเทม ('it:<id ไอเทม>')
 export const SKILL_SLOTS = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '0'];
@@ -206,6 +206,7 @@ export function reqCharLevel(skill, nextLv) {
 /** เลเวลสกิลสูงสุดที่อัปได้ = 2 + (แต้มพรสวรรค์ในกิ่งอาวุธนั้น ÷ 2) สูงสุด 5 · ท่าไม้ตาย ★ ต้องมีคีย์สโตนของกิ่ง */
 export function skillCap(char, skill) {
   const owned = char.passives || [];
+  if (!PASSIVES_ON) return skill.jobs ? 0 : MAX_SKILL_LV;          // ปิดพรสวรรค์: สกิลอาวุธอัปได้เต็ม (ติดแค่เลเวลตัวละคร) · สกิลผสมปิด
   if (skill.jobs) {                                              // เคล็ดวิชาผสม: ต้องมีจุดผสม + ลงสองกิ่งอย่างละ 3 แต้มขึ้นไป
     const bp = branchPoints(owned), lo = Math.min(...skill.jobs.map((j) => bp[j] || 0));
     return owned.includes(skill.node) && lo >= 3 ? Math.min(MAX_SKILL_LV, SUB_CAP + Math.floor((lo - 3) / 2) + 1) : 0;
@@ -221,6 +222,7 @@ export function canLearn(char, skillId) {
   const cur = char.skills?.[skillId] || 0;
   const cap = skillCap(char, s);
   if (cur >= MAX_SKILL_LV) return { ok: false, reason: 'เลเวลสูงสุดแล้ว' };
+  if (cap === 0 && s.jobs && !PASSIVES_ON) return { ok: false, reason: 'ปิดใช้งานชั่วคราว' };
   if (cap === 0 && s.jobs) return { ok: false, reason: `ต้องลงจุดผสม “${PASSIVES[s.node]?.nameTh}” + ${s.jobs.map((j) => BRANCHES[j].nameTh).join(' และ ')} อย่างละ 3 แต้ม` };
   if (cap === 0) return { ok: false, reason: `★ ต้องมีคีย์สโตน “${PASSIVES[KEYSTONE[s.job]].nameTh}”` };
   if (cur >= cap && s.jobs) return { ok: false, reason: `ลงแต้มทั้งสองกิ่งเพิ่มเพื่อปลดเลเวลถัดไป` };

@@ -123,8 +123,12 @@ export function branchPoints(owned) {
 }
 
 /** รวมโบนัสจากต้นไม้ */
+/** ปิดต้นไม้พรสวรรค์ชั่วคราว (เก็บข้อมูลผู้เล่นไว้ เปิดกลับได้ทันทีด้วยการตั้งเป็น true) */
+export const PASSIVES_ON = false;
+
 export function passiveBonus(owned) {
   const bonus = {};
+  if (!PASSIVES_ON) return bonus;
   for (const id of owned || []) for (const [k, v] of Object.entries(PASSIVES[id]?.bonus || {})) bonus[k] = (bonus[k] || 0) + v;
   return bonus;
 }
