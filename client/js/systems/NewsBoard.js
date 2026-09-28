@@ -53,6 +53,7 @@ export class NewsBoard {
       return `<article class="news-item${isNew ? ' new' : ''}" style="--nc:${T.color}">
         <div class="nh"><span class="nt-ic">${uiIcon(T.icon) || '📰'}</span><span class="nt-tag">${esc(T.th)}</span><b>${esc(n.title)}</b>${isNew ? '<i class="nt-new">ใหม่</i>' : ''}<small>${esc(n.date || '')}</small></div>
         ${(n.body || []).length ? `<ul>${n.body.map((b) => `<li>${esc(b)}</li>`).join('')}</ul>` : ''}
+        ${n.link && /^https:\/\//.test(n.link.url || '') ? `<a class="n-link" href="${esc(n.link.url)}" target="_blank" rel="noopener noreferrer">${esc(n.link.text || n.link.url)}</a>` : ''}
       </article>`;
     }).join('') : '<p class="empty">ยังไม่มีข่าวในหมวดนี้</p>';
     document.querySelectorAll('#news-tabs [data-ntab]').forEach((b) => (b.onclick = () => { this.tab = b.dataset.ntab; this.render(); }));

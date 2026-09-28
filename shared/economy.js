@@ -20,7 +20,7 @@ import { getDerived, EQUIP_SLOTS, SLOT_TYPE } from './character.js';
 import { OUTFITS, HAIRSTYLES } from './data/appearance.js';
 import { STAT_KEYS, expToNext, MAX_LEVEL } from './stats.js';
 import { SKILL_BY_ID } from './data/skills.js';
-import { gainExp, resetStats, resetSkills, syncAppearance, learnSkill, assignHotbar, allocateStat, allocPassive, resetPassives, addLifeXp, lifeLv, addMastery, recomputePath } from './charmodel.js';
+import { gainExp, resetStats, resetSkills, resetWeaponSkills, syncAppearance, learnSkill, assignHotbar, allocateStat, allocPassive, resetPassives, addLifeXp, lifeLv, addMastery, recomputePath } from './charmodel.js';
 import { HERB_SPOTS } from './td/ayutthaya.js';
 import { CARDS, CARD_BY_ID, SLOT_CARD, CARD_SLOT_TH, socketCount, cardRemoveCost } from './data/cards.js';
 import { WEAR_TYPES, FLASK_SLOTS, ENH_SLOTS, SLOT_TH } from './data/slots.js';
@@ -194,6 +194,15 @@ function use(c, { id }) {
     resetPassives(c);
     clampHp(c);
     return OK('ล้างต้นไม้พรสวรรค์แล้ว — กด K เพื่อลงแต้มใหม่', { jobChanged: true });
+  }
+  if (it.type === 'reskill') {                                      // คัมภีร์ล้างสกิลอาวุธ: เฉพาะแนวอาวุธที่ถืออยู่
+    const job = c.appearance?.job, J = JOBS[job];
+    if (!J || job === 'villager') return NO('ต้องถืออาวุธก่อน (ล้างสกิลของอาวุธที่ถืออยู่)');
+    const has = Object.keys(c.skills || {}).some((sid) => { const b = SKILL_BY_ID[sid]; return b && (b.job === job || (b.jobs || []).includes(job)); });
+    if (!has) return NO(`ยังไม่ได้ลงสกิลแนว${J.nameTh || job}`);
+    removeItem(c, id);
+    const back = resetWeaponSkills(c, job);
+    return OK(`ล้างสกิลแนว${J.nameTh || job}แล้ว ได้ SP คืน ${back} (กด K เพื่อลงใหม่)`);
   }
   if (it.type === 'reset') {
     removeItem(c, id);

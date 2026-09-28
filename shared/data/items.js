@@ -81,12 +81,8 @@ const ITEMS_BASE = {
 
   // ---------- ล้างแต้ม / เปลี่ยนสายหลัก ----------
   rename_ticket: { nameTh: 'ใบเปลี่ยนชื่อ', type: 'rename', icon: '📝', price: 5000, desc: 'เปลี่ยนชื่อตัวละคร (ชื่อใหม่ต้องไม่ซ้ำใคร · ชื่อเดิมถูกกันไว้ให้ 7 วัน)' },
+  reskill_weapon: { nameTh: 'คัมภีร์ล้างสกิลอาวุธ', type: 'reskill', icon: '📘', price: 200, desc: 'คืนแต้มสกิล (SP) ของอาวุธที่ถืออยู่ให้ลงใหม่ · สกิลอาวุธอื่นไม่หาย · ความชำนาญสกิลยังอยู่' },
   reset_water:   { nameTh: 'น้ำมนต์ล้างแต้ม', type: 'reset', icon: '💧', price: 300, desc: 'คืนแต้มสถานะและแต้มสกิลทั้งหมดให้ลงใหม่' },
-  skin_swordman: { nameTh: 'คัมภีร์ล้างต้นไม้พรสวรรค์', desc: 'ใช้แล้วคืนแต้มพรสวรรค์ทั้งหมด (ฟรี ไม่เสียเงิน)',  type: 'skin', icon: '📜', price: 800, job: 'swordman' },
-  skin_mage: { nameTh: 'คัมภีร์ล้างต้นไม้พรสวรรค์', desc: 'ใช้แล้วคืนแต้มพรสวรรค์ทั้งหมด (ฟรี ไม่เสียเงิน)', type: 'skin', icon: '📜', price: 800, job: 'mage' },
-  skin_archer: { nameTh: 'คัมภีร์ล้างต้นไม้พรสวรรค์', desc: 'ใช้แล้วคืนแต้มพรสวรรค์ทั้งหมด (ฟรี ไม่เสียเงิน)',  type: 'skin', icon: '📜', price: 800, job: 'archer' },
-  skin_healer: { nameTh: 'คัมภีร์ล้างต้นไม้พรสวรรค์', desc: 'ใช้แล้วคืนแต้มพรสวรรค์ทั้งหมด (ฟรี ไม่เสียเงิน)', type: 'skin', icon: '📜', price: 800, job: 'healer' },
-  skin_boxer: { nameTh: 'คัมภีร์ล้างต้นไม้พรสวรรค์', desc: 'ใช้แล้วคืนแต้มพรสวรรค์ทั้งหมด (ฟรี ไม่เสียเงิน)', type: 'skin', icon: '📜', price: 800, job: 'boxer' },
 
   // ---------- ของดรอปจากผี (ขายได้อย่างเดียว) ----------
   glass_shard:  { nameTh: 'ฟางหุ่นไล่กาต้องมนตร์', type: 'material', icon: '🌾', sell: 3 },
@@ -221,7 +217,7 @@ export const SHOPS = {
     nameTh: 'ยายติ๋ม ร้านยาและของใช้',
     greeting: 'มาจ้ะหลาน ยาดีของยาย ผีหลอกก็ไม่กลัว!',
     stock: ['flask_hp1', 'flask_mp1', 'flask_hp2', 'flask_mp2', 'flask_hp3', 'flask_mp3', 'flask_hp4', 'flask_mp4', 'hp_s', 'hp_m', 'mp_s', 'mp_m', 'yant_home', 'rename_ticket',
-      'reset_water', 'skin_swordman'],
+      'reset_water', 'reskill_weapon'],
     tabs: ['buy', 'sell', 'cards', 'brew'],
   },
   lung_dam: {

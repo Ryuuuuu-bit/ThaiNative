@@ -898,10 +898,10 @@ export class UI {
 
     // ---------- กระเป๋าแบบ Ragnarok: แท็บ ไอเทม/อุปกรณ์/อื่นๆ · ตารางช่องไอคอน + จำนวนมุมขวาล่าง ----------
     //  คลิก = เลือก (แถบคำสั่งด้านล่าง) · ดับเบิลคลิก = ใช้/สวม · คลิกขวา = ล็อก/ปลดล็อก · ลากไป Hotbar ได้
-    const CAT = { use: ['ไอเทม', (t) => ['consumable', 'home', 'food', 'reset', 'skin', 'offering', 'flask'].includes(t)],
+    const CAT = { use: ['ไอเทม', (t) => ['consumable', 'home', 'food', 'reset', 'reskill', 'rename', 'offering', 'flask'].includes(t)],
       equip: ['อุปกรณ์', (t) => GEAR_TYPES.includes(t) || t === 'costume' || t === 'card'],
       etc: ['อื่นๆ', (t) => ['material', 'herb', 'fish'].includes(t)], all: ['ทั้งหมด', () => true] };
-    const ORDER = ['card', 'weapon', 'helm', 'armor', 'gloves', 'boots', 'belt', 'accessory', 'flask', 'costume', 'home', 'consumable', 'food', 'reset', 'skin', 'offering', 'herb', 'fish', 'material'];
+    const ORDER = ['card', 'weapon', 'helm', 'armor', 'gloves', 'boots', 'belt', 'accessory', 'flask', 'costume', 'home', 'consumable', 'food', 'reset', 'reskill', 'rename', 'offering', 'herb', 'fish', 'material'];
     let cat = this.invCat || 'use'; if (!CAT[cat]) cat = 'use';
     const sort = this.invSort || 'type';
     const list = c.inventory.filter((st) => CAT[cat][1](ITEMS[st.id].type)).sort((a, b) => {
@@ -910,7 +910,7 @@ export class UI {
       if (sort === 'price') return sellPrice(b.id) * b.qty - sellPrice(a.id) * a.qty;
       return ORDER.indexOf(A.type) - ORDER.indexOf(B.type) || A.nameTh.localeCompare(B.nameTh, 'th');
     });
-    const ACT = { home: 'ใช้', consumable: 'ใช้', food: 'กิน', offering: 'ถวาย', weapon: 'ถือ', armor: 'สวม', helm: 'สวม', gloves: 'สวม', boots: 'สวม', belt: 'คาด', accessory: 'สวม', flask: 'ใส่', costume: 'แต่ง', reset: 'ใช้', card: 'ใส่' };
+    const ACT = { home: 'ใช้', consumable: 'ใช้', food: 'กิน', offering: 'ถวาย', weapon: 'ถือ', armor: 'สวม', helm: 'สวม', gloves: 'สวม', boots: 'สวม', belt: 'คาด', accessory: 'สวม', flask: 'ใส่', costume: 'แต่ง', reset: 'ใช้', reskill: 'ใช้', rename: 'ใช้', card: 'ใส่' };
     const actOf = (id) => { const it = ITEMS[id]; return it.type === 'skin' ? (c.path === it.job ? null : 'เปลี่ยนสาย') : ACT[it.type] || null; };
     const count = (k) => c.inventory.filter((st) => CAT[k][1](ITEMS[st.id].type)).length;
     const cells = Math.max(40, Math.ceil((list.length + 1) / 8) * 8);

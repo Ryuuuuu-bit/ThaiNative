@@ -6,8 +6,11 @@
 // ============================================================
 import { MONSTERS } from './monsters.js';
 
-/** อัตราดรอปการ์ด: ผีทั่วไป 0.5% · ผีหัวหน้า (elite) 5% · บอสประจำโซน 20% (ต่อผู้ช่วยตีแต่ละคน) */
-export const CARD_DROP = { normal: 0.005, elite: 0.05, boss: 0.2 };
+/** อัตราดรอปการ์ด: ผีทั่วไป 0.5% · ผีหัวหน้า (elite) 1.2% · บอสประจำโซน 20% (ต่อผู้ช่วยตีแต่ละคน) */
+export const CARD_DROP = { normal: 0.005, elite: 0.012, boss: 0.2 };
+/** พร/การ์ดเพิ่มดรอป มีผลกับโอกาสการ์ดแค่ 1/4 และไม่เกิน ×1.5 (กันการ์ดตกถี่เกินจริงเมื่อซ้อนบัฟดรอป) */
+export const CARD_MUL_MAX = 1.5;
+export const cardDropMul = (dropMul = 1) => Math.max(1, Math.min(CARD_MUL_MAX, 1 + (dropMul - 1) * 0.25));
 
 export const CARD_SLOT_TH = { weapon: 'อาวุธ', armor: 'เสื้อ', accessory: 'เครื่องประดับ' };
 /** ช่องสวมใส่ → ชนิดการ์ดที่ใส่ได้ */
@@ -140,7 +143,7 @@ export function rollCard(monId, dropMul = 1, rng = Math.random) {
   if (!id) return null;
   const m = MONSTERS[monId];
   const base = m?.boss ? CARD_DROP.boss : m?.elite ? CARD_DROP.elite : CARD_DROP.normal;
-  return rng() < base * dropMul ? id : null;          // (โบนัส "โอกาสดรอป" จากการ์ดรวมอยู่ใน dropMul แล้ว)
+  return rng() < base * cardDropMul(dropMul) ? id : null;   // dropMul (พร+การ์ด) ถูกหน่วงลงด้วย cardDropMul
 }
 
 /** ตรวจ/ซ่อมข้อมูลการ์ดในเซฟ */

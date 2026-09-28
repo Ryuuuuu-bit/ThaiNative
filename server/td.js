@@ -201,7 +201,7 @@ export function setupTD(io, players, opts = {}) {
           out.items.push({ id: gear, qty: 1, rare: true, affixN: n });
           if (n >= 3) io.emit('chat', { id: null, name: '✨ ของหายาก', text: `${p.name} ได้รับ ${ITEMS[gear].nameTh} (ค่าสุ่ม 3 บรรทัด)!` });
         }
-        const card = rollCard(m.id, bl.dropMul);                                   // การ์ดผี (0.5% · หัวหน้า 5%)
+        const card = rollCard(m.id, bl.dropMul);                                   // การ์ดผี (0.5% · หัวหน้า 1.2% · บอส 20% · บัฟดรอปช่วยได้สูงสุด ×1.5)
         if (card) {
           out.items.push({ id: card, qty: 1, rare: true, card: true });
           out.cardNew = !p.save.cardBook?.[card];

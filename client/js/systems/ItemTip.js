@@ -11,6 +11,7 @@ import { SLOT_TH, TYPE_TH, FLASK_SLOTS } from '/shared/data/slots.js';
 import { SET_NAME } from '/shared/data/gear.js';
 import { ENHANCE } from '/shared/data/village.js';
 import { CARD_BY_ID } from '/shared/data/cards.js';
+import { itemSources } from '/shared/data/sources.js';
 
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const pct = (v, d = 0) => `${+(v * 100).toFixed(d)}%`;
@@ -104,6 +105,14 @@ export function impactLine(c, id) {
 
 // ---------------- กล่องรายละเอียด ----------------
 const RARE_CLS = (r) => (r ? ` rn${r}` : '');
+/** แหล่งที่มา (ได้จากไหน) · แสดง 6 อันดับแรก */
+function sourcesBlock(id) {
+  let src = [];
+  try { src = itemSources(id); } catch { return ''; }
+  if (!src.length) return '';
+  const top = src.slice(0, 6), more = src.length - top.length;
+  return `<div class="tt-sec tt-src"><div class="tt-h">📍 ได้จากที่ไหน</div>${top.map((s) => `<div class="src"><span class="si">${s.ic}</span><span><b>${esc(s.text)}</b>${s.sub ? `<small>${esc(s.sub)}</small>` : ''}</span></div>`).join('')}${more > 0 ? `<div class="src more">…และอีก ${more} แหล่ง</div>` : ''}</div>`;
+}
 function block(title, body) { return body ? `<div class="tt-sec">${title ? `<div class="tt-h">${title}</div>` : ''}${body}</div>` : ''; }
 /** เนื้อหากล่องของไอเทม 1 ชิ้น (slot = ถ้าเป็นของที่ใส่อยู่ จะโชว์ตีบวก/การ์ดของช่องนั้น) */
 export function itemCard(c, id, { slot = null, rarityOf = () => 0, title = '' } = {}) {
@@ -128,6 +137,7 @@ export function itemCard(c, id, { slot = null, rarityOf = () => 0, title = '' } 
     ${cards.length ? block('การ์ด', cards.map((x) => `<div class="st cardl">🃏 ${esc(CARD_BY_ID[x].nameTh)}</div>`).join('')) : ''}
     ${it.job && SET_NAME[it.job] && base.lv ? `<div class="tt-set">✦ นับเป็นชิ้นของ${esc(SET_NAME[it.job])}</div>` : ''}
     ${it.desc && !it.effect && !it.flask ? `<div class="tt-desc">${esc(it.desc)}</div>` : ''}
+    ${sourcesBlock(id)}
     ${sellPrice(id) ? `<div class="tt-price">ขายได้ ฿${sellPrice(id).toLocaleString()}</div>` : ''}`;
 }
 

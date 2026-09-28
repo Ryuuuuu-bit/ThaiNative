@@ -118,7 +118,7 @@ export class CardUI {
         <span class="meta">${next ? `อีก ${next.n - n} ชนิด → ${next.text}` : 'สะสมครบทุกชนิดแล้ว!'}</span></div>
       <div class="cb-tiers">${BOOK_TIERS.map((t) => `<span class="${n >= t.n ? 'on' : ''}">${n >= t.n ? '✔' : '○'} ${t.n} ชนิด: ${t.text}</span>`).join('')}</div>
       <div class="tc-grid book">${CARDS.map((cd) => cardHtml(cd, { unknown: !book[cd.id], count: Inv.count(c, cd.id) })).join('')}</div>
-      <div class="meta cs-foot">ผีทั่วไปดรอปการ์ด 0.5% · ผีหัวหน้า 5% · การ์ดที่ได้ครั้งแรกจะถูกบันทึกในสมุดถาวร (ขายไปแล้วก็ยังนับ)</div>`;
+      <div class="meta cs-foot">ผีทั่วไปดรอปการ์ด 0.5% · ผีหัวหน้า 1.2% · บอส 20% (บัฟดรอปช่วยได้สูงสุด ×1.5) · การ์ดที่ได้ครั้งแรกจะถูกบันทึกในสมุดถาวร (ขายไปแล้วก็ยังนับ)</div>`;
   }
 
   // ---------------- แท็บแลกการ์ด (ร้านยายติ๋ม) ----------------

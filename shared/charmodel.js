@@ -246,6 +246,21 @@ export function resetSkills(c) {
   c.sp = totalSp(c);
 }
 
+/** ล้างสกิลเฉพาะแนวอาวุธ job (รวมเคล็ดวิชาผสมที่ใช้แนวนี้) → คืน SP เท่าที่ลงไว้ · ความชำนาญ (skx) คงเดิม */
+export function resetWeaponSkills(c, job) {
+  let back = 0;
+  for (const [id, lv] of Object.entries(c.skills || {})) {
+    const b = SKILL_BY_ID[id];
+    if (!b || !(b.job === job || (b.jobs || []).includes(job))) continue;
+    back += lv; delete c.skills[id];
+  }
+  if (!back) return 0;
+  c.sp = Math.min(totalSp(c), (c.sp || 0) + back);
+  c.hotbar = fixHotbar(c, c.hotbar);
+  if (c.hotbars) for (const j of Object.keys(c.hotbars)) c.hotbars[j] = fixHotbar(c, c.hotbars[j]);
+  return back;
+}
+
 export function resetStats(c) {
   c.stats = { ...VILLAGER.startStats };
   c.statPoints = (c.level - 1) * POINTS_PER_LEVEL + (c.bonusPoints || 0);

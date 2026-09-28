@@ -8,21 +8,52 @@ import { REALMS, buildRealm, realmZoneAt } from './realms.js';
 import { MONSTERS } from '../data/monsters.js';
 
 /**
- * ความหนาแน่นผี (ตัวคูณจำนวนต่อแหล่ง) · ผีตัวเพิ่มต่อท้าย spawns (index เดิมไม่เลื่อน · client/server ได้ผังเดียวกัน)
+ * ความหนาแน่นผี: จำนวนผีรวมต่อชนิด × ตัวคูณ · แต่ละกองไม่เกิน CAMP_MAX ตัว
+ * ▸ ผีที่เพิ่มไปตั้ง "กองใหม่" รอบ ๆ กองเดิม (โซนเดียวกัน · ห่าง 9–22 ไทล์ · ไม่ทับเมือง/ลานบอส/ประตู/กองอื่น) → ไม่กระจุกจุดเดียว
+ * ▸ สุ่มแบบ seed คงที่ → client/server ได้ผังเดียวกัน · ผีเพิ่มต่อท้าย spawns (index เดิมไม่เลื่อน)
  * ▸ ไม่คูณ: บอส · ผีกลางคืน (nightOnly)
  */
-export const MOB_DENSITY = { ayutthaya: 2, himmaphan: 2.5, nagaphop: 2.5, naraka: 2.5 };
-function densify(L, mult) {
+export const MOB_DENSITY = { ayutthaya: 5, himmaphan: 5, nagaphop: 5, naraka: 5 };
+export const CAMP_MAX = 7;
+function densify(L, mult, M) {
   if (!(mult > 1)) return L;
+  let seed = 7919;
+  const rnd = () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
+  const W = L.solid[0].length, H = L.solid.length;
+  const walk = (tx, ty) => tx >= 1 && ty >= 1 && tx < W - 1 && ty < H - 1 && !L.solid[ty][tx];
   const groups = new Map();
   for (const s of L.spawns) {
     if (s.boss || MONSTERS[s.id]?.boss || MONSTERS[s.id]?.nightOnly) continue;
     const k = `${s.id}|${s.x}|${s.y}`;
     (groups.get(k) || groups.set(k, []).get(k)).push(s);
   }
+  // จุดที่ห้ามตั้งกองใหม่ใกล้ ๆ: กองเดิมทุกกอง · บอส · ประตูมิติ
+  const camps = [...groups.values()].map((l) => ({ x: l[0].x / TILE, y: l[0].y / TILE }));
+  const avoid = [...L.spawns.filter((s) => s.boss).map((s) => ({ x: s.x / TILE, y: s.y / TILE, r: 14 })), ...(L.portals || []).map((p) => ({ x: p.x / TILE, y: p.y / TILE, r: 8 }))];
+  const okSpot = (tx, ty, zone) => {
+    for (let dy = -2; dy <= 2; dy++) for (let dx = -2; dx <= 2; dx++) if (!walk(tx + dx, ty + dy)) return false;
+    const x = tx * TILE, y = ty * TILE;
+    if (M.inSafe(x, y) || M.zoneAt(x, y) !== zone) return false;
+    if (avoid.some((a) => Math.hypot(a.x - tx, a.y - ty) < a.r)) return false;
+    return !camps.some((c) => Math.hypot(c.x - tx, c.y - ty) < 7);
+  };
   for (const list of groups.values()) {
-    const s = list[0], add = Math.round(list.length * mult) - list.length;
-    for (let i = 0; i < add; i++) L.spawns.push({ id: s.id, x: s.x, y: s.y, r: Math.round(s.r * 1.35), extra: true });
+    const s = list[0], total = Math.round(list.length * mult);
+    let left = total - list.length;
+    const size = Math.min(CAMP_MAX, Math.max(list.length, 3));
+    const zone = M.zoneAt(s.x, s.y), ox = s.x / TILE, oy = s.y / TILE;
+    while (left > 0) {
+      const n = Math.min(size, left);
+      let spot = null;
+      for (let i = 0; i < 160 && !spot; i++) {
+        const ang = rnd() * Math.PI * 2, d = 8 + rnd() * (14 + i / 3);
+        const tx = Math.round(ox + Math.cos(ang) * d), ty = Math.round(oy + Math.sin(ang) * d);
+        if (okSpot(tx, ty, zone)) spot = { tx, ty };
+      }
+      if (spot) { camps.push({ x: spot.tx, y: spot.ty }); for (let i = 0; i < n; i++) L.spawns.push({ id: s.id, x: spot.tx * TILE, y: spot.ty * TILE, r: s.r, extra: true }); }
+      else { const room = CAMP_MAX - list.length; for (let i = 0; i < Math.min(n, room); i++) { L.spawns.push({ id: s.id, x: s.x, y: s.y, r: s.r, extra: true }); list.push(s); } }   // หาที่ว่างไม่ได้ → เติมกองเดิม (ไม่เกิน CAMP_MAX)
+      left -= n;
+    }
   }
   return L;
 }
@@ -46,7 +77,7 @@ function realmEntry(def) {
     zoneAtTile: (tx, ty) => realmZoneAt(def, tx, ty),
     zoneAt: (x, y) => realmZoneAt(def, Math.floor(x / TILE), Math.floor(y / TILE)),
     inSafe: (x, y) => Math.hypot(x / TILE - def.hub.x, y / TILE - def.hub.y) <= def.hub.r + 0.5,
-    layout: () => (cache[def.id] ||= densify(buildRealm(def), MOB_DENSITY[def.id])),
+    layout() { return (cache[def.id] ||= densify(buildRealm(def), MOB_DENSITY[def.id], this)); },
   };
 }
 
@@ -59,7 +90,7 @@ export const TD_MAPS = {
     zoneAtTile,
     zoneAt: (x, y) => zoneAtTile(Math.floor(x / TILE), Math.floor(y / TILE)),
     inSafe: inTownXY,
-    layout: () => (cache.ayutthaya ||= densify(buildLayout(), MOB_DENSITY.ayutthaya)),
+    layout() { return (cache.ayutthaya ||= densify(buildLayout(), MOB_DENSITY.ayutthaya, this)); },
   },
   ...Object.fromEntries(Object.values(REALMS).map((d) => [d.id, realmEntry(d)])),
 };
