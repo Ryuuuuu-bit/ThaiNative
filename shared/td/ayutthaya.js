@@ -209,8 +209,13 @@ function buildTown() {
   // === ตลาดหัวรอ (ใต้): เต็นท์เรียงสองฝั่งถนนหลวง + รถเข็นขายของ ===
   const TENTS = ['red', 'blue', 'green', 'yellow', 'purple'];
   let ti = 0;
-  for (const [x, y] of [[47, 64], [51, 64], [55, 64], [64, 64], [68, 64], [72, 64], [47, 68], [56, 68], [64, 68], [73, 68]])
-    small(`p_tent_${TENTS[ti++ % 5]}`, x, y, { alt: 'env/p_stall', glow: [-14, 30, 0xffb35c, 0.8] });
+  for (const [x, y] of [[47, 64], [51, 64], [55, 64], [64, 64], [68, 64], [72, 64], [47, 68], [56, 68], [64, 68], [73, 68]]) {
+    if (ti % 2) small(`p_tent_${TENTS[ti % 5]}`, x, y, { alt: 'env/p_stall', glow: [-14, 30, 0xffb35c, 0.8] });
+    else P(`env/p_mstall_${(ti / 2) % 8}`, x, y, { foot: [2, 1], scale: 0.62, alt: 'env/p_stall', altScale: 0.9, glow: [-14, 30, 0xffb35c, 0.7] });   // แผงผลไม้ PixelLab
+    ti++;
+  }
+  // แผงขายของเรียงสองฝั่งถนนหลวงช่วงใต้ถนนตลาด (ถนนคนเดิน)
+  for (const y of [74, 77, 80]) for (const x of [56, 63]) if (free(x - 1, y - 1, x + 1, y)) P(`env/p_mstall_${(y + x) % 8}`, x, y, { foot: [2, 1], scale: 0.6, alt: 'env/p_stall', altScale: 0.9, glow: [-14, 30, 0xffb35c, 0.6] }), reserve(x - 1, y - 2, x + 1, y);
   for (const [x, y, k] of [[49, 66, 'p_fruit'], [53, 66, 'p_baskets'], [66, 66, 'p_pottery'], [70, 66, 'p_silk'], [74, 66, 'p_flowercart'], [45, 66, 'p_teatable']]) small(k, x, y, { alt: 'env/p_pots' });
   P('env/p_stall', 46, 62, { foot: [3, 1], scale: 1.0, alt: 'stall', altScale: 1, label: 'ตลาดหัวรอ', glow: [-20, 40, 0xffb35c, 0.9] });
   P('env/p_foodcart', 74, 62, { foot: [3, 1], scale: 1.0, alt: 'env/p_flowercart', altScale: 1.1, glow: [-20, 40, 0xffb35c, 0.9] });
@@ -234,7 +239,7 @@ function buildTown() {
   reserve(14, 44, 24, 55); reserve(96, 44, 106, 55);
 
   // === ชุมชนริมซอย: เรือนไทยเรียงหน้าบ้านหันเข้าซอย มีรั้ว สวนครัว โอ่งน้ำ ===
-  const HOUSE = [['env/b_ruenthai', 0.9], ['env/b_house2', 0.9], ['env/b_hamlet', 0.82], ['env/b_village', 0.82]];
+  const HOUSE = [['env/b_teak_1', 1.1], ['env/b_ruenthai', 0.9], ['env/b_teak_3', 1.1], ['env/b_house2', 0.9], ['env/b_teak_2', 1.1], ['env/b_hamlet', 0.82], ['env/b_teak_1', 1.05], ['env/b_village', 0.82]];
   let hi = 0;
   const home = (hx, hy, big = true) => {
     const w = big ? 3 : 2;
@@ -256,6 +261,8 @@ function buildTown() {
   for (const y of [45, 66]) home(85, y, false);
   // เรือนริมซอยเหนือ–ใต้ (x40 / x80) ช่วงใต้ถนนตลาด
   for (const y of [75, 83]) { home(36, y, false); home(84, y, false); }
+  // เติมชุมชนให้แน่นแบบเมืองหลวง: ไล่ตารางหาช่องว่างในย่านใต้/ตะวันออก (เรือนใหญ่ก่อน แล้วเรือนเล็ก)
+  for (const big of [true, false]) for (let y = 58; y <= 88; y += big ? 5 : 4) for (let x = 20; x <= 100; x += big ? 7 : 5) home(x + (y % 2), y, big);
   // มุมเหนือ (หลังวัด/วัง): เรือนเล็กของข้าหลวง
   for (const [x, y] of [[20, 44], [100, 40], [99, 64], [21, 68]]) home(x, y, false);
 
