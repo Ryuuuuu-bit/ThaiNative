@@ -14,9 +14,9 @@ import { newFilter, applyFilter, filterBarHtml, bindFilterBar } from '../systems
 import { combatPower } from '/shared/character.js';
 import { ask } from '../systems/Dialog.js';
 import { PARTY } from '/shared/constants.js';
+import { PartyWindow } from './PartyWindow.js';
 
 const $ = (s) => document.querySelector(s);
-const JOB_ICON = { swordman: '⚔️', mage: '🔮', archer: '🏹', boxer: '🥊', healer: '🌿' };
 const TRADE_SLOTS = 10;
 const GEAR_TYPES = new Set(['weapon', 'armor', 'helm', 'gloves', 'boots', 'belt', 'accessory', 'costume', 'card', 'flask']);
 const USE_TYPES = new Set(['consumable', 'food', 'home', 'reset', 'reskill', 'rename', 'offering']);
@@ -32,6 +32,7 @@ export class TdSocial {
     this.inviteQueue = [];
     this.bindDom();
     this.bindNet();
+    this.pw = new PartyWindow(this);
   }
 
   get net() { return this.scene.net; }
@@ -231,7 +232,12 @@ export class TdSocial {
       () => n.send('party:respond', { fromId, accept: true }),
       () => n.send('party:respond', { fromId, accept: false }),
     ))
-      .on('party:state', (st) => { this.party = st; this.renderParty(); })
+      .on('party:state', (st) => {
+        const prevLead = this.party?.leader;
+        this.party = st;
+        if (this.pw?.following && (!st || st.leader !== prevLead)) this.pw.setFollow(false, !st);   // หัวหน้าเปลี่ยน/ปาร์ตี้แตก → เลิกตาม
+        this.renderParty();
+      })
       .on('party:exp', ({ amount, ups, bonus }) => {
         const t = makeText(this.scene, this.player.x, this.player.y - 44, `+${amount} EXP (ปาร์ตี้${bonus ? ` +${bonus}%` : ''})`, { fontSize: '7px', color: '#aed6f1' }).setOrigin(0.5).setDepth(99990);
         this.scene.tweens.add({ targets: t, y: t.y - 20, alpha: 0, duration: 1200, onComplete: () => t.destroy() });
@@ -255,32 +261,14 @@ export class TdSocial {
   //  ปาร์ตี้
   // ============================================================
   renderParty() {
-    const pf = $('#party-frames');
-    const others = (this.party?.members || []).filter((m) => m.id !== this.selfId);
-    pf.classList.toggle('hidden', !others.length);
-    const here = others.filter((m) => this.scene.remotes.has(m.id)).length;   // เพื่อนที่อยู่แมพเดียวกัน (เห็นตัวในแมพนี้)
-    pf.innerHTML = (others.length ? `<div class="pf-bonus${here ? ' on' : ''}" title="เพื่อนปาร์ตี้ที่อยู่แมพเดียวกัน: EXP +${Math.round(PARTY.mapBonus * 100)}% ต่อคน และแชร์ EXP กันทั้งแมพ">✨ EXP ปาร์ตี้ ${here ? `+${Math.round(here * PARTY.mapBonus * 100)}%` : '—'} <small>แมพเดียวกัน ${here}/${others.length}</small></div>` : '') + others.map((m) => {
-      const r = this.scene.remotes.get(m.id);
-      const hp = r?.hp ?? m.hp, max = r?.maxHp ?? m.maxHp;
-      const far = !r;                                                      // อยู่คนละแมพ = ไม่ได้แชร์ EXP
-      return `<div class="pm ${far ? 'far' : ''}">
-        <span class="pm-job">${JOB_ICON[m.job] ?? '🙂'}</span>
-        <div><div class="pm-name">${m.id === this.party.leader ? '👑 ' : ''}${esc(m.name)} <small>Lv.${m.level}</small></div>
-        <div class="bar hp mini"><i style="width:${Math.max(0, Math.min(100, (hp / max) * 100))}%"></i></div></div></div>`;
-    }).join('');
-    if (!$('#social-panel').classList.contains('hidden')) this.renderSocialPanel();
+    this.pw?.renderBar();
+    if (!$('#social-panel').classList.contains('hidden')) this.pw?.render();
   }
 
   renderSocialPanel() {
-    const me = this.selfId;
     const inParty = new Set((this.party?.members || []).map((m) => m.id));
-    const leader = this.party?.leader === me;
     $('#soc-party-info').textContent = this.party ? `(${this.party.members.length}/${PARTY.maxSize})` : '';
-    const setP = (el, html) => { if (el && el._html !== html) { el._html = html; el.innerHTML = html; } };
-    setP($('#soc-party'), this.party
-      ? this.party.members.map((m) => `<div class="soc-row"><span>${m.id === this.party.leader ? '👑' : '•'} ${esc(m.name)} <small>Lv.${m.level} ${JOBS[m.job]?.nameTh ?? 'ชาวบ้าน'}</small></span>
-          ${m.id === me ? '<button class="btn ghost sm" data-act="leave">ออกจากปาร์ตี้</button>' : leader ? `<button class="btn ghost sm" data-act="kick" data-id="${m.id}">เชิญออก</button>` : ''}</div>`).join('')
-      : '<p class="empty">ยังไม่มีปาร์ตี้ – เชิญผู้เล่นจากรายชื่อด้านล่าง</p>');
+    this.pw?.render();
     // ผู้เล่นออนไลน์: แมพเดียวกัน (บอกระยะ) ก่อน แล้วแมพอื่น (บอกที่อยู่) · เชิญปาร์ตี้/กระซิบ/เพิ่มเพื่อนได้ทุกคน · เทรดเฉพาะแมพเดียวกัน
     const near = [...this.scene.remotes.values()];
     const nearIds = new Set(near.map((r) => r.id));
@@ -478,6 +466,7 @@ export class TdSocial {
 
   // ============================================================
   update(time) {
+    this.pw?.followTick(time);
     // อัปเดตกรอบปาร์ตี้ทุก 0.5 วิ · แผงสังคมทุก 1 วิ (ถ้าเปิดอยู่)
     if (this.party && time - (this.lastPartyDraw || 0) > 500) { this.lastPartyDraw = time; this.renderParty(); }
     if (time - (this.lastSocDraw || 0) > 1000 && !$('#social-panel').classList.contains('hidden')) {

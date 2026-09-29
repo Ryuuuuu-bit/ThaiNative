@@ -10,6 +10,7 @@ import { ITEMS, SHOPS, sellPrice, WTYPE_JOB } from '/shared/data/items.js';
 import { STAT_KEYS, STAT_INFO, expToNext, MAX_LEVEL, expLevelMul } from '/shared/stats.js';
 import { getDerived, pathName } from './Character.js';
 import { combatPower } from '/shared/character.js';
+import { buffText } from '../topdown/PartyWindow.js';
 import * as Inv from './Inventory.js';
 import { setInfo, SET_TEXT } from '/shared/data/gear.js';
 import { TITLES, TITLE_BY_ID, TITLE_CATS } from '/shared/data/titles.js';
@@ -285,7 +286,11 @@ export class UI {
     if (sig !== this.buffSig) {
       this.buffSig = sig;
       $('#hud-buffs').innerHTML = p.buffs.filter((b) => b.until > time)
-        .map((b) => `<span class="buff" title="${esc(b.name)}">${b.icon}<small>${Math.ceil((b.until - time) / 1000)}</small></span>`).join('')
+        .map((b) => {                                                    // บัฟจากเพื่อน: หน้าผู้ให้ที่มุม · วงนับถอยหลัง · กะพริบตอนใกล้หมด
+          const left = Math.ceil((b.until - time) / 1000), pct = b.dur ? Math.max(0, Math.min(100, ((b.until - time) / b.dur) * 100)) : 100;
+          const tip = b.from ? `${b.name}\n${buffText(b.eff || b.buff)}\nเหลือ ${left} วิ · จาก ${b.from}` : b.name;
+          return `<span class="buff${b.from ? ' gift' : ''}${left <= 3 ? ' ending' : ''}" style="--p:${pct.toFixed(0)}%" title="${esc(tip)}">${b.icon}<small>${left}</small>${b.from ? (b.face ? `<img class="bf-face" src="${b.face}" alt="">` : '<i class="bf-face">👤</i>') : ''}</span>`;
+        }).join('')
         + bless.map((b) => `<span class="buff bless" title="${esc(b.nameTh)}: ${esc(modsText(b.mods))}">${b.icon}<small>${mins(b)}</small></span>`).join('');
     }
     // แผนที่โลก (ถ้าเปิดอยู่) อัปเดตทุก 300ms

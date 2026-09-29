@@ -42,7 +42,11 @@ const views = new Set();
 let raf = 0;
 function loop(now) {
   raf = views.size ? requestAnimationFrame(loop) : 0;
-  for (const v of views) v.draw(now);
+  for (const v of views) {
+    if (!v.cv.isConnected && v.autoDrop) { views.delete(v); continue; }
+    if (v.cv.offsetParent === null && v.autoDrop) continue;          // ซ่อนอยู่ (หน้าต่างปิด) → ไม่ต้องวาด
+    v.draw(now);
+  }
 }
 
 export class HeroView {
@@ -53,6 +57,7 @@ export class HeroView {
     this.shadow = opts.shadow !== false;
     this.anim = 'idle'; this.dir = 'south'; this.t0 = performance.now();
     this.spin = 0;            // > 0 = หมุนตัวเองทุก n ms
+    this.autoDrop = !!opts.autoDrop;   // ใช้ใน HUD: ถอดออกเองเมื่อ canvas หลุดจากหน้า · ไม่วาดตอนซ่อน
     this.a = null;
     canvas.width = 72 * this.scale; canvas.height = 72 * this.scale;
     views.add(this);
@@ -210,3 +215,23 @@ function healFx(ctx, W, H, t, front) {
 
 /** ลบทุกวิว (ตอนออกจากหน้า) */
 export function clearHeroViews() { views.clear(); }
+
+/** รูปหน้า (ครอปหัวจากท่ายืนหันหน้า) → dataURL · แคชตามชุด · ยังไม่มีภาพ = null (ใช้ไอคอนอาชีพแทน) */
+const faces = new Map();
+export function heroFace(app) {
+  if (!app) return null;
+  const a = sanitizeAppearance(app), id = heroId(a);
+  if (faces.has(id)) return faces.get(id);
+  const m = meta[id];
+  if (!m) { loadHeroMeta(); return null; }
+  const im = heroImg(id, 'idle');
+  if (!im.complete || !im.naturalWidth) { im.addEventListener('load', () => faces.delete(id), { once: true }); return null; }
+  const n = m.frames?.idle || 4, fw = im.naturalWidth / n, fh = im.naturalHeight / DIRS.length;
+  const cv = document.createElement('canvas'); cv.width = cv.height = 40;
+  const g = cv.getContext('2d'); g.imageSmoothingEnabled = false;
+  const sz = fw * 0.44;
+  g.drawImage(im, (fw - sz) / 2, fh * 0.06, sz, sz, 0, 0, 40, 40);
+  let url = null; try { url = cv.toDataURL(); } catch { url = null; }
+  faces.set(id, url);
+  return url;
+}

@@ -34,12 +34,21 @@ export function setupSocial(io, players, H = {}) {
   const parties = new Map();              // partyId → { id, leader, members:Set }
   const partyInvites = new Map();         // targetId → Map(fromId → expireAt)
 
+  /** บัฟที่ยังเหลือของผู้เล่น (ให้เพื่อนเห็นในแถบปาร์ตี้/การ์ดสมาชิก) */
+  const buffsOf = (p, now) => (p.buffs || []).filter((b) => b.until > now && b.sk).slice(0, 8)
+    .map((b) => ({ sk: b.sk, lv: b.lv || 1, from: b.from || p.name, left: Math.round((b.until - now) / 100) / 10, dur: Math.round((b.until - (b.at || now)) / 100) / 10 || 0 }));
   function partyState(party) {
+    const now = Date.now();
+    const ms = [...party.members].map((id) => players.get(id)).filter(Boolean);
     return {
       id: party.id, leader: party.leader,
-      members: [...party.members].map((id) => players.get(id)).filter(Boolean).map((p) => ({
+      members: ms.map((p) => ({
         id: p.id, name: p.name, level: p.level, job: p.appearance.path || 'villager', wj: p.appearance.job, dead: !!p.dead, hp: Math.round(p.hp), maxHp: p.maxHp, x: Math.round(pos(p).x), y: Math.round(pos(p).y), inst: p.inst || 0,
+        mp: Math.round(p.save?.mp || 0), maxMp: p.maxMp || 0, cp: p.cp || 0, title: p.save?.title || null, app: p.appearance,
+        map: p.world === 'td' ? (p.tmap || 'ayutthaya') : 'side', place: whereOf(p), buffs: buffsOf(p, now),
+        follow: p.follow === party.leader && p.id !== party.leader,
       })),
+      followers: ms.filter((p) => p.id !== party.leader && p.follow === party.leader).length,
     };
   }
   function pushParty(party) {
@@ -51,7 +60,7 @@ export function setupSocial(io, players, H = {}) {
     const party = p && parties.get(p.partyId);
     if (!party) return;
     party.members.delete(pid);
-    p.partyId = null;
+    p.partyId = null; p.follow = null;
     emitTo(pid, 'party:state', null);
     for (const id of party.members) sys(id, `${p.name} ${reason === 'kick' ? 'ถูกเชิญออกจาก' : 'ออกจาก'}ปาร์ตี้`);
     if (party.members.size < 2) {
@@ -59,8 +68,13 @@ export function setupSocial(io, players, H = {}) {
       parties.delete(party.id);
       return;
     }
-    if (party.leader === pid) party.leader = [...party.members][0];
+    if (party.leader === pid) setLeader(party, [...party.members][0]);
     pushParty(party);
+  }
+  /** เปลี่ยนหัวหน้า → คนที่ติดตามหัวหน้าเก่าหยุดตาม */
+  function setLeader(party, id) {
+    party.leader = id;
+    for (const mid of party.members) { const m = players.get(mid); if (m) m.follow = null; }
   }
   const partyOf = (p) => (p ? parties.get(p.partyId) || null : null);
 
@@ -402,6 +416,28 @@ export function setupSocial(io, players, H = {}) {
     socket.on('party:kick', ({ id } = {}) => {
       const p = me(), party = p && parties.get(p.partyId);
       if (party && party.leader === p.id && party.members.has(id) && id !== p.id) leaveParty(id, 'kick');
+    });
+    socket.on('party:lead', ({ id } = {}) => {                        // มอบหัวหน้า
+      const p = me(), party = p && parties.get(p.partyId), t = players.get(id);
+      if (!party || party.leader !== p.id || !t || !party.members.has(id) || id === p.id) return;
+      setLeader(party, id);
+      for (const mid of party.members) sys(mid, `👑 ${t.name} เป็นหัวหน้าปาร์ตี้คนใหม่`);
+      pushParty(party);
+    });
+    socket.on('party:follow', ({ on } = {}) => {                     // ติดตามหัวหน้า (ตัวเดินฝั่ง client · server แค่นับจำนวนให้หัวหน้าเห็น)
+      const p = me(), party = p && parties.get(p.partyId);
+      if (!party || party.leader === p.id) return;
+      const was = p.follow === party.leader;
+      p.follow = on ? party.leader : null;
+      if (!!on !== was && on) sys(party.leader, `🧭 ${p.name} กำลังติดตามคุณ`);
+      pushParty(party);
+    });
+    socket.on('party:inspect', ({ id } = {}, cb) => {                 // ดูอุปกรณ์เพื่อนร่วมปาร์ตี้
+      const p = me(), party = p && parties.get(p.partyId), t = players.get(id);
+      if (typeof cb !== 'function') return;
+      if (!party || !t || !party.members.has(id)) return cb(null);
+      const c = t.save || {};
+      cb({ name: t.name, level: t.level, cp: t.cp || 0, job: t.appearance?.job || null, app: t.appearance, equipment: { ...(c.equipment || {}) }, enhance: { ...(c.enhance || {}) }, cards: { ...(c.cards || {}) } });
     });
     socket.on('party:chat', (text) => {
       if (typeof text !== 'string') return;

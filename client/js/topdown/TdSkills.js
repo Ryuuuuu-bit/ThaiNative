@@ -1039,14 +1039,16 @@ export class TdSkills {
   }
 
   /** เพื่อนร่วมปาร์ตี้ร่ายสกิลปาร์ตี้ใส่เรา (server แจ้งมา) → บัฟ + ฮีล + ภาพบนตัว */
-  partyReceive({ from, skillId, lv }) {
+  partyReceive({ from, fromId, skillId, lv }) {
     const base = SKILL_BY_ID[skillId]; if (!base) return;
     const sk = skillStats(base, lv), s = this.s, p = s.player, tint = TINT[sk.id] || 0xffffff;
     p.buffs = (p.buffs || []).filter((b) => b.until > s.time.now && b.sk !== sk.id);
-    if (sk.type === 'revive') p.buffs.push({ buff: { undying: true }, until: s.time.now + sk.undying, sk: sk.id, icon: sk.icon, name: `ขวัญกันตาย (${from})` });
-    else p.buffs.push({ buff: sk.buff, until: s.time.now + sk.duration, sk: sk.id, icon: sk.icon, name: `${sk.nameTh} (${from})` });
+    const face = s.social?.pw?.buffReceived({ from, fromId, skillId, lv }, sk) || null;   // การ์ดแจ้งเตือนกลางจอ + วงแสงที่ตัว
+    const give = { from, fromId, face, eff: sk.type === 'revive' ? { undying: true } : sk.buff };
+    if (sk.type === 'revive') p.buffs.push({ buff: { undying: true }, until: s.time.now + sk.undying, dur: sk.undying, sk: sk.id, icon: sk.icon, name: `ขวัญกันตาย (${from})`, ...give });
+    else p.buffs.push({ buff: sk.buff, until: s.time.now + sk.duration, dur: sk.duration, sk: sk.id, icon: sk.icon, name: `${sk.nameTh} (${from})`, ...give });
     if (sk.mpHeal) { const d = p.derived; p.char.mp = Math.min(d.maxMp, p.char.mp + Math.round(d.maxMp * sk.mpHeal)); }
-    s.ui.toast?.(`${sk.icon} ${from} ใช้ ${sk.nameTh} ให้คุณ!`, 'ok', 1800);
+    if (!s.social?.pw) s.ui.toast?.(`${sk.icon} ${from} ใช้ ${sk.nameTh} ให้คุณ!`, 'ok', 1800);
     this.snd('skRise');
     s.ui.hudCache = '';
   }

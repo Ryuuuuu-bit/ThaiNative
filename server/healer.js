@@ -97,7 +97,7 @@ export function setupHealer(io, players, { healPlayer, queueSync, social, tdSys,
               if (t !== p) credit(p, 'revive', 1);
             } else heal(p, t, t.maxHp * sk.heal, 'khwan', sk.id);
             t.buffs = (t.buffs || []).filter((b) => b.until > at && b.sk !== sk.id);
-            t.buffs.push({ buff: { undying: true }, until: at + sk.undying, sk: sk.id });
+            t.buffs.push({ buff: { undying: true }, until: at + sk.undying, sk: sk.id, at, lv: sk.lv, from: p.name, fromId: p.id });
             if (t !== p) io.to(t.id).emit('td:pbuff', { from: p.name, fromId: p.id, skillId: sk.id, lv: sk.lv });
           }
         }, sk.castMs || 0);

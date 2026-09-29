@@ -673,7 +673,7 @@ export class TopDownScene extends Phaser.Scene {
   setTarget(m, auto = false) {
     if (!m.alive) return;
     this.player.target = m; this.player.path = [];
-    if (!auto) this.player.autoTarget = null;                  // เลือกเองด้วยมือ → ไม่ยอมแพ้ไล่เป้าอัตโนมัติ
+    if (!auto) { this.player.autoTarget = null; this.social?.pw?.stopFollow(); }   // เลือกเองด้วยมือ → ไม่ยอมแพ้ไล่เป้าอัตโนมัติ · เลิกติดตามหัวหน้า
     this.ui.setTarget({ def: { ...m.def, hp: m.maxHp }, get hp() { return m.hp; }, get alive() { return m.alive; } });
     if (!auto) this.sfx.play('target');
   }
@@ -1307,7 +1307,7 @@ export class TopDownScene extends Phaser.Scene {
         playDir(s, this.anim, this.dir);
       },
       destroy: () => { this.weapons?.detach(s); this.costumes?.detach(s); s.destroy(); tag.destroy(); ttl.destroy(); sh.destroy(); this.shadows = this.shadows.filter((x) => x.obj !== s); },
-      get x() { return s.x; }, get y() { return s.y; },
+      get x() { return s.x; }, get y() { return s.y; }, get appearance() { return q.appearance; },
       setTitle(t) { paintTitle(t); },
       rename(n, gm) { q.name = n; r.name = n; tag.setText(`${n} Lv.${r.level}`); gmStyle(tag, !!gm, '#aed6f1'); },
       setAppearance: (a) => { q.appearance = a; this.applyHero(s, a); },
@@ -1335,6 +1335,7 @@ export class TopDownScene extends Phaser.Scene {
       const npc = this.npcAt(w.x, w.y, this.touch?.on ? 14 : 4);                  // แตะโดนป้ายชื่อ/ใกล้ตัว NPC (มือถือเผื่อระยะนิ้ว) = คุย
       if (npc) { this.talk(npc); return; }
       this.player.target = null;
+      this.social?.pw?.stopFollow();                             // คลิกพื้นเดินเอง = เลิกตาม
       this.moveTo(w.x, w.y);
       this.clickMark(w.x, w.y);
     });
@@ -1516,7 +1517,7 @@ export class TopDownScene extends Phaser.Scene {
       let vx = typing ? 0 : kR - kL;
       let vy = typing ? 0 : kD - kU;
       if (this.touch?.vec) { vx += this.touch.vec.x; vy += this.touch.vec.y; }   // จอยสติ๊กบนมือถือ
-      if (vx || vy) { p.path = []; p.target = null; this.pendingTalk = null; }
+      if (vx || vy) { p.path = []; p.target = null; this.pendingTalk = null; this.social?.pw?.stopFollow(); }   // เดินเอง = เลิกติดตามหัวหน้า
       else if (p.target) {
         const m = p.target;
         if (!m.alive) p.target = null;
@@ -1530,7 +1531,7 @@ export class TopDownScene extends Phaser.Scene {
             }
           } else { p.path = []; p.autoSince = time; if (time >= p.nextAtk && p.st !== 'attack') this.playerAttack(m, time); }
         }
-      } else if (this.settings.autoSkill && !p.path.length && !this.recalling && time > (p.nextAuto || 0)) {
+      } else if (this.settings.autoSkill && !p.path.length && !this.recalling && !this.social?.pw?.following && time > (p.nextAuto || 0)) {
         // Auto: ไม่มีเป้า/ไม่ได้สั่งเดิน → ล็อกผีที่ใกล้ที่สุดในหน้าจอ (ตามชนิดที่เลือก) แล้วเดินไปตีเอง
         p.nextAuto = time + 300;
         const m = this.autoPick(time);

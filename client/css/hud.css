@@ -662,3 +662,28 @@ body.m-hud.win-open #touch-ui > #preset-btn { visibility: hidden !important; }
 #party-frames .pf-bonus { font-size: .78em; padding: 2px 6px; margin-bottom: 3px; border-radius: 6px; background: rgba(20,12,30,.75); color: #b9a88a; white-space: nowrap; }
 #party-frames .pf-bonus.on { color: #8ff0a4; border: 1px solid rgba(88,214,141,.5); }
 #party-frames .pf-bonus small { opacity: .8; }
+
+/* ---------- แถบปาร์ตี้ซ้ายบน: หน้าในวงกลม + ไอคอนอาชีพ · กรอบทองหัวหน้า · บัฟ ---------- */
+#party-frames .pm { cursor: pointer; pointer-events: auto; }
+#party-frames .pm.leader { border-color: #e5bf4e !important; box-shadow: 0 0 0 .2cqh rgba(0,0,0,.5), 0 0 1cqh rgba(229,191,78,.55) !important; }
+#party-frames .pm.dead .pm-face .pm-fimg { filter: grayscale(1) brightness(.6); }
+#party-frames .pm-face { position: relative; flex: none; width: 2.4em; height: 2.4em; border-radius: 50%; border: 2px solid var(--jc, #b9a88a); background: radial-gradient(circle at 50% 70%, color-mix(in srgb, var(--jc, #888) 40%, #1a1026), #1a1026); }
+#party-frames .pm-face .pm-fimg { width: 100%; height: 100%; border-radius: 50%; image-rendering: pixelated; }
+#party-frames .pm-job img { width: 1.2em; height: 1.2em; }
+#party-frames .pm-face:has(.pm-fimg[style*='none']) .pm-job { right: auto; bottom: auto; inset: 0; display: grid; place-items: center; font-size: 1.1em; }
+#party-frames .pm-face:has(.pm-fimg[style*='none']) .pm-job img { width: 1.4em; height: 1.4em; }
+#party-frames .pm-job { position: absolute; right: -.35em; bottom: -.3em; font-size: .7em; font-style: normal; line-height: 1; filter: drop-shadow(0 0 .15em #000); }
+#party-frames .pm-body { flex: 1; min-width: 0; }
+#party-frames .pm-buffs { display: flex; gap: .15em; margin-top: .15em; }
+#party-frames .pm-buffs:empty { display: none; }
+#party-frames .pf-fol { color: #9fd3ff; }
+body.td-mode .party-frames .pm { padding: .5cqh .8cqh !important; gap: .9cqh !important; }
+body.td-mode .party-frames .pm-face { width: 5.4cqh; height: 5.4cqh; }
+
+/* หน้าต่างปาร์ตี้ในโหมด top-down (ขนาดตามจอ) */
+body.td-mode #social-panel.window { width: min(128cqh, calc(100% - 4cqh)) !important; }
+body.td-mode #soc-party { --pw-card: 25cqh; font-size: 2.3cqh; }
+body.td-mode.m-hud #soc-party { --pw-card: 34cqh; font-size: 3cqh; }
+body.td-mode.m-hud #social-panel.window { width: calc(100% - 4cqh) !important; }
+body.td-mode.m-hud .pw-acts .btn.sm { min-width: 7cqh; min-height: 7cqh; }
+body.td-mode.m-hud .pw-follow { min-height: 9cqh; }

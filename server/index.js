@@ -11,7 +11,7 @@ import { fileURLToPath } from 'node:url';
 import { WORLD } from '../shared/constants.js';
 import { MAPS, mapAt, gateNear, canTravelFrom } from '../shared/data/maps.js';
 import { sanitizeAppearance } from '../shared/data/appearance.js';
-import { getDerived } from '../shared/character.js';
+import { getDerived, combatPower } from '../shared/character.js';
 import { migrate } from '../shared/charmodel.js';
 import { runAction, packChar, count as invCount, removeItem } from '../shared/economy.js';
 import { checkName, nameKey, nameIdeas } from '../shared/data/names.js';
@@ -69,6 +69,7 @@ const nightNow = () => isNight(dayPhase(Date.now(), DAY_MS));
 function refresh(p) {
   const d = getDerived(p.save);
   p.maxHp = d.maxHp; p.maxMp = d.maxMp;
+  try { p.cp = combatPower(p.save, d); } catch { p.cp = 0; }        // ค่าพลังรวม (หน้าต่างปาร์ตี้)
   if (p.save.hp > d.maxHp) p.save.hp = d.maxHp;
   if (p.save.mp > d.maxMp) p.save.mp = d.maxMp;
   p.level = p.save.level;
@@ -387,7 +388,7 @@ io.on('connection', (socket) => {
     else p.dirty = true;
     if (sk.type === 'buff') {
       p.buffs = (p.buffs || []).filter((b) => b.until > now && b.sk !== base.id);
-      p.buffs.push({ buff: sk.buff, until: now + sk.duration, sk: base.id });
+      p.buffs.push({ buff: sk.buff, until: now + sk.duration, sk: base.id, at: now, lv: clamp(lv, 1, MAX_SKILL_LV), from: p.name, fromId: p.id });
       if (sk.heal) healPlayer(p, p.maxHp * sk.heal);
       if (sk.mpHeal) p.save.mp = Math.min(p.maxMp || 1e9, (p.save.mp || 0) + (p.maxMp || 0) * sk.mpHeal);
     } else if (sk.type === 'party') {                                   // สกิลปาร์ตี้: ตัวเอง + เพื่อนร่วมปาร์ตี้ในรัศมี
@@ -398,7 +399,7 @@ io.on('connection', (socket) => {
         const mx = td ? m.tx : m.x, my = td ? m.ty : m.y;
         if (m !== p && Math.hypot(mx - x, my - y) > (sk.radius || 220) + 40) continue;
         m.buffs = (m.buffs || []).filter((b) => b.until > now && b.sk !== base.id);
-        m.buffs.push({ buff: sk.buff, until: now + sk.duration, sk: base.id });
+        m.buffs.push({ buff: sk.buff, until: now + sk.duration, sk: base.id, at: now, lv: clamp(lv, 1, MAX_SKILL_LV), from: p.name, fromId: p.id });
         if (sk.heal) healPlayer(m, m.maxHp * sk.heal);
         if (sk.mpHeal) m.save.mp = Math.min(m.maxMp || 1e9, (m.save.mp || 0) + (m.maxMp || 0) * sk.mpHeal);
         if (m !== p) io.to(m.id).emit('td:pbuff', { from: p.name, fromId: p.id, skillId: base.id, lv: clamp(lv, 1, MAX_SKILL_LV) });

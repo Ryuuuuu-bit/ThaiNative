@@ -84,12 +84,16 @@ export class GuideBook {
   render() {
     const el = $('#guide-body'); if (!el) return;
     build();
-    const tabs = [['mob', '👻 ผี'], ['boss', '👑 บอส'], ['drop', '🎁 ค้นหาของดรอป']];
+    if (this.tab === 'drop') this.tab = 'mob';                     // แท็บค้นหาของดรอปเอาออกแล้ว (ค้นชื่อของได้ในช่องค้นหาของแท็บผี/บอส)
+    const tabs = [['mob', '👻 ผี'], ['boss', '👑 บอส']];
     const maps = [['all', 'ทุกแมพ'], ...TD_MAP_IDS.filter((m) => TD_MAPS[m]).map((m) => [m, `${TD_MAPS[m].icon || ''} ${TD_MAPS[m].nameTh}`]), ['crypt', '💀 สุสานใต้ดิน']];
     const head = `<div class="gb-tabs">${tabs.map(([k, l]) => `<button class="gb-tab${this.tab === k ? ' on' : ''}" data-gtab="${k}">${l}</button>`).join('')}</div>
       <div class="gb-filter">${this.tab !== 'drop' ? `<select class="gb-map">${maps.map(([k, l]) => `<option value="${k}"${this.map === k ? ' selected' : ''}>${esc(l)}</option>`).join('')}</select>` : ''}
         <input type="search" class="gb-q" placeholder="${this.tab === 'drop' ? '🔍 ชื่อไอเทม / การ์ด' : '🔍 ชื่อผี หรือของที่ดรอป'}" value="${esc(this.q)}"></div>`;
-    el.innerHTML = head + (this.tab === 'drop' ? this.dropHtml() : this.mobHtml());
+    const keep = el.querySelector('.gb-list')?.scrollTop || 0, keepEl = el.scrollTop;   // คงตำแหน่งเลื่อนรายชื่อ
+    el.innerHTML = head + this.mobHtml();
+    const li = el.querySelector('.gb-list'); if (li) li.scrollTop = keep;
+    el.scrollTop = keepEl;
     this.bind(el);
   }
 
@@ -141,23 +145,17 @@ export class GuideBook {
     </div>`;
   }
 
-  dropHtml() {
-    const { byItem } = build(), q = this.q.trim().toLowerCase();
-    const ids = Object.keys(byItem).filter((id) => !q || ITEMS[id]?.nameTh.toLowerCase().includes(q))
-      .sort((a, b) => (ITEMS[a].type === 'card') - (ITEMS[b].type === 'card') || ITEMS[a].nameTh.localeCompare(ITEMS[b].nameTh, 'th'));
-    if (!ids.length) return '<p class="empty">ไม่พบไอเทม</p>';
-    return `<div class="gb-dlist">${ids.slice(0, 120).map((id) => `<div class="gb-ditem"><div class="gb-dh" data-tip-item="${id}">${itemIcon(id, ITEMS[id].icon)}<b>${esc(ITEMS[id].nameTh)}</b></div>
-      <div class="gb-dsrc">${byItem[id].sort((a, b) => b.chance - a.chance).map((s) => `<button class="gb-src" data-mon="${s.id}" data-gtab-to="mob">${esc(MONSTERS[s.id].nameTh)} <small>Lv.${MONSTERS[s.id].level}</small> <b>${pct(s.chance)}</b></button>`).join('')}</div></div>`).join('')}</div>
-      <p class="meta gb-foot">อุปกรณ์สุ่มดรอปจากผีทุกตัว 2% (เลเวลใกล้เคียงผี) · หัวหน้า ×3 · บอส ×25</p>`;
-  }
-
   bind(el) {
     const click = () => this.scene?.sfx?.play('click');
     el.querySelectorAll('[data-gtab]').forEach((b) => (b.onclick = () => { this.tab = b.dataset.gtab; this.sel = null; click(); this.render(); }));
     el.querySelectorAll('[data-mon]').forEach((b) => (b.onclick = () => {
-      this.sel = b.dataset.mon; if (b.dataset.gtabTo) this.tab = MONSTERS[this.sel]?.boss ? 'boss' : 'mob';
-      click(); this.render();
-      if (window.innerWidth < 900) el.querySelector('.gb-detail')?.scrollIntoView({ block: 'start', behavior: 'smooth' });
+      this.sel = b.dataset.mon;
+      click();
+      // เปลี่ยนแค่ส่วนรายละเอียด (ไม่วาดรายชื่อใหม่ → รายชื่อไม่เด้งกลับขึ้นบน)
+      el.querySelectorAll('.gb-row.on').forEach((r) => r.classList.remove('on')); b.classList.add('on');
+      const det = el.querySelector('.gb-detail');
+      if (det) { det.innerHTML = this.detail(this.sel); det.scrollTop = 0; this.bindDetail(det); }
+      if (window.innerWidth < 900) det?.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
     }));
     const map = el.querySelector('.gb-map'); if (map) map.onchange = () => { this.map = map.value; this.sel = null; click(); this.render(); };
     const q = el.querySelector('.gb-q');
@@ -167,6 +165,10 @@ export class GuideBook {
       q.addEventListener('blur', () => { if (this.scene?.input?.keyboard) this.scene.input.keyboard.enabled = true; });
       q.oninput = () => { this.q = q.value; const pos = q.selectionStart; this.render(); const q2 = el.querySelector('.gb-q'); if (q2) { q2.focus(); try { q2.setSelectionRange(pos, pos); } catch { /* */ } } };
     }
+    this.bindDetail(el);
+  }
+
+  bindDetail(el) {
     el.querySelectorAll('[data-goto]').forEach((b) => (b.onclick = () => {
       const [tx, ty] = b.dataset.goto.split(',').map(Number);
       this.ui.closeAll?.();
