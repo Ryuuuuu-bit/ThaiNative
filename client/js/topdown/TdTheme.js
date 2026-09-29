@@ -109,6 +109,7 @@ export function bakeGround(scene, ground, tilesets = [], style = {}) {
     const terr = (x, y) => {
       const t = at(Math.max(0, Math.min(MAP_W - 1, x)), Math.max(0, Math.min(MAP_H - 1, y)));
       if (isWaterT(t)) return 'water';
+      if (style.wallAs && (t === T.WALL || t === T.WALLTOP)) return style.wallAs;   // สุสาน: ผนังกลืนกับพื้นหิน (ไม่มีขอบหญ้า)
       if (t === T.WOOD) return [[1, 0], [-1, 0], [0, 1], [0, -1]].some(([dx, dy]) => isWaterT(at(x + dx, y + dy))) ? 'water' : 'stone';
       return { [T.STONE]: 'stone', [T.BRICK]: 'brick', [T.ROAD]: 'road', [T.PADDY]: 'paddy', [T.TALL]: 'tall', [T.SAND]: 'sand' }[t] || 'grass';
     };

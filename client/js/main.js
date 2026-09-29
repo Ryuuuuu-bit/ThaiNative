@@ -7,7 +7,9 @@ import { CreateScene } from './scenes/CreateScene.js';
 import { LobbyScene } from './scenes/LobbyScene.js';
 import { TopDownScene } from './scenes/TopDownScene.js';
 import { setupOrientationHint } from './systems/Orientation.js';
+import { setupTrailer } from './systems/Trailer.js';
 
+setupTrailer();                               // ตัวอย่างเรื่องราวบนหน้าเข้าสู่ระบบ
 setupOrientationHint();                       // มือถือถือแนวตั้ง → แนะนำหมุนจอ (ทุกหน้า ตั้งแต่หน้าแรก)
 
 const config = {

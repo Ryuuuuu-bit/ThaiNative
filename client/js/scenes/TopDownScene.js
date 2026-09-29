@@ -28,6 +28,7 @@ import { QUESTS } from '/shared/data/village.js';
 import { count } from '../systems/Inventory.js';
 import { TILE, T, SPAWN as TD_SPAWN, isIsland, bakeTileset, bakeProps, OX } from '../topdown/AyutthayaMap.js';
 import { TD_MAPS, EVENT_MAPS, getMap, validMap, arrivalPoint } from '/shared/td/maps.js';
+import { CRYPT_ZONES, lvOf } from '/shared/data/crypt.js';
 import { WorldBossUI } from '../topdown/WorldBoss.js';
 import { hasDir8 } from '../topdown/Dir8.js';
 import { dirFromVector, stableDir, playDir, registerDir8, texKey } from '../topdown/Dir8.js';
@@ -219,7 +220,8 @@ export class TopDownScene extends Phaser.Scene {
   // ------------------------------------------------------------
   setMapDef(id) {
     this.M = getMap(id); this.layout = this.M.layout(); this.mapW = this.M.W; this.mapH = this.M.H;
-    if (!this.visitedMaps.includes(this.M.id)) this.visitedMaps.push(this.M.id);
+    if (!this.M.crypt && !this.visitedMaps.includes(this.M.id)) this.visitedMaps.push(this.M.id);
+    this.cryptOpen = false;
   }
 
   /** เรียก fn แล้วคืนรายการวัตถุในฉากที่ถูกสร้างขึ้นระหว่างนั้น (ไว้ลบตอนเปลี่ยนแมพ) */
@@ -260,15 +262,17 @@ export class TopDownScene extends Phaser.Scene {
   /** ประตูมิติ: วงแสงหมุน + ป้ายปลายทาง · เดินเข้า = วาร์ป */
   buildPortals() {
     this.portals = (this.layout.portals || []).map((pt) => {
-      const T2 = TD_MAPS[pt.to], col = pt.to === 'ayutthaya' ? 0xffd27a : T2.style?.waterTint || 0xc39bd3;
+      const cr = pt.to.startsWith('crypt_'), T2 = TD_MAPS[pt.to];
+      const col = cr ? (pt.to === 'crypt_exit' ? 0xffd27a : pt.boss ? 0xff5a4a : 0x8fd0ff) : pt.to === 'ayutthaya' ? 0xffd27a : T2.style?.waterTint || 0xc39bd3;
       const base = this.add.ellipse(pt.x, pt.y, 60, 26, col, 0.25).setDepth(0.8).setStrokeStyle(2, col, 0.9);
       const ring = this.add.image(pt.x, pt.y - 22, 'fx_ring').setDepth(pt.y - 1).setTint(col).setScale(0.9, 1.3).setAlpha(0.85).setBlendMode(Phaser.BlendModes.ADD);
       const core = this.add.image(pt.x, pt.y - 22, 'fx_glow').setDepth(pt.y - 2).setTint(col).setDisplaySize(46, 64).setAlpha(0.55).setBlendMode(Phaser.BlendModes.ADD);
       this.tweens.add({ targets: ring, angle: 360, duration: 3200, repeat: -1 });
       this.tweens.add({ targets: core, alpha: 0.25, duration: 900, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
       this.add.particles(pt.x, pt.y - 20, 'fx_spark', { speedY: { min: -40, max: -15 }, speedX: { min: -12, max: 12 }, lifespan: 1100, scale: { start: 0.25, end: 0 }, alpha: { start: 0.9, end: 0 }, tint: col, frequency: 70, blendMode: 'ADD', x: { min: -16, max: 16 } }).setDepth(pt.y);
-      const lock = (this.player?.char.level || 1) < T2.reqLv;
-      makeText(this, pt.x, pt.y - 62, `🌀 ${T2.nameTh}\nLv.${T2.reqLv}+${lock ? ' 🔒' : ''}`, { fontSize: '7px', color: lock ? '#f5b7b1' : '#ffe9a6', align: 'center' }).setOrigin(0.5, 1).setDepth(99990);
+      const lock = !cr && (this.player?.char.level || 1) < T2.reqLv;
+      const tag = cr ? this.cryptLabel(pt) : `🌀 ${T2.nameTh}\nLv.${T2.reqLv}+${lock ? ' 🔒' : ''}`;
+      pt.text = makeText(this, pt.x, pt.y - 62, tag, { fontSize: '7px', color: lock || (cr && tag.includes('🔒')) ? '#f5b7b1' : '#ffe9a6', align: 'center' }).setOrigin(0.5, 1).setDepth(99990);
       const hit = this.add.zone(pt.x, pt.y - 22, 48, 60).setInteractive({ useHandCursor: true }).setDepth(pt.y);
       hit.on('pointerdown', (ptr) => { if (uiBlocked(ptr)) return; ptr.event.stopPropagation(); this.player.target = null; this.moveTo(pt.x, pt.y); });
       return pt;
@@ -277,6 +281,7 @@ export class TopDownScene extends Phaser.Scene {
 
   /** ขอวาร์ป (ผ่านประตู หรือ NPC) · ออฟไลน์ = ย้ายเองทันที */
   warpTo(to, via = 'portal') {
+    if (to.startsWith('crypt_')) return this.cryptGo(to);
     const T2 = TD_MAPS[to], p = this.player;
     if (!T2 || this.warping || !p.alive) return;
     if (p.char.level < T2.reqLv) { this.ui.toast(`🔒 ${T2.nameTh} ต้อง Lv.${T2.reqLv} ขึ้นไป (ตอนนี้ Lv.${p.char.level})`, 'warn', 2400); return false; }
@@ -295,6 +300,56 @@ export class TopDownScene extends Phaser.Scene {
     for (const pt of this.portals) { const d = Math.hypot(pt.x - p.x, pt.y - p.y); if (d < 70) far = false; if (d < 18) near = pt; }
     if (far) this.portalArmed = true;
     if (near && this.portalArmed) { this.portalArmed = false; p.path = []; this.warpTo(near.to, 'portal'); }
+  }
+
+  // ------------------------------------------------------------
+  //  สุสานใต้ดิน: หน้าต่างเลือกชั้น (สัปเหร่อเฒ่า) · บันไดขึ้น/ลง
+  // ------------------------------------------------------------
+  cryptLabel(pt) {
+    if (pt.to === 'crypt_exit') return pt.final ? `🏯 กลับกรุงศรีฯ${this.cryptOpen ? '' : ' 🔒'}` : '▲ บันไดขึ้น\n(กลับกรุงศรีฯ)';
+    const f = this.M.crypt?.f || 0;
+    return `${pt.boss ? '☠ ห้องบอส' : '▼ บันไดลง'} ชั้น ${f + 1}${this.cryptOpen ? '' : ' 🔒'}`;
+  }
+
+  refreshCryptPortals() { for (const pt of this.portals || []) if (pt.text && pt.to.startsWith('crypt_')) { const t = this.cryptLabel(pt); pt.text.setText(t).setColor(t.includes('🔒') ? '#f5b7b1' : '#ffe9a6'); } }
+
+  cryptGo(to) {
+    if (this.warping || !this.player.alive) return false;
+    if (!this.econ.server) { this.ui.toast('สุสานใต้ดินเล่นได้เฉพาะออนไลน์', 'warn', 2400); return false; }
+    this.warping = true; this.time.delayedCall(3000, () => { this.warping = false; });
+    this.net.send('crypt:go', { to });
+    return true;
+  }
+
+  openCrypt() {
+    if (!this.econ.server) return this.ui.toast('สุสานใต้ดินเล่นได้เฉพาะออนไลน์', 'warn', 2400);
+    this.net.send('crypt:info', {});
+  }
+
+  showCrypt(d) {
+    const box = document.querySelector('#crypt-list'), panel = document.querySelector('#crypt-panel');
+    if (!box || !panel) return;
+    const head = `<p class="hint" style="margin:0 0 1cqh">ลึกสุด: ชั้น ${d.best || 0} · ปาร์ตี้ ${d.party} คน${d.party > 1 ? (d.leader ? ' (คุณเป็นหัวหน้า)' : ' (รอหัวหน้าเปิดประตู)') : ''}</p>`;
+    const run = d.running ? `<div class="warp-card here"><span class="wc-ic">💀</span><span><b>ปาร์ตี้อยู่ชั้น ${d.running.f}</b><small>${d.running.players} คนอยู่ข้างล่าง · ตามลงไปได้เลย</small></span><button class="btn" data-cf="join">ตามลงไป</button></div>` : '';
+    const rows = d.floors.map((f) => {
+      const z = CRYPT_ZONES[Math.floor((f - 1) / 10)], lock = !d.leader || !!d.running;
+      return `<div class="warp-card ${lock ? 'lock' : ''}"><span class="wc-ic">${f === 1 ? '🪦' : '🕯️'}</span>
+        <span><b>เริ่มชั้น ${f} · ${z.name}</b><small>ผี Lv.${lvOf(f)}–${lvOf(Math.min(100, f + 9))} · บอสชั้น ${f + 9}: ${z.bossName}</small></span>
+        <button class="btn" data-cf="${f}" ${lock ? 'disabled' : ''}>${d.running ? 'มีห้องแล้ว' : d.leader ? 'ลงไป' : 'หัวหน้าเท่านั้น'}</button></div>`;
+    }).join('');
+    box.innerHTML = head + run + rows;
+    box.querySelectorAll('[data-cf]').forEach((b) => (b.onclick = () => {
+      this.net.send('crypt:enter', b.dataset.cf === 'join' ? {} : { floor: +b.dataset.cf });
+      panel.classList.add('hidden');
+    }));
+    this.ui.closeAll?.(); panel.classList.remove('hidden'); this.sfx.play('open');
+  }
+
+  onCryptChest(c) {
+    const names = c.items.map((it) => `${ITEMS[it.id]?.nameTh || it.id} x${it.qty}`).join(' · ');
+    this.ui.toast(`${c.kind === 'gold' ? '🟨 หีบทอง' : '⬜ หีบเงิน'} ชั้น ${c.f}: ฿${c.gold.toLocaleString()} · ${names}${c.again ? ' (หีบทองบอสนี้เปิดไปแล้ววันนี้)' : ''}`, 'ok', 6000);
+    for (const it of c.items) this.ui.loot?.(`ได้ ${ITEMS[it.id]?.nameTh || it.id} x${it.qty}`, rarityOf(ITEMS[it.id]));
+    this.sfx.play('victory');
   }
 
   /** หน้าต่างวาร์ป (คุยกับฤๅษีเฝ้าประตูมิติ) */
@@ -338,7 +393,20 @@ export class TopDownScene extends Phaser.Scene {
     // ใบเสมาเรียงบนกำแพงเมือง: บนขอบหน้ากำแพงทุกช่วง + ด้านนอกของกำแพงข้าง (ตกแต่ง ไม่ชนกัน)
     const gt = (x, y) => ground[y]?.[x], isW = (t) => t === T.WALL || t === T.WALLTOP;
     const sema = (x, y) => this.add.image(x, y, 'td_sema').setOrigin(0.5, 1).setDepth(y);
-    for (let y = 0; y < MAP_H; y++) for (let x = 0; x < MAP_W; x++) {
+    if (this.M.crypt) {                                                        // สุสานใต้ดิน: หินทึบสีมืด + ขอบหินจาง · หน้าผนังอิฐหรี่ลง (ไม่มีใบเสมา)
+      const rock = this.add.graphics().setDepth(0.28);
+      for (let y = 0; y < MAP_H; y++) for (let x = 0; x < MAP_W; x++) {
+        const t = gt(x, y), X = x * TILE, Y = y * TILE;
+        if (t === T.WALL) { rock.fillStyle(0x000000, 0.45).fillRect(X, Y, TILE, TILE); continue; }
+        if (t !== T.WALLTOP) continue;
+        rock.fillStyle(0x100c14, 1).fillRect(X, Y, TILE, TILE);
+        rock.fillStyle(0x2c2436, 1);
+        if (!isW(gt(x, y - 1)) && gt(x, y - 1) != null) rock.fillRect(X, Y, TILE, 2);
+        if (!isW(gt(x - 1, y)) && gt(x - 1, y) != null) rock.fillRect(X, Y, 2, TILE);
+        if (!isW(gt(x + 1, y)) && gt(x + 1, y) != null) rock.fillRect(X + TILE - 2, Y, 2, TILE);
+      }
+    }
+    if (!this.M.crypt) for (let y = 0; y < MAP_H; y++) for (let x = 0; x < MAP_W; x++) {
       const t = gt(x, y); if (!isW(t)) continue;
       if (t === T.WALL) sema(x * TILE + 8, y * TILE + 2);
       else if (!isIsland(x - 1, y) || !isIsland(x + 1, y)) sema(x * TILE + 8, (y + 1) * TILE);
@@ -554,6 +622,7 @@ export class TopDownScene extends Phaser.Scene {
     this.sfx.play('npc');
     if (n.id === 'quest') return this.village.openQuests();
     if (n.id === 'warp') return this.openWarp();
+    if (n.id === 'crypt') return this.openCrypt();
     if (NPC_OPEN[n.id]) return this.ui.openShop(NPC_OPEN[n.id], n);
     const lines = Array.isArray(n.lines) && n.lines.length ? n.lines : null;
     if (!lines) return;
@@ -1108,6 +1177,15 @@ export class TopDownScene extends Phaser.Scene {
         if (how === 'portal' && maps?.length && this.M.realm) this.ui.toast(`🌀 ปลดล็อกวาร์ป: ${this.M.nameTh} (คุยกับฤๅษีเฝ้าประตูมิติเพื่อกลับมาได้ทันที)`, 'ok', 3200);
       })
       .on('td:warpFail', ({ msg }) => { this.warping = false; this.ui.toast(msg || 'วาร์ปไม่สำเร็จ', 'warn', 2400); })
+      .on('crypt:info', (d) => this.showCrypt(d))
+      .on('crypt:fail', ({ msg }) => { this.warping = false; this.ui.toast(msg || 'เข้าไม่ได้', 'warn', 2600); })
+      .on('crypt:left', ({ left }) => { if (left <= 3 || left % 5 === 0) this.ui.toast(`💀 เหลือผีอีก ${left} ตัว`, '', 1600); })
+      .on('crypt:open', ({ f, boss, final }) => {
+        this.cryptOpen = true; this.refreshCryptPortals();
+        this.ui.banner(final ? '🏆 พิชิตสุสานใต้ดิน 100 ชั้น!' : boss ? `☠ ปราบบอสชั้น ${f} สำเร็จ` : `▼ ชั้น ${f} เคลียร์แล้ว`, final ? 'เดินเข้าวงแสงเพื่อกลับกรุงศรีฯ' : boss ? `บันทึกจุดเริ่มชั้น ${f + 1} · บันไดลงเปิดแล้ว` : 'บันไดลงเปิดแล้ว');
+        this.sfx.play('levelup');
+      })
+      .on('crypt:chest', (c) => this.onCryptChest(c))
       .on('td:left', (id) => this.removeRemote(id))
       .on('skill', (d) => { const r = this.remotes.get(d.id); if (r) this.skills.remote(d, r); })
       .on('td:state', (s) => this.applyState(s))

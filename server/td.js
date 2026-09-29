@@ -13,12 +13,13 @@ import { dayPhase, dayIndex, moonOf, nightMods, isNight } from '../shared/data/w
 import { rollGearDrop } from '../shared/data/gear.js';
 import { rollAffixes, affixId } from '../shared/data/affixes.js';
 import { rollCard, CARD_BY_ID } from '../shared/data/cards.js';
-import { grantKill, refillFlasks } from '../shared/economy.js';
+import { grantKill, grant, refillFlasks } from '../shared/economy.js';
+import { CRYPT, cryptId, isCrypt, checkpoints, isBossFloor, isChestFloor, chestLoot, zoneOf } from '../shared/data/crypt.js';
 import { FLASK_SLOTS } from '../shared/data/slots.js';
 import { ITEMS } from '../shared/data/items.js';
 import { NPC_BY_ID } from '../shared/data/npcs.js';
 import { TILE, T, OX } from '../shared/td/ayutthaya.js';
-import { TD_MAPS, TD_MAP_IDS, EVENT_MAPS, getMap, validMap, arrivalPoint } from '../shared/td/maps.js';
+import { TD_MAPS, TD_MAP_IDS, EVENT_MAPS, DEFAULT_MAP, getMap, validMap, arrivalPoint } from '../shared/td/maps.js';
 import { MAX_LEVEL, mobExp } from '../shared/stats.js';
 
 export const TD_SPAWN = { ...TD_MAPS.ayutthaya.spawn };
@@ -35,9 +36,9 @@ const ANIMS = ['idle', 'walk', 'attack', 'cast', 'hit', 'die'];
 const DIRS = ['south', 'south-east', 'east', 'north-east', 'north', 'north-west', 'west', 'south-west'];
 
 export function setupTD(io, players, opts = {}) {
-  const { dayMs = 20 * 60 * 1000, queueSync = () => {}, refresh = () => {}, hurtPlayer = () => {}, shareExp = () => {} } = opts;
-  const mapOf = (p) => validMap(p.tmap);
-  const worlds = Object.fromEntries(TD_MAP_IDS.map((id) => [id, makeWorld(id)]));
+  const { dayMs = 20 * 60 * 1000, queueSync = () => {}, refresh = () => {}, hurtPlayer = () => {}, shareExp = () => {}, partyOf = () => null } = opts;
+  const worlds = Object.fromEntries(TD_MAP_IDS.map((id) => [id, makeWorld(id)]));   // + ห้องสุสานใต้ดิน (crypt:…) สร้าง/ลบตามการใช้งาน
+  const mapOf = (p) => (Object.hasOwn(worlds, p.tmap || '') ? p.tmap : DEFAULT_MAP);
   const W = (p) => worlds[mapOf(p)];
   let wb = null;                       // ตัวควบคุมบอสโลก (server/worldboss.js) · setWb()
   const nightNow = () => isNight(dayPhase(Date.now(), dayMs));
@@ -52,6 +53,7 @@ export function setupTD(io, players, opts = {}) {
   // ================= โลก 1 แมพ (ผี/ชน/รางวัล ของแมพนั้น) =================
   function makeWorld(mapId) {
   const M = getMap(mapId), L = M.layout(), room = tdRoom(mapId), MW = M.W, MH = M.H;
+  const CR = M.crypt ? { ...M.crypt, open: false, seen: Date.now(), key: null } : null;   // ห้องสุสานใต้ดิน: ผีไม่เกิดใหม่ · ฆ่าครบ = บันไดลงเปิด
   const solidAt = (x, y) => {
     const tx = Math.floor(x / TILE), ty = Math.floor(y / TILE);
     return tx < 0 || ty < 0 || tx >= MW || ty >= MH || L.solid[ty][tx];
@@ -194,18 +196,18 @@ export function setupTD(io, players, opts = {}) {
     m.hp = 0; m.st = 'dead'; m.pending = [];
     // คนเยอะในแมพ → ผีเกิดเร็วขึ้น (สูงสุด ×2 เมื่อ 8 คนขึ้นไป · บอสไม่เร่ง)
     const crowd = m.boss ? 1 : Math.min(2, 1 + 0.15 * Math.max(0, tdPlayers(mapId).length - 1));
-    m.respawnAt = Date.now() + Math.round((d.respawnMs || RESPAWN_MS) / crowd);
+    m.respawnAt = CR ? Infinity : Date.now() + Math.round((d.respawnMs || RESPAWN_MS) / crowd);
     const assist = [...m.dmgBy.entries()].filter(([id, v]) => id !== killer.id && v >= d.hp * (m.boss ? BOSS_SHARE : 0.15)).map(([id]) => id);
     io.to(room).emit('td:die', { mid: m.mid, killer: killer.id });
     m.aoe = null;
     if (m.wb) { m.respawnAt = Infinity; wb?.onKill(m, killer); return; }       // บอสโลก: รางวัล/MVP ที่ตัวควบคุมอีเวนต์
-    if (m.boss) io.emit('chat', { id: null, name: '👑 บอส', text: `${d.nameTh} ถูกปราบแล้ว! ผู้ปิดฉาก ${killer.name}${assist.length ? ` · ร่วมปราบอีก ${assist.length} คน` : ''} (เกิดใหม่ใน ${Math.round((d.respawnMs || RESPAWN_MS) / 60000)} นาที)` });
+    if (m.boss && !CR) io.emit('chat', { id: null, name: '👑 บอส', text: `${d.nameTh} ถูกปราบแล้ว! ผู้ปิดฉาก ${killer.name}${assist.length ? ` · ร่วมปราบอีก ${assist.length} คน` : ''} (เกิดใหม่ใน ${Math.round((d.respawnMs || RESPAWN_MS) / 60000)} นาที)` });
     const reward = (p, isKiller) => {
       if (!p?.save) return;
       const bl = blessingsOf(p.save);
       const base = d.exp * tm.exp * bl.expMul;
       const exp = mobExp(base, p.save.level, d.level, !!m.boss);                 // แคปตามช่วงเลเวล
-      const out = { mid: m.mid, mon: m.id, kind: isKiller ? 'kill' : 'assist', exp, gold: 0, items: [], x: Math.round(m.x), y: Math.round(m.y), night: tm.exp > 1 };
+      const out = { mid: m.mid, mon: d.base || m.id, kind: isKiller ? 'kill' : 'assist', exp, gold: 0, items: [], x: Math.round(m.x), y: Math.round(m.y), night: tm.exp > 1 };
       if (isKiller || m.boss) {                                                   // บอส: ทุกคนที่ช่วยตีได้ของ/การ์ดของตัวเอง
         out.gold = Math.round(rand(d.gold[0], d.gold[1]) * tm.gold * bl.goldMul);
         out.items = (d.drops || []).filter((dr) => Math.random() < dr.chance * bl.dropMul).map((dr) => ({ id: dr.item, qty: 1 }));
@@ -218,7 +220,7 @@ export function setupTD(io, players, opts = {}) {
           out.items.push({ id: gear, qty: 1, rare: true, affixN: n });
           if (n >= 3) io.emit('chat', { id: null, name: '✨ ของหายาก', text: `${p.name} ได้รับ ${ITEMS[gear].nameTh} (ค่าสุ่ม 3 บรรทัด)!` });
         }
-        const card = rollCard(m.id, bl.dropMul);                                   // การ์ดผี (0.5% · หัวหน้า 1.2% · บอส 20% · บัฟดรอปช่วยได้สูงสุด ×1.5)
+        const card = rollCard(d.cardOf || m.id, bl.dropMul * (CR && !m.boss ? 2 : 1));   // สุสาน: การ์ดผีธรรมดา ×2                                   // การ์ดผี (0.5% · หัวหน้า 1.2% · บอส 20% · บัฟดรอปช่วยได้สูงสุด ×1.5)
         if (card) {
           out.items.push({ id: card, qty: 1, rare: true, card: true });
           out.cardNew = !p.save.cardBook?.[card];
@@ -233,6 +235,7 @@ export function setupTD(io, players, opts = {}) {
     reward(killer, true);
     for (const id of assist) reward(players.get(id), false);
     m.dmgBy.clear();
+    if (CR) cryptKilled(self);
   }
 
   /** NPC บริการที่ผู้เล่นยืนใกล้ → คืนพิกัด x ของ NPC เดียวกันในหมู่บ้านโลกเดิม (ให้ runAction/nearNpc ตรวจผ่าน) */
@@ -258,7 +261,8 @@ export function setupTD(io, players, opts = {}) {
   function forget(p) {
     for (const m of mobs) { if (m.target === p.id) { m.target = null; if (m.st === 'chase') { m.st = 'wander'; m.wx = m.s.x; m.wy = m.s.y; } } m.pending = m.pending.filter((a) => a.pid !== p.id); m.dmgBy.delete(p.id); }
   }
-  return { id: mapId, M, L, room, mobs, solidAt, inTown, okPos, econX, nearNpc, portalNear, onHit, tick, forget };
+  const self = { id: mapId, M, L, room, mobs, crypt: CR, solidAt, inTown, okPos, econX, nearNpc, portalNear, onHit, tick, forget };
+  return self;
   }
 
   // ---------------- เข้า/ออก/เดิน/วาร์ป ----------------
@@ -272,7 +276,7 @@ export function setupTD(io, players, opts = {}) {
     const ok = w.okPos(pos);
     p.tx = ok ? pos.x : w.M.spawn.x; p.ty = ok ? pos.y : w.M.spawn.y; p.tdLast = Date.now();
     p.save.tdPos = { x: Math.round(p.tx), y: Math.round(p.ty) }; p.dirty = true;
-    if (!EVENT_MAPS.has(mapId) && !visited(p).includes(mapId)) visited(p).push(mapId);
+    if (!EVENT_MAPS.has(mapId) && !w.crypt && !visited(p).includes(mapId)) visited(p).push(mapId);
     socket.join(w.room);
     socket.to(w.room).emit('td:joined', publicTd(p));
     return w;
@@ -281,11 +285,12 @@ export function setupTD(io, players, opts = {}) {
   function enter(socket, p) {
     if (p.save.tdPos && (p.save.tdMapV || 1) < TD_MAP_V) p.save.tdPos = { x: p.save.tdPos.x + OX * TILE, y: p.save.tdPos.y };   // เซฟก่อนขยายแผนที่
     p.save.tdMapV = TD_MAP_V;
-    for (const id of TD_MAP_IDS) socket.leave(tdRoom(id));
+    for (const id of Object.keys(worlds)) socket.leave(tdRoom(id));
     p.world = 'td'; p.tdir = 'south'; p.tanim = 'idle';
     if (p.save.deadAt) { const M0 = worlds[validMap(p.save.tdMap)]?.M; if (M0) p.save.tdPos = { ...M0.spawn }; p.save.deadAt = 0; }   // ตายค้างแล้วออกเกม → เกิดที่จุดฟื้น
     if (EVENT_MAPS.has(validMap(p.save.tdMap)) && !wb?.isOpen()) { p.save.tdMap = p.save.wbFrom?.map || 'ayutthaya'; p.save.tdPos = p.save.wbFrom?.pos || null; }   // ลานอีเวนต์ปิดแล้ว → กลับที่เดิม
-    const w = place(socket, p, validMap(p.save.tdMap), p.save.tdPos);
+    if (isCrypt(p.save.tdMap) && !worlds[p.save.tdMap]) { p.save.tdMap = 'ayutthaya'; p.save.tdPos = { ...GATE }; }   // ห้องสุสานถูกปิดไปแล้ว → หน้าประตูสุสาน
+    const w = place(socket, p, mapOf({ tmap: p.save.tdMap }), p.save.tdPos);
     p.spawnGuardUntil = Date.now() + SPAWN_GUARD_MS; p.invulnUntil = Date.now() + 2500;   // เข้าเกม: กันผีรุมก่อนโหลดเสร็จ
     socket.join('td');
     socket.emit('td:init', { map: w.id, maps: visited(p), x: p.tx, y: p.ty, players: tdPlayers(w.id).filter((q) => q.id !== p.id).map(publicTd) });
@@ -369,11 +374,127 @@ export function setupTD(io, players, opts = {}) {
     socket.emit('td:respawn', { x: p.tx, y: p.ty, hp: Math.round(p.hp), maxHp: p.maxHp });
   }
 
+  // ================= สุสานใต้ดิน (ห้องแยกต่อปาร์ตี้ · ลงทีละชั้น) =================
+  const GATE = { x: CRYPT.gate.x * TILE + TILE / 2, y: (CRYPT.gate.y + 3) * TILE };   // จุดโผล่หน้าประตูสุสาน (กรุงศรีฯ)
+  const instances = new Map();          // key (ปาร์ตี้/คนเดียว) → รหัสห้องชั้นปัจจุบัน
+  let cryptSeq = 0;
+  const cryptKey = (p) => { const pt = partyOf(p); return pt ? `p${pt.id}` : `s${p.id}`; };
+  const cryptSave = (p) => (p.save.crypt ||= { cp: 1, best: 0 });
+  const thaiDay = () => new Date(Date.now() + 7 * 3600000).toISOString().slice(0, 10);
+
+  function cryptInfo(socket) {
+    const p = players.get(socket.id);
+    if (!p?.save) return;
+    const c = cryptSave(p), party = partyOf(p), cur = instances.get(cryptKey(p)), w = cur && worlds[cur];
+    socket.emit('crypt:info', {
+      cp: c.cp || 1, best: c.best || 0, floors: checkpoints(c.cp || 1),
+      party: party ? party.members.size : 1, leader: !party || party.leader === p.id,
+      running: w ? { f: w.crypt.f, n: w.crypt.n, players: tdPlayers(w.id).length } : null,
+    });
+  }
+
+  function openCrypt(members, floor, key) {
+    const n = Math.max(1, Math.min(CRYPT.maxParty, members.length));
+    const id = cryptId(floor, n, `${key}-${++cryptSeq}`);
+    const w = (worlds[id] = makeWorld(id));
+    w.crypt.key = key; instances.set(key, id);
+    for (const q of members) {
+      const sk = io.sockets.sockets.get(q.id);
+      if (!sk) continue;
+      const c = cryptSave(q); c.best = Math.max(c.best || 0, floor);
+      moveMap(sk, q, id, { ...w.M.spawn }, 'crypt');
+    }
+    return w;
+  }
+
+  function dropCrypt(w) {
+    delete worlds[w.id];
+    if (instances.get(w.crypt.key) === w.id) instances.delete(w.crypt.key);
+  }
+
+  function cryptEnter(socket, d = {}) {
+    const p = players.get(socket.id);
+    if (!p || p.world !== 'td' || p.dead) return;
+    const no = (msg) => socket.emit('crypt:fail', { msg });
+    const w = W(p), gate = w.L.npcs.find((n) => n.id === 'crypt');
+    if (!gate || Math.hypot(gate.x - p.tx, gate.y - p.ty) > NPC_R + 60) return no('ต้องคุยกับสัปเหร่อเฒ่าหน้าประตูสุสาน');
+    if (Date.now() - (p.tdWarpAt || 0) < WARP_CD) return no('ประตูสุสานยังไม่เปิด รอสักครู่');
+    const party = partyOf(p), key = cryptKey(p), cur = instances.get(key);
+    if (cur && worlds[cur]) return moveMap(socket, p, cur, { ...worlds[cur].M.spawn }, 'crypt');       // ปาร์ตี้ลงไปก่อนแล้ว → ตามลงไป
+    if (party && party.leader !== p.id) return no('ให้หัวหน้าปาร์ตี้เป็นคนเปิดประตูสุสาน · ลงไปแล้วสมาชิกคุยกับสัปเหร่อเพื่อตามได้');
+    const floor = d.floor | 0, cp = cryptSave(p).cp || 1;
+    if (!checkpoints(cp).includes(floor)) return no(`ยังไม่ปลดล็อกจุดเริ่มชั้น ${floor}`);
+    const near = (q) => q && q.world === 'td' && !q.dead && mapOf(q) === w.id && Math.hypot(gate.x - q.tx, gate.y - q.ty) <= CRYPT.rally;
+    const members = party ? [...party.members].map((id) => players.get(id)).filter(near) : [];
+    if (!members.includes(p)) members.unshift(p);
+    openCrypt(members.slice(0, CRYPT.maxParty), floor, key);
+    if (party) for (const id of party.members) if (!members.includes(players.get(id))) io.to(id).emit('chat', { id: null, name: '💀 สุสานใต้ดิน', text: `${p.name} เปิดประตูสุสานชั้น ${floor} แล้ว · คุยกับสัปเหร่อเฒ่าเพื่อตามลงไป` });
+  }
+
+  function cryptGo(socket, d = {}) {
+    const p = players.get(socket.id);
+    if (!p || p.world !== 'td' || p.dead) return;
+    const no = (msg) => socket.emit('crypt:fail', { msg });
+    const w = W(p), C = w.crypt;
+    if (!C) return;
+    const want = d.to === 'crypt_down' ? 'crypt_down' : 'crypt_exit';
+    const pt = w.L.portals.filter((q) => q.to === want).sort((a, b) => Math.hypot(a.x - p.tx, a.y - p.ty) - Math.hypot(b.x - p.tx, b.y - p.ty))[0];
+    if (!pt || Math.hypot(pt.x - p.tx, pt.y - p.ty) > PORTAL_R) return no('อยู่ไกลบันไดเกินไป');
+    if (Date.now() - (p.tdWarpAt || 0) < WARP_CD) return no('รอสักครู่');
+    if (want === 'crypt_exit') {
+      if (pt.final && !C.open) return no('ต้องปราบบอสก่อน');
+      return moveMap(socket, p, 'ayutthaya', { ...GATE }, 'crypt');
+    }
+    if (!C.open) { const left = w.mobs.filter((m) => m.st !== 'dead').length; return no(isBossFloor(C.f) ? 'ต้องปราบบอสก่อน บันไดถึงจะเปิด' : `บันไดยังปิด · เหลือผีอีก ${left} ตัว`); }
+    // ทั้งห้องลงชั้นถัดไปพร้อมกัน
+    const id = cryptId(C.f + 1, C.n, C.inst), nw = (worlds[id] = makeWorld(id));
+    nw.crypt.key = C.key; instances.set(C.key, id);
+    for (const q of tdPlayers(w.id)) {
+      const sk = io.sockets.sockets.get(q.id);
+      if (!sk) continue;
+      const c = cryptSave(q); c.best = Math.max(c.best || 0, C.f + 1);
+      moveMap(sk, q, id, { ...nw.M.spawn }, 'crypt');
+    }
+    dropCrypt(w);
+  }
+
+  /** หีบต่อคน: เงิน (ชั้นลงท้าย 5) / ทอง (บอส · วันละครั้งต่อบอส ไม่งั้นได้หีบเงิน) */
+  function giveChest(q, f, kind) {
+    const c = cryptSave(q), day = thaiDay();
+    let k = kind;
+    if (k === 'gold') { c.gold ||= {}; if (c.gold[f] === day) k = 'silver'; else c.gold[f] = day; }
+    const L = chestLoot(f, k), items = [...L.items, { id: CRYPT.dust, qty: L.dust }];
+    grant(q.save, { gold: L.gold, items });
+    refresh(q); queueSync(q);
+    io.to(q.id).emit('crypt:chest', { kind: k, f, gold: L.gold, items, again: k !== kind });
+  }
+
+  /** ผีในห้องสุสานตาย → นับที่เหลือ · หมดแล้ว = บันไดเปิด + หีบ + จุดเซฟ (ชั้นบอส) */
+  function cryptKilled(w) {
+    const C = w.crypt;
+    if (C.open) return;
+    const left = w.mobs.filter((m) => m.st !== 'dead').length;
+    if (left) { io.to(w.room).emit('crypt:left', { left }); return; }
+    C.open = true;
+    const here = tdPlayers(w.id), boss = isBossFloor(C.f);
+    io.to(w.room).emit('crypt:open', { f: C.f, boss, final: C.f >= CRYPT.floors });
+    if (boss || isChestFloor(C.f)) for (const q of here) giveChest(q, C.f, boss ? 'gold' : 'silver');
+    if (boss) {
+      for (const q of here) { const c = cryptSave(q); c.cp = Math.max(c.cp || 1, C.f + 1); q.dirty = true; }
+      io.emit('chat', { id: null, name: '💀 สุสานใต้ดิน', text: `${here.map((q) => q.name).join(', ')} ปราบ${zoneOf(C.f).bossName} ชั้น ${C.f} สำเร็จ!` });
+    }
+  }
+
   // ---------------- loop ----------------
   let last = Date.now();
   function tick() {
     const now = Date.now(), dt = Math.min(0.25, (now - last) / 1000); last = now;
-    for (const w of Object.values(worlds)) w.tick(dt, now);
+    for (const w of Object.values(worlds)) {
+      w.tick(dt, now);
+      if (!w.crypt) continue;
+      if (tdPlayers(w.id).length) w.crypt.seen = now;
+      else if (now - w.crypt.seen > CRYPT.idleMs) dropCrypt(w);                  // ไม่มีใครอยู่นานแล้ว → ปิดห้อง
+    }
   }
 
   return {
@@ -399,9 +520,11 @@ export function setupTD(io, players, opts = {}) {
     playersIn: (id) => tdPlayers(id),
     socketOf: (p) => io.sockets.sockets.get(p.id),
     /** ย้ายผู้เล่นไปแมพ (ใช้โดยอีเวนต์) */
-    move(p, to, pos, how = 'npc') { const sk = io.sockets.sockets.get(p.id); if (!sk || p.world !== 'td') return false; moveMap(sk, p, to, pos || { ...TD_MAPS[to].spawn }, how); return true; },
+    move(p, to, pos, how = 'npc') { const sk = io.sockets.sockets.get(p.id); if (!sk || p.world !== 'td') return false; if (!worlds[to]) { pos = isCrypt(to) ? { ...GATE } : null; to = 'ayutthaya'; } moveMap(sk, p, to, pos || { ...getMap(to).spawn }, how); return true; },
     /** GM: วาร์ปไปแมพไหนก็ได้ (ทดสอบ) */
     gmWarp(p, socket, to) {
+      const cf = /^crypt:?(\d+)$/.exec(to);                                     // /map crypt:15 → ห้องสุสานเดี่ยวชั้น 15 (ทดสอบ)
+      if (cf && p.world === 'td') { openCrypt([p], Math.min(CRYPT.floors, Math.max(1, +cf[1])), `s${p.id}`); return true; }
       if (!TD_MAPS[to] || p.world !== 'td') return false;
       if (!visited(p).includes(to)) visited(p).push(to);
       if (to === mapOf(p)) { const sp = TD_MAPS[to].spawn; p.tx = sp.x; p.ty = sp.y; socket.emit('td:correct', { x: sp.x, y: sp.y }); return true; }
@@ -413,6 +536,9 @@ export function setupTD(io, players, opts = {}) {
       socket.on('td:hit', (d) => { const p = players.get(socket.id); if (p && p.world === 'td') W(p).onHit(p, d); });
       socket.on('td:respawn', () => onRespawn(socket));
       socket.on('td:warp', (d) => onWarp(socket, d));
+      socket.on('crypt:info', () => cryptInfo(socket));
+      socket.on('crypt:enter', (d) => cryptEnter(socket, d));
+      socket.on('crypt:go', (d) => cryptGo(socket, d));
     },
     onLeave(p) { if (p.world === 'td') { W(p).forget(p); io.to(tdRoom(mapOf(p))).emit('td:left', p.id); } },
     _mobs: worlds.ayutthaya.mobs, _worlds: worlds,

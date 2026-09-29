@@ -49,7 +49,17 @@
           <img class="emblem" src="assets/ui/icon-192.png" alt="" />
           <h1 class="logo big">ThaiNative <span class="logo-online">Online</span><small>ไทยเนทีฟ ออนไลน์ · ตำนานผีไทย</small></h1>
           <p class="tagline">ท่องกรุงศรีอยุธยา ปราบภูตผี สร้างตำนานของเจ้า</p>
+          <!-- ตัวอย่างเรื่องราว (animatic) · กด ⛶ = ขยายจอ · เข้าเกมแล้วหยุดเอง -->
+          <figure class="trailer" id="trailer">
+            <figcaption class="tr-head">
+              <span class="tr-tag">🎬 ตัวอย่างเรื่องราว</span>
+              <b>ตอนที่ 0 · 2:52 นาที</b>
+              <button type="button" class="tr-btn" id="tr-expand" title="ขยายจอ (Esc = ย่อกลับ)" aria-label="ขยายจอ">⛶</button>
+            </figcaption>
+            <div class="tr-screen"><iframe id="tr-frame" title="ตัวอย่างเรื่องราว ThaiNative ตอนที่ 0" src="story/animatic.html?embed=1&amp;poster=110" loading="lazy" allow="autoplay"></iframe></div>
+          </figure>
         </div>
+        <div class="tr-backdrop hidden" id="tr-backdrop"></div>
         <div class="auth-box panel thai-frame">
           <div class="plaque">ประตูเข้าสู่กรุงศรีฯ</div>
           <div class="tabs auth-tabs"><button data-mode="login" class="active">เข้าสู่ระบบ</button><button data-mode="register">สมัครสมาชิก</button></div>
@@ -386,6 +396,12 @@
         <header>🌀 ประตูมิติ · วาร์ปต่างแดน <button class="close">✕</button></header>
         <div id="warp-list" class="warp-list"></div>
         <p class="hint">วาร์ปได้เฉพาะแดนที่เคยเดินผ่านประตูมิติไปแล้ว · ค่ายพักทุกแดนเป็น Safe Zone ขวดยาเติมเต็ม</p>
+      </section>
+
+      <section id="crypt-panel" class="panel window hidden">
+        <header>💀 สุสานใต้ดิน · 100 ชั้น <button class="close">✕</button></header>
+        <div id="crypt-list" class="warp-list"></div>
+        <p class="hint">ลงเป็นปาร์ตี้ได้ 1–6 คน (สมาชิกต้องยืนใกล้ประตู) · ฆ่าผีให้หมดชั้นบันไดลงถึงจะเปิด · ผ่านบอสทุก 10 ชั้นได้จุดเริ่มใหม่ · ชั้นลงท้าย 5 มีหีบเงิน บอสมีหีบทอง (วันละครั้งต่อบอส) · ตั้งแต่ชั้น 30 ลงไปเป็นปาร์ตี้หลายคน ผีจะแกร่งขึ้นตามจำนวนคนและความลึก</p>
       </section>
 
       <!-- ตั้งค่า (ESC) -->
