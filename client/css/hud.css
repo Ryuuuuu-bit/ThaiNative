@@ -456,3 +456,75 @@ body.wb-on #ticker { top: 17cqh; }
 #donate-panel .dn-note { grid-area: note; margin: 0; font-size: .8em; opacity: .7; line-height: 1.45; }
 @media (max-width: 560px) { #donate-panel .dn-body { grid-template-columns: 1fr; grid-template-areas: "lead" "qr" "acc" "note"; justify-items: center; } }
 #donate-panel .dn-dev { color: #ffb3c8; }
+/* มือถือแนวนอน: ฉากกว้างเต็มจอ → เว้นขอบรอยบาก/มุมโค้ง (safe area) ให้ HUD */
+body.td-mode #hud { left: env(safe-area-inset-left, 0px); right: env(safe-area-inset-right, 0px); }
+/* จอสัมผัส: ข่าวสาร · Discord · สนับสนุน = แถวปุ่มสี่เหลี่ยมต่อจากปุ่ม ☰ (ไม่ถูก ☰ บัง) */
+body.td-mode.touch .news-btn { top: 0 !important; width: 8cqh; height: 8cqh; padding: 0; justify-content: center; border-radius: var(--hud-r); }
+body.td-mode.touch .news-btn .nb-ic, body.td-mode.touch .news-btn .nb-ic .px-ico { width: 5cqh; height: 5cqh; font-size: 4cqh; }
+body.td-mode.touch #btn-news { right: calc(100% + 1.2cqh + 9cqh); }
+body.td-mode.touch #btn-discord { right: calc(100% + 1.2cqh + 18cqh); }
+body.td-mode.touch #btn-donate { right: calc(100% + 1.2cqh + 27cqh); }
+body.td-mode.touch.wb-on #btn-discord, body.td-mode.touch.wb-on #btn-donate { display: none; }   /* ลานบอสโลก: เว้นที่ให้แถบเลือดราหู */
+/* ============================================================
+   HUD มือถือ (แบบเกม MMO มือถือ) — body.m-hud
+   ▸ ขวาล่าง: ปุ่มโจมตีใหญ่ · สกิล 5 ช่องโค้งรอบปุ่มโจมตี · ⇄ สลับหน้า · AUTO เหนือปุ่มโจมตี
+   ▸ ซ้ายล่าง: จอย · ขวดยา Q/E เหนือจอย   ▸ ปุ่มเต็มจอย้ายไปขวาบน
+   ============================================================ */
+body.m-hud .actionbar { display: none !important; }
+body.td-mode.touch.m-hud .t-atk { bottom: 10cqh !important; }
+body.td-mode.touch.m-hud .t-fs { bottom: auto !important; top: calc(var(--hud-pad) + 9.6cqh) !important; right: calc(var(--hud-pad) + var(--hud-col) + 1.2cqh + env(safe-area-inset-right, 0px)) !important; width: 8cqh !important; height: 8cqh !important; font-size: 4.4cqh !important; border-radius: var(--hud-r) !important; border-width: .25cqh !important; }
+/* สกิลโค้ง */
+#skillbar.t-arc { position: absolute; inset: 0; pointer-events: none !important; display: block; margin: 0; padding: 0; background: none; border: 0; }
+#skillbar.t-arc .skill { display: none; position: absolute; width: 11cqh !important; height: 11cqh !important; border-radius: 50% !important; pointer-events: auto; place-items: center;
+  border-width: .35cqh !important; box-shadow: 0 .5cqh 1.2cqh rgba(0,0,0,.55); font-size: 2.6cqh; }
+#skillbar.t-arc .skill .ic, #skillbar.t-arc .skill .ic .px-ico { width: 7cqh !important; height: 7cqh !important; font-size: 5cqh; }
+#skillbar.t-arc .skill .k { top: auto; bottom: -.4cqh; left: 50%; transform: translateX(-50%); font-size: 1.9cqh; padding: 0 .6cqh; border-radius: 1cqh; background: rgba(0,0,0,.7); }
+#skillbar.t-arc .skill .hb-x, #skillbar.t-arc .skill .tip { display: none !important; }
+#skillbar.t-arc .skill .cd { border-radius: 50%; }
+#skillbar.t-arc .skill .mp { font-size: 1.7cqh; bottom: 1.4cqh; right: 1.6cqh; }
+#skillbar.t-arc .skill .n { font-size: 2.2cqh; bottom: 1.2cqh; right: 2cqh; }
+#skillbar.t-arc .skill.empty { opacity: .55; }
+body.m-hud:not(.hb-p2) #skillbar.t-arc .skill:nth-child(1), body.m-hud.hb-p2 #skillbar.t-arc .skill:nth-child(6) { display: grid; right: calc(var(--hud-pad) + 19.9cqh + env(safe-area-inset-right, 0px)); bottom: 43.9cqh; }
+body.m-hud:not(.hb-p2) #skillbar.t-arc .skill:nth-child(2), body.m-hud.hb-p2 #skillbar.t-arc .skill:nth-child(7) { display: grid; right: calc(var(--hud-pad) + 29.9cqh + env(safe-area-inset-right, 0px)); bottom: 37.2cqh; }
+body.m-hud:not(.hb-p2) #skillbar.t-arc .skill:nth-child(3), body.m-hud.hb-p2 #skillbar.t-arc .skill:nth-child(8) { display: grid; right: calc(var(--hud-pad) + 36.3cqh + env(safe-area-inset-right, 0px)); bottom: 26.9cqh; }
+body.m-hud:not(.hb-p2) #skillbar.t-arc .skill:nth-child(4), body.m-hud.hb-p2 #skillbar.t-arc .skill:nth-child(9) { display: grid; right: calc(var(--hud-pad) + 37.9cqh + env(safe-area-inset-right, 0px)); bottom: 15.0cqh; }
+body.m-hud:not(.hb-p2) #skillbar.t-arc .skill:nth-child(5), body.m-hud.hb-p2 #skillbar.t-arc .skill:nth-child(10) { display: grid; right: calc(var(--hud-pad) + 34.6cqh + env(safe-area-inset-right, 0px)); bottom: 3.4cqh; }
+/* ⇄ สลับหน้าสกิล */
+body.td-mode.touch .t-page { right: calc(var(--hud-pad) + 27cqh + env(safe-area-inset-right, 0px)); bottom: 26.8cqh; width: 7cqh; height: 7cqh; font-size: 2.4cqh;
+  background: rgba(20,11,29,.85); border-width: .3cqh; display: flex; flex-direction: column; line-height: 1; gap: .2cqh; }
+body.td-mode.touch .t-page b { font-size: 1.6cqh; color: #ffd76a; }
+/* AUTO กลมเหนือปุ่มโจมตี */
+body.td-mode.touch .auto-wrap.t-auto { position: absolute; right: calc(var(--hud-pad) + 4.5cqh + env(safe-area-inset-right, 0px)); bottom: 41.5cqh; width: 13cqh; height: 13cqh; }
+body.td-mode.touch .t-auto .auto-skill { width: 100% !important; height: 100% !important; border-radius: 50%; border-width: .4cqh; display: grid; place-items: center; padding: 0; }
+body.td-mode.touch .t-auto .auto-skill .k { display: none; }
+body.td-mode.touch .t-auto .auto-skill .ic { font-size: 5.4cqh; line-height: 1; margin-top: -2cqh; }
+body.td-mode.touch .t-auto .auto-skill .ic .px-ico { width: 6.4cqh; height: 6.4cqh; }
+body.td-mode.touch .t-auto .auto-skill .lbl { font-size: 2.2cqh; bottom: 2cqh; }
+body.td-mode.touch .t-auto .auto-cfg { top: -1.4cqh; right: -1.4cqh; left: auto; width: 5.6cqh; height: 5.6cqh; font-size: 2.8cqh; line-height: 5cqh; }
+body.td-mode.touch .t-auto .auto-skill.filtered::after { top: 1.6cqh; left: 1.6cqh; right: auto; width: 2.2cqh; height: 2.2cqh; }
+body.td-mode.touch .t-auto .auto-menu { bottom: auto; top: -10cqh; right: calc(100% + 1.5cqh); max-height: 60cqh; }
+/* ขวดยา Q/E เหนือจอย */
+#flask-bar.t-flasks { position: absolute; left: calc(var(--hud-pad) + 2cqh + env(safe-area-inset-left, 0px)); bottom: 40cqh; display: flex; gap: 1.4cqh; }
+body.td-mode.touch #flask-bar.t-flasks .flask-btn { width: 9cqh; height: 10cqh; }
+/* ของที่ได้ (loot) ไม่ทับวงสกิล */
+body.td-mode.touch.m-hud .loot-log { right: calc(var(--hud-pad) + 52cqh) !important; bottom: 4cqh !important; }
+
+/* ปุ่มซูมมินิแมพ (มุมซ้ายล่างของแมพ) */
+#mm-zoom { display: none; }
+body.td-mode #mm-zoom { pointer-events: auto; display: flex; flex-direction: column; gap: .5cqh; position: absolute; z-index: 7;
+  top: calc(var(--hud-pad) + 8.6cqh + var(--hud-col) * 110 / 150 - 10.4cqh); right: calc(var(--hud-pad) + var(--hud-col) - 5.4cqh); }
+body.td-mode #mm-zoom[hidden] { display: none; }
+body.td-mode #mm-zoom button { width: 4.4cqh; height: 4.4cqh; padding: 0; border-radius: .8cqh; font: inherit; font-size: 2.6cqh; line-height: 1; font-weight: 700;
+  color: #fff3c4; background: rgba(20,11,29,.82); border: .2cqh solid var(--hud-line); cursor: pointer; }
+body.td-mode #mm-zoom button:disabled { opacity: .35; cursor: default; }
+body.td-mode.touch #mm-zoom { top: calc(var(--hud-pad) + 8.6cqh + var(--hud-col) * 110 / 150 - 13.6cqh); right: calc(var(--hud-pad) + var(--hud-col) - 7cqh); }
+body.td-mode.touch #mm-zoom button { width: 6cqh; height: 6cqh; font-size: 3.4cqh; }
+/* มือถือ: หน้าต่าง (กระเป๋า/ร้าน/สถานะ ฯลฯ) เกือบเต็มจอ · ระหว่างเปิดซ่อนปุ่มควบคุม (แบบเกมมือถือ) */
+body.td-mode.m-hud #ui .window { top: 2cqh !important; max-height: 96cqh !important; max-width: calc(100% - 4cqh - env(safe-area-inset-left, 0px) - env(safe-area-inset-right, 0px)) !important; }
+body.td-mode.m-hud #ui .window.wide, body.td-mode.m-hud #ui #inv-panel.window, body.td-mode.m-hud #ui #shop-panel.window { width: min(150cqh, calc(100% - 4cqh)) !important; }
+body.td-mode.m-hud #ui .window header .close { min-width: 8cqh; min-height: 8cqh; }
+body.m-hud.win-open #touch-ui > *:not(#rotate-hint) { visibility: hidden !important; pointer-events: none !important; }
+body.m-hud.win-open .auto-menu { visibility: visible; }
+/* ร้านค้าบนมือถือ: หัวร้านเตี้ยลง เหลือที่ให้สินค้า */
+body.m-hud #shop-panel .npc-port { flex-basis: 2.6em; height: 2.6em; }
+body.m-hud #shop-panel .npc-say { font-size: .9em; }

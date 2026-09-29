@@ -420,6 +420,7 @@ export class TdVfx {
 // ------------------------------------------------------------
 //  มินิแมพ 2 มิติ (DOM canvas มุมขวาบน)
 // ------------------------------------------------------------
+const ZOOMS = [0.5, 1, 2, 3];                            // ×0.5 เห็นทั้งแมพ · ×3 ซูมใกล้
 export class TdMinimap {
   constructor(miniCanvas) {
     this.base = miniCanvas;
@@ -427,18 +428,47 @@ export class TdMinimap {
     if (!el) { el = document.createElement('canvas'); el.id = 'td-minimap'; document.getElementById('td-hud').appendChild(el); }
     el.width = 150; el.height = 110; this.el = el; this.ctx = el.getContext('2d'); this.ctx.imageSmoothingEnabled = false;
     this.at = 0;
+    // ซูมมินิแมพ: ปุ่ม ＋/－ (มือถือ) · ลูกกลิ้งเมาส์บนแมพ (คอม) · จำค่าไว้ในเครื่อง
+    try { this.zoom = ZOOMS.includes(+localStorage.getItem('tn_mm_zoom')) ? +localStorage.getItem('tn_mm_zoom') : 1; } catch { this.zoom = 1; }
+    let zb = document.getElementById('mm-zoom');
+    if (!zb) {
+      zb = document.createElement('div'); zb.id = 'mm-zoom';
+      zb.innerHTML = '<button data-z="1" aria-label="ซูมเข้า" title="ซูมเข้า">＋</button><button data-z="-1" aria-label="ซูมออก" title="ซูมออก">－</button>';
+      document.getElementById('td-hud').appendChild(zb);
+    }
+    this.zb = zb;
+    zb.querySelectorAll('button').forEach((b) => (b.onclick = (e) => { e.stopPropagation(); this.step(+b.dataset.z); }));
+    el.onwheel = (e) => { e.preventDefault(); this.step(e.deltaY < 0 ? 1 : -1); };
+    this.paintZoom();
+  }
+
+  step(d) {
+    const i = Math.max(0, Math.min(ZOOMS.length - 1, ZOOMS.indexOf(this.zoom) + d));
+    if (ZOOMS[i] === this.zoom) return;
+    this.zoom = ZOOMS[i]; this.at = 0;
+    try { localStorage.setItem('tn_mm_zoom', String(this.zoom)); } catch { /* ignore */ }
+    this.paintZoom();
+  }
+  paintZoom() {
+    const [inB, outB] = this.zb.querySelectorAll('button');
+    inB.disabled = this.zoom === ZOOMS[ZOOMS.length - 1]; outB.disabled = this.zoom === ZOOMS[0];
+    this.zb.dataset.z = `×${this.zoom}`;
   }
 
   setBase(miniCanvas) { this.base = miniCanvas; this.at = 0; }
 
   update(time, s) {
     this.el.hidden = s.settings?.minimap === false;
+    if (this.zb) this.zb.hidden = this.el.hidden;
     if (this.el.hidden || time - this.at < 200) return; this.at = time;
-    const g = this.ctx, p = s.player, W = this.el.width, H = this.el.height;
-    const scale = 2 / TILE;                                   // 1 ไทล์ = 2px บนมินิแมพ
-    const ox = Math.max(0, Math.min(this.base.width - W, p.x * scale - W / 2)), oy = Math.max(0, Math.min(this.base.height - H, p.y * scale - H / 2));
+    const g = this.ctx, p = s.player, W = this.el.width, H = this.el.height, z = this.zoom || 1;
+    const scale = 2 * z / TILE;                               // ภาพฐาน: 1 ไทล์ = 2px · คูณซูม
+    const bw = this.base.width * z, bh = this.base.height * z;  // ขนาดแมพทั้งผืนหลังซูม
+    const ox = bw <= W ? (bw - W) / 2 : Math.max(0, Math.min(bw - W, p.x * scale - W / 2));
+    const oy = bh <= H ? (bh - H) / 2 : Math.max(0, Math.min(bh - H, p.y * scale - H / 2));
     g.clearRect(0, 0, W, H);
-    g.drawImage(this.base, ox, oy, W, H, 0, 0, W, H);
+    g.fillStyle = '#0d0714'; g.fillRect(0, 0, W, H);
+    g.save(); g.setTransform(z, 0, 0, z, -ox, -oy); g.drawImage(this.base, 0, 0); g.restore();
     g.fillStyle = 'rgba(10,6,20,0.15)'; g.fillRect(0, 0, W, H);
     const dot = (x, y, c, r = 2) => { g.fillStyle = c; g.fillRect(Math.round(x * scale - ox - r / 2), Math.round(y * scale - oy - r / 2), r, r); };
     for (const n of s.npcs || []) dot(n.x, n.y, '#ffd35c', 3);

@@ -6,6 +6,9 @@ import { BootScene } from './scenes/BootScene.js';
 import { CreateScene } from './scenes/CreateScene.js';
 import { LobbyScene } from './scenes/LobbyScene.js';
 import { TopDownScene } from './scenes/TopDownScene.js';
+import { setupOrientationHint } from './systems/Orientation.js';
+
+setupOrientationHint();                       // มือถือถือแนวตั้ง → แนะนำหมุนจอ (ทุกหน้า ตั้งแต่หน้าแรก)
 
 const config = {
   type: Phaser.AUTO,
@@ -50,4 +53,24 @@ window.game = new Phaser.Game(config);
   if (worker) worker.onmessage = tick; else setInterval(tick, 50);
   document.addEventListener('visibilitychange', () => { if (!document.hidden) { last = 0; game.loop?.resetDelta?.(); } });
   window.__bgTick = tick;                                        // ใช้ทดสอบ
+}
+
+// ------------------------------------------------------------
+//  จอกว้างกว่า 16:9 (มือถือแนวนอน ~19.5:9 · จอ ultrawide) → ขยายฉากในเกมให้เต็มความกว้าง ไม่มีขอบดำ
+//  ▸ เฉพาะตอนอยู่ในเกม (td-mode) · หน้าล็อกอิน/สร้างตัวละครคง 16:9 · สูงสุด 2.3:1
+// ------------------------------------------------------------
+{
+  const game = window.game, BASE = 16 / 9, MAX = 2.3, H = VIEW.height * RENDER_SCALE;
+  let cur = BASE;
+  const fit = () => {
+    const ar = document.body.classList.contains('td-mode') ? Math.min(MAX, Math.max(BASE, innerWidth / Math.max(1, innerHeight))) : BASE;
+    if (Math.abs(ar - cur) < 0.01) return;
+    cur = ar;
+    document.documentElement.style.setProperty('--ar', ar.toFixed(4));
+    game.scale.setGameSize(Math.round(H * ar), H);
+    game.scale.refresh();
+  };
+  window.__fitWide = fit;
+  window.addEventListener('resize', () => setTimeout(fit, 60));
+  new MutationObserver(fit).observe(document.body, { attributes: true, attributeFilter: ['class'] });   // เข้า/ออกเกม
 }

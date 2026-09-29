@@ -27,8 +27,8 @@ button { font-family: inherit; cursor: pointer; }
 /* ---------- Layout: canvas 16:9 + UI overlay ---------- */
 #game-wrap {
   position: absolute; inset: 0; margin: auto; z-index: 1;
-  width: min(100vw, calc(100vh * 16 / 9));
-  height: min(100vh, calc(100vw * 9 / 16));
+  width: min(100vw, calc(100vh * var(--ar, 1.7778)));          /* --ar = สัดส่วนฉาก (ในเกมกว้างตามจอได้ถึง 2.3:1 · main.js) */
+  height: min(100vh, calc(100vw / var(--ar, 1.7778)));
   container-type: size;
 }
 #game { width: 100%; height: 100%; }
@@ -836,13 +836,23 @@ body.touch #skillbar .skill, body.touch .slot.pot { touch-action: manipulation; 
 .t-atk.on { transform: scale(.92); filter: brightness(1.3); }
 .t-small { width: 12cqh; height: 12cqh; font-size: 6cqh; background: rgba(20,11,29,.8); }
 .t-fs { right: calc(5% + 26cqh + env(safe-area-inset-right, 0px)); bottom: 8%; }
-.t-rotate { display: none; }
+/* แนะนำหมุนจอ (ทุกหน้า) */
+#rotate-hint { display: none; }
 @media (orientation: portrait) {
-  body.touch .t-rotate { display: grid; place-content: center; gap: 1em; text-align: center; position: fixed; inset: 0; z-index: 100;
-    background: #140b1d; color: #fff3c4; font-size: 20px; padding: 24px; }
-  body.touch .t-rotate .btn { background: var(--gold); color: #2a1a05; font-weight: 700; }
-  body.touch .t-rotate > div { font-size: 64px; animation: t-rot 1.6s ease-in-out infinite; }
-  @keyframes t-rot { 0%, 30% { transform: rotate(0); } 60%, 100% { transform: rotate(90deg); } }
+  body.touch-dev:not(.portrait-ok) #rotate-hint { display: grid; place-items: center; position: fixed; inset: 0; z-index: 10000; padding: 24px;
+    background: radial-gradient(ellipse at 50% 35%, #3a1d4d, #140b1d 70%); color: #fff3c4; text-align: center; font-family: inherit; }
+  #rotate-hint .rh-card { display: flex; flex-direction: column; align-items: center; gap: 14px; max-width: 340px; }
+  #rotate-hint h2 { margin: 0; font-size: 22px; color: #ffd76a; text-shadow: 0 2px 0 #5a3300; }
+  #rotate-hint p { margin: 0; font-size: 15px; line-height: 1.55; opacity: .9; }
+  #rotate-hint .rh-tip { font-size: 13px; opacity: .7; }
+  #rotate-hint .rh-anim { width: 110px; height: 110px; display: grid; place-items: center; }
+  #rotate-hint .rh-phone { width: 44px; height: 78px; border: 4px solid #ffd76a; border-radius: 9px; position: relative; box-shadow: 0 0 18px rgba(255,215,106,.35);
+    animation: rh-rot 2.2s ease-in-out infinite; }
+  #rotate-hint .rh-phone::after { content: ''; position: absolute; left: 50%; bottom: 4px; width: 8px; height: 8px; margin-left: -4px; border-radius: 50%; background: #ffd76a; }
+  @keyframes rh-rot { 0%, 25% { transform: rotate(0); } 55%, 85% { transform: rotate(-90deg); } 100% { transform: rotate(0); } }
+  #rotate-hint .rh-go { margin-top: 6px; width: 100%; padding: 13px 18px; border: 2px solid #fff3c4; border-radius: 12px; font: inherit; font-size: 17px; font-weight: 700;
+    background: linear-gradient(180deg, #f4d03f, #c9971c); color: #2a1a05; }
+  #rotate-hint .rh-skip { background: none; border: 0; color: #cdbfd9; font: inherit; font-size: 13px; text-decoration: underline; padding: 6px; }
 }
 
 /* Hotbar 10 ช่อง: ช่องไอเทม */
@@ -1636,3 +1646,8 @@ body.touch #cb-size { display: none; }
 /* หน้า NPC ในร้าน (ครอปจากสไปรต์จริง) */
 #shop-panel .npc-port img.real { width: 100%; height: 100%; object-fit: cover; object-position: 50% 0; transform: none; image-rendering: pixelated; }
 #shop-panel .npc-port span .px-ico { width: 1.4em; height: 1.4em; }
+/* มือถือ: ปุ่ม Discord หน้าแรก/สร้างตัวละคร เหลือแค่ไอคอน (ไม่ทับปุ่มท่าทาง/ปุ่มสร้าง) */
+body.touch-dev #title-discord .td-lb { display: none; }
+body.touch-dev #title-discord { padding: 8px 12px; }
+#title-credit b { color: #ffd76a; font-weight: 600; }
+@media (max-height: 520px) { #title-credit { top: 8px; left: 12px; right: auto; bottom: auto; font-size: 11px; } }

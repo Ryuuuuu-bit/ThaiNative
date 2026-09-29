@@ -7,7 +7,7 @@ async function refresh() {
   let d = null;
   try { d = await (await fetch('/api/discord')).json(); } catch { /* ออฟไลน์ */ }
   const n = Number.isFinite(d?.online) ? d.online : null;
-  const t = document.querySelector('#title-discord span');
+  const t = document.querySelector('#title-discord .td-lb');
   if (t) t.textContent = n != null ? `Discord ชุมชนผู้เล่น · 🟢 ${n.toLocaleString()} ออนไลน์` : 'Discord ชุมชนผู้เล่น';
   const h = document.querySelector('#btn-discord .nb-lb');
   if (h) h.textContent = n != null ? `Discord · ${n.toLocaleString()}` : 'Discord';

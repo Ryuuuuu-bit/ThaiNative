@@ -2,7 +2,7 @@
 //  ควบคุมบนมือถือ/แท็บเล็ต (จอสัมผัส)
 //  ▸ จอยสติ๊กซ้ายล่าง = เดิน · ปุ่มโจมตีขวาล่าง = ล็อกผีที่ใกล้สุดแล้วตี / คุย NPC ที่อยู่ใกล้
 //  ▸ แตะพื้น = เดิน · แตะผี = ตี (รัศมีแตะกว้างกว่าเมาส์) · แตะช่องสกิล = ร่าย
-//  ▸ แนวตั้ง → ขึ้นหน้าบอกให้หมุนจอ · ปุ่มเต็มจอ (ล็อกแนวนอนได้บน Android)
+//  ▸ แนวตั้ง → หน้าแนะนำหมุนจอ (systems/Orientation.js ทุกหน้า) · ปุ่มเต็มจอ (ล็อกแนวนอนได้บน Android)
 // ============================================================
 
 export const isTouchDevice = () =>
@@ -29,9 +29,27 @@ export class TouchControls {
     root.innerHTML = `
       <div class="t-stick" id="t-stick"><div class="t-knob" id="t-knob"></div></div>
       <button class="t-btn t-atk" id="t-atk" aria-label="โจมตี">⚔️</button>
-      <button class="t-btn t-small t-fs" id="t-fs" aria-label="เต็มจอ">⛶</button>
-      <div class="t-rotate" id="t-rotate"><div>📱↻</div><p>หมุนโทรศัพท์เป็นแนวนอนเพื่อเล่น</p><button class="btn" id="t-rotate-fs">เต็มจอ + แนวนอน</button></div>`;
+      <button class="t-btn t-small t-fs" id="t-fs" aria-label="เต็มจอ">⛶</button>`;
     document.getElementById('game-wrap').appendChild(root);
+    // ปุ่ม AUTO: ย้ายจากท้ายแถบสกิล (เล็ก กดยาก) มาเป็นปุ่มกลมใหญ่ข้างปุ่มโจมตี · ▾ = เลือกชนิดผี
+    // HUD มือถือแบบเกม MMO มือถือ: ย้ายของจากแถบล่างมาไว้ใกล้นิ้วโป้ง
+    //  ▸ AUTO = ปุ่มกลมเหนือปุ่มโจมตี · สกิล 5 ช่องเรียงโค้งรอบปุ่มโจมตี (ปุ่ม ⇄ สลับหน้า 1–5 / 6–0) · ขวดยา Q/E เหนือจอย
+    this.moved = [];
+    const adopt = (sel, cls) => {
+      const el = document.querySelector(sel); if (!el) return null;
+      this.moved.push({ el, home: el.parentNode, next: el.nextSibling, cls });
+      el.classList.add(cls); root.appendChild(el); return el;
+    };
+    adopt('.actionbar .auto-wrap', 't-auto');
+    adopt('.actionbar #skillbar', 't-arc');
+    adopt('.actionbar #flask-bar', 't-flasks');
+    const page = document.createElement('button');
+    page.className = 't-btn t-page'; page.id = 't-page'; page.setAttribute('aria-label', 'สลับหน้าสกิล'); page.innerHTML = '<b>1–5</b>⇄';
+    root.appendChild(page);
+    const setPage = (p) => { document.body.classList.toggle('hb-p2', p === 2); page.innerHTML = p === 2 ? '<b>6–0</b>⇄' : '<b>1–5</b>⇄'; };
+    page.addEventListener('pointerdown', (e) => { e.preventDefault(); e.stopPropagation(); setPage(document.body.classList.contains('hb-p2') ? 1 : 2); });
+    setPage(1);
+    document.body.classList.add('m-hud');
     const stick = root.querySelector('#t-stick'), knob = root.querySelector('#t-knob');
     const R = () => stick.getBoundingClientRect();
 
@@ -72,7 +90,6 @@ export class TouchControls {
       try { await screen.orientation?.lock?.('landscape'); } catch { /* บางเครื่องล็อกไม่ได้ */ }
     };
     root.querySelector('#t-fs').addEventListener('click', fs);
-    root.querySelector('#t-rotate-fs').addEventListener('click', fs);
 
     // กันซูม/เลื่อนหน้าเว็บด้วยนิ้ว (ดับเบิลแตะ, pinch)
     this.noGesture = (e) => { if (e.touches?.length > 1 || e.scale && e.scale !== 1) e.preventDefault(); };
@@ -98,6 +115,8 @@ export class TouchControls {
   }
 
   destroy() {
+    for (const m of (this.moved || []).reverse()) { m.el.classList.remove(m.cls); m.home.insertBefore(m.el, m.next || null); }   // คืนที่เดิม
+    document.body.classList.remove('m-hud', 'hb-p2');
     document.removeEventListener('touchmove', this.noGesture);
     document.removeEventListener('gesturestart', this.noGesture);
     this.root?.remove();
