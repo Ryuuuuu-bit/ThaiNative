@@ -28,7 +28,7 @@ export const NET = {
 };
 
 export const PARTY = {
-  maxSize: 4,
+  maxSize: 6,        // สุสานใต้ดินลงได้ปาร์ตี้ละ 6 คน
   shareRange: 500,   // สมาชิกที่อยู่ห่างไม่เกินนี้ได้รับ EXP แบ่ง
   shareRatio: 0.6,   // สมาชิกคนอื่นได้ EXP 60% ของที่ผู้ฆ่าได้ (ผู้ฆ่าได้เต็ม)
 };

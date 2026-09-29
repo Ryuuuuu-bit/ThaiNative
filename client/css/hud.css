@@ -236,7 +236,7 @@ body.touch #skillbar .skill .hb-x { opacity: .85; width: 2.8cqh; height: 2.8cqh;
 .td-wm .wm-realms span.lock { opacity: .55; }
 .td-wm .wm-realms b { color: rgba(212,175,55,.6); font-weight: normal; }
 .td-wm .wm-portal i { font-style: normal; }
-#warp-panel.window { width: 60cqh !important; }
+#warp-panel.window, #crypt-panel.window { width: 60cqh !important; }
 .warp-list { display: grid; gap: 1cqh; margin: .6cqh 0 1cqh; }
 .warp-card { display: grid; grid-template-columns: 5.2cqh 1fr auto; align-items: center; gap: 1.2cqh; padding: 1cqh 1.3cqh; border-radius: 1.1cqh;
   border: .15cqh solid rgba(212,175,55,.35); background: linear-gradient(90deg, rgba(40,20,55,.85), rgba(20,10,28,.85)); }
@@ -600,3 +600,5 @@ body.td-mode:not(.m-hud) .td-wm .wm-npcs > b { margin: 0 0 .4cqh; }
 #soc-players .soc-sub:first-child { margin-top: 0; }
 #soc-players .soc-row.far small { color: #9fd3ff; }
 body.td-mode.touch.tut-on #chat { top: 38cqh !important; }   /* มือถือ: การ์ดแนะนำอยู่มุมซ้ายบน → เลื่อนปุ่มแชทลง */
+/* มินิแมพรับการแตะ/ลูกกลิ้ง: แตะ = เปิดแผนที่ใหญ่ · ลูกกลิ้ง = ซูม */
+body.td-mode #td-minimap { pointer-events: auto; cursor: pointer; }

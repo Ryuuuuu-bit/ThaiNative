@@ -108,4 +108,20 @@ for (const lv of [1, 10, 40, 99, 140]) {
 }
 { const n = 200, minShare = Math.min(WB_MIN_SHARE, 0.2 / n); assert.ok(minShare < 1 / n, '200 คน: ตีเท่ากันทุกคนผ่านเกณฑ์'); }
 
+// 12) สุสานใต้ดิน 100 ชั้น
+import { CRYPT, lvOf, parseCrypt, cryptId, checkpoints, isBossFloor, isChestFloor, chestLoot, cryptMob, partyHard, hpMul } from '../shared/data/crypt.js';
+assert.equal(lvOf(1), 5); assert.equal(lvOf(100), 150, 'ชั้น 100 = Lv.150');
+assert.deepEqual(parseCrypt(cryptId(15, 3, 'p1-2')), { f: 15, n: 3, inst: 'p1-2' });
+for (const bad of ['crypt:0:1:x', 'crypt:101:1:x', 'crypt:5:7:x', 'crypt:5:1:', 'ayutthaya', null]) assert.equal(parseCrypt(bad), null, `รหัสไม่ถูกต้อง ${bad}`);
+assert.deepEqual(checkpoints(1), [1]); assert.deepEqual(checkpoints(31), [1, 11, 21, 31]); assert.equal(checkpoints(999).length, 10);
+assert.ok(isBossFloor(10) && !isBossFloor(15) && isChestFloor(15) && !isChestFloor(10));
+for (const f of [1, 50, 100]) for (const k of ['silver', 'gold']) {
+  const L = chestLoot(f, k, () => 0.5);
+  assert.ok(L.gold > 0 && L.dust > 0 && L.items.every((it) => ITEMS[it.id] && it.qty > 0), `หีบ ${k} ชั้น ${f}`);
+}
+{ const a = MONSTERS[cryptMob('phi_pob', 5, 1)], b = MONSTERS[cryptMob('phi_pob', 5, 3)], boss = MONSTERS[cryptMob('mae_nak', 10, 1, 'b')];
+  assert.equal(a.level, lvOf(5)); assert.ok(b.hp > a.hp, 'ปาร์ตี้ใหญ่ ผีเลือดมากขึ้น'); assert.ok(boss.boss && boss.hp > a.hp);
+  assert.ok(a.drops.some((d) => d.item === CRYPT.dust), 'ดรอปผงวิญญาณ'); }
+assert.equal(partyHard(29, 6).hp, 1, 'ก่อนชั้น 30 ไม่เพิ่ม'); assert.ok(partyHard(100, 6).hp > partyHard(100, 2).hp); assert.equal(hpMul(1), 1);
+
 console.log('✔ economy tests passed');

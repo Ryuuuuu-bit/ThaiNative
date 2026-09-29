@@ -1,0 +1,390 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ตำนานประตูภพ · Animatic</title>
+<link href="https://fonts.googleapis.com/css2?family=Mitr:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#07050c;--panel:#1d1230;--gold:#d4ac0d;--gold2:#f4d03f;--text:#f5eee6;--dim:#b9a9cf}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);font-family:Mitr,Tahoma,sans-serif;display:flex;justify-content:center;padding:16px}
+.wrap{width:100%;max-width:1000px}
+h1{font-size:18px;font-weight:500;color:var(--gold2);margin:0 0 8px}
+h1 small{color:var(--dim);font-weight:400;font-size:13px;margin-left:6px}
+.stage{position:relative;background:#000;border:2px solid #3b2a52;border-radius:6px;overflow:hidden;aspect-ratio:16/9}
+canvas{width:100%;height:100%;display:block;image-rendering:pixelated}
+.sub{position:absolute;left:0;right:0;bottom:6%;text-align:center;pointer-events:none;padding:0 6%}
+.sub span{display:inline-block;background:rgba(0,0,0,.55);padding:.25em .8em;border-radius:6px;font-size:clamp(13px,2.3vw,22px);line-height:1.45;text-shadow:0 2px 3px #000}
+.sub b{color:var(--gold2);font-weight:500}
+.cap{position:absolute;left:10px;top:8px;font-size:12px;color:#fff9;background:#0008;padding:2px 8px;border-radius:10px}
+.start{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:10px;background:rgba(7,5,12,.72);cursor:pointer}
+.start b{font-size:clamp(20px,4vw,36px);color:var(--gold2);font-weight:500}
+.start i{font-style:normal;border:1px solid var(--gold);padding:10px 26px;border-radius:30px;background:#a93226}
+.bar{display:flex;gap:8px;align-items:center;margin-top:10px;flex-wrap:wrap}
+.bar button{border:1px solid var(--gold);background:var(--panel);color:var(--text);border-radius:6px;padding:6px 12px;font:inherit;font-size:13px;cursor:pointer}
+.prog{flex:1;min-width:200px;height:10px;background:#221733;border-radius:6px;position:relative;cursor:pointer}
+.prog i{position:absolute;left:0;top:0;bottom:0;background:linear-gradient(90deg,#b7950b,#f4d03f);border-radius:6px}
+.prog em{position:absolute;top:-3px;width:1px;height:16px;background:#fff3}
+.time{font-size:12px;color:var(--dim);min-width:90px;text-align:right}
+.vo{margin-top:10px;background:#140d20;border:1px solid #3b2a52;border-radius:6px;padding:8px 12px;font-size:13px}
+.vo summary{cursor:pointer;color:var(--gold2)}
+.vo table{width:100%;border-collapse:collapse;margin-top:8px}
+.vo td,.vo th{padding:4px 6px;border-bottom:1px solid #2a1d3d;text-align:left;vertical-align:top}
+.vo th{color:var(--dim);font-weight:400}
+.vo tr.row{cursor:pointer}.vo tr.row:hover{background:#221733}
+.vo .ok{color:#7dcea0}.vo .tts{color:var(--dim)}
+.vo button{border:1px solid var(--gold);background:var(--panel);color:var(--text);border-radius:6px;padding:4px 10px;font:inherit;font-size:12px;cursor:pointer}
+/* ---- โหมดฝังในหน้าเข้าสู่ระบบ (?embed=1) ---- */
+body.embed{padding:0;background:#000;overflow:hidden;display:block}
+body.embed .wrap{max-width:none;height:100vh;position:relative}
+body.embed h1,body.embed .note,body.embed .vo,body.embed #voBtn{display:none!important}
+body.embed .stage{height:100%;aspect-ratio:auto;border:0;border-radius:0}
+body.embed canvas{object-fit:contain}
+body.embed .cap{display:none}
+body.poster .sub{display:none}
+body.embed .sub span{font-size:clamp(10px,4.2vw,20px)}
+body.embed .start{background:radial-gradient(closest-side,rgba(7,5,12,.35),rgba(7,5,12,.7));gap:6px}
+body.embed .start b{font-size:clamp(14px,6vw,30px);text-shadow:0 2px 6px #000}
+body.embed .start i{padding:6px 18px;font-size:clamp(11px,3.4vw,15px);box-shadow:0 0 18px rgba(169,50,38,.6)}
+body.embed .bar{position:absolute;left:0;right:0;bottom:0;margin:0;padding:18px 8px 6px;gap:6px;background:linear-gradient(transparent,rgba(0,0,0,.85));opacity:0;transition:opacity .25s;flex-wrap:nowrap}
+body.embed .wrap:hover .bar,body.embed .bar:focus-within{opacity:1}
+body.embed .bar button{padding:3px 8px;font-size:11px}
+body.embed .prog{min-width:40px;height:6px}
+body.embed .time{min-width:0;font-size:10px}
+.note{font-size:12px;color:var(--dim);margin-top:8px;line-height:1.6}
+</style>
+</head>
+<body>
+<script>if(/[?&]embed\b/.test(location.search))document.body.classList.add('embed')</script>
+<div class="wrap">
+  <h1>ThaiNative: ตำนานประตูภพ <small>ตอนที่ 0 “คืนที่ยันต์แตก” · animatic · ยันต์แตก → ผีอาละวาด → หลวงพ่อพบคนมองเห็นผี → ออกเดินทางตามหาเศษยันต์</small></h1>
+  <div class="stage" id="stage">
+    <canvas id="cv" width="480" height="270"></canvas>
+    <div class="cap" id="cap"></div>
+    <div class="sub" id="sub"></div>
+    <div class="start" id="start"><b>คืนที่ยันต์แตก</b><i>▶ เล่นตัวอย่าง (มีเสียง)</i></div>
+  </div>
+  <div class="bar">
+    <button id="play">⏸ หยุด</button>
+    <button id="restart">↺ เริ่มใหม่</button>
+    <button id="mute">🔊 เสียง</button>
+    <button id="voBtn">🗣 พากย์: อัตโนมัติ</button>
+    <div class="prog" id="prog"><i id="progi"></i></div>
+    <span class="time" id="time">0:00 / 0:00</span>
+  </div>
+  <details class="vo" id="voPanel"><summary id="voSum">📜 บทพากย์</summary><div id="voInfo"></div><table id="voTable"></table></details>
+  <p class="note">ภาพตัวละคร ผี และฉาก ใช้จากเกมจริง · ดนตรีและเสียงประกอบสังเคราะห์ในเบราว์เซอร์ (ยังไม่มีเสียงพากย์ – ใช้ซับไตเติลแทน) · คลิกแถบเวลาเพื่อข้ามไปช็อตไหนก็ได้</p>
+</div>
+<script>
+(async()=>{
+const cv=document.getElementById('cv'),ctx=cv.getContext('2d'),W=480,H=270;ctx.imageSmoothingEnabled=false;
+const TAU=Math.PI*2,rnd=(a,b)=>a+Math.random()*(b-a),clamp=(v,a,b)=>Math.max(a,Math.min(b,v)),lerp=(a,b,t)=>a+(b-a)*t,ease=t=>t<.5?2*t*t:1-(-2*t+2)**2/2;
+const load=u=>new Promise(r=>{const i=new Image();i.onload=()=>r(i);i.onerror=()=>r(null);i.src='/'+u});
+
+// ---------------- ภาพจากเกม ----------------
+const man=await fetch('/assets/td/manifest.json').then(r=>r.json()).catch(()=>({sprites:{}}));
+const DIRS=['south','south-east','east','north-east','north','north-west','west','south-west'];
+const SPR={};
+async function sprite(id,anims=['idle']){const m=man.sprites[id];if(!m)return;SPR[id]={m,img:{}};await Promise.all(anims.filter(a=>m.anims.includes(a)).map(async a=>SPR[id].img[a]=await load(`assets/td/${id}/${a}.png`)))}
+await Promise.all([sprite('hero_male_mohom',['idle','walk','slash','cast','attack']),sprite('npc_lung_chai'),sprite('npc_kru_mage',['idle','walk']),sprite('npc_yai_tim'),sprite('npc_lung_dam'),sprite('npc_mae_choy'),sprite('npc_pa_sa'),
+ sprite('mob_phi_tuay_kaew',['idle']),sprite('mob_kuman_thong',['idle','walk','attack']),sprite('mob_nang_takhian',['idle']),sprite('mob_phi_dip',['idle','walk']),sprite('mob_pret_asura',['idle']),
+ sprite('mob_phi_pob',['idle','walk','attack']),sprite('mob_krasue',['idle','attack'])]);
+const IMG={};await Promise.all([['field','assets/env/bg_r1.png'],['chedi','assets/td/env/b_goldchedi.png'],['ubosot','assets/td/env/b_ubosot.png'],['wat','assets/td/env/b_wat.png'],['house','assets/td/env/b_ruenthai.png'],
+ ['candle','assets/td/env/p_candle.png'],['lantern','assets/td/env/p_lantern.png'],['palm','assets/td/env/t_palm.png'],['tam','assets/td/env/t_tamarind.png']].map(async([k,u])=>IMG[k]=await load(u)));
+/** วาดสไปรต์ 8 ทิศ · x,y = ตำแหน่งเท้า */
+function spr(id,x,y,{anim='idle',dir='south',sc=1,alpha=1,filter=null,t=0}={}){
+ const s=SPR[id];if(!s)return;const img=s.img[anim]||s.img.idle;if(!img)return;
+ const fs=s.m.frame||72,n=s.m.frames?.[anim]||4,f=Math.floor(t*(anim==='walk'?10:anim==='idle'?5:12))%n,row=DIRS.indexOf(dir),sz=fs*(s.m.scale||.667)*sc;
+ ctx.save();ctx.globalAlpha=alpha;if(filter)ctx.filter=filter;ctx.drawImage(img,f*fs,row*fs,fs,fs,Math.round(x-sz/2),Math.round(y-sz+6*sc),Math.round(sz),Math.round(sz));ctx.restore()}
+function cover(img,a=1,f=null){if(!img)return;const s=Math.max(W/img.width,H/img.height);ctx.save();ctx.globalAlpha=a;if(f)ctx.filter=f;ctx.drawImage(img,(W-img.width*s)/2,(H-img.height*s)/2,img.width*s,img.height*s);ctx.restore()}
+function place(img,cx,by,h,a=1,f=null){if(!img)return;const s=h/img.height,w=img.width*s;ctx.save();ctx.globalAlpha=a;if(f)ctx.filter=f;ctx.drawImage(img,Math.round(cx-w/2),Math.round(by-h),Math.round(w),Math.round(h));ctx.restore()}
+const glow=(x,y,r,rgb,a)=>{if(r<=0||a<=0)return;ctx.save();ctx.globalCompositeOperation='lighter';const g=ctx.createRadialGradient(x,y,0,x,y,r);g.addColorStop(0,`rgba(${rgb},${a})`);g.addColorStop(1,`rgba(${rgb},0)`);ctx.fillStyle=g;ctx.fillRect(x-r,y-r,r*2,r*2);ctx.restore()};
+const px=(x,y,w,h,c)=>{ctx.fillStyle=c;ctx.fillRect(Math.round(x),Math.round(y),Math.round(w),Math.round(h))};
+function sky(top,bot){const g=ctx.createLinearGradient(0,0,0,H);g.addColorStop(0,top);g.addColorStop(1,bot);ctx.fillStyle=g;ctx.fillRect(0,0,W,H)}
+function stars(t,n=70){let s=3;const r=()=>(s=(s*16807)%2147483647)/2147483647;for(let i=0;i<n;i++){const x=r()*W,y=r()*H*.55,a=.3+.5*Math.abs(Math.sin(t*1.5+i));px(x,y,1,1,`rgba(220,210,255,${a})`)}}
+function vignette(a=.6){const g=ctx.createRadialGradient(W/2,H/2,H*.35,W/2,H/2,W*.65);g.addColorStop(0,'rgba(0,0,0,0)');g.addColorStop(1,`rgba(0,0,0,${a})`);ctx.fillStyle=g;ctx.fillRect(0,0,W,H)}
+function yant(x,y,s,a,crack=0){ctx.save();ctx.globalAlpha=a;px(x-12*s,y-16*s,24*s,32*s,'#b7950b');px(x-11*s,y-15*s,22*s,30*s,'#f4d03f');ctx.strokeStyle='#8e1b12';ctx.lineWidth=Math.max(1,s);ctx.beginPath();
+ for(const [a1,b1,a2,b2] of [[-7,-11,7,-11],[0,-11,0,11],[-7,-4,7,-4],[-7,3,7,3],[-5,9,5,9],[-7,-11,-7,-4],[7,3,7,-4]]){ctx.moveTo(x+a1*s,y+b1*s);ctx.lineTo(x+a2*s,y+b2*s)}ctx.stroke();
+ if(crack>0){ctx.strokeStyle='#ff3b2f';ctx.lineWidth=Math.max(1,s*.8);ctx.beginPath();const pts=[[0,-16],[2,-9],[-3,-3],[3,3],[-1,9],[2,16]];pts.forEach(([u,v],i)=>{if(i/pts.length<=crack)i?ctx.lineTo(x+u*s,y+v*s):ctx.moveTo(x+u*s,y+v*s)});ctx.stroke();glow(x,y,20*s*crack,'255,60,40',.5*crack)}
+ ctx.restore()}
+
+// ---------------- เสียง (สังเคราะห์) ----------------
+let AC=null,master=null,muted=false,NB=null,OUT=null,musicBus=null,voBus=null;
+function audioInit(){if(AC)return;AC=new (window.AudioContext||window.webkitAudioContext)();const comp=AC.createDynamicsCompressor();comp.threshold.value=-14;comp.ratio.value=4;comp.attack.value=.004;comp.release.value=.2;
+ master=AC.createGain();master.gain.value=.6;master.connect(comp).connect(AC.destination);OUT=master;
+ musicBus=AC.createGain();musicBus.connect(master);voBus=AC.createGain();voBus.gain.value=1.2;voBus.connect(comp);
+ NB=AC.createBuffer(1,AC.sampleRate*5,AC.sampleRate);const a=NB.getChannelData(0);for(let i=0;i<a.length;i++)a[i]=Math.random()*2-1}
+function tone(f,d,{type='sine',v=.2,at=0,slide=0,attack=.005}={}){if(!AC||muted)return;const t=AC.currentTime+Math.max(0,at),o=AC.createOscillator(),g=AC.createGain();o.type=type;o.frequency.setValueAtTime(f,t);if(slide)o.frequency.exponentialRampToValueAtTime(Math.max(20,f*slide),t+d);g.gain.setValueAtTime(0,t);g.gain.linearRampToValueAtTime(v,t+attack);g.gain.exponentialRampToValueAtTime(.0008,t+d);o.connect(g).connect(OUT);o.start(t);o.stop(t+d+.05)}
+/** เสียงซ่า (ใช้บัฟเฟอร์ร่วม) · f2 = กวาดความถี่ไปถึง */
+function noise(d,{v=.2,f=1200,f2=0,q=.8,type='bandpass',at=0,attack=.01}={}){if(!AC||muted)return;const t=AC.currentTime+Math.max(0,at),s=AC.createBufferSource(),fl=AC.createBiquadFilter(),g=AC.createGain();s.buffer=NB;fl.type=type;fl.frequency.setValueAtTime(f,t);if(f2)fl.frequency.exponentialRampToValueAtTime(f2,t+d);fl.Q.value=q;g.gain.setValueAtTime(0,t);g.gain.linearRampToValueAtTime(v,t+attack);g.gain.exponentialRampToValueAtTime(.0008,t+d);s.connect(fl).connect(g).connect(OUT);s.start(t,Math.random()*(5-Math.min(4.9,d)),d+.05)}
+const SFX={
+ clink:()=>{tone(2400,.25,{v:.08});tone(3100,.2,{v:.05,at:.07})},
+ crack:()=>{noise(.35,{v:.5,f:2500,type:'highpass'});tone(180,.3,{type:'square',v:.08,slide:.5})},
+ boom:()=>{tone(90,1.6,{v:.5,slide:.35});noise(1.2,{v:.35,f:400,type:'lowpass'});tone(45,2,{v:.3,type:'triangle'})},
+ bell:()=>{for(const [f,v] of [[523,.18],[1318,.07],[1760,.05],[2637,.03]])tone(f,3.2,{v,type:'sine'})},
+ whisper:()=>{for(let i=0;i<4;i++)noise(1.6,{v:.07,f:rnd(1800,3200),q:4,at:i*.25,attack:.5})},
+ growl:()=>{tone(55,2.2,{type:'sawtooth',v:.12,slide:.8,attack:.4});noise(2,{v:.08,f:180,type:'lowpass',attack:.5})},
+ wind:()=>noise(4,{v:.06,f:500,type:'lowpass',attack:1.2}),
+ drum:()=>{tone(70,.5,{v:.45,slide:.5});noise(.15,{v:.15,f:900})},
+ shimmer:()=>{[784,988,1175,1568].forEach((f,i)=>tone(f,1.2,{v:.06,at:i*.08}))},
+ crowd:()=>{for(let i=0;i<6;i++)noise(.6,{v:.04,f:rnd(500,1200),q:2,at:i*.18,attack:.1})},
+ // --- ฉากต่อสู้ ---
+ whoosh:()=>noise(.32,{v:.32,f:500,f2:3200,q:2.5,attack:.12}),                              // วืด (พุ่ง/หลบ)
+ slash:()=>{noise(.22,{v:.4,f:6000,f2:1500,q:1.5,attack:.01});tone(1800,.18,{type:'sawtooth',v:.05,slide:.3})},  // ฟันแสง
+ hit:()=>{tone(150,.35,{v:.7,slide:.25});noise(.12,{v:.55,f:2200,type:'highpass'});noise(.3,{v:.35,f:600,type:'lowpass'});tone(55,.5,{type:'square',v:.1,slide:.6})}, // กระแทกหนัก
+ taiko:()=>{tone(62,.9,{v:.6,slide:.6});noise(.08,{v:.25,f:1500,q:1});tone(124,.25,{type:'triangle',v:.15,slide:.5})}, // กลองใหญ่
+ shieldRing:()=>{for(const [f,v] of [[880,.1],[1397,.07],[2093,.05],[2960,.035],[3520,.025]])tone(f,1.6,{v,type:'sine'});noise(.08,{v:.25,f:5000,type:'highpass'})}, // โลหะก้อง (โล่ยันต์)
+ fireHiss:()=>{noise(1.4,{v:.18,f:900,f2:2400,q:.6,attack:.15});for(let i=0;i<6;i++)noise(.08,{v:.12,f:rnd(2000,4000),q:3,at:.1+i*.18})}, // ไฟผีพ่น
+ riser:()=>{noise(1.4,{v:.22,f:300,f2:6000,q:3,attack:1.3});tone(110,1.4,{type:'sawtooth',v:.07,slide:4,attack:1.2});tone(165,1.4,{type:'sawtooth',v:.05,slide:4,attack:1.2})}, // เร่งขึ้นก่อนปะทะ
+ stinger:()=>{for(const f of [196,247,294,392,587])tone(f,1.8,{type:'sawtooth',v:.05,attack:.01});tone(49,2,{type:'triangle',v:.35})}, // คอร์ดกระแทก
+};
+const PENTA=[392,440,523,587,659,784,880,1047];                      // สเกลเพนทาโทนิก ~ ระนาด
+const BAT=[330,392,440,494,587,659,784,880,988,1175];                // สเกลต่อสู้ (E ไมเนอร์เพนทา)
+const STEP={calm:.45,tense:1.2,epic:.3,battle:60/156/4,heartbeat:.3};
+let musicMode='calm',curMode='',nextT=0,step=0;
+/** เล่นหนึ่งจังหวะของดนตรี (at = เวลาล่วงหน้าเป็นวินาที) */
+function beat(m,s,at){
+ if(m==='calm'){const n=PENTA[[0,2,4,3,2,4,5,4][s%8]];tone(n,.9,{type:'triangle',v:.07,at});if(s%2===0)tone(n/2,1.2,{v:.04,at})}
+ else if(m==='tense')tone([98,92,98,87][s%4],1.3,{type:'sawtooth',v:.025,attack:.3,at});
+ else if(m==='epic'){const n=PENTA[[0,4,5,7,5,4,2,4][s%8]];tone(n,.5,{type:'triangle',v:.09,at});if(s%4===0){tone(70,.5,{v:.45,slide:.5,at});noise(.15,{v:.15,f:900,at})}}
+ else if(m==='heartbeat'){const p=s%5;if(p===0){tone(58,.25,{v:.6,slide:.6,at});tone(41,1.5,{type:'sawtooth',v:.03,attack:.2,at})}else if(p===1)tone(52,.2,{v:.4,slide:.6,at})}
+ else if(m==='battle'){const i=s%16,bar=Math.floor(s/16)%4;
+  if([0,3,8,11].includes(i)||(bar===3&&i===14)){tone(150,.22,{v:.55,slide:.28,at})}                                  // คิก
+  if(i===4||i===12||(bar===3&&i>=13))noise(.14,{v:i===4||i===12?.32:.16,f:1800,q:.7,at});                          // สแนร์ + รัวท้ายห้อง
+  noise(.035,{v:i%2?.05:.025,f:8000,type:'highpass',at});                                                               // ไฮแฮต
+  if(i===0&&bar%2===0){tone(62,.9,{v:.45,slide:.6,at})}                                                               // ไทโกะ
+  if(i%2===0){const bl=[82,82,98,82,110,82,98,73][(i/2)|0];tone(bl*(bar===2?1.19:1),.18,{type:'square',v:.06,at})}   // เบสวิ่ง
+  if(bar%2===1){const run=[0,1,2,3,4,5,6,7,8,9,8,7,6,5,4,3],n=BAT[run[i]]*(bar===3?1.12:1);tone(n,.14,{type:'triangle',v:.07,at})} // ระนาดไล่
+  else if([0,3,6,8,10,12].includes(i)){const n=BAT[[5,4,5,7,6,4][[0,3,6,8,10,12].indexOf(i)]];tone(n,.3,{type:'triangle',v:.09,at});tone(n*2,.2,{type:'sine',v:.025,at})} // ทำนองหลัก
+  if(i===0)tone([165,165,196,147][bar],1.5,{type:'sawtooth',v:.022,attack:.05,at})}                               // แพดพื้น
+}
+/** ตัวจัดตารางแบบมองล่วงหน้า: ยึดเวลา AudioContext จังหวะจึงไม่เพี้ยนตามเฟรม */
+function music(){if(!AC||muted)return;const now=AC.currentTime;
+ if(musicMode!==curMode){curMode=musicMode;step=0;nextT=now+.03}
+ if(musicMode==='silent')return;if(nextT<now-.2)nextT=now+.03;
+ OUT=musicBus;while(nextT<now+.12){beat(musicMode,step,nextT-now);nextT+=STEP[musicMode];step++}OUT=master}
+
+// ---------------- ฉาก ----------------
+const ghostLights=Array.from({length:40},()=>({x:rnd(0,W),y:rnd(140,250),p:rnd(0,TAU),s:rnd(.5,1.4)}));
+function drawGhostLights(t,a=1){for(const g of ghostLights){const x=g.x+Math.sin(t*.6+g.p)*8,y=g.y+Math.sin(t*1.1+g.p)*5;glow(x,y,6*g.s,'140,255,190',.45*a);px(x-.5,y-.5,1.5,1.5,`rgba(220,255,230,${.8*a})`)}}
+const SC={
+ fieldDusk(t,o={}){cover(IMG.field);ctx.fillStyle='rgba(255,140,60,.08)';ctx.fillRect(0,0,W,H);px(0,218,W,52,'#3d2a18');px(0,216,W,3,'#5b4022');
+  for(let x=0;x<W;x+=5)px(x,213-(x*7%4),1,4,'#6b8f3a');},
+ nightChedi(t){sky('#04030a','#1b1030');stars(t);place(IMG.chedi,240,226,190,1,'brightness(.45) saturate(.7) hue-rotate(-10deg)');px(0,224,W,46,'#0d0a14');vignette(.7)},
+ house(t){px(0,0,W,H,'#2b1a10');for(let x=0;x<W;x+=24){px(x,0,22,H,'#4a2e1a');px(x+22,0,2,H,'#1f130b')}px(0,220,W,50,'#3a2412');
+  // หน้าต่าง: ทุ่งนากลางคืน
+  const wx=250,wy=60,ww=170,wh=110;ctx.save();ctx.beginPath();ctx.rect(wx,wy,ww,wh);ctx.clip();cover(IMG.field,1,'brightness(.35) hue-rotate(200deg) saturate(.6)');drawGhostLights(t);ctx.restore();
+  px(wx-6,wy-6,ww+12,6,'#6e4b2a');px(wx-6,wy+wh,ww+12,6,'#6e4b2a');px(wx-6,wy,6,wh,'#6e4b2a');px(wx+ww,wy,6,wh,'#6e4b2a');px(wx+ww/2-2,wy,4,wh,'#5d3a1a');
+  px(60,205,120,14,'#8b5a2b');px(60,203,120,3,'#c9a36b');vignette(.75)},
+ templeDawn(t){sky('#f2b8a0','#6d8fc7');place(IMG.ubosot||IMG.wat,240,212,150);place(IMG.tam,60,215,110);place(IMG.palm,430,215,120);px(0,210,W,60,'#b59a78');for(let x=0;x<W;x+=16)px(x,210,15,1,'#c9b08c');place(IMG.lantern,150,215,40);place(IMG.lantern,330,215,40);ctx.fillStyle='rgba(255,210,170,.12)';ctx.fillRect(0,0,W,H)},
+ fieldMorning(t){cover(IMG.field,1,'brightness(1.25) saturate(.9) hue-rotate(-12deg)');ctx.fillStyle='rgba(120,90,160,.18)';ctx.fillRect(0,0,W,H);px(0,218,W,52,'#4a3320');px(0,216,W,3,'#6b4a28');
+  for(let x=0;x<W;x+=5)px(x,213-(x*7%4),1,4,'#7aa044');place(IMG.house,70,218,70,1,'brightness(.8)')},
+ sunrise(t){cover(IMG.field,1,'brightness(1.05) saturate(1.2)');ctx.fillStyle='rgba(255,170,90,.15)';ctx.fillRect(0,0,W,H);glow(400,120,70,'255,60,40',.35+.1*Math.sin(t*2));px(0,218,W,52,'#3d2a18');px(0,216,W,3,'#5b4022')},
+};
+
+// ---------------- เอฟเฟกต์ชั่วคราว ----------------
+let P=[];const part=o=>P.push(Object.assign({vx:0,vy:0,g:0,life:1,s:2,c:'#fff',add:true},o,{max:o.life||1}));
+function drawParts(dt){P=P.filter(p=>{p.x+=p.vx*dt;p.y+=p.vy*dt;p.vy+=p.g*dt;p.life-=dt;if(p.life<=0)return false;ctx.globalAlpha=Math.min(1,p.life/p.max*1.5);if(p.add)ctx.globalCompositeOperation='lighter';px(p.x,p.y,p.s,p.s,p.c);ctx.globalCompositeOperation='source-over';ctx.globalAlpha=1;return true})}
+
+// ---------------- เอฟเฟกต์ฉากต่อสู้ ----------------
+let SHAKE=0;
+/** เส้นความเร็วแบบอนิเมะ พุ่งเข้าหาจุดกลาง */
+function speedLines(cx,cy,a=1,n=40){ctx.save();ctx.strokeStyle=`rgba(255,255,255,${.55*a})`;ctx.lineWidth=1;let s=11;const r=()=>(s=(s*16807)%2147483647)/2147483647;
+ for(let i=0;i<n;i++){const an=r()*TAU,r0=60+r()*40+(performance.now()/7+i*37)%30,r1=r0+40+r()*80;ctx.beginPath();ctx.moveTo(cx+Math.cos(an)*r0,cy+Math.sin(an)*r0);ctx.lineTo(cx+Math.cos(an)*r1,cy+Math.sin(an)*r1);ctx.stroke()}ctx.restore()}
+/** เฟรมกระแทก: ขาว-ดำสลับแบบอนิเมะ */
+function impact(t,at,d=.12){if(t<at||t>at+d)return false;ctx.fillStyle=(t-at)<d/2?'rgba(255,250,235,.95)':'rgba(0,0,0,.85)';ctx.fillRect(-W,-H,W*3,H*3);return true}
+/** คลื่นแสงวงรีบนพื้น */
+function shock(x,y,r,rgb,a){if(a<=0)return;ctx.save();ctx.globalCompositeOperation='lighter';ctx.strokeStyle=`rgba(${rgb},${a})`;ctx.lineWidth=2;ctx.beginPath();ctx.ellipse(x,y,r,r*.4,0,0,TAU);ctx.stroke();ctx.restore()}
+/** วงยันต์บนพื้น + อักษรหมุน */
+function yantCircle(x,y,r,a,t){if(a<=0)return;ctx.save();ctx.globalAlpha=a;ctx.strokeStyle='#f4d03f';ctx.lineWidth=1;for(const k of [1,.78]){ctx.beginPath();ctx.ellipse(x,y,r*k,r*k*.4,0,0,TAU);ctx.stroke()}
+ for(let i=0;i<8;i++){const an=i/8*TAU+t*.8;px(x+Math.cos(an)*r*.9-1,y+Math.sin(an)*r*.36-1,3,3,'#fff3c4')}ctx.restore();glow(x,y,r,'255,215,90',.25*a)}
+/** เศษยันต์ในมือขวัญ (เรืองแสง) */
+function shard(x,y,a=1,big=0){yant(x,y,.22+big*.1,a,0);glow(x,y,10+big*20,'255,215,90',.55*a+big*.3)}
+const FX0=240,FY=222;
+const FIGHT=[
+ {d:3,cap:'28 · เช้าวันรุ่งขึ้น ผีบุกหมู่บ้าน ชาวบ้านวิ่งหนี',sub:['ยายทิม','ผีหลอก! ผีออกมากลางวันแสก ๆ!'],scene:'fieldMorning',cam:[[260,160,1.15],[250,160,1.25]],music:'tense',sfx:[[0,'growl'],[1,'whisper'],[1.6,'riser']],draw:t=>{
+   const m=(x0,id,y,dir='west',sc=1)=>spr(id,x0-t*14,y,{anim:'walk',dir,t,sc});m(400,'mob_phi_pob',FY);m(450,'mob_kuman_thong',FY+6);m(360,'mob_phi_dip',FY+10);spr('mob_krasue',430-t*10,FY-30,{anim:'idle',dir:'west',t});
+   spr('npc_yai_tim',140-t*30,FY+6,{anim:'idle',dir:'west',t});spr('npc_pa_sa',170-t*34,FY+14,{dir:'west',t})}},
+ {d:3.5,cap:'29 · ขวัญวิ่งเข้ามา เจอเศษยันต์ชิ้นหนึ่งตกกลางทุ่ง หยิบขึ้นมา มันเรืองแสง',scene:'fieldMorning',cam:[[150,195,2.2],[200,195,2.6]],music:'battle',sfx:[[0,'taiko'],[0,'stinger'],[.3,'whoosh'],[1,'whoosh'],[1.6,'shimmer']],draw:t=>{const x=lerp(110,200,ease(clamp(t/1.4,0,1))),got=t>1.5;if(!got)shard(212,FY-3,.8+.2*Math.sin(t*8),0);spr('hero_male_mohom',x,FY,{anim:t<1.4?'walk':t<2?'cast':'idle',dir:'east',t});if(got)shard(x+8,FY-22,1,clamp((t-1.5)/1,0,1));speedLines(x,FY-20,t<1.4?.6:0,26)}},
+ {d:3.5,cap:'30 · กุมารทองกระโจนใส่',scene:'fieldMorning',cam:[[235,195,2.6],[232,195,2.8]],sub:['ขวัญ','ไม่ต้องกลัว... ข้าเห็นพวกเอ็ง'],sfx:[[.05,'whoosh'],[.88,'hit'],[.9,'shieldRing'],[.95,'taiko']],draw:t=>{
+   spr('hero_male_mohom',215,FY,{anim:t>.7&&t<1.4?'cast':'idle',dir:'east',t});const k=clamp(t/.9,0,1),kx=t<.9?lerp(290,236,k):lerp(236,300,clamp((t-.9)/.5,0,1)),ky=t<.9?FY-Math.sin(k*Math.PI)*40:FY-Math.sin(clamp((t-.9)/.5,0,1)*Math.PI)*18;
+   spr('mob_kuman_thong',kx,ky,{anim:t<.9?'attack':'idle',dir:'west',t,filter:t>.9&&t<1.2?'brightness(3)':null});
+   if(t>.85){shock(222,FY-2,20+(t-.85)*90,'255,215,90',clamp(1.2-(t-.85),0,1));glow(222,FY-18,34,'255,215,90',clamp(.9-(t-.85),0,.9))}shard(223,FY-22,1,t>.8&&t<1.6?1:0);
+   if(impact(t,.88))SHAKE=.35}},
+ {d:3.5,cap:'31 · ผีปอบพุ่งชน · ขวัญหลบแล้วฟันแสง',scene:'fieldMorning',cam:[[240,190,2.4],[250,190,2.6]],sfx:[[.1,'whoosh'],[.6,'whoosh'],[.9,'whoosh'],[1.22,'slash'],[1.3,'hit'],[1.3,'crack'],[1.4,'taiko']],draw:t=>{
+   const dodge=t>.9?lerp(0,-26,clamp((t-.9)/.2,0,1)):0,px0=t<1.1?lerp(330,230,clamp(t/1.1,0,1)):lerp(230,300,clamp((t-1.3)/.6,0,1));
+   spr('mob_phi_pob',px0,FY,{anim:t<1.1?'walk':'idle',dir:'west',t,filter:t>1.3&&t<1.6?'brightness(3)':null});spr('hero_male_mohom',215+dodge,FY,{anim:t>1.1&&t<1.7?'slash':'idle',dir:'east',t});
+   if(t<1.1)speedLines(px0,FY-24,.5,22);
+   if(t>1.25&&t<1.9){const a=1-(t-1.25)/.65;ctx.save();ctx.globalCompositeOperation='lighter';ctx.strokeStyle=`rgba(255,220,120,${a})`;ctx.lineWidth=4;ctx.beginPath();ctx.arc(205,FY-26,34,-1.1,.9);ctx.stroke();ctx.lineWidth=1.5;ctx.strokeStyle=`rgba(255,255,240,${a})`;ctx.beginPath();ctx.arc(205,FY-26,34,-1.1,.9);ctx.stroke();ctx.restore()}
+   if(impact(t,1.3))SHAKE=.45;if(t>1.3&&t<1.35)for(let i=0;i<30;i++)part({x:236,y:FY-24,vx:rnd(-40,160),vy:rnd(-120,40),g:200,life:.7,s:2,c:i%2?'#f4d03f':'#fff'})}},
+ {d:3.5,cap:'32 · กระสือพ่นไฟผี · ขวัญตั้งวงยันต์',scene:'fieldMorning',cam:[[225,185,2],[225,180,2.1]],sfx:[[.3,'whisper'],[.5,'fireHiss'],[1,'shieldRing'],[1.2,'shimmer'],[1.6,'bell']],draw:t=>{
+   spr('mob_krasue',300,FY-34+Math.sin(t*3)*4,{anim:t<1.2?'attack':'idle',dir:'west',t});spr('hero_male_mohom',210,FY,{anim:'cast',dir:'east',t});
+   if(t>.5&&t<1.8)for(let i=0;i<3;i++)part({x:288,y:FY-46,vx:rnd(-160,-110),vy:rnd(10,40),life:.6,s:3,c:i%2?'#58d68d':'#1e8449'});
+   yantCircle(210,FY+2,38,clamp((t-1)/.4,0,1),t);if(t>1.2){const a=clamp((t-1.2)/.3,0,1);ctx.save();ctx.globalAlpha=a*.35;ctx.fillStyle='#fff3c4';ctx.beginPath();ctx.ellipse(210,FY-26,30,36,0,0,TAU);ctx.fill();ctx.restore();ctx.strokeStyle=`rgba(255,215,90,${a})`;ctx.lineWidth=1.5;ctx.beginPath();ctx.ellipse(210,FY-26,30,36,0,0,TAU);ctx.stroke()}}},
+ {d:3.5,cap:'33 · ถูกล้อม · ขวัญทรุด',scene:'fieldMorning',cam:[[215,195,2],[215,198,2.6]],music:'heartbeat',sub:['ขวัญ','แสงมัน... อ่อนลง... ชิ้นเดียว... ไม่พอ...'],sfx:[[0,'growl'],[1.5,'whisper']],draw:t=>{
+   ctx.fillStyle=`rgba(5,2,12,${clamp(t/1.2,0,.75)})`;ctx.fillRect(-W,-H,W*3,H*3);
+   for(let i=0;i<12;i++){const an=i/12*TAU,x=215+Math.cos(an)*90,y=FY-20+Math.sin(an)*40,a=clamp(t*1.2-i*.05,0,1);glow(x-3,y,3,'255,40,30',.8*a);glow(x+3,y,3,'255,40,30',.8*a)}
+   spr('hero_male_mohom',215,FY+ (t>1?4:0),{dir:'south-east',t,filter:'brightness(.7)'});shard(224,FY-14,.5+.5*Math.abs(Math.sin(t*9)),0);spr('mob_phi_tuay_kaew',250,FY-6,{dir:'west',t,alpha:.8})}},
+ {d:4.5,cap:'34 · หลวงพ่อทองมาถึง · ปลดปล่อยวิญญาณ',scene:'fieldMorning',cam:[[215,190,1.9],[225,185,1.7]],sub:['หลวงพ่อทอง','อย่าฆ่าพวกเขา... ปลดปล่อยพวกเขา'],sfx:[[.2,'bell'],[.8,'riser'],[2.2,'m:epic'],[2.2,'hit'],[2.2,'stinger'],[2.2,'boom'],[2.4,'shimmer']],draw:t=>{
+   ctx.fillStyle=`rgba(5,2,12,${clamp(.75-t*.3,0,.75)})`;ctx.fillRect(-W,-H,W*3,H*3);
+   const mx=lerp(120,175,ease(clamp(t/1.5,0,1)));spr('npc_kru_mage',mx,FY,{anim:t<1.5?'walk':'idle',dir:'east',t});
+   for(let i=0;i<8;i++){const an=i/8*TAU+t*1.5,a=clamp((t-1)/.5,0,1);ctx.save();ctx.globalAlpha=a;yant(215+Math.cos(an)*44,FY-22+Math.sin(an)*16,.18,1);ctx.restore()}
+   spr('hero_male_mohom',215,FY,{anim:t>1.6?'cast':'idle',dir:'east',t});shard(224,FY-24,1,clamp((t-1.8)/.4,0,1));
+   if(t>2.2){const k=t-2.2;shock(215,FY,k*160,'255,215,90',clamp(1-k*.6,0,1));glow(215,FY-30,80*Math.min(1,k),'255,230,150',clamp(.8-k*.3,0,.8))}if(impact(t,2.2,.16))SHAKE=.5}},
+ {d:4,cap:'35 · ผีกลายเป็นแสง ลอยขึ้นฟ้า',scene:'fieldMorning',cam:[[240,170,1.3],[240,130,1.2]],music:'calm',sfx:[[.3,'shimmer'],[1.8,'shimmer']],enter:()=>{for(let i=0;i<70;i++)part({x:rnd(80,420),y:rnd(170,226),vx:rnd(-8,8),vy:rnd(-45,-15),life:rnd(2.5,4),s:2,c:i%3?'#b5ffd8':'#fff3c4'})},draw:t=>{
+   for(const [x,id] of [[300,'mob_phi_pob'],[340,'mob_kuman_thong'],[270,'mob_phi_dip']])spr(id,x,FY,{dir:'west',t,alpha:clamp(1-t/1.5,0,1),filter:'brightness(2) saturate(.3)'});
+   spr('hero_male_mohom',215,FY,{dir:'north-east',t});spr('npc_kru_mage',175,FY,{dir:'north-east',t});spr('mob_phi_tuay_kaew',240,FY-4,{dir:'north',t,alpha:.8})}},
+ {d:4,cap:'หลวงพ่อทองมองขวัญ · รู้ทันทีว่าเด็กคนนี้มองเห็นผี',scene:'fieldMorning',cam:[[190,192,3.4],[192,192,3.8]],sub:['หลวงพ่อทอง','(เด็กคนนี้... มองเห็นพวกเขาได้จริง ๆ)'],sfx:[[.4,'bell']],draw:t=>{spr('npc_kru_mage',175,FY,{dir:'east',t});spr('hero_male_mohom',215,FY,{dir:t<1.8?'north-east':'west',t});shard(224,FY-24,.8,0)}},
+];
+/** แผนที่เศษยันต์ 9 ชิ้น (ชิ้นที่บางผีอยู่ในมือขวัญแล้ว) */
+function questMap(t){px(0,0,W,H,'#120b1c');const x0=90,y0=30,w=300,h=200;px(x0-4,y0-4,w+8,h+8,'#5d4030');px(x0,y0,w,h,'#d9c29a');
+ ctx.strokeStyle='#6d8fc7';ctx.lineWidth=3;ctx.beginPath();ctx.moveTo(x0+150,y0);ctx.bezierCurveTo(x0+90,y0+60,x0+210,y0+120,x0+140,y0+h);ctx.stroke();
+ ctx.fillStyle='#a0885f';for(const [mx,my] of [[40,40],[62,34],[250,50],[272,44]]){ctx.beginPath();ctx.moveTo(x0+mx-12,y0+my+12);ctx.lineTo(x0+mx,y0+my-6);ctx.lineTo(x0+mx+12,y0+my+12);ctx.fill()}
+ const pts=[[150,100,'บางผี'],[60,62],[250,70],[40,150],[110,170],[200,160],[270,130],[88,105],[222,100]];
+ pts.forEach(([x,y,n],i)=>{const k=clamp((t-.3-i*.3)/.3,0,1);if(k<=0)return;const X=x0+x,Y=y0+y;
+  if(i===0){glow(X,Y,12+3*Math.sin(t*5),'255,215,90',.8);px(X-2,Y-2,5,5,'#fff3c4')}else{glow(X,Y,9*k,'255,70,50',.6*k);px(X-1,Y-1,3,3,'#8e1b12')}
+  ctx.font='10px Mitr, Tahoma';if(n){ctx.fillStyle='#3a2412';ctx.fillText(n,X+7,Y-4)}else if(k>=1){ctx.fillStyle='#8e1b12';ctx.fillText('?',X+5,Y-3)}});
+ ctx.fillStyle='#3a2412';ctx.font='12px Mitr, Tahoma';ctx.textAlign='center';ctx.fillText('เศษยันต์ 9 ชิ้น · ได้แล้ว '+(t>.5?1:0)+' / 9',x0+w/2,y0+18);ctx.textAlign='left'}
+// ---------------- ช็อตทั้งหมด (เลขช็อตนับใหม่อัตโนมัติ) ----------------
+// cam: [cx, cy, zoom] ต้น → ปลาย · sub: [ผู้พูด, ข้อความ] · sfx: [[เวลา, ชื่อ]] · music: โหมดดนตรี
+const KX=200,KY=215;
+const SHOTS=[
+ // ฉาก 1: ทุ่งนาบางผี ยามพลบ
+ {d:4,cap:'1 · ภาพกว้างมาก',scene:'fieldDusk',cam:[[240,135,1],[240,135,1.08]],music:'calm',sfx:[[0,'wind']],draw:t=>{spr('hero_male_mohom',KX,KY,{dir:'east',t,sc:.8})}},
+ {d:3,cap:'2 · ภาพกลาง',scene:'fieldDusk',cam:[[KX+10,190,2.4],[KX+14,190,2.5]],draw:t=>{spr('hero_male_mohom',KX,KY,{dir:'east',t})}},
+ {d:2,cap:'3 · ภาพใกล้',scene:'fieldDusk',cam:[[KX+30,208,4],[KX+30,208,4.2]],sfx:[[.3,'clink'],[1.1,'clink']],draw:t=>{const w=Math.sin(t*20)*(t>.3?1:0);px(KX+26+w,206,6,7,'rgba(210,235,250,.85)');px(KX+26+w,206,6,1,'#fff');spr('hero_male_mohom',KX,KY,{dir:'east',t})}},
+ {d:3,cap:'4 · ภาพใกล้ หน้าขวัญ',scene:'fieldDusk',cam:[[KX,185,5],[KX+2,185,5.2]],sub:['ขวัญ','มาอีกแล้วเหรอ'],draw:t=>{spr('hero_male_mohom',KX,KY,{dir:'south-east',t})}},
+ {d:4,cap:'5 · ภาพกลาง',scene:'fieldDusk',cam:[[KX+15,195,2.6],[KX+15,195,2.6]],sub:['ขวัญ','วันนี้ไม่มีขนมนะ'],draw:t=>{spr('hero_male_mohom',KX,KY,{dir:'east',t});const k=clamp(t/1.2,0,1);spr('mob_phi_tuay_kaew',KX+30,KY-4*k,{dir:'west',t,alpha:k,sc:.9});glow(KX+30,KY-18,14*k,'170,220,255',.35)}},
+ {d:4,cap:'6 · ภาพกว้าง จากข้างหลัง',scene:'fieldDusk',cam:[[240,150,1.4],[240,140,1.5]],draw:t=>{spr('hero_male_mohom',KX,KY,{dir:'north-east',t,sc:.9});spr('mob_phi_tuay_kaew',KX+28,KY-2,{dir:'north-east',t,sc:.8});glow(KX+28,KY-16,10,'170,220,255',.3)}},
+ {d:5,cap:'7 · ภาพกลาง',scene:'fieldDusk',cam:[[280,190,2],[260,190,2]],sub:['ผู้ใหญ่ชัย','ไอ้ขวัญ! คุยกับใครอีกแล้ว กลับบ้านได้แล้ว มืดแล้ว!'],draw:t=>{spr('hero_male_mohom',KX,KY,{dir:'east',t});spr('mob_phi_tuay_kaew',KX+28,KY-2,{dir:'west',t,sc:.8,alpha:.35});const x=lerp(360,300,ease(clamp(t/2,0,1)));spr('npc_lung_chai',x,KY+2,{dir:'west',t})}},
+ // ฉาก 2: เจดีย์ทอง เที่ยงคืน
+ {d:3,cap:'8 · ภาพกว้าง คืนเดือนดับ',scene:'nightChedi',cam:[[240,135,1],[240,140,1.05]],music:'silent',sfx:[[0,'wind']],draw:t=>{}},
+ {d:4,cap:'9 · ภาพใกล้ มุมต่ำ',scene:'nightChedi',cam:[[222,190,2.6],[225,188,2.8]],music:'tense',sfx:[[.2,'growl']],draw:t=>{yant(240,196,.8,1);const k=clamp(t/2.5,0,1);spr('mob_pret_asura',205,226,{dir:'east',t,sc:1.25,filter:'brightness(0)',alpha:.92});glow(214,150,5,'255,40,30',.9);glow(222,150,5,'255,40,30',.9);ctx.strokeStyle='#000';ctx.lineWidth=3;ctx.beginPath();ctx.moveTo(214,178);ctx.lineTo(lerp(214,236,k),lerp(178,196,k));ctx.stroke()}},
+ {d:2,cap:'10 · ภาพใกล้มาก',scene:'nightChedi',cam:[[240,196,6],[240,196,6.4]],sfx:[[.4,'crack']],draw:t=>{yant(240,196,.8,1,clamp((t-.3)/1.2,0,1))}},
+ {d:3,cap:'11 · ยันต์แตก 9 ชิ้น',scene:'nightChedi',cam:[[240,170,2],[240,150,1.4]],music:'epic',sfx:[[0,'boom']],enter:()=>{for(let i=0;i<9;i++){const a=-Math.PI/2+(i-4)*.32;part({x:240,y:196,vx:Math.cos(a)*260,vy:Math.sin(a)*260,life:1.4,s:3,c:'#f4d03f'})}for(let i=0;i<60;i++)part({x:240,y:196,vx:rnd(-120,120),vy:rnd(-160,40),g:120,life:rnd(.5,1.2),c:i%2?'#ff7b2a':'#fff3c4'})},draw:t=>{if(t<.15){ctx.fillStyle=`rgba(255,245,220,${.9-t*6})`;ctx.fillRect(0,0,W,H)}for(let i=0;i<9;i++){const a=-Math.PI/2+(i-4)*.32,L=Math.min(1,t/.8)*300;ctx.save();ctx.globalCompositeOperation='lighter';ctx.strokeStyle=`rgba(255,215,100,${.7-t*.18})`;ctx.lineWidth=3;ctx.beginPath();ctx.moveTo(240,196);ctx.lineTo(240+Math.cos(a)*L,196+Math.sin(a)*L);ctx.stroke();ctx.restore()}}},
+ {d:4,cap:'12 · เศษยันต์ 9 ชิ้นปลิวกระจายไปทั่วแผ่นดิน',scene:'fieldDusk',filter:'night',sub:['','เศษยันต์ทั้งเก้า... ปลิวไปตกคนละทิศละทาง'],cam:[[240,135,1],[240,135,1.1]],draw:t=>{ctx.fillStyle='rgba(10,5,30,.65)';ctx.fillRect(0,0,W,H);[[60,.2],[130,.5],[200,.9],[270,.3],[330,.7],[400,.1],[440,.6],[100,1.1],[370,1.3]].forEach(([x,d])=>{const k=clamp((t-d)/.6,0,1);if(k<=0)return;const y=lerp(-10,205,k);ctx.save();ctx.globalCompositeOperation='lighter';ctx.strokeStyle='rgba(255,210,90,.8)';ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(x-40*(1-k),y-60);ctx.lineTo(x,y);ctx.stroke();ctx.restore();if(k>=1)glow(x,205,18+6*Math.sin(t*6),'255,190,80',.5)})}},
+ {d:6,cap:'13 · ผีตื่นทีละตัว',scene:'nightChedi',cam:[[240,150,2.6],[240,150,2.6]],sfx:[[0,'whisper'],[2,'whisper'],[4,'whisper']],draw:t=>{ctx.fillStyle='#07040d';ctx.fillRect(0,0,W,H);const i=Math.floor(t/2),k=(t%2)/2,x=240,y=182;
+   if(i===0){spr('mob_kuman_thong',x,y,{dir:'south',t,sc:1.2,filter:`brightness(${.3+k*.6})`});if(k>.4){glow(x-4,y-24,4,'255,210,60',.9);glow(x+4,y-24,4,'255,210,60',.9)}}
+   else if(i===1){spr('mob_nang_takhian',x,y+6,{dir:'south',t,sc:1.1,filter:`brightness(${.3+k*.6})`});ctx.fillStyle=`rgba(0,0,0,${.4-k*.3})`;ctx.fillRect(0,0,W,H)}
+   else{ctx.save();ctx.beginPath();ctx.rect(0,0,W,y);ctx.clip();spr('mob_phi_dip',x,y+lerp(40,0,ease(k)),{dir:'south',t,sc:1.1,filter:'brightness(.7)'});ctx.restore();px(0,y,W,H-y,'#1a0f0a');for(let j=0;j<10;j++)part({x:x+rnd(-14,14),y,vx:rnd(-20,20),vy:rnd(-40,-10),g:80,life:.6,c:'#5d4030',add:false})}
+   vignette(.85)}},
+ {d:5,cap:'14 · ภาพใกล้ ตาแดง',scene:'nightChedi',cam:[[218,150,5],[218,150,5.6]],music:'tense',sub:['ขุนพลอสูร','ร้อยปี... ที่ถูกขังอยู่หลังประตูภพ ร้อยปีที่ไม่มีใครจำชื่อเราได้'],sfx:[[0,'growl']],draw:t=>{ctx.fillStyle='#050207';ctx.fillRect(0,0,W,H);spr('mob_pret_asura',205,226,{dir:'south',t,sc:1.25,filter:'brightness(0)'});const a=.6+.4*Math.sin(t*3);glow(212,150,6,'255,30,20',a);glow(224,150,6,'255,30,20',a);px(211,149,2,2,'#ffdddd');px(223,149,2,2,'#ffdddd')}},
+ {d:5,cap:'15 · เงาสลายเป็นควัน',scene:'nightChedi',sub:['ขุนพลอสูร','ยันต์ไม่ครบเก้า... ประตูก็จะค่อย ๆ เปิด แล้วโลกนี้จะต้องจำพวกเราได้อีกครั้ง'],cam:[[220,180,2.4],[220,176,2.2]],enter:()=>{for(let i=0;i<120;i++)part({x:205+rnd(-18,18),y:rnd(140,226),vx:rnd(-25,25),vy:rnd(-50,-10),life:rnd(1,2.2),s:3,c:'#1a1020',add:false})},draw:t=>{spr('mob_pret_asura',205,226,{dir:'south',t,sc:1.25,filter:'brightness(0)',alpha:clamp(1-t/1.2,0,1)})}},
+ // ฉาก 3: บ้านขวัญ
+ {d:3,cap:'16 · ในบ้าน ขวัญสะดุ้งตื่น',scene:'house',cam:[[160,180,2],[160,180,2.1]],music:'tense',sfx:[[.2,'wind']],draw:t=>{spr('hero_male_mohom',120,212,{dir:'east',t});if(t>.2&&t<.6){ctx.fillStyle='rgba(255,60,40,.25)';ctx.fillRect(0,0,W,H)}}},
+ {d:4,cap:'17 · จากสายตาขวัญ',scene:'house',cam:[[335,115,2.2],[335,112,2.4]],sfx:[[0,'whisper']],draw:t=>{}},
+ {d:5,cap:'18 · ภาพใกล้ ที่หน้าต่าง',scene:'house',cam:[[300,150,3],[300,150,3.1]],sub:['ผีถ้วยแก้ว','พี่ขวัญ... มีอะไรบางอย่างตื่นแล้ว'],draw:t=>{const s=Math.sin(t*30)*.8;spr('mob_phi_tuay_kaew',300+s,168,{dir:'south-west',t,sc:1.1,alpha:.9});glow(300,150,14,'170,220,255',.3)}},
+ {d:3,cap:'19 · ขวัญกำมือแน่น',scene:'house',cam:[[122,196,5],[122,196,5.4]],draw:t=>{spr('hero_male_mohom',120,212,{dir:'east',t})}},
+ // ฉาก 4: ลานวัด ตอนเช้ามืด
+ {d:3,cap:'20 · ลานวัด ชาวบ้านมาชุมนุมหลังผีบุก',scene:'templeDawn',cam:[[240,150,1.1],[240,150,1.2]],music:'silent',sfx:[[0,'crowd'],[1.2,'crowd']],draw:t=>crowd(t)},
+ {d:6,cap:'21 · หลวงพ่อทองถือกรอบยันต์ที่แตกว่างเปล่า',scene:'templeDawn',cam:[[240,185,2.6],[240,185,2.7]],sub:['หลวงพ่อทอง','ยันต์เก้ายอดนี้ ครูบาอาจารย์ลงไว้ปิด "ประตูภพ" ประตูระหว่างโลกคนกับโลกผี... ร้อยปีแล้ว บัดนี้มันแตก'],draw:t=>{crowd(t);yant(250,196,.35,1,1)}},
+ {d:6,cap:'แผนที่ เศษยันต์กระจายไปทั่วแผ่นดิน',scene:null,cam:[[240,135,1],[240,135,1.05]],sub:['หลวงพ่อทอง','ชิ้นหนึ่งตกที่บางผีนี่... อีกแปดชิ้นกระจายไปทั่วแผ่นดิน ตกที่ไหน ผีที่นั่นก็ตื่น'],sfx:[[.3,'shimmer'],[1.2,'whisper']],draw:questMap},
+ {d:4,cap:'22 · ผู้ใหญ่ชัยหน้าซีด',scene:'templeDawn',cam:[[190,195,3.2],[190,195,3.3]],sub:['ผู้ใหญ่ชัย','แล้วเราจะทำยังไงครับหลวงพ่อ ผีออกมาเต็มทุ่งแล้ว!'],draw:t=>crowd(t)},
+ {d:3,cap:'23 · หลวงพ่อทองมองหาในฝูงคน',scene:'templeDawn',cam:[[240,185,2.6],[300,200,2.8]],music:'calm',draw:t=>crowd(t,{monkDir:'south-east'})},
+ {d:2,cap:'24 · ขวัญรู้ตัวว่าถูกมอง',scene:'templeDawn',cam:[[300,205,4.4],[300,205,4.6]],draw:t=>crowd(t,{monkDir:'south-east',khwanDir:'north-west'})},
+ {d:5,cap:'25 · หลวงพ่อเดินมาหาขวัญ',scene:'templeDawn',cam:[[275,200,2.6],[285,202,2.8]],sub:['หลวงพ่อทอง','เมื่อเช้าข้าเห็นกับตา... เอ็งมองเห็นพวกเขาได้ ใช่ไหม'],draw:t=>{const mx=lerp(240,284,ease(clamp(t/2,0,1)));crowd(t,{monkX:mx,monkDir:'south-east',khwanDir:'north-west',monkAnim:t<2?'walk':'idle'})}},
+ {d:3,cap:'26 · เศษยันต์ในมือขวัญเรืองแสงตอบรับ',scene:'templeDawn',cam:[[296,200,5],[296,200,5.4]],sub:['หลวงพ่อทอง','แล้วเศษยันต์ชิ้นนั้น... ก็เลือกเอ็งแล้ว'],sfx:[[.1,'bell'],[.2,'shimmer']],draw:t=>{crowd(t,{monkX:284,monkDir:'south-east',khwanDir:'north-west'});yant(298,202,.3,1,0);glow(298,202,16+4*Math.sin(t*5),'255,215,90',.6);if(Math.random()<.5)part({x:298+rnd(-6,6),y:202,vy:rnd(-30,-10),life:.8,s:1,c:'#fff3c4'})}},
+ {d:5,cap:'หลวงพ่อสอนขวัญ',scene:'templeDawn',cam:[[290,195,3.2],[290,195,3.3]],sub:['หลวงพ่อทอง','ผีไม่ได้ชั่วร้ายทุกตัวนะลูก บางตัว... แค่อยากให้มีคนจำได้'],draw:t=>crowd(t,{monkX:284,monkDir:'south-east',khwanDir:'north-west'})},
+ {d:6,cap:'27 · หลวงพ่อพูดจริงจัง',scene:'templeDawn',cam:[[284,190,3.4],[284,190,3.5]],sub:['หลวงพ่อทอง','ชิ้นเดียวยังสู้ไม่ไหว เอ็งก็เห็นแล้ว... ไปตามหาอีกแปดชิ้นกลับมาให้ครบ ก่อนประตูภพจะเปิดกว้างกว่านี้'],draw:t=>crowd(t,{monkX:284,monkDir:'south-east',khwanDir:'north-west'})},
+ {d:4,cap:'ขวัญรับปาก',scene:'templeDawn',cam:[[300,205,4.2],[300,205,4.5]],sub:['ขวัญ','ข้าจะไปครับหลวงพ่อ... จะเอากลับมาให้ครบทั้งเก้าชิ้น'],sfx:[[.2,'shimmer']],draw:t=>{crowd(t,{monkX:284,monkDir:'south-east',khwanDir:'north-west'});glow(298,202,10+3*Math.sin(t*5),'255,215,90',.6)}},
+ {d:4,cap:'ผีถ้วยแก้วโผล่มาข้าง ๆ ขวัญ',scene:'templeDawn',cam:[[306,205,3.6],[306,205,3.8]],sub:['ผีถ้วยแก้ว','พี่ขวัญไปไหน ข้าไปด้วย! ...อย่าทิ้งข้าไว้กับผู้ใหญ่ชัยนะ'],sfx:[[.2,'clink'],[.6,'clink']],draw:t=>{crowd(t,{monkX:284,monkDir:'south-east',khwanDir:'north-west'});const k=clamp(t/.8,0,1);spr('mob_phi_tuay_kaew',322,224-6*k+Math.sin(t*3)*2,{dir:'west',t,sc:.85,alpha:.85*k});glow(322,210,12*k,'170,220,255',.3)}},
+ // ฉากปิด
+ {d:6,cap:'36 · ออกเดินทาง · ขวัญกับผีถ้วยแก้วมุ่งหน้าตามหาเศษยันต์',scene:'sunrise',cam:[[220,160,1.6],[280,140,1.3]],music:'epic',draw:t=>{const x=lerp(150,320,t/6);spr('hero_male_mohom',x,KY,{anim:'walk',dir:'east',t,sc:1.1});spr('mob_phi_tuay_kaew',x-26,KY-6+Math.sin(t*3)*2,{dir:'east',t,sc:.8,alpha:.8});glow(x+8,KY-22,8,'255,215,90',.5)}},
+ {d:5,cap:'37 · ชื่อเรื่อง',title:true,scene:'sunrise',cam:[[240,135,1],[240,135,1]],sfx:[[0,'boom'],[.3,'shimmer']],draw:t=>{ctx.fillStyle='rgba(8,4,16,.72)';ctx.fillRect(0,0,W,H);const k=clamp(t/1,0,1);ctx.save();ctx.globalAlpha=k;glow(240,130,120,'255,200,80',.25);ctx.strokeStyle='rgba(244,208,63,.7)';ctx.lineWidth=1;ctx.beginPath();ctx.arc(240,130,70,0,TAU*k);ctx.stroke();ctx.beginPath();ctx.arc(240,130,62,0,TAU*k);ctx.stroke();for(let i=0;i<8;i++){const a=i/8*TAU+t*.2;px(240+Math.cos(a)*66-1,130+Math.sin(a)*66-1,3,3,'#f4d03f')}ctx.restore();title(k)}},
+ {d:5,cap:'38 · ข้อความปิด',scene:null,music:'silent',sfx:[[0,'whisper']],draw:t=>{ctx.fillStyle='#000';ctx.fillRect(0,0,W,H)},sub:['','เศษยันต์ 1 / 9 ... การเดินทางเพื่อปิดประตูภพ เพิ่งเริ่มต้น']},
+];
+SHOTS.splice(SHOTS.findIndex(s=>s.scene==='templeDawn'),0,...FIGHT);   // ผีอาละวาด: หลังฉากบ้าน ก่อนลานวัด
+SHOTS.forEach((s,i)=>s.cap=(i+1)+' · '+s.cap.replace(/^\d+\s*·\s*/,''));
+window.__A={audioInit,SFX,music,beat,get AC(){return AC},set mode(m){musicMode=m},SHOTS};   // สำหรับตรวจในคอนโซล                                        // ฉากต่อสู้: หลังลานวัด ก่อนฉากปิด
+function crowd(t,o={}){
+ const {monkX=240,monkDir='south',khwanDir='north',monkAnim='idle'}=o;
+ spr('npc_yai_tim',150,232,{dir:'north-east',t});spr('npc_lung_dam',345,236,{dir:'north-west',t});spr('npc_mae_choy',175,244,{dir:'north',t});spr('npc_pa_sa',330,250,{dir:'north-west',t});
+ spr('npc_lung_chai',190,226,{dir:'north-east',t});spr('npc_kru_mage',monkX,212,{dir:monkDir,t,anim:monkAnim});spr('hero_male_mohom',300,228,{dir:khwanDir,t})}
+function title(k){const el=document.getElementById('sub');el.innerHTML=k>.3?`<span style="font-size:clamp(20px,4.4vw,44px);color:#f4d03f;background:none;text-shadow:0 0 18px rgba(244,208,63,.6),0 3px 4px #000">ThaiNative<br><small style="font-size:.55em;color:#fdf6e3">ตำนานประตูภพ</small></span>`:''}
+
+// ---------------- เสียงพากย์ ----------------
+// ใช้ไฟล์ vo/<เลขช็อต>.mp3 (หรือ 38_ขวัญ.wav ฯลฯ) ถ้ามี · ไม่มีก็ใช้เสียงอ่านภาษาไทยของเครื่อง
+const VOICE={'ขวัญ':{pitch:1.1,rate:1.05,g:'m'},'ผีถ้วยแก้ว':{pitch:1.8,rate:1.15,g:'f'},'หลวงพ่อทอง':{pitch:.6,rate:.82,g:'m'},
+ 'ผู้ใหญ่ชัย':{pitch:.85,rate:1.15,g:'m'},'ยายทิม':{pitch:1.35,rate:1.2,g:'f'},'ขุนพลอสูร':{pitch:.25,rate:.72,g:'m'},'':{pitch:.9,rate:.88,g:'f'}};
+/** เอฟเฟกต์เสียงพากย์จากไฟล์: rate = ความเร็ว+ระดับเสียง (<1 ทุ้ม, >1 แหลม) · rev = เสียงก้อง */
+const VFX={'ขุนพลอสูร':{rate:.84,rev:.55,len:2.6},'ผีถ้วยแก้ว':{rate:1.13,rev:.3,len:1.2}};let IR={};
+function impulse(len){if(IR[len])return IR[len];const n=AC.sampleRate*len,b=AC.createBuffer(2,n,AC.sampleRate);for(let c=0;c<2;c++){const d=b.getChannelData(c);for(let i=0;i<n;i++)d[i]=(Math.random()*2-1)*Math.pow(1-i/n,2.5)}return IR[len]=b}
+const VOM=[['auto','อัตโนมัติ'],['file','เฉพาะไฟล์'],['tts','เสียงเครื่อง'],['off','ปิด']];
+const hasTTS='speechSynthesis' in window;const VO_ON=false;   // ปิดเสียงพากย์ไว้ก่อน · ไฟล์เสียงเก็บอยู่ใน vo/saved (ย้ายกลับมาไว้ใน vo แล้วตั้ง true เพื่อเปิดใช้)
+let voMode=VO_ON?'auto':'off',voBusy=false,voUntil=0,voSrc=null,voUtt=null,thVoices=[];const VOF={};
+function loadVoices(){thVoices=hasTTS?speechSynthesis.getVoices().filter(v=>/^th/i.test(v.lang)):[];voPanel()}
+if(hasTTS){speechSynthesis.onvoiceschanged=loadVoices;setTimeout(loadVoices,50)}
+function pickVoice(g){const m=thVoices.filter(v=>/niwat|pattara/i.test(v.name)),f=thVoices.filter(v=>!m.includes(v));return (g==='m'?m[0]||f[0]:f[0]||m[0])||null}
+const voText=s=>String(s.sub[1]).replace(/[()"“”]/g,'').replace(/\.\.\./g,' … ');
+function duck(on){if(musicBus)musicBus.gain.setTargetAtTime(on?.3:1,AC.currentTime,.12)}
+function voDone(){voBusy=false;duck(false)}
+function voStop(){const o=voSrc;voSrc=null;voUtt=null;try{o?.stop()}catch{}if(hasTTS)speechSynthesis.cancel();voDone()}
+function voPlay(i){voStop();const s=SHOTS[i];if(!s.sub||voMode==='off'||muted)return;const fl=VOF[i+1];
+ if(fl?.buf&&voMode!=='tts'){const src=AC.createBufferSource(),fx=VFX[s.sub[0]]||{};src.buffer=fl.buf;src.playbackRate.value=fx.rate||1;src.connect(voBus);if(fx.rev){const cv=AC.createConvolver(),wg=AC.createGain();cv.buffer=impulse(fx.len);wg.gain.value=fx.rev;src.connect(cv).connect(wg).connect(voBus)}src.onended=()=>{if(voSrc===src){voSrc=null;voDone()}};voSrc=src;voBusy=true;voUntil=performance.now()+fl.buf.duration/(fx.rate||1)*1000+300;duck(true);src.start();return}
+ if(voMode==='file'||!hasTTS||!thVoices.length)return;
+ const c=VOICE[s.sub[0]]||VOICE[''],u=new SpeechSynthesisUtterance(voText(s));u.lang='th-TH';u.voice=pickVoice(c.g);u.pitch=c.pitch;u.rate=c.rate;
+ u.onend=u.onerror=()=>{if(voUtt===u){voUtt=null;voDone()}};voUtt=u;voBusy=true;voUntil=performance.now()+Math.max(4,voText(s).length*.16)*1000;duck(true);speechSynthesis.speak(u)}
+/** โหลดไฟล์พากย์จากโฟลเดอร์ vo (เซิร์ฟเวอร์ตอบรายชื่อไฟล์เป็น JSON) */
+async function voLoad(){try{const r=await fetch('vo/?list');if(!r.ok)return;for(const name of await r.json()){const m=/^(\d+)[^.]*\.(mp3|wav|ogg|m4a)$/i.exec(name);if(!m||VOF[+m[1]])continue;VOF[+m[1]]={name,ab:await (await fetch('vo/'+encodeURIComponent(name))).arrayBuffer()}}}catch{}
+ const off=new OfflineAudioContext(1,1,44100);for(const v of Object.values(VOF))if(v.ab){const ab=v.ab;v.ab=null;try{v.buf=await off.decodeAudioData(ab)}catch{v.bad=true}}
+ let ch=0;for(const [n,v] of Object.entries(VOF)){const s=SHOTS[n-1];if(!s||!v.buf||!s.sub)continue;const need=+(.3+v.buf.duration/((VFX[s.sub[0]]||{}).rate||1)+.7).toFixed(2);if(s.d<need){s.d=need;ch++}}
+ if(ch){const t=T;retime();T=Math.min(t,TOTAL-.01);cur=-1}voPanel()}
+async function voDecode(){for(const v of Object.values(VOF))if(v.ab&&!v.buf){const ab=v.ab;v.ab=null;try{v.buf=await AC.decodeAudioData(ab)}catch{v.bad=true}}voPanel()}
+function voPanel(){const rows=SHOTS.map((s,i)=>({s,i})).filter(o=>o.s.sub),nf=rows.filter(o=>VOF[o.i+1]).length;
+ document.getElementById('voSum').textContent=`📜 บทพากย์ · ${rows.length} บรรทัด · มีไฟล์เสียง ${nf} · กดแถวเพื่อฟังช็อตนั้น`;
+ document.getElementById('voInfo').innerHTML=`<p style="color:var(--dim);margin:6px 0">เสียงอ่านภาษาไทยในเครื่อง: ${thVoices.length?thVoices.map(v=>v.name).join(', '):'<b style="color:#e59866">ไม่พบ</b> (ลองเปิดด้วย Microsoft Edge ซึ่งมีเสียงไทยแบบธรรมชาติ)'}<br>
+ ใส่เสียงจริง: อัดหรือสร้างเสียงทีละบรรทัด ตั้งชื่อไฟล์ขึ้นต้นด้วยเลขช็อต เช่น <code>38.mp3</code> หรือ <code>38_ขวัญ.wav</code> วางในโฟลเดอร์ <code>vo</code> แล้วรีเฟรช</p>
+ <button id="voCopy">📋 คัดลอกบททั้งหมด (ส่งให้นักพากย์)</button>`;
+ document.getElementById('voTable').innerHTML='<tr><th>ช็อต</th><th>ตัวละคร</th><th>บทพูด</th><th>เสียง</th></tr>'+rows.map(({s,i})=>{const v=VOF[i+1];
+  return `<tr class="row" data-i="${i}"><td>${i+1}</td><td>${s.sub[0]||'บรรยาย'}</td><td>${s.sub[1]}</td><td>${v?`<span class="ok">✅ ${v.name}${v.bad?' (เปิดไม่ได้)':''}</span>`:'<span class="tts">เสียงเครื่อง</span>'}</td></tr>`}).join('');
+ document.querySelectorAll('#voTable tr.row').forEach(tr=>tr.onclick=()=>{T=starts[+tr.dataset.i];cur=-1;start()});
+ document.getElementById('voCopy').onclick=e=>{navigator.clipboard?.writeText(rows.map(({s,i})=>`ช็อต ${i+1}\t${s.sub[0]||'บรรยาย'}\t${s.sub[1]}\tไฟล์: ${i+1}.mp3`).join('\n'));e.target.textContent='✅ คัดลอกแล้ว'}}
+function updVo(){document.getElementById('voBtn').textContent='🗣 พากย์: '+VOM.find(m=>m[0]===voMode)[1]}
+document.getElementById('voBtn').onclick=()=>{voMode=VOM[(VOM.findIndex(m=>m[0]===voMode)+1)%VOM.length][0];updVo();voStop()};
+
+// ---------------- เครื่องเล่น ----------------
+const starts=[];let TOTAL=0;
+function retime(){starts.length=0;let acc=0;for(const s of SHOTS){starts.push(acc);acc+=s.d}TOTAL=acc;prog.querySelectorAll("em").forEach(e=>e.remove());starts.forEach(s=>{const e=document.createElement("em");e.style.left=(s/TOTAL*100)+"%";prog.appendChild(e)})}
+let T=0,playing=false,last=0,cur=-1,fired=new Set();
+const subEl=document.getElementById('sub'),capEl=document.getElementById('cap'),progi=document.getElementById('progi'),timeEl=document.getElementById('time');
+const prog=document.getElementById('prog');
+retime();
+const fmt=s=>`${Math.floor(s/60)}:${String(Math.floor(s%60)).padStart(2,'0')}`;
+function shotAt(t){let i=0;while(i<SHOTS.length-1&&t>=starts[i+1])i++;return i}
+function frame(dt){
+ const i=shotAt(T),s=SHOTS[i],lt=T-starts[i],k=lt/s.d;
+ if(i!==cur){cur=i;P=[];fired=new Set();voStop();if(s.music)musicMode=s.music;s.enter?.();capEl.textContent='ช็อต '+s.cap;
+  subEl.innerHTML=s.sub?`<span>${s.sub[0]?`<b>${s.sub[0]}:</b> `:''}${s.sub[1]}</span>`:''}
+ if(playing)for(const [at,name] of s.sfx||[])if(lt>=at&&!fired.has(name+at)){fired.add(name+at);if(name.startsWith("m:"))musicMode=name.slice(2);else SFX[name]?.()}
+ if(playing&&s.sub&&lt>=.3&&!fired.has('vo')){fired.add('vo');voPlay(i)}
+ if(playing)music();
+ const [a,b]=s.cam||[[240,135,1],[240,135,1]],e=ease(clamp(k,0,1)),cx=lerp(a[0],b[0],e),cy=lerp(a[1],b[1],e),z=lerp(a[2],b[2],e);
+ ctx.setTransform(1,0,0,1,0,0);ctx.fillStyle='#000';ctx.fillRect(0,0,W,H);
+ SHAKE=Math.max(0,SHAKE-dt);const sh=SHAKE>0?SHAKE*8:0;
+ ctx.save();ctx.translate(W/2+rnd(-sh,sh),H/2+rnd(-sh,sh));ctx.scale(z,z);ctx.translate(-cx,-cy);
+ if(s.scene)SC[s.scene](T);s.draw?.(lt);drawParts(playing?dt:0);ctx.restore();
+ // จาง ๆ ตอนเปลี่ยนช็อต
+ const fin=clamp(lt/.25,0,1),fout=clamp((s.d-lt)/.25,0,1),f=Math.min(fin,fout);if(f<1){ctx.fillStyle=`rgba(0,0,0,${1-f})`;ctx.fillRect(0,0,W,H)}
+ px(0,0,W,18,'#000');px(0,H-18,W,18,'#000');                                   // แถบดำแบบภาพยนตร์
+ if(!s.title&&!(s.sub))subEl.innerHTML='';if(s.title)title(clamp(lt,0,1));
+ progi.style.width=(T/TOTAL*100)+'%';timeEl.textContent=`${fmt(T)} / ${fmt(TOTAL)}`;
+}
+let wasP=false;function loop(now){if(playing!==wasP){wasP=playing;if(parent!==window)parent.postMessage(playing?'anim:play':'anim:stop','*')}const dt=Math.min(.05,(now-last)/1000);last=now;advance(dt);requestAnimationFrame(loop)}
+function advance(dt){if(playing){let nt=T+dt;const si=shotAt(T);if(voBusy&&performance.now()<voUntil&&si<SHOTS.length-1&&nt>starts[si+1]-.3)nt=Math.max(T,starts[si+1]-.3);T=nt;if(T>=TOTAL){T=TOTAL-.001;playing=false;playBtn.textContent='▶ เล่น'}}frame(dt)}
+const playBtn=document.getElementById('play');
+function start(){document.body.classList.remove('poster');if(POSTER&&T===POSTER&&!playing){T=0;cur=-1}audioInit();AC?.resume();voDecode();document.getElementById('start').style.display='none';playing=true;playBtn.textContent='⏸ หยุด'}
+document.getElementById('start').onclick=start;
+playBtn.onclick=()=>{if(T>=TOTAL-.01)T=0;playing=!playing;if(!playing)voStop();playBtn.textContent=playing?'⏸ หยุด':'▶ เล่น';if(playing){audioInit();AC.resume()}};
+document.getElementById('restart').onclick=()=>{T=0;cur=-1;start()};
+document.getElementById('mute').onclick=e=>{muted=!muted;if(muted)voStop();e.target.textContent=muted?'🔇 ปิดเสียง':'🔊 เสียง'};
+prog.onclick=e=>{const r=prog.getBoundingClientRect();T=clamp((e.clientX-r.left)/r.width,0,1)*TOTAL;cur=-1};
+window.__anim={seek:(t)=>{T=t;cur=-1;frame(0)},tick:(dt)=>advance(dt),get T(){return T},get voBusy(){return voBusy},total:TOTAL,shots:SHOTS.length};
+updVo();if(VO_ON)voLoad();else{document.getElementById('voBtn').style.display='none';document.getElementById('voPanel').style.display='none'}
+addEventListener('message',e=>{if(e.data==='anim:pause'&&playing)playBtn.click()});
+const POSTER=+(new URLSearchParams(location.search).get('poster')||0);if(POSTER){T=POSTER;cur=-1;document.body.classList.add('poster')}
+last=performance.now();frame(0);requestAnimationFrame(loop);
+})();
+</script>
+</body>
+</html>

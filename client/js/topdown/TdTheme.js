@@ -109,6 +109,7 @@ export function bakeGround(scene, ground, tilesets = [], style = {}) {
     const terr = (x, y) => {
       const t = at(Math.max(0, Math.min(MAP_W - 1, x)), Math.max(0, Math.min(MAP_H - 1, y)));
       if (isWaterT(t)) return 'water';
+      if (style.wallAs && (t === T.WALL || t === T.WALLTOP)) return style.wallAs;   // สุสาน: ผนังกลืนกับพื้นหิน (ไม่มีขอบหญ้า)
       if (t === T.WOOD) return [[1, 0], [-1, 0], [0, 1], [0, -1]].some(([dx, dy]) => isWaterT(at(x + dx, y + dy))) ? 'water' : 'stone';
       return { [T.STONE]: 'stone', [T.BRICK]: 'brick', [T.ROAD]: 'road', [T.PADDY]: 'paddy', [T.TALL]: 'tall', [T.SAND]: 'sand' }[t] || 'grass';
     };
@@ -439,6 +440,8 @@ export class TdMinimap {
     this.zb = zb;
     zb.querySelectorAll('button').forEach((b) => (b.onclick = (e) => { e.stopPropagation(); this.step(+b.dataset.z); }));
     el.onwheel = (e) => { e.preventDefault(); this.step(e.deltaY < 0 ? 1 : -1); };
+    el.style.cursor = 'pointer'; el.title = 'แตะเพื่อเปิดแผนที่ใหญ่ (M)';
+    el.onclick = (e) => { e.stopPropagation(); this.s?.world?.toggleMap?.(); };   // แตะมินิแมพ = เปิดแผนที่ (มือถือไม่มีปุ่ม M)
     this.paintZoom();
   }
 
@@ -458,6 +461,7 @@ export class TdMinimap {
   setBase(miniCanvas) { this.base = miniCanvas; this.at = 0; }
 
   update(time, s) {
+    this.s = s;
     this.el.hidden = s.settings?.minimap === false;
     if (this.zb) this.zb.hidden = this.el.hidden;
     if (this.el.hidden || time - this.at < 200) return; this.at = time;

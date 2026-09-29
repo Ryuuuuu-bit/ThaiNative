@@ -510,6 +510,12 @@ export function buildLayout() {
   disc(132, 186, 3.5, T.BRICK); disc(132, 186, 4.5, T.STONE); disc(132, 186, 3.5, T.BRICK); path([[132, 168], [132, 182]], 3, T.WOOD); reserveDisc(132, 184, 6);
   for (let k = 0; k <= 30; k++) reserveDisc(132, Math.round(168 + k * 14 / 30), 2);
   for (const [dx, dy] of [[-3, -2], [3, -2]]) small('p_torch2', 132 + dx, 186 + dy, { glow: [-22, 46, 0xb266ff, 1.1] });
+  // ประตูสุสานใต้ดิน (ดันเจี้ยนปาร์ตี้ 100 ชั้น) ปลายทางหินป่าช้าวัดร้าง · สัปเหร่อเฒ่า + กองไฟรวมพล
+  disc(198, 149, 4.5, T.STONE); disc(198, 146, 2.5, T.BRICK); path([[204, 150], [199, 150]], 2, T.STONE); reserveDisc(198, 148, 7);
+  P('env/b_prang_l', 198, 146, { foot: [2, 2], scale: 1.1, tint: 0x6b5a7a, label: 'ประตูสุสานใต้ดิน', glow: [-40, 70, 0xb266ff, 1] });
+  for (const x of [195, 201]) small('p_torch2', x, 146, { glow: [-22, 46, 0xb266ff, 1.1] });
+  deco('p_campfire', 201, 151, { scale: 1.1, glow: [-10, 70, 0xff8a3c, 1.1] });
+  npcs.push({ id: 'crypt', key: 'npc_lung_chai', x: 195 * TILE, y: 149 * TILE, nameTh: 'สัปเหร่อเฒ่า', role: 'สุสานใต้ดิน 100 ชั้น', color: '#c39bd3', lines: ['ข้างล่างนั่นลึกร้อยชั้น ลงเป็นปาร์ตี้จะรอดกว่านะ', 'ฆ่าผีให้หมดชั้น บันไดลงถึงจะเปิด', 'ทุกสิบชั้นมีเจ้าที่เฝ้าอยู่ ผ่านได้ก็จำทางไว้เริ่มใหม่ได้'] });
   // บัว/เรือ/ต้นไม้ริมบึง
   for (const [cx, cy, r] of ponds) for (let i = 0; i < r; i++) { const a = rnd() * 6.28, d = rnd() * (r - 1); deco(rnd() < 0.5 ? 'p_lotus' : 'p_lotus2', Math.round(cx + Math.cos(a) * d), Math.round(cy + Math.sin(a) * d), { depth: 1 }); }
   for (let y = SY; y < MAP_H - 1; y += 3) for (let x = 1; x < MAP_W - 1; x += 3) {

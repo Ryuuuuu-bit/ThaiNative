@@ -12,6 +12,7 @@ import { TITLE_BY_ID } from '/shared/data/titles.js';
 import { newFilter, applyFilter, filterBarHtml, bindFilterBar } from '../systems/ItemFilter.js';
 import { combatPower } from '/shared/character.js';
 import { ask } from '../systems/Dialog.js';
+import { PARTY } from '/shared/constants.js';
 
 const $ = (s) => document.querySelector(s);
 const JOB_ICON = { swordman: '⚔️', mage: '🔮', archer: '🏹', boxer: '🥊', healer: '🌿' };
@@ -255,7 +256,7 @@ export class TdSocial {
     const me = this.selfId;
     const inParty = new Set((this.party?.members || []).map((m) => m.id));
     const leader = this.party?.leader === me;
-    $('#soc-party-info').textContent = this.party ? `(${this.party.members.length}/4)` : '';
+    $('#soc-party-info').textContent = this.party ? `(${this.party.members.length}/${PARTY.maxSize})` : '';
     const setP = (el, html) => { if (el && el._html !== html) { el._html = html; el.innerHTML = html; } };
     setP($('#soc-party'), this.party
       ? this.party.members.map((m) => `<div class="soc-row"><span>${m.id === this.party.leader ? '👑' : '•'} ${esc(m.name)} <small>Lv.${m.level} ${JOBS[m.job]?.nameTh ?? 'ชาวบ้าน'}</small></span>
