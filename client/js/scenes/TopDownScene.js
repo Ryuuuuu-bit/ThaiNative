@@ -1165,18 +1165,20 @@ export class TopDownScene extends Phaser.Scene {
       .on('pl:die', () => this.playerDie())
       .on('pl:hp', ({ hp }) => { if (Number.isFinite(hp)) { this.player.char.hp = hp; this.ui.hudCache = ''; } })
       .on('chat', (m) => this.ui.chat(m))
-      .on('td:init', ({ map, maps, x, y, players }) => {
+      .on('td:init', ({ map, maps, x, y, players, cryptOpen }) => {
         if (Array.isArray(maps)) this.visitedMaps = [...new Set([...this.visitedMaps, ...maps])];
         if (map && map !== this.M.id) this.loadMap(map, { x, y });
+        if (cryptOpen) { this.cryptOpen = true; this.refreshCryptPortals?.(); }   // เข้ามากลางชั้นที่เคลียร์แล้ว → บันไดเปิด
         this.player.setPosition(x, y); this.cameras.main.centerOn(x, y);
         players.forEach((q) => this.addRemote(q));
         this.ui.setOnline(true, this.remotes.size);
       })
       .on('td:joined', (q) => { this.addRemote(q); this.ui.chat({ name: '📢 ระบบ', text: `${q.name} เข้าสู่${this.M.nameTh}` }); this.ui.setOnline(true, this.remotes.size); })
-      .on('td:warp', ({ map, maps, x, y, players, how }) => {
+      .on('td:warp', ({ map, maps, x, y, players, how, cryptOpen }) => {
         this.warping = false;
         if (Array.isArray(maps)) this.visitedMaps = [...new Set([...this.visitedMaps, ...maps])];
         this.loadMap(map, { x, y });
+        if (cryptOpen) { this.cryptOpen = true; this.refreshCryptPortals?.(); }
         (players || []).forEach((q) => this.addRemote(q));
         this.ui.setOnline(true, this.remotes.size);
         if (how === 'portal' && maps?.length && this.M.realm) this.ui.toast(`🌀 ปลดล็อกวาร์ป: ${this.M.nameTh} (คุยกับฤๅษีเฝ้าประตูมิติเพื่อกลับมาได้ทันที)`, 'ok', 3200);

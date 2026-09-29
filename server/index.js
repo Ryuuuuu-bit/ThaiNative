@@ -43,6 +43,7 @@ app.disable('x-powered-by');
 app.get('/api/discord', async (_req, res) => res.json(await discordInfo()));   // ปุ่ม Discord: จำนวนออนไลน์ (Server Widget)
 const storeReady = setupAuth(app, {
   onlineChar: (acc) => { const p = players.get(byAcc.get(acc)); return p ? { slot: p.slot || 0, save: p.save } : null; },
+  saveBusy: (acc) => saving.has(acc) || [...unsaved.keys()].some((k) => k.startsWith(`${acc}:`)),   // กำลังเซฟตอนออกเกมอยู่ → ห้ามเขียนทับจาก PUT /character
   onlineCount: () => players.size,
   leaderboard: () => ranking?.publicBoards() || null,
 });
@@ -210,7 +211,7 @@ io.on('connection', (socket) => {
   dungeon.onConnection(socket);
   td.onConnection(socket);
   worldBoss.onConnection(socket);
-  socket.on('td:enter', () => { const p = players.get(socket.id); if (p) socket.broadcast.emit('player:left', p.id); });   // ออกจากสายตาผู้เล่นโลกเดิม
+  socket.on('td:enter', () => { const p = players.get(socket.id); if (p && p.world !== 'td') socket.broadcast.emit('player:left', p.id); });   // ออกจากสายตาผู้เล่นโลกเดิม (ครั้งแรกเท่านั้น · ส่งซ้ำ = สแปม)
   const me = () => players.get(socket.id);
 
   // 1) เข้าโลก: ยืนยันตัวตนด้วย token → โหลดตัวละครจากฐานข้อมูล (server ถือข้อมูลจริง)
@@ -326,7 +327,7 @@ io.on('connection', (socket) => {
     if (p.world === 'td' && a === 'recall' && d.to === 'hunt') return done({ r: { ok: false, msg: 'ในโลกใหม่ใช้ได้เฉพาะวาร์ปกลับเมือง' } });
     // MP เป็นของ client: รับค่าล่าสุดมาก่อนรันคำสั่ง (เช่น ดื่มยา MP) แล้วส่งค่าหลังรันกลับไป
     takeMp(p, d.mp);
-    const tdCtx = p.world === 'td' ? { td: true, tdPos: td.mapOf(p) === 'ayutthaya' ? { x: p.tx, y: p.ty } : { x: -1e6, y: -1e6 }, tdFish: td.nearWater(p) } : {};   // สมุนไพรมีเฉพาะกรุงศรีฯ
+    const tdCtx = p.world === 'td' ? { td: true, tdNpc: td.npcNear(p), tdPos: td.mapOf(p) === 'ayutthaya' ? { x: p.tx, y: p.ty } : { x: -1e6, y: -1e6 }, tdFish: td.nearWater(p) } : {};   // สมุนไพรมีเฉพาะกรุงศรีฯ
     const r = runAction(p.save, a, d, { rnd: Math.random, now, x: ex, night: nightNow(), admin: p.admin, trade: !!p.tradeId, sess: p.sess, ...tdCtx });
     if (r.warp && r.ok && p.world !== 'td') {
       if (r.warp === 'home') warpTo(p, MAPS.village, MAPS.village.arriveX);

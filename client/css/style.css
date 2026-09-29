@@ -472,7 +472,8 @@ kbd { display: inline-block; min-width: 1.6em; text-align: center; padding: 0 .3
 .acc-badge.guest { background: #7e5109; color: #fdebd0; }
 .link-form { display: flex; flex-wrap: wrap; gap: .35em; }
 .link-form input { flex: 1 1 8em; font-family: inherit; padding: .3em .5em; border-radius: 6px; border: 1px solid var(--gold); background: #1d1228; color: var(--text); }
-.acc-group .set-row { gap: .5em; }
+.acc-group .set-row { display: flex; flex-wrap: wrap; gap: .5em; }
+.acc-group .set-row > .btn { flex: 1 1 10em; min-width: 0; white-space: nowrap; }
 #settings-panel { max-height: 92%; overflow-y: auto; }
 .cc-account { margin: .2em 0 0; text-align: center; }
 

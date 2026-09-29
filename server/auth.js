@@ -160,7 +160,7 @@ export function setupAuth(app, hooks = {}) {
     const data = req.body?.character;
     if (!data || typeof data !== 'object' || Array.isArray(data)) return res.status(400).json({ error: 'ข้อมูลตัวละครไม่ถูกต้อง' });
     if (Buffer.byteLength(JSON.stringify(data)) > MAX_CHAR_BYTES) return res.status(413).json({ error: 'ข้อมูลตัวละครใหญ่เกินไป' });
-    if (live(req.account.id)) return res.json({ ok: true, ignored: true });
+    if (live(req.account.id) || hooks.saveBusy?.(req.account.id)) return res.json({ ok: true, ignored: true });
     const slot = Math.max(0, slotArg(req.body?.slot ?? 0));
     const cur = migrate(await req.store.getCharacter(req.account.id, slot));
     if (!cur) return res.status(404).json({ error: 'ยังไม่มีตัวละคร' });

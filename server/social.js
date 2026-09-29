@@ -98,7 +98,7 @@ export function setupSocial(io, players, H = {}) {
     if (!hasOffer(A.save, oa)) return closeTrade(t, `${A.name} มีของไม่ครบตามข้อเสนอ – ยกเลิกการเทรด`);
     if (!hasOffer(B.save, ob)) return closeTrade(t, `${B.name} มีของไม่ครบตามข้อเสนอ – ยกเลิกการเทรด`);
     const move = (from, to, o) => {
-      for (const it of o.items) { removeItem(from.save, it.id, it.qty); addItem(to.save, it.id, it.qty); }
+      for (const it of o.items) { removeItem(from.save, it.id, it.qty); addItem(to.save, it.id, it.qty, false); }   // การ์ดจากเทรดไม่นับสมุดสะสม (กันส่งวนแชร์โบนัส)
       from.save.gold -= o.gold; to.save.gold += o.gold;
     };
     move(A, B, oa); move(B, A, ob);

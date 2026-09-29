@@ -243,6 +243,12 @@ export function setupTD(io, players, opts = {}) {
     for (const n of L.npcs) if (n.id && Math.hypot(n.x - p.tx, n.y - p.ty) <= NPC_R) { const v = NPC_BY_ID[n.id]; if (v) return v.x; }
     return null;
   }
+  /** id ของ NPC บริการที่ยืนใกล้ที่สุด (ในระยะคุย) · ไม่มี = null */
+  function npcNear(p) {
+    let best = null, bd = NPC_R;
+    for (const n of L.npcs) { const d = Math.hypot(n.x - p.tx, n.y - p.ty); if (n.id && d <= bd) { bd = d; best = n.id; } }
+    return best;
+  }
   const nearNpc = (p, id, r = NPC_R + 20) => L.npcs.some((n) => n.id === id && Math.hypot(n.x - p.tx, n.y - p.ty) <= r);
   const portalNear = (p, to) => L.portals.find((q) => q.to === to && Math.hypot(q.x - p.tx, q.y - p.ty) <= PORTAL_R);
   const okPos = (pos) => pos && Number.isFinite(pos.x) && Number.isFinite(pos.y) && !solidAt(pos.x, pos.y - 2);
@@ -261,7 +267,7 @@ export function setupTD(io, players, opts = {}) {
   function forget(p) {
     for (const m of mobs) { if (m.target === p.id) { m.target = null; if (m.st === 'chase') { m.st = 'wander'; m.wx = m.s.x; m.wy = m.s.y; } } m.pending = m.pending.filter((a) => a.pid !== p.id); m.dmgBy.delete(p.id); }
   }
-  const self = { id: mapId, M, L, room, mobs, crypt: CR, solidAt, inTown, okPos, econX, nearNpc, portalNear, onHit, tick, forget };
+  const self = { id: mapId, M, L, room, mobs, crypt: CR, solidAt, inTown, okPos, econX, npcNear, nearNpc, portalNear, onHit, tick, forget };
   return self;
   }
 
@@ -293,7 +299,7 @@ export function setupTD(io, players, opts = {}) {
     const w = place(socket, p, mapOf({ tmap: p.save.tdMap }), p.save.tdPos);
     p.spawnGuardUntil = Date.now() + SPAWN_GUARD_MS; p.invulnUntil = Date.now() + 2500;   // เข้าเกม: กันผีรุมก่อนโหลดเสร็จ
     socket.join('td');
-    socket.emit('td:init', { map: w.id, maps: visited(p), x: p.tx, y: p.ty, players: tdPlayers(w.id).filter((q) => q.id !== p.id).map(publicTd) });
+    socket.emit('td:init', { map: w.id, maps: visited(p), cryptOpen: !!w.crypt?.open, x: p.tx, y: p.ty, players: tdPlayers(w.id).filter((q) => q.id !== p.id).map(publicTd) });
   }
 
   /** ย้ายแมพ (ประตูมิติ / NPC วาร์ป / ยันต์คืนถิ่น) */
@@ -306,7 +312,7 @@ export function setupTD(io, players, opts = {}) {
     }
     const w = place(socket, p, to, pos);
     p.tdWarpAt = Date.now(); p.invulnUntil = Date.now() + 2500; p.spawnGuardUntil = Date.now() + SPAWN_GUARD_MS;   // วาร์ป/ฟื้น: อมตะสั้น ๆ + ผียังไม่เล็ง
-    socket.emit('td:warp', { map: to, maps: visited(p), x: Math.round(p.tx), y: Math.round(p.ty), how, players: tdPlayers(to).filter((q) => q.id !== p.id).map(publicTd) });
+    socket.emit('td:warp', { map: to, maps: visited(p), cryptOpen: !!worlds[to]?.crypt?.open, x: Math.round(p.tx), y: Math.round(p.ty), how, players: tdPlayers(to).filter((q) => q.id !== p.id).map(publicTd) });
     queueSync(p);
     return w;
   }
@@ -393,8 +399,8 @@ export function setupTD(io, players, opts = {}) {
     });
   }
 
-  function openCrypt(members, floor, key) {
-    const n = Math.max(1, Math.min(CRYPT.maxParty, members.length));
+  function openCrypt(members, floor, key, size = members.length) {
+    const n = Math.max(1, Math.min(CRYPT.maxParty, size));                     // ความยากตามขนาดปาร์ตี้ทั้งหมด (ไม่ใช่แค่คนที่ยืนหน้าประตู) → กันเปิดคนเดียวแล้วค่อยตามลงมา
     const id = cryptId(floor, n, `${key}-${++cryptSeq}`);
     const w = (worlds[id] = makeWorld(id));
     w.crypt.key = key; instances.set(key, id);
@@ -420,14 +426,17 @@ export function setupTD(io, players, opts = {}) {
     if (!gate || Math.hypot(gate.x - p.tx, gate.y - p.ty) > NPC_R + 60) return no('ต้องคุยกับสัปเหร่อเฒ่าหน้าประตูสุสาน');
     if (Date.now() - (p.tdWarpAt || 0) < WARP_CD) return no('ประตูสุสานยังไม่เปิด รอสักครู่');
     const party = partyOf(p), key = cryptKey(p), cur = instances.get(key);
-    if (cur && worlds[cur]) return moveMap(socket, p, cur, { ...worlds[cur].M.spawn }, 'crypt');       // ปาร์ตี้ลงไปก่อนแล้ว → ตามลงไป
+    if (cur && worlds[cur]) {                                                                            // ปาร์ตี้ลงไปก่อนแล้ว → ตามลงไป
+      if (tdPlayers(cur).length >= worlds[cur].crypt.n) return no(`ห้องนี้เปิดไว้สำหรับ ${worlds[cur].crypt.n} คน (ความยากตามจำนวนตอนเปิด) · รอรอบหน้า`);
+      return moveMap(socket, p, cur, { ...worlds[cur].M.spawn }, 'crypt');
+    }
     if (party && party.leader !== p.id) return no('ให้หัวหน้าปาร์ตี้เป็นคนเปิดประตูสุสาน · ลงไปแล้วสมาชิกคุยกับสัปเหร่อเพื่อตามได้');
     const floor = d.floor | 0, cp = cryptSave(p).cp || 1;
     if (!checkpoints(cp).includes(floor)) return no(`ยังไม่ปลดล็อกจุดเริ่มชั้น ${floor}`);
     const near = (q) => q && q.world === 'td' && !q.dead && mapOf(q) === w.id && Math.hypot(gate.x - q.tx, gate.y - q.ty) <= CRYPT.rally;
     const members = party ? [...party.members].map((id) => players.get(id)).filter(near) : [];
     if (!members.includes(p)) members.unshift(p);
-    openCrypt(members.slice(0, CRYPT.maxParty), floor, key);
+    openCrypt(members.slice(0, CRYPT.maxParty), floor, key, party ? party.members.size : 1);
     if (party) for (const id of party.members) if (!members.includes(players.get(id))) io.to(id).emit('chat', { id: null, name: '💀 สุสานใต้ดิน', text: `${p.name} เปิดประตูสุสานชั้น ${floor} แล้ว · คุยกับสัปเหร่อเฒ่าเพื่อตามลงไป` });
   }
 
@@ -500,6 +509,7 @@ export function setupTD(io, players, opts = {}) {
   return {
     tick,
     econX: (p) => W(p).econX(p),
+    npcNear: (p) => W(p).npcNear(p),
     mapOf, room: (p) => tdRoom(mapOf(p)),
     /** ยืนริมน้ำ (ตกปลาได้ · ลาวาในนรกตกไม่ได้) */
     nearWater(p) {
@@ -531,7 +541,7 @@ export function setupTD(io, players, opts = {}) {
       moveMap(socket, p, to, { ...TD_MAPS[to].spawn }, 'npc'); return true;
     },
     onConnection(socket) {
-      socket.on('td:enter', () => { const p = players.get(socket.id); if (p) enter(socket, p); });
+      socket.on('td:enter', () => { const p = players.get(socket.id); if (p && p.world !== 'td') enter(socket, p); });   // เข้าได้ครั้งเดียวต่อการเชื่อมต่อ (กันส่งซ้ำเพื่อต่ออมตะ/ป้องกันผีเล็ง)
       socket.on('td:move', (s) => onMove(socket, s));
       socket.on('td:hit', (d) => { const p = players.get(socket.id); if (p && p.world === 'td') W(p).onHit(p, d); });
       socket.on('td:respawn', () => onRespawn(socket));

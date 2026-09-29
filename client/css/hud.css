@@ -253,6 +253,8 @@ body.td-mode.win-open #boss-bar { visibility: hidden; }   /* เปิดหน�
 
 /* ช่องแชทกรอบ MMO: ขนาดตามความสูงจอ (cqh) */
 body.td-mode:not(.touch) #chat { left: var(--hud-pad) !important; bottom: calc(2.6cqh + var(--hud-pad)) !important; width: 50cqh !important; font-size: 1.85cqh !important; }
+/* PC จอไม่กว้างพิเศษ (≤ 2:1): แถบสกิล+ขวดยากว้างจนชนกล่องแชท → ยกแชทขึ้นเหนือแถบ (ขวดยา Q/E เคยโดนปุ่มอีโมจิ/ส่ง บังกดไม่ได้) */
+@media (max-aspect-ratio: 2/1) { body.td-mode:not(.touch) #chat { bottom: calc(2.6cqh + var(--hud-pad) + 9.6cqh) !important; } }
 body.td-mode.touch #chat { top: 30cqh !important; bottom: auto !important; left: var(--hud-pad) !important; width: 64cqh !important; font-size: 2.7cqh !important; }
 /* ================= แจ้งเตือนกลางจอ (Notify) ================= */
 #toasts .toast.t2 { display: flex; align-items: center; gap: .55em; padding: .35em .9em .35em .5em; border-radius: .5em; border: 1px solid rgba(212,175,55,.55); border-left-width: .3em;
@@ -602,3 +604,13 @@ body.td-mode:not(.m-hud) .td-wm .wm-npcs > b { margin: 0 0 .4cqh; }
 body.td-mode.touch.tut-on #chat { top: 38cqh !important; }   /* มือถือ: การ์ดแนะนำอยู่มุมซ้ายบน → เลื่อนปุ่มแชทลง */
 /* มินิแมพรับการแตะ/ลูกกลิ้ง: แตะ = เปิดแผนที่ใหญ่ · ลูกกลิ้ง = ซูม */
 body.td-mode #td-minimap { pointer-events: auto; cursor: pointer; }
+
+/* ===== มือถือ/แท็บเล็ต: ปุ่มเล็กเกินนิ้ว + แผนที่โลกล้นจอ (ตรวจ HUD 29 ก.ย.) ===== */
+body.touch-dev .st-btns { gap: .6cqh; }
+body.touch-dev .st-btns button { min-width: max(5.4cqh, 30px); min-height: max(5.4cqh, 30px); font-size: max(2.6cqh, 13px); }
+body.touch-dev #skill-panel .sk-assign { gap: .6cqh; }
+body.touch-dev #skill-panel .sk-assign button { min-width: max(5.4cqh, 30px); min-height: max(5.4cqh, 30px); font-size: max(2.6cqh, 13px); }
+body.touch-dev #shop-panel button:not(.tab):not(.close) { min-height: max(5.4cqh, 30px); min-width: max(5.4cqh, 30px); }
+body.touch-dev #travel-panel { max-height: 96cqh !important; overflow-y: auto !important; }
+body.touch-dev .td-wm .wm-stage { height: 44cqh; }
+body.touch-dev #skill-panel .sk-up { min-height: max(5.4cqh, 30px); min-width: max(6cqh, 34px); }

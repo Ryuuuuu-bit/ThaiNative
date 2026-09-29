@@ -36,11 +36,12 @@ export const DYE_PRICE = 300;
 //  กระเป๋า
 // ------------------------------------------------------------
 export const count = (c, id) => c.inventory.find((s) => s.id === id)?.qty || 0;
-export function addItem(c, id, qty = 1) {
+/** book = false: ไม่นับเข้าสมุดสะสมการ์ด (ของที่ได้จากการเทรดกับผู้เล่น · สมุดนับเฉพาะการ์ดที่ได้เอง) */
+export function addItem(c, id, qty = 1, book = true) {
   if (!ITEMS[id] || !(qty > 0)) return;
   const slot = c.inventory.find((s) => s.id === id);
   if (slot) slot.qty += qty; else c.inventory.push({ id, qty });
-  if (CARD_BY_ID[id]) { c.cardBook ||= {}; c.cardBook[id] = (c.cardBook[id] || 0) + qty; }   // สมุดสะสมการ์ด
+  if (book && CARD_BY_ID[id]) { c.cardBook ||= {}; c.cardBook[id] = (c.cardBook[id] || 0) + qty; }   // สมุดสะสมการ์ด
 }
 export function removeItem(c, id, qty = 1) {
   const slot = c.inventory.find((s) => s.id === id);
@@ -236,7 +237,7 @@ function use(c, { id }) {
 function buy(c, { shop, id, qty = 1 }, ctx) {
   const S = SHOPS[shop], it = ITEMS[id];
   if (!S || !it?.price || !S.stock.includes(id)) return NO('ร้านไม่ขายของนี้');
-  if (ctx.x != null && !nearNpc(ctx.x, SHOP_NPC[shop])) return NO('ต้องยืนคุยกับเจ้าของร้านก่อน');
+  if (ctx.x != null && !atNpc(ctx, SHOP_NPC[shop])) return NO('ต้องยืนคุยกับเจ้าของร้านก่อน');
   qty = it.type === 'skin' ? 1 : int(qty, 1, 9999, 1);
   if (it.type === 'skin' && count(c, id)) return NO('มีคัมภีร์นี้แล้ว');
   const cost = it.price * qty;
@@ -246,6 +247,10 @@ function buy(c, { shop, id, qty = 1 }, ctx) {
   return OK(`ซื้อ ${it.nameTh}${qty > 1 ? ` x${qty}` : ''} (-฿${cost.toLocaleString()})`);
 }
 const nearAnyShop = (x) => Object.values(SHOP_NPC).some((n) => nearNpc(x, n));
+// โลก top-down: server ส่ง ctx.tdNpc = id ของ NPC ที่ยืนใกล้ที่สุด → ตรวจตรงตัว (พิกัดหมู่บ้านเก่าอยู่ใกล้กันเกินไป ยืนร้านหนึ่งแล้วใช้อีกร้านได้)
+const atNpc = (ctx, id) => (ctx.tdNpc !== undefined ? ctx.tdNpc === id : nearNpc(ctx.x, id));
+const atAnyShop = (ctx) => (ctx.tdNpc !== undefined ? Object.values(SHOP_NPC).includes(ctx.tdNpc) : nearAnyShop(ctx.x));
+const atChai = (ctx) => (ctx.tdNpc !== undefined ? ctx.tdNpc === 'quest' : nearSpot(ctx.x, 'chai'));
 /** ของที่เพิ่งขาย (ซื้อคืนได้ราคาเดิม · เก็บ 10 รายการล่าสุด) */
 const BUYBACK_MAX = 10;
 function pushBuyback(c, id, qty) {
@@ -257,7 +262,7 @@ function pushBuyback(c, id, qty) {
   c.buyback.length = Math.min(c.buyback.length, BUYBACK_MAX);
 }
 function buyback(c, { idx }, ctx) {
-  if (ctx.x != null && !nearAnyShop(ctx.x)) return NO('ต้องซื้อคืนที่ร้านในหมู่บ้าน');
+  if (ctx.x != null && !atAnyShop(ctx)) return NO('ต้องซื้อคืนที่ร้านในหมู่บ้าน');
   const i = int(idx, 0, BUYBACK_MAX - 1, 0), e = c.buyback?.[i];
   if (!e || !ITEMS[e.id]) return NO('ไม่มีรายการนี้');
   const cost = e.price * e.qty;
@@ -270,7 +275,7 @@ function buyback(c, { idx }, ctx) {
 function sell(c, { id, qty = 1 }, ctx) {
   const it = ITEMS[id];
   if (!it) return NO('ไม่มีไอเทมนี้');
-  if (ctx.x != null && !nearAnyShop(ctx.x)) return NO('ต้องขายที่ร้านในหมู่บ้าน');
+  if (ctx.x != null && !atAnyShop(ctx)) return NO('ต้องขายที่ร้านในหมู่บ้าน');
   if (isLocked(c, id)) return NO('ไอเทมนี้ถูกล็อกไว้ (ปลดล็อกในกระเป๋า)');
   if (it.type === 'skin') return NO('ขายคัมภีร์ไม่ได้');
   qty = Math.min(int(qty, 1, 9999, 1), count(c, id));
@@ -281,7 +286,7 @@ function sell(c, { id, qty = 1 }, ctx) {
   return OK(`ขาย ${it.nameTh}${qty > 1 ? ` x${qty}` : ''} (+฿${gain.toLocaleString()})`);
 }
 function sellMany(c, { kind }, ctx) {
-  if (ctx.x != null && !nearAnyShop(ctx.x)) return NO('ต้องขายที่ร้านในหมู่บ้าน');
+  if (ctx.x != null && !atAnyShop(ctx)) return NO('ต้องขายที่ร้านในหมู่บ้าน');
   let gold = 0, n = 0;
   for (const s of bulkSellList(c, kind === 'fish' ? 'fish' : 'drop').map((x) => ({ ...x }))) {
     if (!removeItem(c, s.id, s.qty)) continue;
@@ -292,7 +297,7 @@ function sellMany(c, { kind }, ctx) {
 }
 /** ขายหลายอย่างในครั้งเดียว (ตะกร้าขาย) · items = [[id, qty], ...] */
 function sellCart(c, { items }, ctx) {
-  if (ctx.x != null && !nearAnyShop(ctx.x)) return NO('ต้องขายที่ร้านในหมู่บ้าน');
+  if (ctx.x != null && !atAnyShop(ctx)) return NO('ต้องขายที่ร้านในหมู่บ้าน');
   if (!Array.isArray(items) || !items.length) return NO('ยังไม่ได้เลือกของ');
   let gold = 0, n = 0, kinds = 0;
   for (const e of items.slice(0, 200)) {
@@ -348,7 +353,7 @@ export const canCraft = (c, r) => Object.entries(r.need).every(([id, n]) => coun
 function craft(c, { list, idx, n = 1 }, ctx) {
   const L = CRAFT[list], r = L?.list[int(idx, 0, 999, -1)];
   if (!r) return NO('ไม่มีสูตรนี้');
-  if (ctx.x != null && !nearNpc(ctx.x, L.npc)) return NO(`ต้องยืนคุยกับ${L.who}ก่อน`);
+  if (ctx.x != null && !atNpc(ctx, L.npc)) return NO(`ต้องยืนคุยกับ${L.who}ก่อน`);
   n = int(n, 1, 99, 1);
   let done = 0;
   const lk = list === 'forge' ? 'smith' : 'cook';
@@ -372,7 +377,7 @@ function craft(c, { list, idx, n = 1 }, ctx) {
 // ------------------------------------------------------------
 function enhance(c, { slot, guard }, ctx) {
   if (!ENH_SLOTS.includes(slot)) return NO('ช่องไม่ถูกต้อง');
-  if (ctx.x != null && !nearNpc(ctx.x, 'smith')) return NO('ต้องยืนคุยกับลุงดำก่อน');
+  if (ctx.x != null && !atNpc(ctx, 'smith')) return NO('ต้องยืนคุยกับลุงดำก่อน');
   c.enhance ||= {};
   const lv = c.enhance[slot] || 0, cost = ENHANCE.cost(lv), ore = ENHANCE.ore(lv), fang = ENHANCE.fang(lv);
   if (!c.equipment[slot]) return NO('ยังไม่ได้สวมอุปกรณ์ช่องนี้');
@@ -404,7 +409,7 @@ function qAccept(c, { id }, ctx = {}) {
   const q = QUEST_BY_ID[id], Q = c.quests;
   if (!q || questState(c, q) !== 'open') return NO('รับเควสนี้ไม่ได้');
   const giver = questGiver(q);
-  if (giver !== 'quest' && ctx.x != null && !nearNpc(ctx.x, giver)) return NO(`รับเควสนี้กับ${GIVER_TH[giver]}`);
+  if (giver !== 'quest' && ctx.x != null && !atNpc(ctx, giver)) return NO(`รับเควสนี้กับ${GIVER_TH[giver]}`);
   // เควสทั่วไป (ผู้ใหญ่ชัย) กับเควสอาชีพนับโควตาแยกกัน อย่างละ ${MAX_ACTIVE_QUESTS}
   const same = Object.keys(Q.active).filter((k) => (questGiver(QUEST_BY_ID[k]) === 'quest') === (giver === 'quest')).length;
   if (same >= MAX_ACTIVE_QUESTS) return NO(`รับ${giver === 'quest' ? 'เควสทั่วไป' : 'เควสอาชีพ'}ได้พร้อมกัน ${MAX_ACTIVE_QUESTS} เควส`);
@@ -420,7 +425,7 @@ function qClaim(c, { id }, ctx) {
   const q = QUEST_BY_ID[id], Q = c.quests;
   if (!q || questState(c, q) !== 'ready') return NO('เควสยังไม่สำเร็จ');
   const giver = questGiver(q);
-  if (ctx.x != null && !(giver === 'quest' ? nearSpot(ctx.x, 'chai') : nearNpc(ctx.x, giver))) return NO(`กลับไปส่งเควสกับ${GIVER_TH[giver]}`);
+  if (ctx.x != null && !(giver === 'quest' ? atChai(ctx) : atNpc(ctx, giver))) return NO(`กลับไปส่งเควสกับ${GIVER_TH[giver]}`);
   delete Q.active[id];
   Q.done.push(id);
   c.gold += q.reward.gold;
@@ -486,15 +491,16 @@ function fishLand(c, a, ctx) {
 }
 function fishLose(c, a, ctx) { ctx.sess.fish = null; return OK(''); }
 function gather(c, { node }, ctx) {
-  const S = ctx.sess, n = ctx.td ? HERB_SPOTS[int(node, 0, 999, -1)] : HERB_NODES[int(node, 0, 999, -1)];
+  const S = ctx.sess, i = int(node, 0, 999, -1), n = ctx.td ? HERB_SPOTS[i] : HERB_NODES[i];
+  const key = (ctx.td ? 't' : 'v') + i;                                   // คีย์คูลดาวน์จากดัชนีจริง (กันส่ง "1.1" / " 1" หลบคูลดาวน์)
   if (!n) return NO('');
   if (ctx.td) { if (ctx.tdPos && Math.hypot(ctx.tdPos.x - n.x, ctx.tdPos.y - n.y) > 44) return NO('อยู่ไกลเกินไป'); }
   else if (ctx.x != null && (mapAt(ctx.x).id !== n.mapId || Math.abs(ctx.x - n.x) > 45)) return NO('อยู่ไกลเกินไป');
   S.herb ||= {};
-  if ((S.herb[node] || 0) > ctx.now) return NO('สมุนไพรยังไม่งอกใหม่');
+  if ((S.herb[key] || 0) > ctx.now) return NO('สมุนไพรยังไม่งอกใหม่');
   if (ctx.now - (S.gatherAt || 0) < 1100) return NO('');
   S.gatherAt = ctx.now;
-  S.herb[node] = ctx.now + HERB_RESPAWN_MS;
+  S.herb[key] = ctx.now + HERB_RESPAWN_MS;
   const qty = ctx.rnd() < 0.25 + lifeLv(c, 'gather') * 0.02 ? 2 : 1;
   addItem(c, n.item, qty);
   rec(c, 'herb');
@@ -558,7 +564,7 @@ function dye(c, { part, v }, ctx) {
   if (!N) return NO(part === 'outfit' ? 'ชุดตัวละครกำหนดตามเพศ เปลี่ยนไม่ได้ (ใช้ชุดแต่งตัวแทนได้)' : '');
   v = int(v, 0, N - 1, -1);
   if (v < 0) return NO('');
-  if (ctx.x != null && !nearNpc(ctx.x, 'tailor')) return NO('ต้องยืนคุยกับแม่ช้อยก่อน');
+  if (ctx.x != null && !atNpc(ctx, 'tailor')) return NO('ต้องยืนคุยกับแม่ช้อยก่อน');
   if (c.appearance[part] === v) return NO('เป็นสีนี้อยู่แล้ว');
   if (c.gold < DYE_PRICE) return NO('เงินไม่พอ');
   c.gold -= DYE_PRICE;

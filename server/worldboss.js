@@ -97,9 +97,9 @@ export function setupWorldBoss(io, players, { td, hurtPlayer, queueSync, social,
   function back(p) {
     if (!p || p.tmap !== WB_MAP) return false;
     if (Date.now() - (p.tdWarpAt || 0) < 3000 && S.state !== 'idle') return false;
-    const f = p.save.wbFrom, to = f && TD_MAPS[f.map] && !TD_MAPS[f.map].event ? f.map : 'ayutthaya';
+    const f = p.save.wbFrom, ok = f && TD_MAPS[f.map] && !TD_MAPS[f.map].event, to = ok ? f.map : 'ayutthaya';
     p.save.wbFrom = null;
-    return td.move(p, to, f?.pos || { ...TD_MAPS[to].spawn }, 'wb');
+    return td.move(p, to, (ok && f.pos) || { ...TD_MAPS[to].spawn }, 'wb');   // มาจากสุสาน (ไม่ใช่แมพปกติ) → จุดเกิดอยุธยา ไม่ใช้พิกัดสุสาน
   }
 
   // ------------------------------------------------------------
@@ -181,7 +181,8 @@ export function setupWorldBoss(io, players, { td, hurtPlayer, queueSync, social,
       const out = { rank, pct: +(share * 100).toFixed(2), mvp: isMvp, win, items: [], exp: 0, gold: 0, board };
       if (share >= minShare || isMvp) {
         const R = wbReward(rank, share, isMvp), k = win ? 1 : 0.25;
-        out.expBase = Math.round(WB_BASE_EXP * R.expK * k);                          // EXP จริงคิดตอนมอบ (แคป 1 เลเวล ตามเลเวลตอนรับ) out.gold = Math.round(WB_BASE_GOLD * R.goldK * k);
+        out.expBase = Math.round(WB_BASE_EXP * R.expK * k);                          // EXP จริงคิดตอนมอบ (แคป 1 เลเวล ตามเลเวลตอนรับ)
+        out.gold = Math.round(WB_BASE_GOLD * R.goldK * k);
         out.items.push({ id: WB_STONE, qty: win ? R.stone : 1 });
         if (win) out.items.push({ id: 'yak_fang', qty: R.fang });
         if (win && Math.random() < R.card) out.items.push({ id: `card_${WB_ID}`, qty: 1, card: true });
@@ -189,7 +190,7 @@ export function setupWorldBoss(io, players, { td, hurtPlayer, queueSync, social,
         out.ok = true;
       }
       const p = [...players.values()].find((q) => q.acc === r.acc && (q.slot || 0) === r.slot);
-      if (p?.save) deliver(p, out); else if (out.ok) S.pending.set(r.key, { out, until: Date.now() + 24 * 3600e3 });   // ออฟไลน์ → เก็บไว้ให้ตอนเข้าเกม (24 ชม.)
+      if (p?.save) deliver(p, out); else if (out.ok) S.pending.set(r.key, { out: mergeOut(S.pending.get(r.key)?.out, out), until: Date.now() + 24 * 3600e3 });   // ออฟไลน์ → เก็บไว้ให้ตอนเข้าเกม (24 ชม.)
     });
     persist();
     io.to(room).emit('wb:board', { board, win });
@@ -410,10 +411,22 @@ export function setupWorldBoss(io, players, { td, hurtPlayer, queueSync, social,
   }
   setInterval(tick, 100);
 
+  /** รวมรางวัลค้าง 2 รอบ (พลาดหลายรอบใน 24 ชม. ไม่ทับกัน) */
+  function mergeOut(a, b) {
+    if (!a) return b;
+    const items = [...(a.items || [])];
+    for (const it of b.items || []) { const x = items.find((y) => y.id === it.id && !y.card === !it.card); if (x) x.qty += it.qty; else items.push({ ...it }); }
+    return { ...a, ...b, gold: (a.gold || 0) + (b.gold || 0), expBase: (a.expBase || 0) + (b.expBase || 0), items, red: a.red || b.red, mvp: a.mvp || b.mvp, ok: true };
+  }
   const api = {
     isOpen: () => S.state !== 'idle',
     /** เข้าเกม: รับรางวัลบอสโลกที่ค้างไว้ตอนออฟไลน์ */
-    onJoin(p) { const k = `${p.acc}:${p.slot || 0}`, r = S.pending.get(k); if (!r) return; S.pending.delete(k); persist(); if (r.until > Date.now()) setTimeout(() => players.get(p.id) === p && deliver(p, r.out), 4000); },
+    onJoin(p) {
+      const k = `${p.acc}:${p.slot || 0}`, r = S.pending.get(k); if (!r) return;
+      if (r.until <= Date.now()) { S.pending.delete(k); persist(); return; }
+      // มอบหลังเข้าเกม 4 วิ · ลบรายการค้างเฉพาะเมื่อมอบสำเร็จ (ออกก่อน/เซิร์ฟรีสตาร์ต → ยังค้างไว้รอรอบหน้า)
+      setTimeout(() => { if (players.get(p.id) !== p || S.pending.get(k) !== r) return; S.pending.delete(k); persist(); deliver(p, r.out); }, 4000);
+    },
     /** 4) หมอยา: ฮีลเพื่อนในลานระหว่างสู้ = นับเป็นส่วนร่วม (1 HP ที่ฮีล = ดาเมจ 1) */
     onHeal(p, amt) {
       if (S.state !== 'fight' || !p || p.tmap !== WB_MAP || !(amt > 0)) return;
