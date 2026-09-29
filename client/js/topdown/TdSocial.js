@@ -2,9 +2,10 @@
 //  TdSocial – สังคมในโลกอยุธยา (top-down): ปาร์ตี้ · เทรด · เพื่อน · อันดับ · ฉายา
 //  ข้อมูลกลางอยู่ที่ server (server/social.js) ไฟล์นี้ทำหน้าที่แสดงผล + ส่งคำสั่ง
 // ============================================================
+import { askQty } from '../systems/QtyPicker.js';
 import { ITEMS, sellPrice } from '/shared/data/items.js';
 import { JOBS } from '/shared/data/classes.js';
-import { count, tradeLock } from '../systems/Inventory.js';
+import { count, tradeLock, presetReserved, presetOf } from '../systems/Inventory.js';
 import { itemIcon, makeText } from '../systems/util.js';
 import { inlineStats } from '../systems/ItemTip.js';
 import { baseItemId } from '/shared/data/items.js';
@@ -67,12 +68,20 @@ export class TdSocial {
     $('#tr-lock').onclick = () => { this.scene.sfx.play('click'); this.net.send('trade:lock'); };
     $('#tr-confirm').onclick = () => { this.scene.sfx.play('click'); this.net.send('trade:confirm'); };
     $('#tr-cancel').onclick = $('#tr-x').onclick = () => this.net.send('trade:cancel');
-    const addToOffer = (id, all) => {
+    const addToOffer = async (id, all) => {
       if (!id || this.trade?.locked?.[this.selfId]) return;
-      const have = count(this.player.char, id);
+      const have = count(this.player.char, id) - presetReserved(this.player.char, id);
+      if (have <= 0) return this.ui.toast(`${ITEMS[id]?.nameTh || ''} เป็นของชุด ${presetOf(this.player.char, id)} · เทรดไม่ได้`, 'warn');
+      const ex0 = this.myOffer.items.find((x) => x.id === id);
+      const left = have - (ex0?.qty || 0);
+      let add = all ? left : 1;
+      if (!all && left > 1) {                                             // ของกองซ้อน → เลือกจำนวน
+        const I = ITEMS[id];
+        add = await askQty({ title: `ใส่ ${I?.nameTh || id} ในข้อเสนอ`, icon: itemIcon(id, I?.icon ?? '?'), max: left, def: left, okText: 'ใส่ในข้อเสนอ' });
+        if (!add || this.trade?.locked?.[this.selfId]) return;
+      }
       const ex = this.myOffer.items.find((x) => x.id === id);
       const cur = ex?.qty || 0;
-      const add = all ? have - cur : 1;
       if (cur + add > have || add <= 0) return;
       if (ex) ex.qty += add; else if (this.myOffer.items.length < TRADE_SLOTS) this.myOffer.items.push({ id, qty: add }); else return this.ui.toast(`ใส่ได้สูงสุด ${TRADE_SLOTS} ช่อง`, 'warn');
       this.scene.sfx.play('click');
@@ -91,6 +100,15 @@ export class TdSocial {
       if (!b || this.trade?.locked?.[this.selfId]) return;
       const ex = this.myOffer.items.find((x) => x.id === b.dataset.id);
       if (!ex) return;
+      if (ex.qty > 1) {                                                   // เอาออกทีละหลายชิ้น
+        const I = ITEMS[ex.id];
+        askQty({ title: `เอา ${I?.nameTh || ex.id} ออก`, icon: itemIcon(ex.id, I?.icon ?? '?'), max: ex.qty, def: ex.qty, okText: 'เอาออก' }).then((n) => {
+          if (!n || this.trade?.locked?.[this.selfId]) return;
+          ex.qty -= n; if (ex.qty <= 0) this.myOffer.items = this.myOffer.items.filter((x) => x !== ex);
+          this.sendOffer();
+        });
+        return;
+      }
       ex.qty--;
       if (ex.qty <= 0) this.myOffer.items = this.myOffer.items.filter((x) => x !== ex);
       this.sendOffer();
@@ -214,8 +232,8 @@ export class TdSocial {
       () => n.send('party:respond', { fromId, accept: false }),
     ))
       .on('party:state', (st) => { this.party = st; this.renderParty(); })
-      .on('party:exp', ({ amount, ups }) => {
-        const t = makeText(this.scene, this.player.x, this.player.y - 44, `+${amount} EXP (ปาร์ตี้)`, { fontSize: '7px', color: '#aed6f1' }).setOrigin(0.5).setDepth(99990);
+      .on('party:exp', ({ amount, ups, bonus }) => {
+        const t = makeText(this.scene, this.player.x, this.player.y - 44, `+${amount} EXP (ปาร์ตี้${bonus ? ` +${bonus}%` : ''})`, { fontSize: '7px', color: '#aed6f1' }).setOrigin(0.5).setDepth(99990);
         this.scene.tweens.add({ targets: t, y: t.y - 20, alpha: 0, duration: 1200, onComplete: () => t.destroy() });
         if (ups) this.scene.combat?.levelUpFx?.(ups);
       })
@@ -240,10 +258,11 @@ export class TdSocial {
     const pf = $('#party-frames');
     const others = (this.party?.members || []).filter((m) => m.id !== this.selfId);
     pf.classList.toggle('hidden', !others.length);
-    pf.innerHTML = others.map((m) => {
+    const here = others.filter((m) => this.scene.remotes.has(m.id)).length;   // เพื่อนที่อยู่แมพเดียวกัน (เห็นตัวในแมพนี้)
+    pf.innerHTML = (others.length ? `<div class="pf-bonus${here ? ' on' : ''}" title="เพื่อนปาร์ตี้ที่อยู่แมพเดียวกัน: EXP +${Math.round(PARTY.mapBonus * 100)}% ต่อคน และแชร์ EXP กันทั้งแมพ">✨ EXP ปาร์ตี้ ${here ? `+${Math.round(here * PARTY.mapBonus * 100)}%` : '—'} <small>แมพเดียวกัน ${here}/${others.length}</small></div>` : '') + others.map((m) => {
       const r = this.scene.remotes.get(m.id);
       const hp = r?.hp ?? m.hp, max = r?.maxHp ?? m.maxHp;
-      const far = Math.hypot((r?.x ?? m.x) - this.player.x, (r?.y ?? m.y ?? this.player.y) - this.player.y) > 500;
+      const far = !r;                                                      // อยู่คนละแมพ = ไม่ได้แชร์ EXP
       return `<div class="pm ${far ? 'far' : ''}">
         <span class="pm-job">${JOB_ICON[m.job] ?? '🙂'}</span>
         <div><div class="pm-name">${m.id === this.party.leader ? '👑 ' : ''}${esc(m.name)} <small>Lv.${m.level}</small></div>

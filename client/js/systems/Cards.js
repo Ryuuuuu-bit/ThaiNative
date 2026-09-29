@@ -1,6 +1,7 @@
 // ============================================================
 //  Cards – หน้าต่างการ์ดผี (ช่องการ์ด · สมุดสะสม) + แท็บแลกการ์ดที่ร้านยายติ๋ม + ป๊อปอัปได้การ์ด
 // ============================================================
+import { JOBS } from '/shared/data/classes.js';
 import { ITEMS } from '/shared/data/items.js';
 import { CARDS, CARD_BY_ID, CARD_SLOT_TH, SLOT_CARD, CARD_SOCKET_ENH, BOOK_TIERS, socketCount, cardRemoveCost, cardText, cardBonus, bookCount } from '/shared/data/cards.js';
 import * as Inv from './Inventory.js';
@@ -9,7 +10,7 @@ import { ask, notice } from './Dialog.js';
 
 const $ = (s) => document.querySelector(s);
 const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
-const EQ_TH = { weapon: 'อาวุธ', armor: 'ชุดเกราะ', accessory: 'เครื่องประดับ 1', accessory2: 'เครื่องประดับ 2' };
+const EQ_TH = { weapon: 'อาวุธ', helm: 'หมวก', armor: 'ชุดเกราะ', gloves: 'ถุงมือ', boots: 'รองเท้า', belt: 'เข็มขัด', accessory: 'เครื่องประดับ 1', accessory2: 'เครื่องประดับ 2' };
 const art = (cd) => `assets/cards/${cd.mon}.png`;
 
 /** การ์ด 1 ใบ (HTML) · opts: { unknown, mini, count, pick, selected } */
@@ -92,7 +93,10 @@ export class CardUI {
     const { bonus, econ } = cardBonus(c);
     const tot = cardText({ bonus, econ: Object.fromEntries(Object.entries(econ).filter(([, v]) => v)) });
     const inBag = c.inventory.filter((s) => CARD_BY_ID[s.id]).reduce((a, s) => a + s.qty, 0);
-    el.innerHTML = `<p class="greet">การ์ดติดกับ<b>ช่องสวมใส่</b> (เหมือนตีบวก) — เปลี่ยนอาวุธ/เสื้อแล้วการ์ดยังอยู่ · อาวุธ/เสื้อตีบวก +${CARD_SOCKET_ENH} ได้ช่องที่ 2</p>
+    const hj = c.appearance?.job || c.path || 'swordman', mg = hj === 'mage' || hj === 'healer';
+    const mainTh = mg ? 'INT' : hj === 'archer' ? 'STR+DEX' : 'STR';
+    el.innerHTML = `<p class="greet">การ์ดติดกับ<b>ช่องสวมใส่</b> (เหมือนตีบวก) ใส่ได้ทุกช่อง: อาวุธ · หมวก · เสื้อ · ถุงมือ · รองเท้า · เข็มขัด · เครื่องประดับ — อาวุธ/เสื้อตีบวก +${CARD_SOCKET_ENH} ได้ช่องที่ 2</p>
+      <p class="meta cs-job">⚖ ทุกอาชีพได้ค่าเท่ากัน · ตอนนี้ถือ${JOBS[hj]?.nameTh ? ` <b>${JOBS[hj].nameTh}</b>` : ''}: "พลังโจมตี" = <b>${mg ? 'MATK' : 'ATK'}</b> · "สถานะหลัก" = <b>${mainTh}</b></p>
       <div class="cs-list">${rows}</div>${picker}
       <div class="cs-total"><span>โบนัสการ์ด + สมุดสะสม</span><b>${tot || '—'}</b></div>
       <div class="meta cs-foot">การ์ดในกระเป๋า ${inBag} ใบ · ขาย/แลก 3→1 ได้ที่ร้านยายติ๋ม</div>`;

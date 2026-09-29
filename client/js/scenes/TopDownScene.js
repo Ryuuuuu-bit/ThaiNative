@@ -1144,7 +1144,7 @@ export class TopDownScene extends Phaser.Scene {
     this.bubbles ||= new Map();
     this.bubbles.get(spr)?.destroy();
     const big = emojiOnly(text);
-    const t = String(text).replace(/\[\[([a-z0-9_#-]+?)(?:\+(\d{1,2}))?\]\]/gi, (a, iid, e) => `[${ITEMS[iid]?.nameTh || iid}${e ? ` +${e}` : ''}]`);
+    const t = String(text).replace(/\[\[([a-z0-9_#-]+(?:@[a-z][a-z0-9]*(?:\+[a-z][a-z0-9]*)*)?)(?:\+(\d{1,2}))?\]\]/gi, (a, iid, e) => `[${ITEMS[iid]?.nameTh || iid}${e ? ` +${e}` : ''}]`);
     const shown = t.length > 60 ? `${t.slice(0, 58)}…` : t;
     const txt = makeText(this, 0, 0, shown, { fontSize: big ? '16px' : '7px', color: '#2a1a0a', align: 'center', wordWrap: { width: 110, useAdvancedWrap: true } }).setOrigin(0.5, 1);
     if (txt.setStroke) txt.setStroke('#fff8e7', 0);
@@ -1365,6 +1365,7 @@ export class TopDownScene extends Phaser.Scene {
     kb.on('keydown-C', () => this.ui.toggle('stats-panel'));
     kb.on('keydown-K', () => this.ui.toggle('skill-panel'));
     kb.on('keydown-P', () => this.ui.toggle('social-panel'));
+    kb.on('keydown-G', () => (document.querySelector('#guide-panel').classList.contains('hidden') ? this.ui.guide.open() : this.ui.toggle('guide-panel', false)));
     kb.on('keydown-O', () => (document.querySelector('#card-panel').classList.contains('hidden') ? this.ui.cards.open() : this.ui.toggle('card-panel', false)));
     kb.on('keydown-J', () => this.village.openQuests());
     kb.on('keydown-H', () => this.ui.toggle('help-panel'));

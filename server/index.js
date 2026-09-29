@@ -154,7 +154,7 @@ const mobs = setupMobs(io, players, { dayMs: DAY_MS, shareExp: social.shareExp, 
 /** ดันเจี้ยนปาร์ตี้ (ห้องแยก) */
 const dungeon = setupDungeon(io, players, { social, ...helpers });
 /** โลก New Version (top-down อยุธยา) */
-const td = setupTD(io, players, { dayMs: DAY_MS, shareExp: social.shareExp, partyOf: social.partyOf, ...helpers });
+const td = setupTD(io, players, { dayMs: DAY_MS, shareExp: social.shareExp, partyOf: social.partyOf, partyBonus: social.partyBonus, ...helpers });
 const tdSys = td;                                   // (ในตัวจัดการสกิล ชื่อ td ถูกใช้เป็นธงโลก top-down)
 /** หมอยา: ฮีล/สายใย/เมล็ด/ชุบชีวิต/กันตาย */
 healer = setupHealer(io, players, { ...helpers, social, tdSys, onHeal: (c, n) => worldBoss?.onHeal?.(c, n) });
@@ -265,7 +265,11 @@ io.on('connection', (socket) => {
       worldBoss.onJoin(p);
       ranking.apply(p);                 // ฉายาอันดับ: ตรวจตามอันดับล่าสุด (หลุดอันดับตอนออฟไลน์ = ถอด)
       onlineSoon();
-      if (pend) { p.dirty = true; persist(p); }
+      if (save.cardsReturned) {                                           // ปรับช่องการ์ด: การ์ดที่ใส่ผิดช่องคืนเข้ากระเป๋าแล้ว → แจ้งผู้เล่น
+        const n = save.cardsReturned; delete save.cardsReturned; p.dirty = true;
+        setTimeout(() => socket.emit('chat', { id: null, name: '🃏 การ์ด', text: `ระบบการ์ดปรับช่องใหม่ (หมวก/ถุงมือ/รองเท้า/เข็มขัด) · การ์ด ${n} ใบที่ช่องเปลี่ยนถูกคืนเข้ากระเป๋าแล้ว ใส่ใหม่ได้ฟรีที่สมุดการ์ด (O)` }), 4000);
+      }
+      if (pend || p.dirty) { p.dirty = true; persist(p); }
     } finally { socket.data.joining = false; if (socket.data.joinAcc) { joiningAcc.delete(socket.data.joinAcc); socket.data.joinAcc = null; } }
   });
 

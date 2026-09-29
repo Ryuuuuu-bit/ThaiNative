@@ -20,7 +20,7 @@ import { getDerived, EQUIP_SLOTS, SLOT_TYPE } from './character.js';
 import { OUTFITS, HAIRSTYLES } from './data/appearance.js';
 import { STAT_KEYS, expToNext, MAX_LEVEL } from './stats.js';
 import { SKILL_BY_ID } from './data/skills.js';
-import { gainExp, resetStats, resetSkills, resetWeaponSkills, syncAppearance, learnSkill, assignHotbar, allocateStat, allocPassive, resetPassives, addLifeXp, lifeLv, addMastery, recomputePath, ensurePresets, snapPreset, blankPreset, applyPresetStats, PRESET_SLOTS, PRESET_LABEL } from './charmodel.js';
+import { gainExp, resetStats, resetSkills, resetWeaponSkills, syncAppearance, learnSkill, assignHotbar, allocateStat, allocPassive, resetPassives, addLifeXp, lifeLv, addMastery, recomputePath, ensurePresets, snapPreset, blankPreset, applyPresetStats, PRESET_SLOTS, PRESET_LABEL, presetReserved, presetOf } from './charmodel.js';
 import { HERB_SPOTS } from './td/ayutthaya.js';
 import { CARDS, CARD_BY_ID, SLOT_CARD, CARD_SLOT_TH, socketCount, cardRemoveCost } from './data/cards.js';
 import { WEAR_TYPES, FLASK_SLOTS, ENH_SLOTS, SLOT_TH } from './data/slots.js';
@@ -51,6 +51,9 @@ export function removeItem(c, id, qty = 1) {
   return true;
 }
 export const isLocked = (c, id) => !!c.locked?.includes(id);
+/** จำนวนที่ขาย/เทรด/ทิ้งได้ (ไม่นับที่ล็อกเอง และชิ้นที่จองไว้ในชุด A/B อีกชุด) */
+export const freeQty = (c, id) => (isLocked(c, id) ? 0 : Math.max(0, count(c, id) - presetReserved(c, id)));
+export { presetReserved, presetOf };
 export function bulkSellList(c, kind = 'drop') {
   return c.inventory.filter((s) => {
     const it = ITEMS[s.id];
@@ -207,9 +210,9 @@ function use(c, { id }) {
   }
   if (it.type === 'reset') {
     removeItem(c, id);
-    resetStats(c); resetSkills(c); resetPassives(c);
+    resetStats(c);                                                    // เฉพาะแต้มสถานะของชุด A/B ที่ใช้อยู่ · สกิล/พรสวรรค์ไม่หาย (รีสกิลใช้ รีแต้มสกิลอาชีพ)
     clampHp(c);
-    return OK(`ล้างแต้มแล้ว! ได้แต้มสถานะ ${c.statPoints}, SP ${c.sp} และแต้มพรสวรรค์คืนทั้งหมด (กด C / K เพื่อลงใหม่)`);
+    return OK(`รีแต้มสเตตัสแล้ว! ได้แต้มคืน ${c.statPoints} แต้ม (กด C เพื่อลงใหม่) · สกิลยังอยู่ครบ`);
   }
   if (it.type === 'food') {
     if (it.effect.hp) c.hp = Math.min(d.maxHp, c.hp + it.effect.hp);
@@ -278,7 +281,8 @@ function sell(c, { id, qty = 1 }, ctx) {
   if (ctx.x != null && !atAnyShop(ctx)) return NO('ต้องขายที่ร้านในหมู่บ้าน');
   if (isLocked(c, id)) return NO('ไอเทมนี้ถูกล็อกไว้ (ปลดล็อกในกระเป๋า)');
   if (it.type === 'skin') return NO('ขายคัมภีร์ไม่ได้');
-  qty = Math.min(int(qty, 1, 9999, 1), count(c, id));
+  if (!freeQty(c, id) && presetReserved(c, id)) return NO(`${it.nameTh} เป็นของชุด ${presetOf(c, id)} (ถอดออกจากชุดก่อนถึงจะขายได้)`);
+  qty = Math.min(int(qty, 1, 9999, 1), freeQty(c, id));
   if (qty <= 0 || !removeItem(c, id, qty)) return NO('ไม่มีของพอขาย');
   const gain = sellPrice(id) * qty;
   c.gold += gain;
@@ -304,7 +308,7 @@ function sellCart(c, { items }, ctx) {
     const [id, q0] = Array.isArray(e) ? e : [];
     const it = ITEMS[id];
     if (!it || it.type === 'skin' || isLocked(c, id)) continue;
-    const q = Math.min(int(q0, 1, 99999, 1), count(c, id));
+    const q = Math.min(int(q0, 1, 99999, 1), freeQty(c, id));
     if (q <= 0 || !removeItem(c, id, q)) continue;
     gold += sellPrice(id) * q; n += q; kinds++; pushBuyback(c, id, q);
   }

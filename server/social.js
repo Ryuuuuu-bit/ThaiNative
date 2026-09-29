@@ -11,7 +11,7 @@ import { LEGEND_IDS, rollGearDrop } from '../shared/data/gear.js';
 import { RAID_BOSS as RB } from '../shared/data/raid.js';
 import { rollDamage, mobExp } from '../shared/stats.js';
 import { combatDerived, attackSpec, attackGate } from '../shared/character.js';
-import { count, addItem, removeItem, grant } from '../shared/economy.js';
+import { count, addItem, removeItem, grant, presetReserved } from '../shared/economy.js';
 import { TITLE_BY_ID, checkTitles } from '../shared/data/titles.js';
 import { mapAt } from '../shared/data/maps.js';
 
@@ -86,10 +86,10 @@ export function setupSocial(io, players, H = {}) {
       const ex = items.find((x) => x.id === it.id);
       if (ex) ex.qty = Math.min(9999, ex.qty + qty); else items.push({ id: it.id, qty });
     }
-    for (const it of items) it.qty = Math.min(it.qty, count(save, it.id));        // เสนอได้ไม่เกินที่มีจริง
+    for (const it of items) it.qty = Math.min(it.qty, count(save, it.id) - presetReserved(save, it.id));   // เสนอได้ไม่เกินที่มีจริง (ของที่จองไว้ในชุด A/B อีกชุดเทรดไม่ได้)
     return { items: items.filter((it) => it.qty > 0), gold: Math.min(int(o.gold, 0, 1e9), Math.max(0, save.gold)) };
   }
-  const hasOffer = (save, o) => save.gold >= o.gold && o.items.every((it) => count(save, it.id) >= it.qty);
+  const hasOffer = (save, o) => save.gold >= o.gold && o.items.every((it) => count(save, it.id) - presetReserved(save, it.id) >= it.qty);
   /** แลกของจริงที่ server (ทั้งสองฝั่งพร้อมกัน) */
   function executeTrade(t) {
     const A = players.get(t.a), B = players.get(t.b);
@@ -225,19 +225,30 @@ export function setupSocial(io, players, H = {}) {
   }
 
   /** แบ่ง EXP ให้เพื่อนปาร์ตี้ที่อยู่ใกล้ (ใส่เซฟจริง) */
+  /** แมพเดียวกัน (โลก top-down: แมพ/ห้องเดียวกัน · ไม่สนระยะ) */
+  const sameMap = (a, b) => a.world === 'td' && b.world === 'td' && (a.tmap || 'ayutthaya') === (b.tmap || 'ayutthaya');
+  /** เพื่อนปาร์ตี้ที่อยู่แมพเดียวกัน (ไม่นับตัวเอง) */
+  function partyMates(p) {
+    const party = partyOf(p); if (!party) return [];
+    return [...party.members].map((id) => players.get(id)).filter((m) => m && m.id !== p.id && m.save && sameMap(m, p));
+  }
+  /** ตัวคูณ EXP ปาร์ตี้: +10% ต่อเพื่อนในแมพเดียวกัน (6 คน = +50%) */
+  const partyBonus = (p) => 1 + PARTY.mapBonus * partyMates(p).length;
   function shareExp(p, exp, exclude = [], mobLv = null) {
     const party = partyOf(p);
     if (!party) return;
     if (!(exp * PARTY.shareRatio >= 1)) return;
     for (const id of party.members) {
       const m = players.get(id);
-      if (id === p.id || !m?.save || exclude.includes(id) || apart(m, p) > PARTY.shareRange || m.dead) continue;
-      // แคปตามช่วงเลเวลของ "เพื่อนแต่ละคน" (เวลห่างจากผีมาก = ได้น้อย · กันพาเวล)
-      const share = mobLv != null ? mobExp(exp * PARTY.shareRatio, m.save.level, mobLv) : Math.round(exp * PARTY.shareRatio);
+      if (id === p.id || !m?.save || exclude.includes(id) || m.dead) continue;
+      if (!sameMap(m, p) && apart(m, p) > PARTY.shareRange) continue;      // top-down: แมพเดียวกันได้ทั้งแมพ · โลกด้านข้างเดิม: ตามระยะ
+      // แคปตามช่วงเลเวลของ "เพื่อนแต่ละคน" (เวลห่างจากผีมาก = ได้น้อย · กันพาเวล) × โบนัสปาร์ตี้แมพเดียวกัน
+      const mult = sameMap(m, p) ? partyBonus(m) : 1;
+      const share = Math.round((mobLv != null ? mobExp(exp * PARTY.shareRatio, m.save.level, mobLv) : exp * PARTY.shareRatio) * mult);
       if (!share) continue;
       const g = grant(m.save, { exp: share });
       refresh(m); queueSync(m);
-      emitTo(id, 'party:exp', { amount: share, from: p.name, ups: g.ups });
+      emitTo(id, 'party:exp', { amount: share, from: p.name, ups: g.ups, bonus: Math.round((mult - 1) * 100) });
     }
   }
 
@@ -529,5 +540,5 @@ export function setupSocial(io, players, H = {}) {
       if (ch) pushFriends(q);
     }
   }
-  return { friendGone, friendRenamed, onConnection, onDisconnect, onJoin, tick, bossPublic, shareExp, announceTitles, partyOf, pushParty, leaveParty, _boss: boss, _parties: parties, _trades: trades };
+  return { partyBonus, partyMates, friendGone, friendRenamed, onConnection, onDisconnect, onJoin, tick, bossPublic, shareExp, announceTitles, partyOf, pushParty, leaveParty, _boss: boss, _parties: parties, _trades: trades };
 }

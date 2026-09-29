@@ -32,8 +32,10 @@ import { itemIcon, skillIcon, uiIcon } from './util.js';
 import { bindAccountSettings } from './AuthScreen.js';
 import { account } from '../net/Account.js';
 import { CardUI } from './Cards.js';
+import { askQty } from './QtyPicker.js';
+import { GuideBook } from './GuideBook.js';
 import { CARD_BY_ID, SLOT_CARD, CARD_SLOT_TH, socketCount, cardText } from '/shared/data/cards.js';
-import { KINDS, rarityOf, newFilter, applyFilter, filterBarHtml, bindFilterBar, gainBadge, gainText, cpGain, bestSlotFor, bestLoadout, cardGain, bestCardSlot, baseCp, canWear } from './ItemFilter.js';
+import { KINDS, rarityOf, newFilter, applyFilter, filterBarHtml, bindFilterBar, gainBadge, gainText, cpGain, bestSlotFor, bestLoadout, cardGain, bestCardSlot, baseCp, canWear, isMine } from './ItemFilter.js';
 import { ItemTip, impactLine, inlineStats, itemCard } from './ItemTip.js';
 import { ChatBox } from './ChatBox.js';
 
@@ -89,13 +91,14 @@ export class UI {
     this.hudCache = '';
 
     this.cards = new CardUI(this);
+    this.guide = new GuideBook(this);
     this.itemTip = new ItemTip(this, rarityOf);
     this.setupLayoutGuard();
     $('#hud').classList.remove('hidden');
     $('#chat').classList.remove('hidden');
 
     // ปุ่มเปิด/ปิดหน้าต่าง
-    document.querySelectorAll('[data-open]').forEach((b) => (b.onclick = () => (b.dataset.open === 'map-panel' ? this.scene.world.toggleMap() : this.toggle(b.dataset.open))));
+    document.querySelectorAll('[data-open]').forEach((b) => (b.onclick = () => (b.dataset.open === 'map-panel' ? this.scene.world.toggleMap() : b.dataset.open === 'guide-panel' && $('#guide-panel').classList.contains('hidden') ? this.guide.open() : this.toggle(b.dataset.open))));
     { const cp = $('#dn-copy'); if (cp) cp.onclick = () => {                                 // คัดลอกเลขบัญชี (ไม่มีขีด)
       const no = ($('#dn-no')?.textContent || '').replace(/\D/g, '');
       const ok = () => this.toast('📋 คัดลอกเลขบัญชีแล้ว', 'ok', 1600);
@@ -326,7 +329,7 @@ export class UI {
     if (gold && uiIcon('gold') && !gold.querySelector('.px-ico')) gold.innerHTML = `${uiIcon('gold')} <b id="hud-gold">${$('#hud-gold').textContent}</b>`;
     // ปุ่มเมนูขวาบน: ไอคอนชุดเดียวกัน (PixelLab ui_menu_*)
     const MENU = { 'stats-panel': 'menu_stats', 'inv-panel': 'menu_bag', 'skill-panel': 'menu_skill', 'map-panel': 'menu_map',
-      'social-panel': 'menu_party', 'quest-panel': 'menu_quest', 'help-panel': 'menu_help', 'settings-panel': 'menu_settings', 'card-panel': 'menu_card' };
+      'social-panel': 'menu_party', 'quest-panel': 'menu_quest', 'help-panel': 'menu_help', 'settings-panel': 'menu_settings', 'card-panel': 'menu_card', 'guide-panel': 'menu_guide' };
     for (const [panel, key] of Object.entries(MENU)) {
       const b = document.querySelector(`.hud-buttons [data-open="${panel}"]`), ic = uiIcon(key);
       if (b && ic) b.innerHTML = `${ic}${b.querySelector('small')?.outerHTML || ''}`;
@@ -823,10 +826,13 @@ export class UI {
     const left = c.statPoints - used;
     $('#st-points').textContent = used ? `${left} (ร่าง +${used})` : c.statPoints;
     const btn = (k, n, label) => `<button data-st="${k}" data-n="${n}" ${left >= 1 ? '' : 'disabled'}>${label}</button>`;
-    $('#st-list').innerHTML = STAT_KEYS.map((k) => `
-      <div class="stat-row q">
+    const hj = (c.appearance?.job && STAT_PLAN[c.appearance.job]) ? c.appearance.job : (c.path || 'swordman'), plan = STAT_PLAN[hj] || {};
+    const rank = Object.keys(plan).sort((a, b) => plan[b] - plan[a]);
+    const recTag = (k) => (plan[k] ? `<em class="st-rec r${rank.indexOf(k)}" title="แนะนำสำหรับ${JOBS[hj]?.nameTh || ''} (ตามอาวุธที่ถือ) · สัดส่วน ${Math.round(plan[k] * 100)}%">${rank.indexOf(k) === 0 ? '★ หลัก' : '☆ รอง'} ${Math.round(plan[k] * 100)}%</em>` : '');
+    $('#st-list').innerHTML = `<div class="st-rec-head">${JOBS[hj]?.icon || ''} แนะนำตามอาวุธที่ถือ: <b>${JOBS[hj]?.nameTh || ''}</b> · ${rank.map((k) => `${k} ${Math.round(plan[k] * 100)}%`).join(' · ')}</div>` + STAT_KEYS.map((k) => `
+      <div class="stat-row q${plan[k] ? ' rec' : ''}">
         <span class="k">${k}</span>
-        <span><div>${STAT_INFO[k].nameTh}</div><div class="d">${STAT_INFO[k].desc}</div></span>
+        <span><div>${STAT_INFO[k].nameTh} ${recTag(k)}</div><div class="d">${STAT_INFO[k].desc}</div></span>
         <span class="v">${c.stats[k]}${D[k] ? `<b class="add">+${D[k]}</b>` : ''}</span>
         <span class="st-btns"><button class="minus" data-st="${k}" data-n="-1" ${D[k] ? '' : 'disabled'}>−</button>${btn(k, 1, '+1')}${btn(k, 5, '+5')}${btn(k, 10, '+10')}${btn(k, 999, 'MAX')}</span>
       </div>`).join('');
@@ -838,7 +844,7 @@ export class UI {
       this.scene.sfx.play('click');
       this.renderStats();
     }));
-    const style = c.path || c.appearance.job;
+    const style = (c.appearance?.job && STAT_PLAN[c.appearance.job]) ? c.appearance.job : (c.path || 'swordman');   // แนะนำตามอาวุธที่ถืออยู่
     $('#st-actions').innerHTML = c.statPoints ? `
       <button class="btn ghost sm" data-sa="auto" ${left ? '' : 'disabled'}>✨ ลงอัตโนมัติ (${JOBS[style].nameTh})</button>
       <button class="btn ghost sm" data-sa="reset" ${used ? '' : 'disabled'}>↺ ยกเลิกร่าง</button>
@@ -1020,7 +1026,7 @@ export class UI {
       if (!st) return '<div class="ro-slot empty"></div>';
       const it = ITEMS[st.id], lock = Inv.isLocked(c, st.id), under = it.lv && c.level < it.lv;
       return `<div class="ro-slot${rcls(it)}${st.id === sel ? ' sel' : ''}${under ? ' under' : ''}" data-slot="${st.id}" data-tip-item="${st.id}" draggable="true" data-hbitem="${st.id}">
-        ${itemIcon(st.id, it.icon)}${st.qty > 1 ? `<b class="ro-q">${st.qty > 9999 ? '9999+' : st.qty}</b>` : ''}${lock ? '<i class="ro-lock">🔒</i>' : ''}${gainBadge(c, st.id)}</div>`;
+        ${itemIcon(st.id, it.icon)}${st.qty > 1 ? `<b class="ro-q">${st.qty > 9999 ? '9999+' : st.qty}</b>` : ''}${lock ? '<i class="ro-lock">🔒</i>' : ''}${Inv.presetOf(c, st.id) ? `<i class="ro-pset" title="ของชุด ${Inv.presetOf(c, st.id)} · ขาย/เทรดไม่ได้">${Inv.presetOf(c, st.id)}</i>` : ''}${gainBadge(c, st.id)}</div>`;
     }).join('');
     // ตัวเลือกการ์ด (จากจุด ＋ บนหุ่น หรือเลือกการ์ดในกระเป๋า)
     let pick = '';
@@ -1205,68 +1211,82 @@ export class UI {
   renderSell() {
     const c = this.char, el = $('#shop-list'), E = this.scene.econ;
     const cart = (this.sellCart ||= new Map());
-    for (const [id, n] of cart) { const have = Inv.count(c, id); if (!have || Inv.isLocked(c, id)) cart.delete(id); else if (n > have) cart.set(id, have); }
+    for (const [id, n] of cart) { const have = Inv.freeQty(c, id); if (!have) cart.delete(id); else if (n > have) cart.set(id, have); }
     const sf = (this.sellF ||= newFilter({ sort: 'price' }));
     const sellable = c.inventory.filter((st) => ITEMS[st.id] && ITEMS[st.id].type !== 'skin' && sellPrice(st.id) > 0);
     const list = applyFilter(c, sellable, sf);
+    // ของที่ควรระวัง: ดีกว่าที่ใส่ (▲) · หายาก (ม่วงขึ้นไป) · ของชุด A/B · ล็อก
+    const warnOf = (id) => { const it = ITEMS[id]; const w = [];
+      if (GEAR_TYPES.includes(it.type) && canWear(c, it) && isMine(c, it) && (cpGain(c, id) || 0) > 0) w.push('▲ ดีกว่าที่ใส่');
+      if (rarityOf(it) >= 3) w.push('💎 หายาก');
+      return w; };
     const cells = Math.max(16, Math.ceil(list.length / 8) * 8);
     const slots = Array.from({ length: cells }, (_, i) => {
       const st = list[i]; if (!st) return '<div class="ro-slot empty"></div>';
-      const it = ITEMS[st.id], lock = Inv.isLocked(c, st.id), n = cart.get(st.id) || 0;
-      return `<div class="ro-slot${rcls(it)}${n ? ' sel sell-on' : ''}${lock ? ' locked' : ''}${st.id === this.sellFocus ? ' focus' : ''}" data-sslot="${st.id}" data-tip-item="${st.id}">
-        ${itemIcon(st.id, it.icon)}${st.qty > 1 ? `<b class="ro-q">${st.qty > 9999 ? '9999+' : st.qty}</b>` : ''}${lock ? '<i class="ro-lock">🔒</i>' : ''}${n ? `<i class="sell-n">${n === st.qty ? '✔' : n}</i>` : ''}${gainBadge(c, st.id)}</div>`;
+      const it = ITEMS[st.id], free = Inv.freeQty(c, st.id), blocked = !free, n = cart.get(st.id) || 0, pset = Inv.presetOf(c, st.id);
+      return `<div class="ro-slot${rcls(it)}${n ? ' sel sell-on' : ''}${blocked ? ' locked' : ''}" data-sslot="${st.id}" data-tip-item="${st.id}">
+        ${itemIcon(st.id, it.icon)}${st.qty > 1 ? `<b class="ro-q">${st.qty > 9999 ? '9999+' : st.qty}</b>` : ''}${Inv.isLocked(c, st.id) ? '<i class="ro-lock">🔒</i>' : ''}${pset ? `<i class="ro-pset">${pset}</i>` : ''}${n ? `<i class="sell-n">${n === st.qty ? '✔' : n}</i>` : ''}${gainBadge(c, st.id)}</div>`;
     }).join('');
-    let cnt = 0, pcs = 0, total = 0, rare = 0;
-    let better = 0;
-    for (const [id, n] of cart) { cnt++; pcs += n; total += sellPrice(id) * n; if (rarityOf(ITEMS[id]) >= 3) rare++; if ((cpGain(c, id) || 0) > 0 && canWear(c, ITEMS[id])) better++; }
-    const f = this.sellFocus && cart.has(this.sellFocus) ? this.sellFocus : null, fIt = f && ITEMS[f], fHave = f && Inv.count(c, f);
-    const qtyEd = f && fHave > 1 ? `<div class="sell-qty"><span class="ic">${itemIcon(f, fIt.icon)}</span><span class="nm">${rname(fIt, esc(fIt.nameTh))}</span>
-        <button data-sq="-10">−10</button><button data-sq="-1">−</button><input id="sell-qty" type="number" min="1" max="${fHave}" value="${cart.get(f)}"><button data-sq="1">+</button><button data-sq="10">+10</button><button data-sq="max">หมด (${fHave})</button></div>` : '';
-    el.innerHTML = `<div class="sell-ui">
-      ${filterBarHtml(c, sf, sellable)}
+    let cnt = 0, pcs = 0, total = 0, warnN = 0;
+    const rows = [...cart].map(([id, n]) => {
+      const it = ITEMS[id], unit = sellPrice(id), w = warnOf(id), have = Inv.freeQty(c, id);
+      cnt++; pcs += n; total += unit * n; if (w.length) warnN++;
+      return `<div class="sc-row${w.length ? ' warn' : ''}" data-tip-item="${id}"><span class="ic">${itemIcon(id, it.icon)}</span>
+        <span class="nm">${rname(it, esc(it.nameTh))}${w.length ? `<small class="sc-w">${w.join(' · ')}</small>` : `<small>ชิ้นละ ฿${unit.toLocaleString()}</small>`}</span>
+        <button class="sc-q" data-sq="${id}" title="เปลี่ยนจำนวน" ${have > 1 ? '' : 'disabled'}>x${n.toLocaleString()}${have > 1 ? ' ✎' : ''}</button>
+        <b class="sc-p">฿${(unit * n).toLocaleString()}</b><button class="sc-x" data-sx="${id}" title="เอาออก">✕</button></div>`;
+    }).join('');
+    el.innerHTML = `<div class="sell-ui sell-v2">
+      ${filterBarHtml(c, sf, sellable, { gear: false, sortRow: false })}
       <div class="sell-quick"><span>เลือกด่วน:</span>
-        <button data-pick="drop">💰 ของดรอป</button><button data-pick="fish">🐟 ปลา</button><button data-pick="gear1">⚔️ อุปกรณ์ธรรมดา</button><button data-pick="view">☑ ทั้งหมดที่แสดง</button><button data-pick="clear" ${cnt ? '' : 'disabled'}>✖ ล้าง</button></div>
-      <div class="ro-grid sell-grid">${list.length ? slots : '<div class="empty" style="grid-column:1/-1">ไม่มีของให้ขายในหมวดนี้</div>'}</div>
-      <div class="sell-foot">${qtyEd}<span class="hint">คลิก = ใส่/เอาออกทั้งกอง · คลิกขวา = ทีละ 1 · 🔒 ของล็อกขายไม่ได้</span>
-        <span class="sum">${cnt ? `เลือก ${cnt} ชนิด · ${pcs.toLocaleString()} ชิ้น` : 'ยังไม่ได้เลือก'}</span>
-        <b class="price">฿${total.toLocaleString()}</b><button class="btn primary sell-go" ${cnt ? '' : 'disabled'}>ขาย</button></div></div>`;
+        <button data-pick="drop">💰 ของดรอป/วัตถุดิบ</button><button data-pick="fish">🐟 ปลา</button><button data-pick="gear1">⚔️ อุปกรณ์ธรรมดาที่ไม่ได้ใช้</button><button data-pick="clear" ${cnt ? '' : 'disabled'}>✖ ล้างตะกร้า</button></div>
+      <div class="sell-cols">
+        <div class="sell-left"><div class="sell-cap">① 🎒 เลือกของ <small>คลิก = ใส่ตะกร้า · ของกองเลือกจำนวนได้ · คลิกขวา = เอาออก</small></div>
+          <div class="ro-grid sell-grid">${list.length ? slots : '<div class="empty" style="grid-column:1/-1">ไม่มีของให้ขายในหมวดนี้</div>'}</div></div>
+        <div class="sell-cart"><div class="sell-cap">② 🧺 ตะกร้าขาย <small>${cnt ? `${cnt} ชนิด · ${pcs.toLocaleString()} ชิ้น` : 'ว่าง'}</small></div>
+          <div class="sc-list">${rows || '<p class="empty">ยังไม่ได้เลือกของ<br><small>ของล็อก 🔒 และของชุด A/B ขายไม่ได้</small></p>'}</div>
+          ${warnN ? `<div class="sc-warn">⚠ ของดี/หายาก ${warnN} ชนิด · ตรวจก่อนขาย</div>` : ''}</div>
+      </div>
+      <div class="sell-bar"><span class="sb-sum">${cnt ? `🧺 ${cnt} ชนิด · ${pcs.toLocaleString()} ชิ้น` : '🧺 ตะกร้าว่าง'}<small>ขายพลาดซื้อคืนได้ที่แท็บ "ซื้อคืน"</small></span>
+        <span class="sb-get">ได้เงิน <b class="price">฿${total.toLocaleString()}</b></span>
+        <button class="btn primary sell-go" ${cnt ? '' : 'disabled'}>③ 💰 ขาย</button></div></div>`;
     const redraw = () => { const g = el.querySelector('.sell-grid'), top = g?.scrollTop || 0; this.renderSell(); const g2 = el.querySelector('.sell-grid'); if (g2) g2.scrollTop = top; };
     const click = () => this.scene.sfx.play('click');
     bindFilterBar(el, sf, redraw, this.scene);
+    const pickQty = async (id, cur) => {
+      const have = Inv.freeQty(c, id), it = ITEMS[id];
+      if (have <= 1) return have;
+      return askQty({ title: `ขาย ${it.nameTh}`, icon: itemIcon(id, it.icon), max: have, def: cur || have, unitPrice: sellPrice(id), okText: 'ใส่ตะกร้า' });
+    };
     el.querySelectorAll('[data-sslot]').forEach((d) => {
       const id = d.dataset.sslot;
-      d.onclick = (e) => {
+      d.onclick = async (e) => {
         if (e.shiftKey) return;                                               // Shift+คลิก = แชร์ลงแชท (จัดการที่อื่น)
         if (Inv.isLocked(c, id)) { this.toast('🔒 ไอเทมนี้ล็อกไว้ (ปลดล็อกในกระเป๋า)', 'warn'); return; }
-        if (cart.has(id)) { cart.delete(id); if (this.sellFocus === id) this.sellFocus = null; } else { cart.set(id, Inv.count(c, id)); this.sellFocus = id; }
-        click(); redraw();
+        if (!Inv.freeQty(c, id)) { this.toast(`${ITEMS[id].nameTh} เป็นของชุด ${Inv.presetOf(c, id)} · ขายไม่ได้`, 'warn'); return; }
+        const n = await pickQty(id, cart.get(id));
+        if (!n) return;
+        cart.set(id, n); click(); redraw();
       };
-      d.oncontextmenu = (e) => {
-        e.preventDefault();
-        if (Inv.isLocked(c, id)) return;
-        cart.set(id, Math.min(Inv.count(c, id), (cart.get(id) || 0) + 1)); this.sellFocus = id; click(); redraw();
-      };
+      d.oncontextmenu = (e) => { e.preventDefault(); if (cart.has(id)) { cart.delete(id); click(); redraw(); } };
     });
+    el.querySelectorAll('[data-sq]').forEach((b) => (b.onclick = async () => { const id = b.dataset.sq; const n = await pickQty(id, cart.get(id)); if (n) { cart.set(id, n); redraw(); } }));
+    el.querySelectorAll('[data-sx]').forEach((b) => (b.onclick = () => { cart.delete(b.dataset.sx); click(); redraw(); }));
     el.querySelectorAll('[data-pick]').forEach((b) => (b.onclick = () => {
       const k = b.dataset.pick;
       if (k === 'clear') cart.clear();
       else {
-        const src = k === 'view' ? list : c.inventory.filter((st) => { const it = ITEMS[st.id]; if (!sellPrice(st.id) || it.type === 'skin') return false;
-          return k === 'drop' ? it.type === 'material' && !it.price : k === 'fish' ? it.type === 'fish' : GEAR_TYPES.includes(it.type) && rarityOf(it) <= 1; });
-        let n = 0; for (const st of src) if (!Inv.isLocked(c, st.id) && !cart.has(st.id)) { cart.set(st.id, st.qty); n++; }
-        if (!n) this.toast('ไม่มีของเพิ่มให้เลือก', '', 1500);
+        const src = c.inventory.filter((st) => { const it = ITEMS[st.id]; if (!sellPrice(st.id) || it.type === 'skin') return false;
+          return k === 'drop' ? it.type === 'material' && !it.price : k === 'fish' ? it.type === 'fish' : GEAR_TYPES.includes(it.type) && rarityOf(it) <= 1 && !warnOf(st.id).length; });
+        let n = 0; for (const st of src) { const q = Inv.freeQty(c, st.id); if (q && !cart.has(st.id)) { cart.set(st.id, q); n++; } }
+        this.toast(n ? `ใส่ตะกร้า ${n} ชนิด` : 'ไม่มีของเพิ่มให้เลือก', '', 1500);
       }
       click(); redraw();
     }));
-    const setQ = (v) => { if (!f) return; cart.set(f, Math.max(1, Math.min(fHave, Math.floor(v) || 1))); redraw(); };
-    el.querySelectorAll('[data-sq]').forEach((b) => (b.onclick = () => setQ(b.dataset.sq === 'max' ? fHave : cart.get(f) + +b.dataset.sq)));
-    const qn = $('#sell-qty');
-    if (qn) { qn.addEventListener('keydown', (e) => { e.stopPropagation(); if (e.key === 'Enter') setQ(+qn.value); }); qn.addEventListener('change', () => setQ(+qn.value));
-      qn.addEventListener('focus', () => (this.scene.input.keyboard.enabled = false)); qn.addEventListener('blur', () => (this.scene.input.keyboard.enabled = true)); }
     el.querySelector('.sell-go').onclick = async () => {
       if (!cnt) return;
-      if ((rare || better || total >= 50000) && !(await ask({ title: `ขาย ${cnt} ชนิด (${pcs.toLocaleString()} ชิ้น)?`, icon: '💰', ok: `ขาย ฿${total.toLocaleString()}`,
-        text: `ได้เงิน ฿${total.toLocaleString()}${rare ? `\n⚠ มีอุปกรณ์หายาก ${rare} ชิ้นในตะกร้า` : ''}${better ? `\n⚠ มีของที่ดีกว่าที่ใส่อยู่ ${better} ชิ้น (▲)` : ''}\nขายพลาดซื้อคืนได้ที่แท็บ "ซื้อคืน"` }))) return;
+      if ((warnN || total >= 50000) && !(await ask({ title: `ขาย ${cnt} ชนิด (${pcs.toLocaleString()} ชิ้น)?`, icon: '💰', ok: `ขาย ฿${total.toLocaleString()}`,
+        text: `ได้เงิน ฿${total.toLocaleString()}${warnN ? `\n⚠ มีของดีกว่าที่ใส่/ของหายาก ${warnN} ชนิดในตะกร้า` : ''}\nขายพลาดซื้อคืนได้ที่แท็บ "ซื้อคืน"` }))) return;
       E.act('sellCart', { items: [...cart] }).then((r) => { this.scene.sfx.play(r.ok ? 'buy' : 'error'); this.result(r); if (r.ok) { cart.clear(); this.sellFocus = null; } this.renderSell(); });
     };
   }

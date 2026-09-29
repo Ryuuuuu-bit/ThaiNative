@@ -324,6 +324,19 @@ export function applyPresetStats(c, p) {
   clampSkills(c);
 }
 /** ความคืบหน้าของชุดที่ไม่ได้ใช้ (ไว้โชว์ใน UI) */
+/** จำนวนชิ้นของ id ที่ถูกจองไว้ในชุด A/B ที่ไม่ได้ใช้ (ห้ามขาย/เทรด/ทิ้ง) */
+export function presetReserved(c, id) {
+  if (!Array.isArray(c?.presets)) return 0;
+  let n = 0;
+  c.presets.forEach((p, i) => { if (i !== c.pset && p?.eq) for (const s of PRESET_SLOTS) if (p.eq[s] === id) n++; });
+  return n;
+}
+/** ชุดที่จองของชิ้นนี้ไว้ ('A'/'B') หรือ null */
+export function presetOf(c, id) {
+  if (!Array.isArray(c?.presets)) return null;
+  for (let i = 0; i < c.presets.length; i++) { const p = c.presets[i]; if (i !== c.pset && p?.eq && PRESET_SLOTS.some((s) => p.eq[s] === id)) return PRESET_LABEL[i]; }
+  return null;
+}
 export function presetInfo(c, i) {
   ensurePresets(c);
   if (i === c.pset) return { i, active: true, weapon: c.equipment.weapon || null, job: c.appearance?.job, statPoints: c.statPoints, sp: c.sp };

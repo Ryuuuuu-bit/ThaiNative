@@ -208,7 +208,7 @@ export class ChatBox {
   }
   /** ข้อความ → HTML (escape + ลิงก์ไอเทม) */
   fmt(t) {
-    return esc(t).replace(/\[\[([a-z0-9_#-]+?)(?:\+(\d{1,2}))?\]\]/gi, (all, id, enh) => {
+    return esc(t).replace(/\[\[([a-z0-9_#-]+(?:@[a-z][a-z0-9]*(?:\+[a-z][a-z0-9]*)*)?)(?:\+(\d{1,2}))?\]\]/gi, (all, id, enh) => {
       const it = ITEMS[id]; if (!it) return all;
       const r = this.ui.rarityOf?.(it) || 0, e = +enh || 0;
       return `<span class="cb-item r${r}" data-tip-item="${esc(id)}">[${esc(it.nameTh)}${e ? ` <b class="enh t${ENHANCE.auraTier(e)}">+${e}</b>` : ''}]</span>`;

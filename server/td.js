@@ -36,7 +36,7 @@ const ANIMS = ['idle', 'walk', 'attack', 'cast', 'hit', 'die'];
 const DIRS = ['south', 'south-east', 'east', 'north-east', 'north', 'north-west', 'west', 'south-west'];
 
 export function setupTD(io, players, opts = {}) {
-  const { dayMs = 20 * 60 * 1000, queueSync = () => {}, refresh = () => {}, hurtPlayer = () => {}, shareExp = () => {}, partyOf = () => null } = opts;
+  const { dayMs = 20 * 60 * 1000, queueSync = () => {}, refresh = () => {}, hurtPlayer = () => {}, shareExp = () => {}, partyOf = () => null, partyBonus = () => 1 } = opts;
   const worlds = Object.fromEntries(TD_MAP_IDS.map((id) => [id, makeWorld(id)]));   // + ห้องสุสานใต้ดิน (crypt:…) สร้าง/ลบตามการใช้งาน
   const mapOf = (p) => (Object.hasOwn(worlds, p.tmap || '') ? p.tmap : DEFAULT_MAP);
   const W = (p) => worlds[mapOf(p)];
@@ -206,8 +206,9 @@ export function setupTD(io, players, opts = {}) {
       if (!p?.save) return;
       const bl = blessingsOf(p.save);
       const base = d.exp * tm.exp * bl.expMul;
-      const exp = mobExp(base, p.save.level, d.level, !!m.boss);                 // แคปตามช่วงเลเวล
-      const out = { mid: m.mid, mon: d.base || m.id, kind: isKiller ? 'kill' : 'assist', exp, gold: 0, items: [], x: Math.round(m.x), y: Math.round(m.y), night: tm.exp > 1 };
+      const pb = partyBonus(p);                                                   // ปาร์ตี้แมพเดียวกัน +10%/คน
+      const exp = Math.round(mobExp(base, p.save.level, d.level, !!m.boss) * pb); // แคปตามช่วงเลเวล × โบนัสปาร์ตี้
+      const out = { mid: m.mid, mon: d.base || m.id, kind: isKiller ? 'kill' : 'assist', exp, pbonus: Math.round((pb - 1) * 100), gold: 0, items: [], x: Math.round(m.x), y: Math.round(m.y), night: tm.exp > 1 };
       if (isKiller || m.boss) {                                                   // บอส: ทุกคนที่ช่วยตีได้ของ/การ์ดของตัวเอง
         out.gold = Math.round(rand(d.gold[0], d.gold[1]) * tm.gold * bl.goldMul);
         out.items = (d.drops || []).filter((dr) => Math.random() < dr.chance * bl.dropMul).map((dr) => ({ id: dr.item, qty: 1 }));

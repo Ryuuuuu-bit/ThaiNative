@@ -12,68 +12,95 @@ export const CARD_DROP = { normal: 0.005, elite: 0.012, boss: 0.2 };
 export const CARD_MUL_MAX = 1.5;
 export const cardDropMul = (dropMul = 1) => Math.max(1, Math.min(CARD_MUL_MAX, 1 + (dropMul - 1) * 0.25));
 
-export const CARD_SLOT_TH = { weapon: 'อาวุธ', armor: 'เสื้อ', accessory: 'เครื่องประดับ' };
-/** ช่องสวมใส่ → ชนิดการ์ดที่ใส่ได้ */
-export const SLOT_CARD = { weapon: 'weapon', armor: 'armor', accessory: 'accessory', accessory2: 'accessory' };
+export const CARD_SLOT_TH = { weapon: 'อาวุธ', armor: 'เสื้อ', helm: 'หมวก', gloves: 'ถุงมือ', boots: 'รองเท้า', belt: 'เข็มขัด', accessory: 'เครื่องประดับ' };
+/** ช่องสวมใส่ → ชนิดการ์ดที่ใส่ได้ (ทุกช่องอุปกรณ์ใส่การ์ดได้) */
+export const SLOT_CARD = { weapon: 'weapon', helm: 'helm', armor: 'armor', gloves: 'gloves', boots: 'boots', belt: 'belt', accessory: 'accessory', accessory2: 'accessory' };
 export const CARD_SOCKET_ENH = 7;          // ตีบวกถึง +7 ได้ช่องการ์ดที่ 2 (อาวุธ/เสื้อ)
+/** ธีมการ์ดแต่ละช่อง (ไว้โชว์ในสมุด/คู่มือ) */
+export const CARD_SLOT_THEME = { weapon: 'โจมตี', armor: 'ป้องกัน/HP', helm: 'สถานะหลัก/MP', gloves: 'คริ/แม่นยำ', boots: 'หลบหลีก', belt: 'HP/VIT', accessory: 'EXP/เงิน/ดรอป' };
 
 /**
  * ผลของการ์ด: bonus = ค่าพลัง (รวมกับอุปกรณ์) · econ = { exp, gold, drop } (%, คูณเพิ่ม)
- * คีย์ bonus: STR DEX INT CRI VIT hp mp atk matk def crit acc eva critDmg hpMul mpMul patkMul matkMul
+ * ▸ ทุกอาชีพได้ค่าเท่ากัน: คีย์กลางแปลงตามอาวุธที่ถืออยู่ (jobBonus)
+ *    dmg = พลังโจมตี (กายภาพ → ATK · เวท/หมอยา → MATK) · dmgMul = % พลังโจมตีสายตัวเอง
+ *    MAIN = สถานะหลักของสาย (ดาบ/มวย STR · ธนู STR+DEX · เวท/หมอยา INT)
+ * คีย์อื่น: CRI VIT hp mp def crit acc eva critDmg hpMul mpMul
  */
 const DEFS = {
+  // ---- Lv.1–30 ----
   phi_tuay_kaew:   { slot: 'armor',     bonus: { hp: 40, VIT: 1 },            flavor: 'ฟางอัดแน่นกันคมเคียว' },
-  kuman_thong:     { slot: 'accessory', bonus: { DEX: 2 }, econ: { gold: 5 }, flavor: 'กุมารทองช่วยเรียกทรัพย์' },
-  krasue:          { slot: 'weapon',    bonus: { matk: 10, mp: 20 },          flavor: 'แสงเขียวยามค่ำคืน' },
-  nang_tani:       { slot: 'armor',     bonus: { def: 3, hp: 30 },            flavor: 'ใบตานีห่อกายไว้' },
-  phi_pob:         { slot: 'weapon',    bonus: { atk: 8, crit: 0.02 },        flavor: 'หิวกระหายไม่รู้จักพอ' },
-  phi_jang_nang:   { slot: 'accessory', bonus: { acc: 8 },                    flavor: 'ตาจ้องจอไม่กะพริบ' },
-  phi_phrai:       { slot: 'accessory', bonus: { eva: 6, INT: 1 },            flavor: 'พรายน้ำลื่นไหลหลบหลีก' },
+  kuman_thong:     { slot: 'accessory', bonus: { MAIN: 1 }, econ: { gold: 5 }, flavor: 'กุมารทองช่วยเรียกทรัพย์' },
+  krasue:          { slot: 'helm',      bonus: { mp: 30, MAIN: 1 },           flavor: 'แสงเขียวยามค่ำคืน' },
+  nang_tani:       { slot: 'boots',     bonus: { eva: 3, hp: 20 },            flavor: 'ใบตานีห่อเท้าไว้เงียบกริบ' },
+  phi_pob:         { slot: 'weapon',    bonus: { dmg: 8, crit: 0.02 },        flavor: 'หิวกระหายไม่รู้จักพอ' },
+  phi_jang_nang:   { slot: 'gloves',    bonus: { acc: 8 },                    flavor: 'ตาจ้องจอไม่กะพริบ' },
+  mae_nak:         { slot: 'belt',      bonus: { VIT: 3, hpMul: 0.06 },       flavor: 'รอคอยไม่มีวันสิ้นสุด' },
   pret:            { slot: 'armor',     bonus: { hpMul: 0.08 },               flavor: 'ร่างสูงเท่าต้นตาล' },
-  saming:          { slot: 'weapon',    bonus: { crit: 0.05, critDmg: 0.1 },  flavor: 'เขี้ยวเสือสมิงฉีกกระชาก' },
-  phi_ha:          { slot: 'weapon',    bonus: { matkMul: 0.08 },             flavor: 'โรคห่าแห่งคาถามืด' },
-  krahang:         { slot: 'accessory', bonus: { DEX: 3, eva: 3 },            flavor: 'กระด้งคู่พาบินเร็ว' },
-  khamot:          { slot: 'accessory', bonus: { INT: 3, mp: 30 },            flavor: 'ไฟผีวูบวาบนำทาง' },
-  phi_dip:         { slot: 'armor',     bonus: { def: 6, VIT: 2 },            flavor: 'ร่างแข็งไม่รู้เจ็บ' },
-  nang_takhian:    { slot: 'armor',     bonus: { mpMul: 0.1, INT: 2 },        flavor: 'รากตะเคียนดูดพลังจากดิน' },
-  tai_hong:        { slot: 'weapon',    bonus: { patkMul: 0.08 },             flavor: 'แค้นฝังใจแรงเกินคน' },
-  phi_phong:       { slot: 'accessory', bonus: {}, econ: { exp: 5 },          flavor: 'ส่องทางให้เรียนรู้ไว' },
-  kong_koi:        { slot: 'weapon',    bonus: { STR: 3, atk: 6 },            flavor: 'กระโดดขาเดียวแต่หนักหน่วง' },
-  phi_lang_kluang: { slot: 'accessory', bonus: {}, econ: { drop: 10 },        flavor: 'ของหล่นจากหลังกลวง' },
-  phi_chamot:      { slot: 'armor',     bonus: { hp: 80, def: 4 },            flavor: 'เกล็ดจะมอดหนาแน่น' },
-  pret_asura:      { slot: 'weapon',    bonus: { STR: 4, patkMul: 0.1, matkMul: 0.1 }, flavor: 'พลังอสุรกายแห่งนรกภูมิ' },
-  mae_nak:         { slot: 'accessory', bonus: { VIT: 3, hpMul: 0.06 },      flavor: 'รอคอยไม่มีวันสิ้นสุด' },
+  saming:          { slot: 'gloves',    bonus: { crit: 0.04, critDmg: 0.08 }, flavor: 'เขี้ยวเสือสมิงฉีกกระชาก' },
+  kong_koi:        { slot: 'boots',     bonus: { eva: 4, MAIN: 2 },           flavor: 'กระโดดขาเดียวแต่ว่องไว' },
+  phi_ha:          { slot: 'weapon',    bonus: { dmgMul: 0.08 },              flavor: 'โรคห่าแห่งคาถามืด' },
   pu_som:          { slot: 'accessory', bonus: { CRI: 2 }, econ: { gold: 15, drop: 5 }, flavor: 'ทองท่วมตัวแต่ไม่เคยได้ใช้' },
-  chalawan:        { slot: 'armor',     bonus: { def: 10, hpMul: 0.12 },     flavor: 'เกล็ดพญาจระเข้แกร่งดั่งเหล็ก' },
-  // ---- แดนต่าง ๆ (Lv.30–99) ----
-  kumphan:         { slot: 'armor',     bonus: { hp: 160, VIT: 3 },           flavor: 'ผิวยักษ์หนาดั่งหินผา' },
-  khotchasi:       { slot: 'weapon',    bonus: { atk: 18, STR: 3 },           flavor: 'แรงช้างผสานสิงห์' },
-  hatsadiling:     { slot: 'accessory', bonus: { DEX: 4, eva: 6 },            flavor: 'ปีกพายุแห่งหิมพานต์' },
-  makkaliphon:     { slot: 'accessory', bonus: { INT: 4, mp: 80 },            flavor: 'มนต์หลงเสน่ห์นารีผล' },
-  kumphakan:       { slot: 'weapon',    bonus: { STR: 6, patkMul: 0.12, crit: 0.03 }, flavor: 'หอกโมกขศักดิ์ทะลวงฟ้า' },
+  phi_dip:         { slot: 'belt',      bonus: { def: 6, VIT: 2 },            flavor: 'ร่างแข็งไม่รู้เจ็บ' },
+  tai_hong:        { slot: 'helm',      bonus: { MAIN: 3, acc: 4 },           flavor: 'แค้นฝังใจแรงเกินคน' },
+  phi_phong:       { slot: 'accessory', bonus: {}, econ: { exp: 5 },          flavor: 'ส่องทางให้เรียนรู้ไว' },
+  phi_lang_kluang: { slot: 'accessory', bonus: {}, econ: { drop: 10 },        flavor: 'ของหล่นจากหลังกลวง' },
+  khamot:          { slot: 'helm',      bonus: { mp: 40, mpMul: 0.05 },       flavor: 'ไฟผีวูบวาบนำทาง' },
+  nang_takhian:    { slot: 'belt',      bonus: { mpMul: 0.1, hp: 60 },        flavor: 'รากตะเคียนดูดพลังจากดิน' },
+  pret_asura:      { slot: 'weapon',    bonus: { MAIN: 4, dmgMul: 0.1 },      flavor: 'พลังอสุรกายแห่งนรกภูมิ' },
+  krahang:         { slot: 'boots',     bonus: { eva: 7, acc: 3 },            flavor: 'กระด้งคู่พาบินเร็ว' },
+  phi_phrai:       { slot: 'gloves',    bonus: { crit: 0.03, acc: 6 },        flavor: 'พรายน้ำลื่นไหลหลบหลีก' },
+  phi_chamot:      { slot: 'armor',     bonus: { hp: 80, def: 4 },            flavor: 'เกล็ดจะมอดหนาแน่น' },
+  chalawan:        { slot: 'armor',     bonus: { def: 10, hpMul: 0.12 },      flavor: 'เกล็ดพญาจระเข้แกร่งดั่งเหล็ก' },
+  // ---- Lv.31–98 ----
+  kumphan:         { slot: 'belt',      bonus: { hp: 160, VIT: 3 },           flavor: 'ผิวยักษ์หนาดั่งหินผา' },
+  khotchasi:       { slot: 'weapon',    bonus: { dmg: 18, MAIN: 3 },          flavor: 'แรงช้างผสานสิงห์' },
+  hatsadiling:     { slot: 'boots',     bonus: { eva: 9, MAIN: 2 },           flavor: 'ปีกพายุแห่งหิมพานต์' },
+  makkaliphon:     { slot: 'helm',      bonus: { MAIN: 4, mp: 80 },           flavor: 'มนต์หลงเสน่ห์นารีผล' },
+  kumphakan:       { slot: 'gloves',    bonus: { MAIN: 6, dmgMul: 0.06, crit: 0.03 }, flavor: 'หอกโมกขศักดิ์ทะลวงฟ้า' },
   nak_phrai:       { slot: 'armor',     bonus: { def: 12, mpMul: 0.08 },      flavor: 'เกล็ดนาคพรายเย็นเยียบ' },
-  ngueak_phi:      { slot: 'weapon',    bonus: { matk: 26, INT: 3 },          flavor: 'เพลงล่อวิญญาณใต้บาดาล' },
-  pla_khiao:       { slot: 'accessory', bonus: { crit: 0.04, acc: 10 },       flavor: 'เขี้ยวแก้วแหลมคม' },
-  tahan_nak:       { slot: 'armor',     bonus: { def: 16, hp: 200 },          flavor: 'เกราะเกล็ดเงินองครักษ์นาคราช' },
+  ngueak_phi:      { slot: 'weapon',    bonus: { dmg: 26, MAIN: 3 },          flavor: 'เพลงล่อวิญญาณใต้บาดาล' },
+  pla_khiao:       { slot: 'gloves',    bonus: { crit: 0.05, acc: 10 },       flavor: 'เขี้ยวแก้วแหลมคม' },
+  tahan_nak:       { slot: 'belt',      bonus: { def: 10, hp: 220 },          flavor: 'เข็มขัดเกล็ดเงินองครักษ์นาคราช' },
   anantanak:       { slot: 'armor',     bonus: { VIT: 6, hpMul: 0.14, def: 12 }, flavor: 'เจ็ดเศียรคุ้มภัย' },
-  niraiyaban:      { slot: 'weapon',    bonus: { atk: 30, critDmg: 0.15 },    flavor: 'หอกเหล็กเผาไฟนรก' },
+  niraiyaban:      { slot: 'weapon',    bonus: { dmg: 30, critDmg: 0.15 },    flavor: 'หอกเหล็กเผาไฟนรก' },
   pret_khem:       { slot: 'accessory', bonus: {}, econ: { exp: 8 },          flavor: 'หิวกระหายความรู้ชั่วกัลป์' },
-  phi_ton_ngiw:    { slot: 'armor',     bonus: { def: 20, hp: 260, STR: 2 },  flavor: 'หนามเหล็กต้นงิ้วสะท้อนกลับ' },
+  phi_ton_ngiw:    { slot: 'boots',     bonus: { eva: 10, hp: 200 },          flavor: 'หนามเหล็กต้นงิ้วใต้ฝ่าเท้า' },
   yommathut:       { slot: 'accessory', bonus: {}, econ: { drop: 12, gold: 10 }, flavor: 'บ่วงบาศคล้องของมีค่า' },
-  rahu_eclipse:    { slot: 'weapon',    bonus: { STR: 6, INT: 6, DEX: 6, patkMul: 0.12, matkMul: 0.12, critDmg: 0.2 }, flavor: 'จันทร์ที่ถูกกลืนยังเรืองแสงในมือผู้ปิดฉาก (การ์ด MVP บอสโลก)' },
+  rahu_eclipse:    { slot: 'weapon',    bonus: { MAIN: 6, dmgMul: 0.12, critDmg: 0.2 }, flavor: 'จันทร์ที่ถูกกลืนยังเรืองแสงในมือผู้ปิดฉาก (การ์ด MVP บอสโลก)' },
   // ---- Lv.99–150 ----
-  khon_thanpha:    { slot: 'accessory', bonus: { INT: 6, mpMul: 0.08 },      flavor: 'เสียงพิณสวรรค์ปลุกปัญญา' },
-  kinnaree_ngao:   { slot: 'accessory', bonus: { DEX: 6, eva: 10 },          flavor: 'ปีกเงาจันทรคราส' },
-  thep_asura:      { slot: 'weapon',    bonus: { atk: 42, STR: 4 },          flavor: 'กระบองเพชรอสูรกบฏ' },
+  khon_thanpha:    { slot: 'helm',      bonus: { MAIN: 6, mpMul: 0.08 },      flavor: 'เสียงพิณสวรรค์ปลุกปัญญา' },
+  kinnaree_ngao:   { slot: 'boots',     bonus: { eva: 12, MAIN: 4 },          flavor: 'ปีกเงาจันทรคราส' },
+  thep_asura:      { slot: 'weapon',    bonus: { dmg: 42, MAIN: 4 },          flavor: 'กระบองเพชรอสูรกบฏ' },
   yak_thawarn:     { slot: 'armor',     bonus: { def: 28, hp: 420 },          flavor: 'ประตูสวรรค์ไม่เคยแตก' },
-  krut_dam:        { slot: 'weapon',    bonus: { crit: 0.05, critDmg: 0.2 }, flavor: 'กรงเล็บครุฑดำ' },
+  krut_dam:        { slot: 'gloves',    bonus: { crit: 0.05, critDmg: 0.2 },  flavor: 'กรงเล็บครุฑดำ' },
   nak_sumeru:      { slot: 'armor',     bonus: { VIT: 8, hpMul: 0.1 },        flavor: 'เกล็ดหินพันเขา' },
-  asura_fire:      { slot: 'weapon',    bonus: { matk: 48, INT: 4 },          flavor: 'ไฟกัลป์เผาจักรวาล' },
+  asura_fire:      { slot: 'weapon',    bonus: { dmg: 30, dmgMul: 0.08 },     flavor: 'ไฟกัลป์เผาจักรวาล' },
   rakkhasa:        { slot: 'accessory', bonus: {}, econ: { exp: 10, drop: 8 }, flavor: 'ทัพรากษสไม่เคยกลับมือเปล่า' },
-  phaya_yom:       { slot: 'weapon',    bonus: { STR: 5, INT: 5, patkMul: 0.14, matkMul: 0.14 }, flavor: 'คำพิพากษาแห่งยมโลก' },
-  phra_rahu:       { slot: 'armor',     bonus: { VIT: 8, def: 22, hpMul: 0.15 }, flavor: 'เงาที่กลืนดวงจันทร์' },
-  phaya_mara:      { slot: 'weapon',    bonus: { STR: 7, INT: 7, patkMul: 0.18, matkMul: 0.18, crit: 0.03 }, flavor: 'มารผจญแห่งจักรวาล' },
+  phaya_yom:       { slot: 'helm',      bonus: { MAIN: 8, dmgMul: 0.08 },     flavor: 'มงกุฎคำพิพากษาแห่งยมโลก' },
+  phra_rahu:       { slot: 'belt',      bonus: { VIT: 8, def: 18, hpMul: 0.1 }, flavor: 'เงาที่กลืนดวงจันทร์' },
+  phaya_mara:      { slot: 'weapon',    bonus: { MAIN: 7, dmgMul: 0.18, crit: 0.03 }, flavor: 'มารผจญแห่งจักรวาล' },
 };
+
+/** อาชีพที่ใช้เวท (dmg → MATK) */
+const MAGIC_JOB = new Set(['mage', 'healer']);
+/**
+ * แปลงคีย์กลางเป็นค่าพลังของอาชีพที่ถืออยู่ (ทุกอาชีพได้ค่าเท่ากัน)
+ * dmg → atk/matk · dmgMul → patkMul/matkMul · MAIN → STR / INT / (ธนู: STR ครึ่ง DEX ครึ่ง)
+ */
+export function jobBonus(b = {}, job = 'swordman') {
+  const out = {}, add = (k, v) => { if (v) out[k] = (out[k] || 0) + v; };
+  const magic = MAGIC_JOB.has(job);
+  for (const [k, v] of Object.entries(b)) {
+    if (k === 'dmg') add(magic ? 'matk' : 'atk', v);
+    else if (k === 'dmgMul') add(magic ? 'matkMul' : 'patkMul', v);
+    else if (k === 'MAIN') {
+      if (magic) add('INT', v);
+      else if (job === 'archer') { add('STR', Math.ceil(v / 2)); add('DEX', Math.floor(v / 2)); }
+      else add('STR', v);
+    } else add(k, v);
+  }
+  return out;
+}
 
 /** รายการการ์ดทั้งหมด (เรียงตามเลเวลผี) */
 export const CARDS = Object.entries(DEFS)
@@ -86,8 +113,8 @@ export const CARDS = Object.entries(DEFS)
 export const CARD_BY_ID = Object.fromEntries(CARDS.map((c) => [c.id, c]));
 export const CARD_OF_MON = Object.fromEntries(CARDS.map((c) => [c.mon, c.id]));
 
-const STAT_TH = { STR: 'STR', DEX: 'DEX', INT: 'INT', CRI: 'CRI', VIT: 'VIT', hp: 'HP', mp: 'MP', atk: 'ATK', matk: 'MATK', def: 'DEF', acc: 'แม่นยำ', eva: 'หลบ' };
-const PCT_TH = { crit: 'คริติคอล', critDmg: 'แรงคริ', hpMul: 'HP', mpMul: 'MP', patkMul: 'ATK', matkMul: 'MATK' };
+const STAT_TH = { STR: 'STR', DEX: 'DEX', INT: 'INT', CRI: 'CRI', VIT: 'VIT', hp: 'HP', mp: 'MP', atk: 'ATK', matk: 'MATK', def: 'DEF', acc: 'แม่นยำ', eva: 'หลบ', dmg: 'พลังโจมตี', MAIN: 'สถานะหลัก' };
+const PCT_TH = { crit: 'คริติคอล', critDmg: 'แรงคริ', hpMul: 'HP', mpMul: 'MP', patkMul: 'ATK', matkMul: 'MATK', dmgMul: 'พลังโจมตี' };
 const ECON_TH = { exp: 'EXP', gold: 'เงินดรอป', drop: 'โอกาสดรอป' };
 /** ข้อความผลการ์ด เช่น "ATK +8 · คริติคอล +2%" */
 export function cardText(c) {
@@ -143,7 +170,8 @@ export function cardBonus(c) {
     for (const [k, v] of Object.entries(b)) bonus[k] = (bonus[k] || 0) + v;
     for (const [k, v] of Object.entries(e)) econ[k] = (econ[k] || 0) + v;
   };
-  for (const cd of activeCards(c)) add(cd.bonus, cd.econ);
+  const job = c?.appearance?.job || c?.path || 'swordman';
+  for (const cd of activeCards(c)) add(jobBonus(cd.bonus, job), cd.econ);   // ทุกอาชีพได้ค่าเท่ากัน (แปลงตามอาวุธที่ถือ)
   const n = bookCount(c);
   for (const t of BOOK_TIERS) if (n >= t.n) add(t.bonus, t.econ);
   return { bonus, econ };
@@ -162,9 +190,19 @@ export function rollCard(monId, dropMul = 1, rng = Math.random) {
 export function fixCards(c) {
   const cards = c.cards && typeof c.cards === 'object' ? c.cards : {};
   c.cards = {};
+  const back = [];                                               // การ์ดที่ช่องไม่ตรงชนิดแล้ว (ปรับช่องการ์ด) → คืนเข้ากระเป๋า ไม่หาย
   for (const slot of Object.keys(SLOT_CARD)) {
     const list = Array.isArray(cards[slot]) ? cards[slot] : [];
-    c.cards[slot] = list.filter((id) => CARD_BY_ID[id]?.slot === SLOT_CARD[slot]).slice(0, 2);
+    c.cards[slot] = [];
+    for (const id of list) {
+      if (!CARD_BY_ID[id]) continue;
+      if (CARD_BY_ID[id].slot === SLOT_CARD[slot] && c.cards[slot].length < 2) c.cards[slot].push(id); else back.push(id);
+    }
+  }
+  if (back.length) {
+    if (!Array.isArray(c.inventory)) c.inventory = [];
+    for (const id of back) { const st = c.inventory.find((x) => x.id === id); if (st) st.qty = (st.qty || 0) + 1; else c.inventory.push({ id, qty: 1 }); }
+    c.cardsReturned = (c.cardsReturned || 0) + back.length;       // แจ้งผู้เล่นตอนเข้าเกม
   }
   const book = c.cardBook && typeof c.cardBook === 'object' ? c.cardBook : {};
   c.cardBook = {};

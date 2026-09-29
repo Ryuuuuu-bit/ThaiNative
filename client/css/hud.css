@@ -74,7 +74,7 @@ body.td-mode .quest-track div { padding: .5cqh 1cqh !important; margin-bottom: .
 
 /* ---------- ขวาล่าง: เมนู (2 แถว x 5) + ของที่ได้ ---------- */
 body.td-mode:not(.touch) #hud > .hud-buttons.dock { top: auto !important; bottom: calc(2.6cqh + var(--hud-pad)) !important; right: var(--hud-pad) !important;
-  width: var(--hud-col) !important; display: grid !important; grid-template-columns: repeat(5, 1fr) !important; gap: .8cqh !important; padding: .9cqh !important; font-size: 2.4cqh; }
+  width: var(--hud-col) !important; display: grid !important; grid-template-columns: repeat(6, 1fr) !important; gap: .8cqh !important; padding: .9cqh !important; font-size: 2.4cqh; }
 body.td-mode:not(.touch) #hud > .hud-buttons.dock button { width: 100% !important; height: 5.4cqh !important; border-width: .2cqh; border-radius: 1cqh; }
 body.td-mode:not(.touch) #hud > .hud-buttons.dock button .px-ico { width: 4.2cqh; height: 4.2cqh; }
 body.td-mode:not(.touch) #hud > .hud-buttons.dock button small { font-size: 1.3cqh; bottom: -.5cqh; right: -.4cqh; }
@@ -120,7 +120,7 @@ body.td-mode.touch #dock-toggle { display: grid; place-items: center; position: 
   width: 8cqh; height: 8cqh; padding: 0; font-size: 4.6cqh; color: #fff3c4; background: var(--hud-bg); border: .25cqh solid var(--hud-line); border-radius: var(--hud-r); box-shadow: var(--hud-shadow); }
 body.td-mode.touch #hud > .hud-buttons.dock { display: none !important; }
 body.td-mode.touch #hud > .hud-buttons.dock.open { display: grid !important; position: absolute !important; top: calc(var(--hud-pad) + 9cqh) !important; bottom: auto !important;
-  right: calc(var(--hud-pad) + var(--hud-col) + 1.2cqh) !important; left: auto !important; width: 50cqh !important; grid-template-columns: repeat(5, 1fr) !important;
+  right: calc(var(--hud-pad) + var(--hud-col) + 1.2cqh) !important; left: auto !important; width: 58cqh !important; grid-template-columns: repeat(6, 1fr) !important;
   gap: 1cqh !important; padding: 1.2cqh !important; z-index: 40; background: var(--hud-bg) !important; border: .25cqh solid var(--hud-line) !important; border-radius: var(--hud-r) !important; box-shadow: var(--hud-shadow) !important; }
 body.td-mode.touch #hud > .hud-buttons.dock.open button { width: 100% !important; height: 8cqh !important; }
 body.td-mode.touch #hud > .hud-buttons.dock.open button .px-ico { width: 6cqh; height: 6cqh; }
@@ -658,3 +658,7 @@ body.td-mode.touch #preset-btn.t-preset { position: absolute; left: calc(var(--h
 body.td-mode.touch #preset-btn.t-preset .k { display: none; }
 body.dev-tablet.td-mode.touch #preset-btn.t-preset { scale: var(--ts); transform-origin: calc(-1 * (var(--hud-pad) + 2cqh)) calc(100% + 52cqh); }
 body.m-hud.win-open #touch-ui > #preset-btn { visibility: hidden !important; }
+
+#party-frames .pf-bonus { font-size: .78em; padding: 2px 6px; margin-bottom: 3px; border-radius: 6px; background: rgba(20,12,30,.75); color: #b9a88a; white-space: nowrap; }
+#party-frames .pf-bonus.on { color: #8ff0a4; border: 1px solid rgba(88,214,141,.5); }
+#party-frames .pf-bonus small { opacity: .8; }

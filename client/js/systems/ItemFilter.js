@@ -171,7 +171,7 @@ export function filterBarHtml(c, f, list = [], o = {}) {
       ${chip('better', f.better, '<b class="up">▲</b> ดีกว่าที่ใส่', `ของสาย${job?.nameTh || 'ที่เล่นอยู่'}ที่ใส่แล้วค่าพลังรวมเพิ่ม`)}
       <select class="if-rar" title="ความหายากขั้นต่ำ">${RARITY_TH.map((l, i) => (i === 0 ? `<option value="0">ทุกระดับ</option>` : `<option value="${i}"${f.rar === i ? ' selected' : ''}>${l}+</option>`)).join('')}</select>
       <select class="if-sort" title="เรียงตาม">${Object.entries(SORTS).map(([k, l]) => `<option value="${k}"${f.sort === k ? ' selected' : ''}>${l}</option>`).join('')}</select>
-    </div>` : `<div class="if-row if-gear slim"><select class="if-sort" title="เรียงตาม">${Object.entries(SORTS).filter(([k]) => k !== 'cp').map(([k, l]) => `<option value="${k}"${f.sort === k ? ' selected' : ''}>${l}</option>`).join('')}</select></div>`}
+    </div>` : o.sortRow === false ? '' : `<div class="if-row if-gear slim"><select class="if-sort" title="เรียงตาม">${Object.entries(SORTS).filter(([k]) => k !== 'cp').map(([k, l]) => `<option value="${k}"${f.sort === k ? ' selected' : ''}>${l}</option>`).join('')}</select></div>`}
   </div>`;
 }
 /** ผูกเหตุการณ์ของแถบตัวกรอง (root = กล่องที่มี .if-bar) · redraw() = วาดใหม่ (ช่องค้นหาคงโฟกัสให้) */
