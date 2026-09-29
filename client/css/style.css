@@ -1597,6 +1597,7 @@ body.touch #cb-size { display: none; }
 .if-q { flex: 1 1 9em; min-width: 7em; padding: 5px 8px; border-radius: 7px; border: 1px solid #5a4630; background: #140c1a; color: #f5e6c8; font: inherit; font-size: .85em; }
 .if-gear { font-size: .82em; }
 .if-gear select { padding: 3px 6px; border-radius: 6px; border: 1px solid #5a4630; background: #1d1326; color: #f5e6c8; font: inherit; cursor: pointer; }
+.if-gear select.if-job.on { background: #274a2a; border-color: #7dd87f; color: #eaffea; }
 .if-gear.slim { justify-content: flex-end; }
 .if-chip { padding: 3px 9px; border-radius: 999px; border: 1px solid #5a4630; background: #1d1326; color: #d9c8a8; font: inherit; cursor: pointer; }
 .if-chip.on { background: #274a2a; border-color: #7dd87f; color: #eaffea; box-shadow: inset 0 0 0 1px rgba(125,216,127,.35); }

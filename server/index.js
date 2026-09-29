@@ -46,6 +46,8 @@ const storeReady = setupAuth(app, {
   saveBusy: (acc) => saving.has(acc) || [...unsaved.keys()].some((k) => k.startsWith(`${acc}:`)),   // กำลังเซฟตอนออกเกมอยู่ → ห้ามเขียนทับจาก PUT /character
   onlineCount: () => players.size,
   leaderboard: () => ranking?.publicBoards() || null,
+  // ลบตัวละคร: ถอดออกจากเพื่อนของคนออนไลน์ · รางวัลบอสโลกค้าง · คำนวณตารางอันดับใหม่ทันที (ฉายาอันดับขยับตาม)
+  charDeleted: (acc, slot, name) => { social?.friendGone(acc, name); worldBoss?.forget?.(`${acc}:${slot || 0}`); ranking?.refresh(); },
 });
 // no-cache = เบราว์เซอร์ถามทุกครั้ง (ETag → 304 ถ้าไม่เปลี่ยน) · อัปแพตช์แล้วรีโหลดได้ของใหม่แน่นอน
 const NOCACHE = { setHeaders: (res) => res.setHeader('Cache-Control', 'no-cache') };
@@ -436,6 +438,9 @@ io.on('connection', (socket) => {
       if (oldKey !== chk.key) await store.holdName?.(oldKey, p.acc);
       await store.releaseHold?.(chk.key);
       queueSync(p);
+      social.friendRenamed(p.acc, oldName, chk.name);
+      store.renameFriendRefs?.(p.acc, oldName, chk.name).catch((e) => console.error('[rename] friends', e.message));
+      ranking.refresh();
       io.emit('player:rename', { id: p.id, name: chk.name, old: oldName, gm: !!p.admin && /^gm/i.test(chk.name) });
       reply({ ok: true, name: chk.name });
     } finally { p.renaming = false; }

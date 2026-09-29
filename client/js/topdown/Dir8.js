@@ -81,6 +81,9 @@ function setLook(sprite, d8) {
   }
 }
 
+/** ท่าโจมตีที่ยังไม่มีภาพในบางชุด → ใช้ท่าใกล้เคียงแทน (หมอยา heal → cast) */
+const ACT_FALLBACK = { heal: 'cast' };
+export function resolveAct(scene, id, act) { return act && !hasDir8(scene, id, act) && ACT_FALLBACK[act] ? ACT_FALLBACK[act] : act; }
 export function playDir(sprite, anim, dir, restart = false) {
   const scene = sprite.scene;
   sprite.dir = dir;
@@ -88,7 +91,7 @@ export function playDir(sprite, anim, dir, restart = false) {
     // ท่าโจมตีที่ไม่มีภาพจริง (หรืออาวุธไม่ใช่หมัด) → ยืนนิ่งท่าเตรียม + อาวุธในมือเหวี่ยงแทน (ไม่เอาท่าเดินมาแทนแล้ว ดูสะดุด)
     // ท่าโจมตีจริงตามอาวุธ (ฟัน/ยิง/ร่าย) ถ้ามีภาพ
     if ((anim === 'attack' || anim === 'cast') && sprite.actionAnim) {
-      const act = sprite.actionAnim();
+      const act = resolveAct(scene, sprite.d8id, sprite.actionAnim());
       if (act && hasDir8(scene, sprite.d8id, act)) {
         const k = animKey(sprite.d8id, act, dir);
         sprite._action = true;

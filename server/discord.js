@@ -6,7 +6,7 @@
 // ============================================================
 import { NEWS } from '../shared/data/news.js';
 
-export const DISCORD_INVITE = 'https://discord.gg/aYy4StWaQ6';
+export const DISCORD_INVITE = 'https://discord.gg/x9schPHqqX';
 const GUILD = process.env.DISCORD_GUILD_ID || '1553978632744210452';
 const HOOK = process.env.DISCORD_WEBHOOK_URL || '';
 const GAME_URL = process.env.PUBLIC_URL || 'https://thainative.online';

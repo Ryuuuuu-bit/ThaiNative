@@ -461,6 +461,8 @@ export function setupWorldBoss(io, players, { td, hurtPlayer, queueSync, social,
       return 'คำสั่ง: /gm rahu [open|now|hp|kill|end|close]';
     },
   };
+  /** ลบตัวละคร: ทิ้งรางวัลค้างของช่องนั้น (ตัวใหม่ช่องเดิมจะได้ไม่รับรางวัลของตัวเก่า) */
+  api.forget = (key) => { let ch = S.pending.delete(key); if (S.mvp?.key === key) { S.mvp = null; ch = true; } if (S.lastMvp?.key === key) S.lastMvp = null; if (ch) persist(); };
   td.setWb(api);
   return api;
 }

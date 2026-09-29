@@ -512,5 +512,22 @@ export function setupSocial(io, players, H = {}) {
     }
   }
 
-  return { onConnection, onDisconnect, onJoin, tick, bossPublic, shareExp, announceTitles, partyOf, pushParty, leaveParty, _boss: boss, _parties: parties, _trades: trades };
+  /** ตัวละครถูกลบ/เปลี่ยนชื่อ → รายชื่อเพื่อนของคนที่ออนไลน์อยู่อัปเดตทันที */
+  function friendGone(acc, name) {
+    const low = String(name || '').toLowerCase();
+    for (const q of players.values()) {
+      const b = (q.save?.friends || []).length; if (!b) continue;
+      q.save.friends = q.save.friends.filter((f) => !(f.acc === acc && String(f.name).toLowerCase() === low));
+      if (q.save.friends.length < b) pushFriends(q);
+    }
+  }
+  function friendRenamed(acc, oldName, newName) {
+    const low = String(oldName || '').toLowerCase();
+    for (const q of players.values()) {
+      let ch = false;
+      for (const f of q.save?.friends || []) if (f.acc === acc && String(f.name).toLowerCase() === low) { f.name = newName; ch = true; }
+      if (ch) pushFriends(q);
+    }
+  }
+  return { friendGone, friendRenamed, onConnection, onDisconnect, onJoin, tick, bossPublic, shareExp, announceTitles, partyOf, pushParty, leaveParty, _boss: boss, _parties: parties, _trades: trades };
 }

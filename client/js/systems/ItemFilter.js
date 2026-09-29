@@ -7,7 +7,7 @@ import { ITEMS, sellPrice, WTYPE_JOB } from '/shared/data/items.js';
 import { combatPower } from '/shared/character.js';
 import { SLOT_TH, GEAR_TYPES, FLASK_SLOTS } from '/shared/data/slots.js';
 import { CARD_BY_ID, SLOT_CARD, socketCount } from '/shared/data/cards.js';
-import { JOBS } from '/shared/data/classes.js';
+import { JOBS, JOB_IDS } from '/shared/data/classes.js';
 import { uiIcon } from './util.js';
 
 const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -35,7 +35,7 @@ export const SLOT_F = { any: 'ทุกช่อง', weapon: 'อาวุธ',
 export const SORTS = { type: 'ประเภท', cp: 'ค่าพลัง ▲', rar: 'ความหายาก', lv: 'เลเวลของ', price: 'มูลค่า', name: 'ชื่อ' };
 const ORDER = ['weapon', 'helm', 'armor', 'gloves', 'boots', 'belt', 'accessory', 'flask', 'costume', 'card', 'home', 'consumable', 'food', 'reset', 'reskill', 'rename', 'offering', 'herb', 'fish', 'material', 'skin'];
 
-export const newFilter = (o = {}) => ({ kind: 'all', slot: 'any', mine: false, wear: false, better: false, rar: 0, sort: 'type', q: '', ...o });
+export const newFilter = (o = {}) => ({ kind: 'all', slot: 'any', job: '', wear: false, better: false, rar: 0, sort: 'type', q: '', ...o });
 
 // ---------------- ค่าพลังเมื่อสวม ----------------
 const jobFor = (c, eq) => WTYPE_JOB[ITEMS[eq.weapon]?.wtype] || c.appearance?.job || 'swordman';
@@ -49,13 +49,16 @@ export function slotFor(c, it) {
 }
 /** สวมได้ไหม (เลเวลถึง) */
 export const canWear = (c, it) => !!it && (GEAR_TYPES.includes(it.type) || it.type === 'flask') && !(it.lv && c.level < it.lv);
-/** ของสายเรา (ไม่มีสาย = ใช้ได้ทุกสาย) */
-/** ของสายเรา = ตามแนวอาวุธที่ถืออยู่ (ถือไม้เท้าสมุนไพร → แนะนำของหมอยา แม้เคยฟาร์มด้วยอาวุธอื่น) */
-export const isMine = (c, it) => { const j = c.appearance?.job || c.path; return !it?.job || it.job === j || (!!it.wtype && WTYPE_JOB[it.wtype] === j); };
+/** สายที่เล่นอยู่ = แนวอาวุธที่ถือ (ถือไม้เท้าสมุนไพร → หมอยา แม้เคยฟาร์มด้วยอาวุธอื่น) */
+export const curJob = (c) => c.appearance?.job || c.path || 'swordman';
+/** ของใช้ได้กับอาชีพ j ไหม (ของไม่ระบุสาย = ใช้ได้ทุกสาย) */
+export const forJob = (it, j) => (it?.wtype && WTYPE_JOB[it.wtype] ? WTYPE_JOB[it.wtype] === j : !it?.job || it.job === j);   // อาวุธดูจากแนวอาวุธก่อน (อาวุธเริ่มต้นไม่มี job)
+/** ของสายที่เล่นอยู่ (อาวุธต้องแนวเดียวกับที่ถือ → ▲/ใส่ชุดที่ดีที่สุด ไม่พาเปลี่ยนสาย) */
+export const isMine = (c, it) => forJob(it, curJob(c));
 
-/** แคช CP ต่อรอบวาด (คีย์ = อุปกรณ์ที่ใส่ + เลเวล/สถานะ) */
+/** แคช CP ต่อรอบวาด (คีย์ = ทุกอย่างที่ combatPower ใช้: อุปกรณ์ · เลเวล/สถานะ · การ์ด/สมุดสะสม · พรสวรรค์ · ความชำนาญอาวุธ · อาวุธที่ถือ) */
 let cache = { sig: '', base: 0, map: new Map() };
-const sigOf = (c) => JSON.stringify([c.equipment, c.level, c.stats, c.enhance, c.cards, c.passives, c.path]);
+const sigOf = (c) => JSON.stringify([c.equipment, c.level, c.stats, c.enhance, c.cards, c.passives, c.path, c.wm, c.appearance?.job, Object.keys(c.cardBook || {}).length]);
 function prep(c) { const s = sigOf(c); if (s !== cache.sig) cache = { sig: s, base: cpWith(c, c.equipment), map: new Map() }; }
 export const baseCp = (c) => { prep(c); return cache.base; };
 /** CP ที่เปลี่ยนถ้าสวมชิ้นนี้ (null = สวมไม่ได้/ไม่ใช่อุปกรณ์) · accessory ลองทั้ง 2 ช่องเอาที่ดีกว่า */
@@ -100,7 +103,7 @@ export function bestCardSlot(c, cardId) {
  */
 export function bestLoadout(c) {
   const eq = { ...c.equipment };
-  const pool = c.inventory.map((s) => s.id).filter((id) => canWear(c, ITEMS[id]) && ITEMS[id].type !== 'flask');
+  const pool = c.inventory.map((s) => s.id).filter((id) => canWear(c, ITEMS[id]) && ITEMS[id].type !== 'flask' && isMine(c, ITEMS[id]));   // เฉพาะสายที่ถืออยู่
   const used = new Set();
   for (let pass = 0; pass < 2; pass++) {
     for (const slot of ['weapon', 'armor', 'helm', 'gloves', 'boots', 'belt', 'accessory', 'accessory2']) {
@@ -126,10 +129,11 @@ export function applyFilter(c, list, f, { price = sellPrice } = {}) {
     const it = ITEMS[idOf(x)]; if (!it) return false;
     if (!KINDS[f.kind]?.[1](it)) return false;
     if (f.slot !== 'any' && it.type !== f.slot) return false;
-    if (f.mine && !isMine(c, it)) return false;
+    const fj = f.job === 'mine' || (f.job == null && f.mine) ? curJob(c) : f.job;
+    if (fj && !forJob(it, fj)) return false;
     if (f.wear && !canWear(c, it)) return false;
     if (f.rar && rarityOf(it) < f.rar) return false;
-    if (f.better && !(canWear(c, it) && (cpGain(c, idOf(x)) || 0) > 0)) return false;
+    if (f.better && !(canWear(c, it) && isMine(c, it) && (cpGain(c, idOf(x)) || 0) > 0)) return false;   // ดีกว่าที่ใส่ = เฉพาะของสายที่เล่นอยู่
     if (q && !it.nameTh.toLowerCase().includes(q) && !(it.affixes || []).some((a) => a.text?.toLowerCase().includes(q))) return false;
     return true;
   });
@@ -156,15 +160,15 @@ export function filterBarHtml(c, f, list = [], o = {}) {
   const n = (k) => list.filter((x) => ITEMS[idOf(x)] && KINDS[k][1](ITEMS[idOf(x)])).length;
   const chip = (k, on, label, title = '') => `<button type="button" class="if-chip${on ? ' on' : ''}" data-if="${k}"${title ? ` title="${title}"` : ''}>${label}</button>`;
   const showGear = o.gear !== false && (f.kind === 'all' || f.kind === 'gear');
-  const job = JOBS[c.path || c.appearance?.job];
+  const cj = curJob(c), job = JOBS[cj], fj = f.job ?? (f.mine ? 'mine' : '');
   return `<div class="if-bar">
     <div class="if-row if-kinds">${kinds.map((k) => `<button type="button" class="if-kind${f.kind === k ? ' on' : ''}" data-ifk="${k}">${KINDS[k][0]}<small>${n(k)}</small></button>`).join('')}
       <input type="search" class="if-q" placeholder="🔍 ค้นหาชื่อ/ค่าสุ่ม" value="${esc(f.q || '')}"></div>
     ${showGear ? `<div class="if-row if-gear">
       <select class="if-slot" title="ช่องสวมใส่">${Object.entries(SLOT_F).map(([k, l]) => `<option value="${k}"${f.slot === k ? ' selected' : ''}>${l}</option>`).join('')}</select>
-      ${chip('mine', f.mine, `${job?.icon || '👤'} สาย${job?.nameTh || 'ฉัน'}`, 'เฉพาะอุปกรณ์สายของเรา')}
+      <select class="if-job${fj ? ' on' : ''}" title="ของสายอาชีพ (ของที่ไม่ระบุสายแสดงทุกสาย)"><option value="">ทุกอาชีพ</option><option value="mine"${fj === 'mine' ? ' selected' : ''}>${job?.icon || '👤'} สายที่ถืออยู่ (${job?.nameTh || ''})</option>${JOB_IDS.map((j) => `<option value="${j}"${fj === j ? ' selected' : ''}>${JOBS[j].icon} ${JOBS[j].nameTh}</option>`).join('')}</select>
       ${chip('wear', f.wear, '✔ ใส่ได้ตอนนี้', 'เลเวลถึงแล้ว')}
-      ${chip('better', f.better, '<b class="up">▲</b> ดีกว่าที่ใส่', 'ใส่แล้วค่าพลังรวมเพิ่ม')}
+      ${chip('better', f.better, '<b class="up">▲</b> ดีกว่าที่ใส่', `ของสาย${job?.nameTh || 'ที่เล่นอยู่'}ที่ใส่แล้วค่าพลังรวมเพิ่ม`)}
       <select class="if-rar" title="ความหายากขั้นต่ำ">${RARITY_TH.map((l, i) => (i === 0 ? `<option value="0">ทุกระดับ</option>` : `<option value="${i}"${f.rar === i ? ' selected' : ''}>${l}+</option>`)).join('')}</select>
       <select class="if-sort" title="เรียงตาม">${Object.entries(SORTS).map(([k, l]) => `<option value="${k}"${f.sort === k ? ' selected' : ''}>${l}</option>`).join('')}</select>
     </div>` : `<div class="if-row if-gear slim"><select class="if-sort" title="เรียงตาม">${Object.entries(SORTS).filter(([k]) => k !== 'cp').map(([k, l]) => `<option value="${k}"${f.sort === k ? ' selected' : ''}>${l}</option>`).join('')}</select></div>`}
@@ -177,7 +181,7 @@ export function bindFilterBar(root, f, redraw, scene) {
   bar.querySelectorAll('[data-ifk]').forEach((b) => (b.onclick = () => { f.kind = b.dataset.ifk; if (f.kind !== 'all' && f.kind !== 'gear') f.slot = 'any'; click(); redraw(); }));
   bar.querySelectorAll('[data-if]').forEach((b) => (b.onclick = () => { f[b.dataset.if] = !f[b.dataset.if]; click(); redraw(); }));
   const sel = (cls, key, num = false) => { const e = bar.querySelector(cls); if (e) e.onchange = () => { f[key] = num ? +e.value : e.value; if (key === 'slot' && e.value !== 'any' && f.kind !== 'gear') f.kind = 'gear'; click(); redraw(); }; };
-  sel('.if-slot', 'slot'); sel('.if-rar', 'rar', true); sel('.if-sort', 'sort');
+  sel('.if-slot', 'slot'); sel('.if-job', 'job'); sel('.if-rar', 'rar', true); sel('.if-sort', 'sort');
   const q = bar.querySelector('.if-q');
   if (q) {
     q.addEventListener('keydown', (e) => e.stopPropagation());
@@ -193,7 +197,7 @@ export function bindFilterBar(root, f, redraw, scene) {
 /** ป้าย ▲/▼ มุมช่องไอเทม (CP ที่เปลี่ยนถ้าสวม) */
 export function gainBadge(c, id) {
   const it = ITEMS[id];
-  if (!canWear(c, it) || it.type === 'flask') return '';
+  if (!canWear(c, it) || it.type === 'flask' || !isMine(c, it)) return '';          // ▲ เฉพาะของสายที่เล่นอยู่
   const g = cpGain(c, id);
   if (g == null || Math.abs(g) < 1) return '';
   return g > 0 ? `<i class="cp-up" title="ใส่แล้วค่าพลังรวม +${g.toLocaleString('en-US')}">▲</i>` : '';

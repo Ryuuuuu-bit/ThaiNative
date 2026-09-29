@@ -30,7 +30,7 @@ import { TILE, T, SPAWN as TD_SPAWN, isIsland, bakeTileset, bakeProps, OX } from
 import { TD_MAPS, EVENT_MAPS, getMap, validMap, arrivalPoint } from '/shared/td/maps.js';
 import { CRYPT_ZONES, lvOf } from '/shared/data/crypt.js';
 import { WorldBossUI } from '../topdown/WorldBoss.js';
-import { hasDir8 } from '../topdown/Dir8.js';
+import { hasDir8, resolveAct } from '../topdown/Dir8.js';
 import { dirFromVector, stableDir, playDir, registerDir8, texKey } from '../topdown/Dir8.js';
 import { TdSkills } from '../topdown/TdSkills.js';
 import { GEAR_TYPES, FLASK_SLOTS } from '/shared/data/slots.js';
@@ -51,10 +51,10 @@ const NONE = '__none';                                  // autoMobs: ยกเ�
 
 const $ = (s) => document.querySelector(s);
 /** ท่าโจมตีจริงตามอาวุธ (ถ้ามีภาพ): ดาบ = ฟัน · ธนู = ยิง · ไม้เท้า = ร่าย · มวย = ต่อย */
-const ACTION_ANIM = { swordman: 'slash', archer: 'shoot', mage: 'cast', boxer: 'attack', healer: 'cast' };
+const ACTION_ANIM = { swordman: 'slash', archer: 'shoot', mage: 'cast', boxer: 'attack', healer: 'heal' };   // heal = ท่าพนมมือแล้วปล่อยแสงรักษา (ชุดที่ยังไม่มีภาพ → cast)
 const SPEED = 92;
 /** ความเร็ว/วนซ้ำของท่า 8 ทิศ */
-const D8_RATE = { idle: [5, true], walk: [10, true], attack: [14, false], slash: [20, false], shoot: [18, false], cast: [18, false], hit: [12, false], die: [8, false] };
+const D8_RATE = { idle: [5, true], walk: [10, true], attack: [14, false], slash: [20, false], shoot: [18, false], cast: [18, false], heal: [20, false], hit: [12, false], die: [8, false] };
 /** ระบบ Auto: หาผีเองในรัศมีนี้รอบตัว (px ≈ 10 ช่อง) */
 const AUTO_MARGIN = 24;                                    // Auto: ตีผีทุกตัวที่อยู่ในหน้าจอ (ขอบจอเผื่อไว้นิดหน่อย)
 const AUTO_GIVEUP = 6000;                                  // ไล่เป้า Auto นานเกินนี้โดยไม่ได้ตี (ทางตัน) → ข้ามไปตัวอื่นชั่วคราว                                   // ความเร็วเดิน (px/วิ) – ตรงกับ server/td.js
@@ -493,7 +493,7 @@ export class TopDownScene extends Phaser.Scene {
     gmStyle(this.nameTag, this.selfGm());
     this.titleTag = makeText(this, 0, 0, '', { fontSize: '7px', color: '#ffffff', align: 'center' }).setOrigin(0.5, 1).setDepth(99999).setVisible(false);
     this.refreshNameTag();
-    p.on('animationcomplete', (anim) => { if (/:(attack|cast|hit|slash|shoot)(:|$)/.test(anim.key) && p.alive) p.st = 'idle'; });
+    p.on('animationcomplete', (anim) => { if (/:(attack|cast|heal|hit|slash|shoot)(:|$)/.test(anim.key) && p.alive) p.st = 'idle'; });
     this.playerAnim('idle');
   }
 
@@ -879,8 +879,8 @@ export class TopDownScene extends Phaser.Scene {
     this.playerAnim('attack', true);
     const magic = JOBS[p.char.appearance.job]?.attack?.kind === 'magic';
     // จังหวะ: ง้าง/รวมพลังก่อน แล้วค่อยปล่อย (ธนู ~170ms · เวท ~150ms · ดาบฟันตอน ~110ms)
-    const act = ACTION_ANIM[p.char.appearance.job], real = act && this.anims.exists(`td:${p.d8id}:${act}:south`);
-    const fireAt = real ? ({ slash: 170, shoot: 300, cast: 260, attack: 150 }[act] || 150) : ranged ? (magic ? 150 : 170) : 110;
+    const act = resolveAct(this, p.d8id, ACTION_ANIM[p.char.appearance.job]), real = act && this.anims.exists(`td:${p.d8id}:${act}:south`);
+    const fireAt = real ? ({ slash: 170, shoot: 300, cast: 260, heal: 260, attack: 150 }[act] || 150) : ranged ? (magic ? 150 : 170) : 110;
     if (!ranged) { const k = Math.min(1, 4 / Math.max(1, dist(p, m))); this.tweens.add({ targets: p, x: p.x + (m.x - p.x) * k, y: p.y + (m.y - p.y) * k, duration: 90, yoyo: true, ease: 'Quad.easeOut' }); }
     this.time.delayedCall(ranged ? fireAt - 40 : 0, () => this.sfx.play(ranged ? 'arrow' : 'swing'));
     if (ranged) this.time.delayedCall(fireAt, () => m.alive && p.alive && this.vfx.shoot(p, m, JOBS[p.char.appearance.job]?.attack?.projectile === 'pill' ? 'pill' : magic ? 'magic' : 'arrow'));

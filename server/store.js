@@ -85,6 +85,8 @@ class PgStore {
       }
     }
     await this.migrateNames();
+    try { const r = await this.purgeDeleted(); console.log(`[store] purge: เพื่อนค้าง ${r.friends} ตัว · กันชื่อหมดอายุ ${r.holds} · เซสชันหมดอายุ ${r.sessions}`); }
+    catch (e) { console.error('[store] purge:', e.message); }
     return this;
   }
 
@@ -177,6 +179,33 @@ class PgStore {
   async deleteCharacter(accountId, slot) {
     await this.pool.query('DELETE FROM characters WHERE account_id = $1 AND slot = $2', [accountId, slotOf(slot)]);
   }
+  /** ลบตัวละครแล้ว: ถอดชื่อนี้ออกจากรายชื่อเพื่อนของทุกคน (ตัวที่ออฟไลน์อยู่ในฐานข้อมูล) */
+  async dropFriendRefs(accountId, name) {
+    const r = await this.pool.query(
+      `UPDATE characters SET data = jsonb_set(data, '{friends}', COALESCE((SELECT jsonb_agg(f) FROM jsonb_array_elements(data->'friends') f
+          WHERE NOT ((f->>'acc')::int = $1 AND lower(f->>'name') = lower($2))), '[]'::jsonb))
+        WHERE jsonb_typeof(data->'friends') = 'array' AND data->'friends' @> jsonb_build_array(jsonb_build_object('acc', $1::int))`, [accountId, String(name || '')]);
+    return r.rowCount || 0;
+  }
+  /** เปลี่ยนชื่อแล้ว: ชื่อในรายชื่อเพื่อนของคนอื่นเปลี่ยนตาม */
+  async renameFriendRefs(accountId, oldName, newName) {
+    await this.pool.query(
+      `UPDATE characters SET data = jsonb_set(data, '{friends}', (SELECT jsonb_agg(CASE WHEN (f->>'acc')::int = $1 AND lower(f->>'name') = lower($2) THEN jsonb_set(f, '{name}', to_jsonb($3::text)) ELSE f END)
+          FROM jsonb_array_elements(data->'friends') f))
+        WHERE jsonb_typeof(data->'friends') = 'array' AND jsonb_array_length(data->'friends') > 0 AND data->'friends' @> jsonb_build_array(jsonb_build_object('acc', $1::int))`, [accountId, String(oldName), String(newName)]);
+  }
+  /** ล้างข้อมูลค้างของตัวละครที่ถูกลบ (รันตอนเปิด server): เพื่อนที่ไม่มีตัวละครชื่อนั้นแล้ว · กันชื่อ/เซสชันที่หมดอายุ */
+  async purgeDeleted() {
+    const f = await this.pool.query(
+      `UPDATE characters c SET data = jsonb_set(c.data, '{friends}', COALESCE((SELECT jsonb_agg(f) FROM jsonb_array_elements(c.data->'friends') f
+          WHERE EXISTS (SELECT 1 FROM characters o WHERE o.account_id = (f->>'acc')::int AND lower(o.data->>'name') = lower(f->>'name'))), '[]'::jsonb))
+        WHERE jsonb_typeof(c.data->'friends') = 'array' AND jsonb_array_length(c.data->'friends') > 0
+          AND EXISTS (SELECT 1 FROM jsonb_array_elements(c.data->'friends') f
+                       WHERE NOT EXISTS (SELECT 1 FROM characters o WHERE o.account_id = (f->>'acc')::int AND lower(o.data->>'name') = lower(f->>'name')))`);
+    const h = await this.pool.query('DELETE FROM name_holds WHERE until < now()');
+    const s = await this.pool.query('DELETE FROM sessions WHERE expires_at < now()');
+    return { friends: f.rowCount || 0, holds: h.rowCount || 0, sessions: s.rowCount || 0 };
+  }
   /** ค่าเก็บถาวรทั่วไป (เช่น ข่าวจาก GM) */
   async getMeta(key) {
     await this.pool.query('CREATE TABLE IF NOT EXISTS meta (key TEXT PRIMARY KEY, value TEXT)');
@@ -238,6 +267,21 @@ class MemoryStore {
   async getCharacter(id, slot = 0) { return this.chars.get(`${id}:${slotOf(slot)}`) || null; }
   async saveCharacter(id, slot, data) { this.chars.set(`${id}:${slotOf(slot)}`, data); }
   async deleteCharacter(id, slot) { this.chars.delete(`${id}:${slotOf(slot)}`); }
+  async dropFriendRefs(acc, name) {
+    let n = 0; const low = String(name || '').toLowerCase();
+    for (const c of this.chars.values()) { const b = (c.friends || []).length; if (!b) continue; c.friends = c.friends.filter((f) => !(f.acc === acc && String(f.name).toLowerCase() === low)); if (c.friends.length < b) n++; }
+    return n;
+  }
+  async renameFriendRefs(acc, oldName, newName) {
+    const low = String(oldName).toLowerCase();
+    for (const c of this.chars.values()) for (const f of c.friends || []) if (f.acc === acc && String(f.name).toLowerCase() === low) f.name = newName;
+  }
+  async purgeDeleted() {
+    const names = new Set([...this.chars.entries()].map(([k, c]) => `${k.split(':')[0]}|${String(c.name).toLowerCase()}`));
+    let n = 0;
+    for (const c of this.chars.values()) { const b = (c.friends || []).length; if (!b) continue; c.friends = c.friends.filter((f) => names.has(`${f.acc}|${String(f.name).toLowerCase()}`)); if (c.friends.length < b) n++; }
+    return { friends: n, holds: 0, sessions: 0 };
+  }
   async namesLike(base) { const b = base.toLowerCase(); return [...this.chars.values()].map((c) => String(c.name).toLowerCase()).filter((n) => n === b || n.startsWith(`${b} #`)); }
   async rankCharacters(limit = 3000) {
     return [...this.chars.entries()].slice(0, limit).map(([k, data]) => { const [acc, slot] = k.split(':'); return { acc: +acc, slot: +slot, data }; });

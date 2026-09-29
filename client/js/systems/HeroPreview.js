@@ -16,10 +16,11 @@ export const heroId = (a) => { const m = ITEMS[a?.costume?.outfit]?.model; retur
 export const DIRS = ['south', 'south-east', 'east', 'north-east', 'north', 'north-west', 'west', 'south-west'];
 /** ลำดับหมุนตัวตามเข็มนาฬิกา (มองจากบน) */
 export const TURN = ['south', 'south-west', 'west', 'north-west', 'north', 'north-east', 'east', 'south-east'];
-const RATE = { idle: 5, walk: 10, attack: 14, slash: 16, shoot: 14, cast: 13, spell: 10, die: 8 };
+const RATE = { idle: 5, walk: 10, attack: 14, slash: 16, shoot: 14, cast: 13, spell: 10, heal: 10, die: 8 };
 /** ท่าโจมตีจริงตามอาวุธ (ดาบ = ฟัน · ธนู = ยิง · ไม้เท้า = ร่าย · มือเปล่า = ต่อย) — แบบเดียวกับในเกม */
 // นักเวทย์: ท่า 'spell' (ร่ายเวทถือไม้เท้า) ถ้ายังไม่มีสไปรต์ → ยืน idle + วงเวท/ประกายแทน (ท่า cast เดิมเป็นท่าวิ่งปาลูกไฟ ไม่เหมาะกับหน้าสร้างตัว)
-const ACTION = { swordman: 'slash', archer: 'shoot', mage: 'spell', boxer: 'attack', healer: 'spell' };
+// หมอยา: ไม่ใช้ภาพ 'spell' (ไฟม่วงของหมอผีติดมากับภาพ) → ยืน + วงสมุนไพรเขียวทอง/ใบไม้ลอยแทน
+const ACTION = { swordman: 'slash', archer: 'shoot', mage: 'spell', boxer: 'attack', healer: 'heal' };
 const BORROW = { attack: 'walk', die: 'idle' };
 
 let metaP = null, meta = {};
@@ -76,7 +77,8 @@ export class HeroView {
     if (m) {
       const want = this.anim === 'attack' ? ACTION[this.job] || 'attack' : this.anim;
       let glow = false;
-      let anim = m.anims.includes(want) ? want : want === 'spell' ? ((glow = true), 'idle') : m.anims.includes(this.anim) ? this.anim : BORROW[this.anim];
+      if (want === 'heal' && !m.anims.includes('heal')) glow = 'heal';  // หมอยา: มีภาพท่า heal (พนมมือ→แสงรักษา) ใช้เลย · ยังไม่มี → ท่ายืน + เอฟเฟกต์เขียวทอง (ไม่ใช้ภาพ spell ที่มีไฟม่วงหมอผี)
+      let anim = want === 'heal' ? (glow ? 'idle' : 'heal') : m.anims.includes(want) ? want : want === 'spell' ? ((glow = 'spell'), 'idle') : m.anims.includes(this.anim) ? this.anim : BORROW[this.anim];
       if (!anim || !m.anims.includes(anim)) anim = 'idle';
       const im = heroImg(id, anim);
       if (!im.complete || !im.naturalWidth) return null;
@@ -125,9 +127,9 @@ export class HeroView {
     }
     if (f.hero) {
       const s = this.scale * 72 / f.sw, el = (now - this.t0) / 1000;
-      if (f.glow) spellFx(ctx, W, H, el, false);
+      if (f.glow) (f.glow === 'heal' ? healFx : spellFx)(ctx, W, H, el, false);
       ctx.drawImage(f.src, f.sx, f.sy, f.sw, f.sh, (W - f.sw * s) / 2, H * 0.97 - f.sh * s, f.sw * s, f.sh * s);
-      if (f.glow) spellFx(ctx, W, H, el, true);
+      if (f.glow) (f.glow === 'heal' ? healFx : spellFx)(ctx, W, H, el, true);
     } else {
       const s = Math.max(1, Math.floor((H * 0.62) / f.sh * 2) / 2);
       const dw = f.sw * s, dh = f.sh * s;
@@ -168,6 +170,39 @@ function spellFx(ctx, W, H, t, front) {
       ctx.globalAlpha = (1 - ph) * k; ctx.fillStyle = i % 3 ? '#d7b8ff' : '#fff6c2';
       const sz = Math.max(3, W * 0.02) * (1 - ph * 0.5);
       ctx.fillRect(x - sz / 2, y - sz / 2, sz, sz);
+    }
+  }
+  ctx.restore();
+}
+
+/** หมอยา: วงยันต์สมุนไพรสีเขียว-ทอง + ใบไม้/ประกายรักษาลอยขึ้น (ไม่ใช้สีม่วงของหมอผี) */
+function healFx(ctx, W, H, t, front) {
+  t = Math.max(0, t); const k = Math.max(0.01, Math.min(1, t / 0.35)), cx = W / 2, cy = H * 0.9, pulse = 0.75 + 0.25 * Math.sin(t * 6);
+  ctx.save();
+  if (!front) {
+    ctx.globalAlpha = 0.85 * k;
+    ctx.strokeStyle = '#7dde92'; ctx.lineWidth = Math.max(1.5, W * 0.008);
+    ctx.shadowColor = '#58d68d'; ctx.shadowBlur = W * 0.04;
+    const rx = W * 0.26 * k, ry = H * 0.065 * k;
+    ctx.beginPath(); ctx.ellipse(cx, cy, rx, ry, 0, 0, Math.PI * 2); ctx.stroke();
+    ctx.strokeStyle = '#f4d03f';
+    ctx.beginPath(); ctx.ellipse(cx, cy, rx * 0.7, ry * 0.7, 0, 0, Math.PI * 2); ctx.stroke();
+    for (let i = 0; i < 4; i++) {                     // กากบาทรักษา 4 จุดบนวง
+      const a = t * 1.2 + i * Math.PI / 2, x = cx + Math.cos(a) * rx * 0.85, y = cy + Math.sin(a) * ry * 0.85;
+      ctx.fillStyle = '#eafff0'; ctx.fillRect(x - 1, y - 4, 3, 9); ctx.fillRect(x - 4, y - 1, 9, 3);
+    }
+    const g = ctx.createRadialGradient(cx, H * 0.55, 0, cx, H * 0.55, W * 0.4);
+    g.addColorStop(0, `rgba(88,214,141,${0.5 * pulse * k})`); g.addColorStop(1, 'rgba(88,214,141,0)');
+    ctx.globalAlpha = 1; ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
+  } else {
+    for (let i = 0; i < 14; i++) {                    // ใบไม้ + ประกายลอยขึ้นช้า ๆ
+      const ph = (t * 0.4 + i / 14) % 1, a = t * 1.5 + i * 2.3;
+      const x = cx + Math.cos(a) * W * 0.22 * (1 - ph * 0.3), y = cy - ph * H * 0.7;
+      if (Math.sin(a) < 0) continue;
+      ctx.globalAlpha = (1 - ph) * k;
+      const sz = Math.max(5, W * 0.035) * (1 - ph * 0.4);
+      if (i % 3 === 0) { ctx.fillStyle = '#fff6c2'; ctx.fillRect(x - sz / 3, y - sz / 3, sz * 0.66, sz * 0.66); }
+      else { ctx.fillStyle = i % 2 ? '#7dde92' : '#a9e34b'; ctx.save(); ctx.translate(x, y); ctx.rotate(a); ctx.fillRect(-sz / 2, -sz / 4, sz, sz / 2); ctx.restore(); }
     }
   }
   ctx.restore();

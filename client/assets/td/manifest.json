@@ -41,7 +41,8 @@
     "shoot",
     "cast",
     "spell",
-    "die"
+    "die",
+    "heal"
    ],
    "frames": {
     "idle": 4,
@@ -51,7 +52,8 @@
     "shoot": 7,
     "cast": 6,
     "spell": 8,
-    "die": 7
+    "die": 7,
+    "heal": 7
    },
    "frame": 72,
    "scale": 0.667
@@ -65,7 +67,8 @@
     "shoot",
     "cast",
     "spell",
-    "die"
+    "die",
+    "heal"
    ],
    "frames": {
     "idle": 4,
@@ -75,7 +78,8 @@
     "shoot": 7,
     "cast": 6,
     "spell": 8,
-    "die": 7
+    "die": 7,
+    "heal": 7
    },
    "frame": 72,
    "scale": 0.667
@@ -723,7 +727,8 @@
     "shoot",
     "cast",
     "spell",
-    "die"
+    "die",
+    "heal"
    ],
    "frames": {
     "idle": 4,
@@ -733,7 +738,8 @@
     "shoot": 9,
     "cast": 6,
     "spell": 9,
-    "die": 7
+    "die": 7,
+    "heal": 7
    },
    "frame": 72,
    "scale": 0.667,
@@ -748,7 +754,8 @@
     "shoot",
     "cast",
     "spell",
-    "die"
+    "die",
+    "heal"
    ],
    "frames": {
     "idle": 4,
@@ -758,7 +765,8 @@
     "shoot": 9,
     "cast": 6,
     "spell": 9,
-    "die": 7
+    "die": 7,
+    "heal": 7
    },
    "frame": 72,
    "scale": 0.667,
@@ -773,7 +781,8 @@
     "shoot",
     "cast",
     "spell",
-    "die"
+    "die",
+    "heal"
    ],
    "frames": {
     "idle": 4,
@@ -783,7 +792,8 @@
     "shoot": 9,
     "cast": 6,
     "spell": 9,
-    "die": 7
+    "die": 7,
+    "heal": 7
    },
    "frame": 72,
    "scale": 0.667,
@@ -798,7 +808,8 @@
     "shoot",
     "cast",
     "spell",
-    "die"
+    "die",
+    "heal"
    ],
    "frames": {
     "idle": 4,
@@ -808,7 +819,8 @@
     "shoot": 9,
     "cast": 6,
     "spell": 9,
-    "die": 7
+    "die": 7,
+    "heal": 7
    },
    "frame": 72,
    "scale": 0.667,
@@ -823,7 +835,8 @@
     "shoot",
     "cast",
     "spell",
-    "die"
+    "die",
+    "heal"
    ],
    "frames": {
     "idle": 4,
@@ -833,7 +846,8 @@
     "shoot": 9,
     "cast": 6,
     "spell": 9,
-    "die": 7
+    "die": 7,
+    "heal": 7
    },
    "frame": 72,
    "scale": 0.667,
@@ -848,7 +862,8 @@
     "shoot",
     "cast",
     "spell",
-    "die"
+    "die",
+    "heal"
    ],
    "frames": {
     "idle": 4,
@@ -858,7 +873,8 @@
     "shoot": 9,
     "cast": 6,
     "spell": 9,
-    "die": 7
+    "die": 7,
+    "heal": 7
    },
    "frame": 72,
    "scale": 0.667,
@@ -873,7 +889,8 @@
     "shoot",
     "cast",
     "spell",
-    "die"
+    "die",
+    "heal"
    ],
    "frames": {
     "idle": 4,
@@ -883,7 +900,8 @@
     "shoot": 9,
     "cast": 6,
     "spell": 9,
-    "die": 7
+    "die": 7,
+    "heal": 7
    },
    "frame": 72,
    "scale": 0.667,
@@ -898,7 +916,8 @@
     "shoot",
     "cast",
     "spell",
-    "die"
+    "die",
+    "heal"
    ],
    "frames": {
     "idle": 4,
@@ -908,7 +927,8 @@
     "shoot": 9,
     "cast": 6,
     "spell": 9,
-    "die": 7
+    "die": 7,
+    "heal": 7
    },
    "frame": 72,
    "scale": 0.667,
@@ -923,7 +943,8 @@
     "shoot",
     "cast",
     "spell",
-    "die"
+    "die",
+    "heal"
    ],
    "frames": {
     "idle": 4,
@@ -933,7 +954,8 @@
     "shoot": 9,
     "cast": 6,
     "spell": 9,
-    "die": 7
+    "die": 7,
+    "heal": 7
    },
    "frame": 72,
    "scale": 0.667,
@@ -948,7 +970,8 @@
     "shoot",
     "cast",
     "spell",
-    "die"
+    "die",
+    "heal"
    ],
    "frames": {
     "idle": 4,
@@ -958,7 +981,8 @@
     "shoot": 9,
     "cast": 6,
     "spell": 9,
-    "die": 7
+    "die": 7,
+    "heal": 7
    },
    "frame": 72,
    "scale": 0.667,
@@ -973,7 +997,8 @@
     "shoot",
     "cast",
     "spell",
-    "die"
+    "die",
+    "heal"
    ],
    "frames": {
     "idle": 4,
@@ -983,7 +1008,8 @@
     "shoot": 9,
     "cast": 6,
     "spell": 9,
-    "die": 7
+    "die": 7,
+    "heal": 7
    },
    "frame": 72,
    "scale": 0.667,
@@ -998,7 +1024,8 @@
     "shoot",
     "cast",
     "spell",
-    "die"
+    "die",
+    "heal"
    ],
    "frames": {
     "idle": 4,
@@ -1008,7 +1035,8 @@
     "shoot": 9,
     "cast": 6,
     "spell": 9,
-    "die": 7
+    "die": 7,
+    "heal": 7
    },
    "frame": 72,
    "scale": 0.667,
@@ -1023,7 +1051,8 @@
     "shoot",
     "cast",
     "spell",
-    "die"
+    "die",
+    "heal"
    ],
    "frames": {
     "idle": 4,
@@ -1033,7 +1062,8 @@
     "shoot": 9,
     "cast": 6,
     "spell": 9,
-    "die": 7
+    "die": 7,
+    "heal": 7
    },
    "frame": 72,
    "scale": 0.667,
@@ -1048,7 +1078,8 @@
     "shoot",
     "cast",
     "spell",
-    "die"
+    "die",
+    "heal"
    ],
    "frames": {
     "idle": 4,
@@ -1058,7 +1089,8 @@
     "shoot": 9,
     "cast": 6,
     "spell": 9,
-    "die": 7
+    "die": 7,
+    "heal": 7
    },
    "frame": 72,
    "scale": 0.667,
@@ -1073,7 +1105,8 @@
     "shoot",
     "cast",
     "spell",
-    "die"
+    "die",
+    "heal"
    ],
    "frames": {
     "idle": 4,
@@ -1083,7 +1116,8 @@
     "shoot": 9,
     "cast": 6,
     "spell": 9,
-    "die": 7
+    "die": 7,
+    "heal": 7
    },
    "frame": 72,
    "scale": 0.667,
@@ -1098,7 +1132,8 @@
     "shoot",
     "cast",
     "spell",
-    "die"
+    "die",
+    "heal"
    ],
    "frames": {
     "idle": 4,
@@ -1108,7 +1143,8 @@
     "shoot": 9,
     "cast": 6,
     "spell": 9,
-    "die": 7
+    "die": 7,
+    "heal": 7
    },
    "frame": 72,
    "scale": 0.667,
@@ -1123,7 +1159,8 @@
     "shoot",
     "cast",
     "spell",
-    "die"
+    "die",
+    "heal"
    ],
    "frames": {
     "idle": 4,
@@ -1133,7 +1170,8 @@
     "shoot": 9,
     "cast": 6,
     "spell": 9,
-    "die": 7
+    "die": 7,
+    "heal": 7
    },
    "frame": 72,
    "scale": 0.667,
@@ -1148,7 +1186,8 @@
     "shoot",
     "cast",
     "spell",
-    "die"
+    "die",
+    "heal"
    ],
    "frames": {
     "idle": 4,
@@ -1158,7 +1197,8 @@
     "shoot": 9,
     "cast": 6,
     "spell": 9,
-    "die": 7
+    "die": 7,
+    "heal": 7
    },
    "frame": 72,
    "scale": 0.667,
