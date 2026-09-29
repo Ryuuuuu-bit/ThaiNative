@@ -43,6 +43,26 @@ export class TouchControls {
     adopt('.actionbar .auto-wrap', 't-auto');
     adopt('.actionbar #skillbar', 't-arc');
     adopt('.actionbar #flask-bar', 't-flasks');
+    // กดค้างที่ช่องสกิล/ไอเทม = ดูคำอธิบาย (มือถือไม่มีเมาส์ชี้) · ไม่ร่ายสกิล
+    const bar = document.getElementById('skillbar');
+    if (bar) {
+      let timer = 0, fired = false;
+      bar.addEventListener('pointerdown', (e) => {
+        const el = e.target.closest('.skill'); fired = false; clearTimeout(timer);
+        if (!el) return;
+        timer = setTimeout(() => {
+          const tip = el.querySelector('.tip'); if (!tip) return;
+          fired = true;
+          const lines = tip.innerHTML.split(/<br\s*\/?>/i).map((l) => l.replace(/<[^>]+>/g, '').replace(/&amp;/g, '&').trim()).filter((l) => l && !/กด ✕|คลิกขวา/.test(l));
+          this.s.ui.toast(`ℹ️ ${lines.join(' · ')}`, '', 4200);
+          navigator.vibrate?.(15);
+        }, 480);
+      });
+      const cancel = () => clearTimeout(timer);
+      bar.addEventListener('pointerup', cancel); bar.addEventListener('pointercancel', cancel); bar.addEventListener('pointerleave', cancel);
+      bar.addEventListener('click', (e) => { if (fired) { fired = false; e.stopImmediatePropagation(); e.preventDefault(); } }, true);
+      bar.addEventListener('contextmenu', (e) => e.preventDefault());
+    }
     const page = document.createElement('button');
     page.className = 't-btn t-page'; page.id = 't-page'; page.setAttribute('aria-label', 'สลับหน้าสกิล'); page.innerHTML = '<b>1–5</b>⇄';
     root.appendChild(page);

@@ -896,6 +896,22 @@
     "ui_moon_crystal": "assets/icons/ui_moon_crystal.png",
     "ui_yant": "assets/icons/ui_yant.png",
     "ui_mvp": "assets/icons/ui_mvp.png",
-    "ui_rahu": "assets/icons/ui_rahu.png"
+    "ui_rahu": "assets/icons/ui_rahu.png",
+    "ui_donate": "assets/icons/ui_donate.png",
+    "ui_fullscreen": "assets/icons/ui_fullscreen.png",
+    "ui_swap": "assets/icons/ui_swap.png",
+    "ui_compass": "assets/icons/ui_compass.png",
+    "ui_globe": "assets/icons/ui_globe.png",
+    "ui_menu": "assets/icons/ui_menu.png",
+    "ui_info": "assets/icons/ui_info.png",
+    "ui_return": "assets/icons/ui_return.png",
+    "ui_mute": "assets/icons/ui_mute.png",
+    "ui_flag": "assets/icons/ui_flag.png",
+    "ui_elephant": "assets/icons/ui_elephant.png",
+    "ui_naga_snake": "assets/icons/ui_naga_snake.png",
+    "ui_monkey": "assets/icons/ui_monkey.png",
+    "ui_croc": "assets/icons/ui_croc.png",
+    "ui_garuda": "assets/icons/ui_garuda.png",
+    "ui_comet": "assets/icons/ui_comet.png"
   }
 }

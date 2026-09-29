@@ -57,15 +57,19 @@ assert.ok(Math.max(...v) / Math.min(...v) < 2.5, `DPS spread ok ${JSON.stringify
 
 // 6) สกิล 20 แบบ: อาชีพละ 5, id ไม่ซ้ำ, สเกลตามเลเวล, เงื่อนไขการเรียน
 import { SKILL_BY_ID, skillStats, canLearn, MAX_SKILL_LV, reqCharLevel, skillCap } from '../shared/data/skills.js';
-assert.equal(Object.keys(SKILL_BY_ID).length, 20, '20 skills');
+// (เดิมล็อก 20 สกิล/อาชีพละ 5 · ตอนนี้มีสกิลขั้นสูง Lv.100 + ไฮบริด → ตรวจโครงสร้างแทนจำนวนตายตัว)
+const allSk = Object.values(SKILLS).flat();
+assert.equal(new Set(allSk.map((s) => s.id)).size, allSk.length, 'skill ids unique');
+assert.ok(Object.keys(SKILL_BY_ID).length >= allSk.length, 'SKILL_BY_ID covers all');
 for (const [job, list] of Object.entries(SKILLS)) {
-  assert.equal(list.length, 5, `${job} has 5 skills`);
-  assert.equal(list.filter((s) => s.ultimate).length, 1, `${job} has 1 ultimate`);
+  assert.ok(list.length >= 5, `${job} has >= 5 skills`);
+  if (job !== 'hybrid') assert.ok(list.filter((s) => s.ultimate).length >= 1, `${job} has an ultimate`);   // สกิลผสมไม่มีท่าไม้ตาย
   for (const s of list) {
     const a1 = skillStats(s, 1), a5 = skillStats(s, MAX_SKILL_LV);
     assert.ok(a1.cd > 0 && a1.mp > 0, `${s.id} cost`);
     assert.ok(a5.cd < a1.cd && a5.mp >= a1.mp, `${s.id} scales cd/mp`);
-    if (s.type !== 'buff') assert.ok(a5.mult > a1.mult, `${s.id} scales dmg`);
+    if (a1.mult) assert.ok(a5.mult > a1.mult, `${s.id} scales dmg`);          // สายโจมตี
+    else if (a1.heal) assert.ok(a5.heal >= a1.heal, `${s.id} scales heal`);   // สายรักษา/ปาร์ตี้
   }
 }
 const ch = { appearance: { job: 'mage' }, level: 1, sp: 1, skills: {} };
@@ -76,8 +80,12 @@ assert.equal(canLearn({ ...ch, sp: 0 }, 'mage_akom').ok, false, 'no SP');
 assert.equal(canLearn({ ...ch, skills: { mage_akom: 1 } }, 'mage_akom').ok, false, 'lv2 needs char lv3');
 assert.equal(reqCharLevel(SKILL_BY_ID.mage_akom, 2), 3);
 
-// 6b) ต้นไม้พรสวรรค์: เพดานสกิล = 2 + แต้มกิ่ง÷2 · ท่าไม้ตายต้องมีคีย์สโตน
-{
+// 6b) ต้นไม้พรสวรรค์: เพดานสกิล = 2 + แต้มกิ่ง÷2 · ท่าไม้ตายต้องมีคีย์สโตน (ตอนนี้ปิดระบบชั่วคราว PASSIVES_ON=false → ข้าม)
+import { PASSIVES_ON } from '../shared/data/passives.js';
+if (!PASSIVES_ON) {
+  const v = { level: 20, sp: 10, skills: { sword_twin: 2 } };
+  assert.equal(canLearn(v, 'sword_twin').ok, true, 'passives off: skill levels by char level');
+} else {
   const v = { passives: ['root'], level: 20, sp: 10, skills: { sword_twin: 2 } };
   assert.equal(canLearn(v, 'sword_twin').ok, false, 'no branch points → capped at 2');
   assert.equal(canLearn(v, 'sword_pikat').ok, false, 'no keystone → no ultimate');

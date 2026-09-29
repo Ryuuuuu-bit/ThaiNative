@@ -154,10 +154,10 @@ const dungeon = setupDungeon(io, players, { social, ...helpers });
 const td = setupTD(io, players, { dayMs: DAY_MS, shareExp: social.shareExp, ...helpers });
 const tdSys = td;                                   // (ในตัวจัดการสกิล ชื่อ td ถูกใช้เป็นธงโลก top-down)
 /** หมอยา: ฮีล/สายใย/เมล็ด/ชุบชีวิต/กันตาย */
-healer = setupHealer(io, players, { ...helpers, social, tdSys });
+healer = setupHealer(io, players, { ...helpers, social, tdSys, onHeal: (c, n) => worldBoss?.onHeal?.(c, n) });
 setInterval(() => healer.tick(), 250);
 /** บอสโลกพระราหู (ลานสุริยคราส) */
-const worldBoss = setupWorldBoss(io, players, { td, hurtPlayer, queueSync, social, refresh });
+const worldBoss = setupWorldBoss(io, players, { td, hurtPlayer, queueSync, social, refresh, storeReady });
 
 function publicPlayer(p) {
   return {

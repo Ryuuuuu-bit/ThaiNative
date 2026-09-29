@@ -6,12 +6,13 @@
 // ============================================================
 import {
   WB_ID, WB_MAP, ARENA, ARENA_C, arenaPx, PHASES, phaseOf, WB_SKILLS, TRAPS, NAVA_COLORS, wbHp,
-  nextSpawnAt, lastSpawnAt, WB_FIGHT_MS, WB_ANNOUNCE_MS, WB_CLOSE_MS, WB_MVP_MS, WB_STONE, wbReward, WB_MIN_SHARE, WB_BASE_EXP, WB_BASE_GOLD,
+  nextSpawnAt, lastSpawnAt, WB_FIGHT_MS, WB_ANNOUNCE_MS, WB_CLOSE_MS, WB_MVP_MS, WB_STONE, wbReward, WB_MIN_SHARE, WB_FULL_LV, WB_BASE_EXP, WB_BASE_GOLD,
 } from '../shared/data/worldboss.js';
 import { TD_MAPS } from '../shared/td/maps.js';
 import { TILE } from '../shared/td/ayutthaya.js';
 import { addItem } from '../shared/economy.js';
 import { gainExp } from '../shared/charmodel.js';
+import { mobExp } from '../shared/stats.js';
 import { ITEMS } from '../shared/data/items.js';
 import { RED_GEAR } from '../shared/data/gear.js';
 import { checkTitles } from '../shared/data/titles.js';
@@ -21,7 +22,7 @@ const pick = (arr) => arr[Math.floor(Math.random() * arr.length)];
 const shuffle = (a) => { for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
 const angDiff = (a, b) => { let d = a - b; while (d > Math.PI) d -= Math.PI * 2; while (d < -Math.PI) d += Math.PI * 2; return Math.abs(d); };
 
-export function setupWorldBoss(io, players, { td, hurtPlayer, queueSync, social, refresh = () => {} }) {
+export function setupWorldBoss(io, players, { td, hurtPlayer, queueSync, social, refresh = () => {}, storeReady = null }) {
   const W = () => td.world(WB_MAP);
   const room = `td:${WB_MAP}`;
   const say = (text, name = '👑 บอสโลก') => io.emit('chat', { id: null, name, text });
@@ -59,6 +60,29 @@ export function setupWorldBoss(io, players, { td, hurtPlayer, queueSync, social,
   // ------------------------------------------------------------
   //  เข้า/ออกลาน
   // ------------------------------------------------------------
+  // ---------- เก็บรางวัลค้าง + ป้าย MVP ลงฐานข้อมูล (รีสตาร์ต/deploy ไม่หาย) ----------
+  let persistT = null;
+  function persist() {
+    if (!storeReady) return;
+    clearTimeout(persistT);
+    persistT = setTimeout(async () => {
+      try {
+        const now = Date.now();
+        const pending = [...S.pending].filter(([, v]) => v.until > now);
+        const data = { pending, mvp: S.mvp && S.mvp.until > now ? S.mvp : null };
+        await (await storeReady).setMeta?.('wb_state', JSON.stringify(data));
+      } catch (e) { console.error('[wb] persist', e.message); }
+    }, 500);
+  }
+  storeReady?.then(async (st) => {
+    try {
+      const d = JSON.parse((await st.getMeta?.('wb_state')) || 'null'); if (!d) return;
+      const now = Date.now();
+      for (const [k, v] of d.pending || []) if (v?.until > now && !S.pending.has(k)) S.pending.set(k, v);
+      if (d.mvp?.until > now && !S.mvp) { S.mvp = d.mvp; S.lastMvp = d.mvp; }
+    } catch (e) { console.error('[wb] load', e.message); }
+  }).catch(() => {});
+
   function go(p) {
     if (!p || p.world !== 'td') return { ok: false, msg: 'ยังไม่ได้อยู่ในโลก' };
     if (S.state !== 'open' && S.state !== 'fight') return { ok: false, msg: S.state === 'ended' ? 'การต่อสู้จบแล้ว ลานกำลังปิด' : 'ลานสุริยคราสยังไม่เปิด' };
@@ -89,12 +113,14 @@ export function setupWorldBoss(io, players, { td, hurtPlayer, queueSync, social,
   function startFight() {
     const b = boss(); if (!b) return;
     for (const m of W().mobs) if (m.wb && m.wb !== 'boss') { m.hp = 0; m.st = 'dead'; m.respawnAt = Infinity; m.pending = []; }   // ล้างผลึก/บริวารค้าง
-    S.online = players.size;
-    S.maxHp = wbHp(S.online);
+    // เลือด = 8M × "คนที่อยู่ในลานตอนบอสเกิด" (ไม่ใช่คนออนไลน์ทั้งเซิร์ฟ) · Lv.ต่ำกว่า 90 นับ 1/4 คน (ช่วยได้ แต่ไม่ถ่วงเลือดบอส)
+    const inRoom = td.playersIn(WB_MAP).filter((p) => !p.dead);
+    S.online = inRoom.length;
+    S.maxHp = wbHp(Math.max(1, inRoom.reduce((a, p) => a + ((p.level || 1) >= WB_FULL_LV ? 1 : 0.25), 0)));
     Object.assign(b, { x: ARENA_C.x, y: ARENA_C.y + TILE / 2, hp: S.maxHp, st: 'idle', target: null, pending: [], dmgBy: new Map(), stunUntil: 0, poison: null, respawnAt: Infinity, aoe: null });
     S.state = 'fight'; S.fightEnd = Date.now() + WB_FIGHT_MS; S.ledger = new Map(); S.phase = 0; S.tele = []; S.nextSkill = {}; S.gcd = Date.now() + 3000;
     S.traps = { yant: [], thornNext: Date.now() + 4000, thornSet: 0, fireNext: 0, fires: [] };
-    say(`🌑 พระราหู ผู้กลืนจันทร์ Lv.150 ลงมาแล้ว! เลือด ${S.maxHp.toLocaleString()} (ออนไลน์ ${S.online} คน) · มีเวลา 30 นาที`);
+    say(`🌑 พระราหู ผู้กลืนจันทร์ Lv.150 ลงมาแล้ว! เลือด ${S.maxHp.toLocaleString()} (ในลาน ${S.online} คน) · มีเวลา 30 นาที`);
     setPhase(1);
     push();
   }
@@ -126,6 +152,7 @@ export function setupWorldBoss(io, players, { td, hurtPlayer, queueSync, social,
       S.lastMvp = S.mvp;
       say(`★ MVP: ${killer.name} ปิดฉากพระราหู! จันทร์กลับมาสว่างแล้ว`, '👑 บอสโลก');
       io.emit('wb:mvp', S.mvp);
+      persist();
     } else {
       say(`🌘 หมดเวลา! พระราหูกลืนจันทร์แล้วหายไปในเมฆ (เหลือเลือด ${Math.round((b?.hp || 0) / S.maxHp * 100)}%) · รอบหน้าช่วยกันใหม่นะ`);
     }
@@ -147,12 +174,14 @@ export function setupWorldBoss(io, players, { td, hurtPlayer, queueSync, social,
     // สัดส่วน = ดาเมจของเรา ÷ ดาเมจรวมทุกคน (บอสฟื้นเลือดจากผลึกได้ → รวมเกินเลือดสูงสุด · ไม่ให้เกิน 100%)
     const total = Math.max(1, S.maxHp, rows.reduce((a, r) => a + r.dmg, 0));
     const board = rows.slice(0, 10).map((r, i) => ({ rank: i + 1, name: r.name, dmg: r.dmg, pct: +(r.dmg / total * 100).toFixed(2) }));
+    // เกณฑ์ขั้นต่ำ: 0.5% หรือ 20% ของค่าเฉลี่ยต่อคน (แล้วแต่อันไหนต่ำกว่า) → คนเยอะก็ยังได้ของทุกคนที่ช่วยจริง
+    const minShare = Math.min(WB_MIN_SHARE, 0.2 / Math.max(1, rows.length));
     rows.forEach((r, i) => {
       const share = r.dmg / total, rank = i + 1, isMvp = win && S.mvp?.key === r.key;
       const out = { rank, pct: +(share * 100).toFixed(2), mvp: isMvp, win, items: [], exp: 0, gold: 0, board };
-      if (share >= WB_MIN_SHARE || isMvp) {
+      if (share >= minShare || isMvp) {
         const R = wbReward(rank, share, isMvp), k = win ? 1 : 0.25;
-        out.exp = Math.round(WB_BASE_EXP * R.expK * k); out.gold = Math.round(WB_BASE_GOLD * R.goldK * k);
+        out.expBase = Math.round(WB_BASE_EXP * R.expK * k);                          // EXP จริงคิดตอนมอบ (แคป 1 เลเวล ตามเลเวลตอนรับ) out.gold = Math.round(WB_BASE_GOLD * R.goldK * k);
         out.items.push({ id: WB_STONE, qty: win ? R.stone : 1 });
         if (win) out.items.push({ id: 'yak_fang', qty: R.fang });
         if (win && Math.random() < R.card) out.items.push({ id: `card_${WB_ID}`, qty: 1, card: true });
@@ -162,12 +191,14 @@ export function setupWorldBoss(io, players, { td, hurtPlayer, queueSync, social,
       const p = [...players.values()].find((q) => q.acc === r.acc && (q.slot || 0) === r.slot);
       if (p?.save) deliver(p, out); else if (out.ok) S.pending.set(r.key, { out, until: Date.now() + 24 * 3600e3 });   // ออฟไลน์ → เก็บไว้ให้ตอนเข้าเกม (24 ชม.)
     });
+    persist();
     io.to(room).emit('wb:board', { board, win });
   }
   /** มอบรางวัลใส่เซฟ (ออนไลน์อยู่ หรือตอนเข้าเกมครั้งถัดไป) */
   function deliver(p, out) {
     const c = p.save;
     if (out.ok) {
+      if (out.expBase != null) out.exp = mobExp(out.expBase, c.level || 1, 150, true);   // แคปเหมือนบอสอื่น: ได้ไม่เกิน 1 เลเวลต่อครั้ง
       gainExp(c, out.exp); c.gold = (c.gold || 0) + out.gold;
       for (const it of out.items) addItem(c, it.id, it.qty);
       if (out.items.some((it) => it.card)) say(`🃏 ${p.name} ได้การ์ดพระราหู!`, '🃏 การ์ดหายาก');
@@ -382,7 +413,13 @@ export function setupWorldBoss(io, players, { td, hurtPlayer, queueSync, social,
   const api = {
     isOpen: () => S.state !== 'idle',
     /** เข้าเกม: รับรางวัลบอสโลกที่ค้างไว้ตอนออฟไลน์ */
-    onJoin(p) { const k = `${p.acc}:${p.slot || 0}`, r = S.pending.get(k); if (!r) return; S.pending.delete(k); if (r.until > Date.now()) setTimeout(() => players.get(p.id) === p && deliver(p, r.out), 4000); },
+    onJoin(p) { const k = `${p.acc}:${p.slot || 0}`, r = S.pending.get(k); if (!r) return; S.pending.delete(k); persist(); if (r.until > Date.now()) setTimeout(() => players.get(p.id) === p && deliver(p, r.out), 4000); },
+    /** 4) หมอยา: ฮีลเพื่อนในลานระหว่างสู้ = นับเป็นส่วนร่วม (1 HP ที่ฮีล = ดาเมจ 1) */
+    onHeal(p, amt) {
+      if (S.state !== 'fight' || !p || p.tmap !== WB_MAP || !(amt > 0)) return;
+      const key = `${p.acc}:${p.slot || 0}`, r = S.ledger.get(key) || { key, acc: p.acc, slot: p.slot || 0, name: p.name, dmg: 0 };
+      r.dmg += amt; r.heal = (r.heal || 0) + amt; r.name = p.name; r.at = Date.now(); S.ledger.set(key, r);
+    },
     onDmg(m, p, dmg) {
       if (m.wb !== 'boss' || S.state !== 'fight') return;
       const key = `${p.acc}:${p.slot || 0}`, r = S.ledger.get(key) || { key, acc: p.acc, slot: p.slot || 0, name: p.name, dmg: 0 };

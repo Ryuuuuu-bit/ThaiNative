@@ -9,7 +9,7 @@ import { combatDerived } from '../shared/character.js';
 import { questEvent } from '../shared/economy.js';
 import { checkTitles } from '../shared/data/titles.js';
 
-export function setupHealer(io, players, { healPlayer, queueSync, social, tdSys }) {
+export function setupHealer(io, players, { healPlayer, queueSync, social, tdSys, onHeal = null }) {
   const posOf = (p) => (p.world === 'td' ? { x: p.tx, y: p.ty } : { x: p.x, y: p.y });
   const sameMap = (a, b) => (a.world || 'td') === (b.world || 'td') && (a.world !== 'td' || tdSys.mapOf(a) === tdSys.mapOf(b));
   const dist = (a, b) => { const A = posOf(a), B = posOf(b); return Math.hypot(A.x - B.x, A.y - B.y); };
@@ -33,7 +33,7 @@ export function setupHealer(io, players, { healPlayer, queueSync, social, tdSys 
     healPlayer(t, amt);
     const got = Math.round(t.hp - before);
     emitRoom(caster, 'td:heal', { id: t.id, amt: got > 0 ? got : amt, over: got <= 0, fx, sk, by: caster.id });
-    if (got > 0 && t !== caster) credit(caster, 'heal', got);
+    if (got > 0 && t !== caster) { credit(caster, 'heal', got); onHeal?.(caster, got); }   // บอสโลก: ฮีลเพื่อน = ส่วนร่วม
     return got;
   }
   /** สถิติ/เควส/ฉายาของหมอยา (รักษาเพื่อน · ชุบชีวิต) — รวบส่งทีละช่วง */
@@ -90,7 +90,7 @@ export function setupHealer(io, players, { healPlayer, queueSync, social, tdSys 
           for (const t of allies(p, true)) {
             if (t !== p && dist(t, p) > sk.radius + 40) continue;
             if (t.dead) {
-              t.dead = false; if (t.save) t.save.deadAt = 0; t.hp = Math.max(1, t.maxHp * sk.heal); t.invulnUntil = at + 1500; t.hpDirty = true;
+              t.dead = false; if (t.save) t.save.deadAt = 0; t.hp = Math.max(1, t.maxHp * sk.heal); t.invulnUntil = at + 2500; t.spawnGuardUntil = at + 3000; t.hpDirty = true;
               io.to(t.id).emit('td:revive', { hp: Math.round(t.hp), maxHp: t.maxHp, by: p.name });
               emitRoom(p, 'td:heal', { id: t.id, amt: Math.round(t.hp), fx: 'revive', sk: sk.id, by: p.id });
               queueSync(t);

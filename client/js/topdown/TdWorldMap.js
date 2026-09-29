@@ -7,6 +7,7 @@ import { TILE } from '/shared/td/ayutthaya.js';
 import { TD_MAPS } from '/shared/td/maps.js';
 import { uiIcon } from '../systems/util.js';
 import { MONSTERS } from '/shared/data/monsters.js';
+import { npcPortrait } from '../systems/UI.js';
 
 const $ = (s) => document.querySelector(s);
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -75,7 +76,8 @@ export class TdWorldMap {
       </div>
       <div class="wm-realms">${Object.values(TD_MAPS).filter((m) => !m.event).map((m) => { const been = (this.s.visitedMaps || ['ayutthaya']).includes(m.id), here = m.id === this.M.id;
         return `<span class="${here ? 'here' : been ? 'been' : 'lock'}" title="${esc(m.sub)}">${uiIcon(`realm_${m.id}`, m.icon)} ${esc(m.nameTh)} <em>Lv.${m.lv[0]}–${m.lv[1]}</em>${here ? ' 📍' : been ? '' : ' 🔒'}</span>`; }).join('<b>›</b>')}</div>
-      <div class="wm-legend"><span><i class="me"></i>ตัวเรา</span><span><i class="ally"></i>ผู้เล่นอื่น</span><span><i class="npc"></i>NPC</span><span><i class="boss"></i>บอส</span><span><i class="camp"></i>แหล่งผี</span><span>🌀 ประตูมิติ</span></div>`;
+      <div class="wm-legend"><span><i class="me"></i>ตัวเรา</span><span><i class="ally"></i>ผู้เล่นอื่น</span><span><i class="npc"></i>NPC</span><span><i class="boss"></i>บอส</span><span><i class="camp"></i>แหล่งผี</span><span>🌀 ประตูมิติ</span></div>
+      ${(this.s.npcs || []).length ? `<div class="wm-npcs"><b>🧭 เดินไปหา NPC</b>${(this.s.npcs || []).map((n, i) => `<button class="wm-go" data-npc="${i}" title="${esc(n.role || '')}"><span class="wg-face" data-key="${esc(n.key)}">${esc(n.icon || '💬')}</span><span class="wg-t"><b>${esc(n.nameTh)}</b><small>${esc(n.role || '')}</small></span></button>`).join('')}</div>` : ''}`;
     const g = this.panel.querySelector('.wm-base').getContext('2d');
     g.imageSmoothingEnabled = false;
     if (this.s.groundMini) g.drawImage(this.s.groundMini, 0, 0, W, H);
@@ -89,6 +91,21 @@ export class TdWorldMap {
     const toWorld = (e) => { const r = stage.getBoundingClientRect(); return { x: (e.clientX - r.left) / r.width * MAP_W * TILE, y: (e.clientY - r.top) / r.height * MAP_H * TILE, px: e.clientX - r.left, py: e.clientY - r.top }; };
     stage.onmousemove = (e) => { const w = toWorld(e), z = this.M.ZONES[this.M.zoneAtTile(Math.floor(w.x / TILE), Math.floor(w.y / TILE))]; tip.classList.remove('hidden'); tip.style.left = `${w.px + 12}px`; tip.style.top = `${w.py + 8}px`; const nb = this.nearest(w.x, w.y); tip.innerHTML = `<b>${esc(z?.nameTh || '')}</b><br><small>${esc(z?.sub || '')}</small>${nb ? `<br>${esc(nb)}` : ''}`; };
     stage.onmouseleave = () => tip.classList.add('hidden');
+    // รายชื่อ NPC: กด = เดินไปหาเอง แล้วเปิดร้าน/คุยให้ทันทีที่ถึง
+    this.panel.querySelectorAll('.wm-go').forEach((b) => {
+      const n = this.s.npcs[+b.dataset.npc]; if (!n) return;
+      const face = b.querySelector('.wg-face');
+      npcPortrait(n.key).then((url) => { if (url) face.innerHTML = `<img src="${url}" alt="" />`; });
+      b.onclick = () => {
+        const p = this.s.player; p.target = null; p.autoTarget = null;
+        this.panel.classList.add('hidden');
+        this.s.talk(n);
+        if (this.s.pendingTalk === n) {
+          if (!p.path?.length) { this.s.pendingTalk = null; return this.s.ui.toast('หาทางไปไม่เจอ ลองเดินเข้าใกล้ก่อน', 'warn', 1800); }
+          this.s.ui.toast(`🚶 กำลังเดินไปหา ${n.nameTh} (เดินเอง/คลิกพื้นเพื่อยกเลิก)`, '', 2200);
+        }
+      };
+    });
     stage.onclick = (e) => {
       const w = toWorld(e), p = this.s.player;
       p.target = null; p.autoTarget = null;

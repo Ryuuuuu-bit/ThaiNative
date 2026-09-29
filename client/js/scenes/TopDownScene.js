@@ -12,11 +12,11 @@ import { getDerived } from '/shared/character.js';
 import { gainExp } from '/shared/charmodel.js';
 import { bakeCharacter } from '../gfx/SpriteFactory.js';
 import { bakeFx, popupNumber, hitSpark, yantCircle, squash } from '../gfx/Fx.js';
-import { makeText, uiIcon, itemIcon as itemIconHtml } from '../systems/util.js';
+import { makeText, uiIcon, itemIcon as itemIconHtml, ICONS, EMO_ICON } from '../systems/util.js';
 import { sound } from '../systems/Sound.js';
 import { loadSettings, saveSettings } from '../systems/Settings.js';
 import { saveCharacter } from '../systems/Character.js';
-import { UI, rarityOf } from '../systems/UI.js';
+import { UI, rarityOf, npcPortrait } from '../systems/UI.js';
 import { Village } from '../systems/Village.js';
 import { TdLife } from '../topdown/TdLife.js';
 import { Econ } from '../net/Econ.js';
@@ -39,6 +39,7 @@ import { TdSocial } from '../topdown/TdSocial.js';
 import { TdWorldMap } from '../topdown/TdWorldMap.js';
 import { TITLE_BY_ID } from '/shared/data/titles.js';
 import { TouchControls } from '../topdown/TouchControls.js';
+import { Tutorial } from '../topdown/Tutorial.js';
 import { ALL_ASSETS } from '/shared/data/td_assets.js';
 import { bakeGround, makeWater, TdAtmosphere, bakeTdFx, TdVfx, TdMinimap } from '../topdown/TdTheme.js';
 import { uiBlocked } from '../systems/uiGuard.js';
@@ -141,7 +142,7 @@ export class TopDownScene extends Phaser.Scene {
     this.zone = null;
     this.ui.updateHud();
     this.setupNetwork();
-    this.ui.news?.autoOpen();                                         // มีข่าวใหม่ที่ยังไม่อ่าน → เปิดกระดานข่าวให้ครั้งเดียว
+    if ((this.player?.char?.level || 1) > 3) this.ui.news?.autoOpen();   // มีข่าวใหม่ → เปิดกระดานข่าวครั้งเดียว · ตัวใหม่ (Lv.1–3) ให้เห็นการแนะนำก่อน
     if (this.econ.server) { this.social = new TdSocial(this); this.wb = new WorldBossUI(this); this.wb.bind(this.net); }   // บอสโลกพระราหู           // ปาร์ตี้ · เทรด · เพื่อน · อันดับ · ฉายา (ต้องออนไลน์)
     this.ui.toast(this.M.realm ? `${this.M.icon} ${this.M.nameTh} · ${this.M.sub}` : '🏯 ยินดีต้อนรับสู่กรุงศรีอยุธยา · คลิกพื้นเพื่อเดิน คลิกผีเพื่อโจมตี · คลิก NPC เพื่อเปิดร้าน', '', 6000);
     if (!this.econ.server) this.time.addEvent({ delay: 5000, loop: true, callback: () => this.saveSoon() });
@@ -514,22 +515,34 @@ export class TopDownScene extends Phaser.Scene {
   /** ป้ายชื่อ NPC: กรอบรักดำขอบทอง · บรรทัดบน = หน้าที่ (ไอคอน) · บรรทัดล่าง = ชื่อ */
   npcPlate(n, spr) {
     const top = n.y - spr.displayHeight - 2;
-    const role = makeText(this, 0, 0, `${NPC_ICON[n.id] || '💬'} ${n.role}`, { fontSize: '6px', color: '#f7dc6f' }).setOrigin(0.5, 1);
+    // ไอคอนหน้าที่: ภาพพิกเซล (PixelLab ui_*) ถ้ามี · ไม่มีไฟล์ = ใช้อีโมจิเดิม
+    const emo = NPC_ICON[n.id] || '💬', ik = EMO_ICON[emo.replace(/\uFE0F/g, '')], url = ik && ICONS[`ui_${ik}`];
+    const role = makeText(this, 0, 0, url ? n.role : `${emo} ${n.role}`, { fontSize: '6px', color: '#f7dc6f' }).setOrigin(0.5, 1);
     const name = makeText(this, 0, 0, n.nameTh, { fontSize: '7px', color: n.color || '#ffffff' }).setOrigin(0.5, 1);
-    const w = Math.max(role.width, name.width) / 1 + 8, h = role.height + name.height - 2;
+    const IC = url ? 8 : 0, rowW = role.width + (IC ? IC + 1 : 0);
+    const w = Math.max(rowW, name.width) / 1 + 8, h = role.height + name.height - 2;
     name.setY(0); role.setY(-name.height + 3);
+    if (IC) role.setX((IC + 1) / 2);
     const g = this.add.graphics();
     g.fillStyle(0x140a1c, 0.78).fillRoundedRect(-w / 2, -h - 1, w, h + 2, 3);
     g.lineStyle(1, 0xd4af37, 0.85).strokeRoundedRect(-w / 2, -h - 1, w, h + 2, 3);
     g.fillStyle(0xd4af37, 1).fillTriangle(-2, 1, 2, 1, 0, 3);
-    this.add.container(n.x, top - 2, [g, role, name]).setDepth(n.y + 2);
+    const box = this.add.container(n.x, top - 2, [g, role, name]).setDepth(n.y + 2);
+    if (IC) {
+      const tk = `ui_${ik}`, put = () => { if (!box.scene) return; const im = this.add.image(-rowW / 2 + IC / 2, role.y - role.height / 2 + .5, tk).setDisplaySize(IC, IC); box.add(im); };
+      if (this.textures.exists(tk)) put();
+      else { this.load.image(tk, url); this.load.once(`filecomplete-image-${tk}`, put); if (!this.load.isLoading()) this.load.start(); }
+    }
+    n._plate = { top: top - 2 - h - 1, w };                                                // ใช้ตรวจแตะโดนป้าย (npcAt)
     return top - 2 - h - 1;                                                                // ขอบบนของป้าย
   }
 
   /** คลิกตัวผู้เล่นคนอื่นแล้วเปิดเมนูไหม: Shift+คลิกเปิดเสมอ · ระหว่างสู้ (ลานบอสโลก/มีเป้าผี/ผีอยู่ใกล้จุดคลิก) = คลิกทะลุไปเดิน/ตีแทน */
   playerMenuClick(ptr) {
     if (ptr?.event?.shiftKey) return true;
-    if (this.wb?.here || this.player?.target?.alive) return false;
+    // กำลังสู้จริง (มีเป้าผี / ลานบอสช่วงสู้และอยู่นอกค่ายพัก) → คลิกทะลุ · ในค่ายพัก/ในเมือง เปิดเมนูได้ปกติ (เชิญปาร์ตี้ก่อนลุย)
+    if (this.player?.target?.alive) return false;
+    if (this.wb?.here && this.wb.st?.state === 'fight' && !this.inTown()) return false;
     const w = this.cameras.main.getWorldPoint(ptr.x, ptr.y);
     return !this.mobAt(w.x, w.y, 40);
   }
@@ -702,6 +715,21 @@ export class TopDownScene extends Phaser.Scene {
       this.tweens.add({ targets: boom, alpha: 0, scale: 1.12, duration: 380, onComplete: () => boom.destroy() });
       if (dist(this.player, { x, y }) < r + 60) { this.cameras.main.shake(180, 0.006); this.sfx.play('skBoom'); }
     });
+  }
+
+  /** ผีกองรวมกัน → ชื่อซ้อนอ่านไม่ออก: โชว์ชื่อเฉพาะตัวที่ไม่ทับกัน (เป้า/บอส/ตัวที่ชี้ ได้ก่อน แล้วตัวที่ใกล้เรา) · แถบเลือดยังโชว์ครบ */
+  declutterMobLabels() {
+    const p = this.player, tgt = p?.target, v = this.cameras.main.worldView;
+    const list = this.mobs.filter((m) => m.alive && m.label?.visible && v.contains(m.x, m.y - 20));
+    const pri = (m) => (m === tgt ? -3e6 : m.def?.boss ? -2e6 : m === this.hovered ? -1e6 : 0) + Math.hypot(m.x - p.x, m.y - p.y);
+    list.sort((a, b) => pri(a) - pri(b));
+    const shown = [];
+    for (const m of list) {
+      const L = m.label, w = L.displayWidth, h = L.displayHeight, x0 = L.x - w / 2, y0 = L.y - h;
+      const hit = shown.some((r) => x0 < r.x1 && x0 + w > r.x0 && y0 < r.y1 && y0 + h > r.y0);
+      L.setAlpha(hit ? 0 : 1);
+      if (!hit) shown.push({ x0: x0 - 2, x1: x0 + w + 2, y0: y0 - 1, y1: y0 + h + 1 });
+    }
   }
 
   drawMob(m) {
@@ -1139,7 +1167,13 @@ export class TopDownScene extends Phaser.Scene {
     s._tags = [tag, ttl];
     s.setInteractive({ useHandCursor: true });                                   // คลิกผู้เล่น → เมนู เชิญ/เทรด/เพื่อน/กระซิบ
     s._remote = true;
-    s.on('pointerdown', (ptr) => { if (uiBlocked(ptr) || ptr.rightButtonDown() || !this.playerMenuClick(ptr)) return; ptr.event?.stopPropagation?.(); this.social?.openPlayerMenu(r, { x: ptr.x, y: ptr.y }); });
+    s.on('pointerdown', (ptr) => {
+      if (uiBlocked(ptr) || ptr.rightButtonDown()) return;
+      if (this.playerMenuClick(ptr)) { ptr.event?.stopPropagation?.(); this.social?.openPlayerMenu(r, { x: ptr.x, y: ptr.y }); return; }
+      // ระหว่างสู้: กดค้างที่ตัวผู้เล่น ~0.45 วิ = เปิดเมนู (มือถือไม่มี Shift)
+      const x0 = ptr.x, y0 = ptr.y;
+      this.time.delayedCall(450, () => { if (ptr.isDown && Math.hypot(ptr.x - x0, ptr.y - y0) < 14 && s.active) { this.player.path = []; this.social?.openPlayerMenu(r, { x: ptr.x, y: ptr.y }); navigator.vibrate?.(15); } });
+    });
     const sh = this.addShadow(s, 22);
     const r = {
       id: q.id, netId: q.id, name: q.name, level: q.level, hp: q.hp, maxHp: q.maxHp, spr: s,
@@ -1178,6 +1212,8 @@ export class TopDownScene extends Phaser.Scene {
       if (hitMob) { this.setTarget(hitMob); return; }           // คลิกซ้าย/แตะโดนผี = โจมตี
       // ตัวผู้เล่นคนอื่นไม่บังการเดินตอนสู้ (เมนูผู้เล่นเปิดเฉพาะตอนไม่สู้ หรือ Shift+คลิก)
       if (over.some((o) => !(o._remote && !this.playerMenuClick(ptr)))) return;   // NPC/ของที่มีคำสั่งของตัวเอง
+      const npc = this.npcAt(w.x, w.y, this.touch?.on ? 14 : 4);                  // แตะโดนป้ายชื่อ/ใกล้ตัว NPC (มือถือเผื่อระยะนิ้ว) = คุย
+      if (npc) { this.talk(npc); return; }
       this.player.target = null;
       this.moveTo(w.x, w.y);
       this.clickMark(w.x, w.y);
@@ -1230,6 +1266,41 @@ export class TopDownScene extends Phaser.Scene {
       if (d < bd + m.displayWidth * 0.3) { bd = d; best = m; }
     }
     return best;
+  }
+
+  /** NPC ที่จุดแตะ/คลิกนี้ (รวมป้ายชื่อ + เผื่อระยะนิ้ว) → ใกล้จุดแตะที่สุด */
+  npcAt(x, y, pad = 6) {
+    let best = null, bd = Infinity;
+    for (const n of this.npcs || []) {
+      const half = Math.max(16, (n._plate?.w || 0) / 2) + pad, top = (n._plate?.top ?? n.y - 60) - pad;
+      if (x < n.x - half || x > n.x + half || y < top || y > n.y + 6 + pad) continue;
+      const d = Math.hypot(x - n.x, y - (n.y - 20));
+      if (d < bd) { bd = d; best = n; }
+    }
+    return best;
+  }
+
+  /** ปุ่มลัด "💬 คุยกับ …" (เดินเข้าใกล้ NPC แล้วเด้งขึ้น · มือถือไม่ต้องเล็งแตะตัว NPC · คอมกด F) */
+  updateTalkPill() {
+    let el = this.talkPill;
+    if (!el) {
+      el = this.talkPill = document.createElement('button');
+      el.id = 'npc-talk'; el.className = 'npc-talk hidden';
+      el.innerHTML = '<span class="nt-face"><img alt="" /><i></i></span><span class="nt-txt"><b></b><small></small></span><kbd>F</kbd>';
+      el.addEventListener('pointerdown', (e) => { e.preventDefault(); e.stopPropagation(); if (this.talkNpc) this.talk(this.talkNpc); });
+      document.getElementById('td-hud')?.appendChild(el);
+      this.events.once('shutdown', () => { el.remove(); this.talkPill = null; });
+    }
+    const n = this.player?.alive && !this.ui.anyOpen?.() ? this.nearestNpc(72) : null;
+    el.classList.toggle('hidden', !n);
+    if (!n || this.talkNpc === n) return;
+    this.talkNpc = n;
+    const verb = NPC_OPEN[n.id] ? 'เปิดร้าน' : n.id === 'quest' ? 'รับเควส' : n.id === 'warp' ? 'วาร์ป' : 'คุยกับ';
+    el.querySelector('b').textContent = `${verb} ${n.nameTh}`;
+    el.querySelector('small').textContent = n.role || '';
+    const img = el.querySelector('img'), ic = el.querySelector('i');
+    img.style.display = 'none'; ic.textContent = NPC_ICON[n.id] || '💬';
+    npcPortrait(n.key).then((url) => { if (url && this.talkNpc === n) { img.src = url; img.style.display = ''; ic.textContent = ''; } });
   }
 
   nearestNpc(r) {
@@ -1363,8 +1434,12 @@ export class TopDownScene extends Phaser.Scene {
     this.nameTag.setPosition(p.x, Math.min(p.y - p.displayHeight - 3, p._cosTop ?? Infinity));   // สวมหมวก/มงกุฎสูง → ยกป้ายชื่อขึ้น
     if (this.titleTag?.visible) this.titleTag.setPosition(p.x, this.nameTag.y - this.nameTag.displayHeight);
     if (time > (this.nextAutoMenu || 0)) { this.nextAutoMenu = time + 1000; this.refreshAutoMenuCounts(); }
+    if (time > (this.nextTalkPill || 0)) { this.nextTalkPill = time + 150; this.updateTalkPill(); }
+    if (this.tut?.on) { if (time > (this.nextTut || 0)) { this.nextTut = time + 120; this.tut.update(); } }
+    else if (!this.tut && this.net?.selfId && time > 2500) this.tut = new Tutorial(this);   // ผู้เล่นใหม่: แนะนำ 4 ขั้น
     for (const sh of this.shadows) sh.img.setPosition(sh.obj.x, sh.obj.y + 1).setVisible(sh.obj.visible && sh.obj.alpha > 0.2);
     for (const m of this.mobs) { if (this.econ.server) this.updateMobOnline(m, dt); else this.updateMobLocal(m, time); this.drawMob(m); }
+    if (time > (this.nextDeclutter || 0)) { this.nextDeclutter = time + 200; this.declutterMobLabels(); }
     this.remotes.forEach((r) => r.update(dt));
     this.wb?.update();
     this.weapons?.update(time);

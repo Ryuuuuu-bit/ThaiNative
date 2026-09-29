@@ -102,6 +102,7 @@ export function wbReward(rank, share, isMvp) {
   const fang = (rank === 1 ? 3 : rank <= 10 ? 2 : 1) + (isMvp ? 1 : 0);   // เขี้ยวพญายักษ์ (ใช้หลอมขอบแดง/ตีบวก +15)
   return { fang, stone: base.stone + (isMvp ? 3 : 0), expK: base.exp * mul, goldK: base.gold * mul, card: Math.max(card, isMvp ? 0.25 : 0), red, share };
 }
+export const WB_FULL_LV = 90;                // Lv.90+ นับเลือดบอสเต็มคน · ต่ำกว่านับ 1/4
 export const WB_MIN_SHARE = 0.005;          // ต้องทำดาเมจอย่างน้อย 0.5% ของเลือดบอสถึงได้ของ
 export const WB_BASE_EXP = 150_000, WB_BASE_GOLD = 30_000;
 export const WB_TITLE = 'wb_mvp';

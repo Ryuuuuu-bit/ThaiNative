@@ -76,6 +76,8 @@ export const EMO_ICON = {
   '⌨': 'keyboard', '🎨': 'palette', '💇': 'scissors', '🚶': 'walk', '📱': 'phone', '👆': 'tap', '☁': 'cloud', '🏔': 'mountain', '🦁': 'lion',
   '🥤': 'cup', '🥚': 'egg', '🐷': 'pig', '🍶': 'jar', '🌧': 'rain', '🌱': 'sprout', '🐯': 'tiger', '🥁': 'drum', '🪄': 'wand',
   '🧴': 'it:hp_s', '🥥': 'it:mp_s', '🪙': 'gold', '💰': 'gold', '🐟': 'fish', '🍳': 'soup', '🔨': 'anvil', '✅': 'check', '☑': 'check',
+  '💖': 'donate', '⛶': 'fullscreen', '⇄': 'swap', '🧭': 'compass', '🌏': 'globe', '☰': 'menu', 'ℹ': 'info', '↩': 'return', '🔇': 'mute', '🚩': 'flag',
+  '🐘': 'elephant', '🐍': 'naga_snake', '🐒': 'monkey', '🐊': 'croc', '🦅': 'garuda', '☄': 'comet',
   '🌑': 'eclipse', '💠': 'moon_crystal', '🔮': 'job_mage', '🏹': 'job_archer', '🥊': 'job_boxer', '💚': 'heal', '✨': 'sparkle', '🛒': 'shop', '📐': 'range', '✔': 'check',
 };
 const EMO_RE = new RegExp(`(${Object.keys(EMO_ICON).join('|')})\\uFE0F?`, 'gu');

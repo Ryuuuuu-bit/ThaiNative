@@ -119,9 +119,9 @@ export function setupTD(io, players, opts = {}) {
       }
       // หาเป้า: ผู้เล่นที่ใกล้สุด (ไม่ไล่เข้าเขตเมือง)
       let best = null, bd = m.wb ? 9999 : m.boss ? BOSS_AGGRO : AGGRO;
-      for (const p of here) { if (p.dead || inTown(p.tx, p.ty)) continue; const dd = dist(m, { x: p.tx, y: p.ty }); if (dd < bd) { bd = dd; best = p; } }
+      for (const p of here) { if (p.dead || inTown(p.tx, p.ty) || now < (p.spawnGuardUntil || 0)) continue; const dd = dist(m, { x: p.tx, y: p.ty }); if (dd < bd) { bd = dd; best = p; } }   // เพิ่งวาร์ป/ฟื้น: ผียังไม่เห็น 3 วิ
       // บอสไล่ต่อคนเดิมที่กำลังตีอยู่ (ไม่สลับเป้าไปมา) ถ้ายังอยู่ในระยะ
-      if (m.boss && m.st === 'chase') { const cur = players.get(m.target); if (cur && !cur.dead && sameMap(cur) && dist(m, { x: cur.tx, y: cur.ty }) < BOSS_LEASH) best = cur; }
+      if (m.boss && m.st === 'chase') { const cur = players.get(m.target); if (cur && !cur.dead && sameMap(cur) && now >= (cur.spawnGuardUntil || 0) && dist(m, { x: cur.tx, y: cur.ty }) < BOSS_LEASH) best = cur; }
       const home = Math.hypot(m.x - m.s.x, m.y - m.s.y);
       if (best && (m.wb || home < (m.boss ? BOSS_LEASH : LEASH))) { m.st = 'chase'; m.target = best.id; }
       else if (m.st === 'chase') { m.st = 'wander'; m.target = null; m.wx = m.s.x; m.wy = m.s.y; }
@@ -156,6 +156,7 @@ export function setupTD(io, players, opts = {}) {
     const m = mobs[d.mid | 0];
     if (!sameMap(p) || p.dead || !m || m.st === 'dead' || !p.char) return;
     const now = Date.now();
+    p.spawnGuardUntil = 0;                                   // ตีผีเอง = หมดช่วงคุ้มกันหลังวาร์ป
     const job = p.appearance?.job, atk = JOBS[job]?.attack;
     const sk = typeof d.sk === 'string' ? d.sk : null;
     const skb = sk ? SKILL_BY_ID[sk] : null;            // สกิลระยะไกล/วงกว้าง/พุ่ง → เอื้อมได้ไกลกว่าตีปกติ
@@ -261,6 +262,7 @@ export function setupTD(io, players, opts = {}) {
   }
 
   // ---------------- เข้า/ออก/เดิน/วาร์ป ----------------
+  const SPAWN_GUARD_MS = 3000;                               // หลังเข้าเกม/วาร์ป/ฟื้น: ผีไม่เล็ง 3 วิ (ถ้าเราตีก่อนก็หมดทันที)
   function publicTd(p) { return { id: p.id, name: p.name, appearance: p.appearance, x: Math.round(p.tx), y: Math.round(p.ty), level: p.level, hp: Math.round(p.hp), maxHp: p.maxHp, title: p.save?.title || null }; }
   const visited = (p) => (p.save.tdMaps ||= ['ayutthaya']);
 
@@ -284,6 +286,7 @@ export function setupTD(io, players, opts = {}) {
     if (p.save.deadAt) { const M0 = worlds[validMap(p.save.tdMap)]?.M; if (M0) p.save.tdPos = { ...M0.spawn }; p.save.deadAt = 0; }   // ตายค้างแล้วออกเกม → เกิดที่จุดฟื้น
     if (EVENT_MAPS.has(validMap(p.save.tdMap)) && !wb?.isOpen()) { p.save.tdMap = p.save.wbFrom?.map || 'ayutthaya'; p.save.tdPos = p.save.wbFrom?.pos || null; }   // ลานอีเวนต์ปิดแล้ว → กลับที่เดิม
     const w = place(socket, p, validMap(p.save.tdMap), p.save.tdPos);
+    p.spawnGuardUntil = Date.now() + SPAWN_GUARD_MS; p.invulnUntil = Date.now() + 2500;   // เข้าเกม: กันผีรุมก่อนโหลดเสร็จ
     socket.join('td');
     socket.emit('td:init', { map: w.id, maps: visited(p), x: p.tx, y: p.ty, players: tdPlayers(w.id).filter((q) => q.id !== p.id).map(publicTd) });
   }
@@ -297,7 +300,7 @@ export function setupTD(io, players, opts = {}) {
       io.to(wf.room).emit('td:left', p.id);
     }
     const w = place(socket, p, to, pos);
-    p.tdWarpAt = Date.now(); p.invulnUntil = Date.now() + 1500;
+    p.tdWarpAt = Date.now(); p.invulnUntil = Date.now() + 2500; p.spawnGuardUntil = Date.now() + SPAWN_GUARD_MS;   // วาร์ป/ฟื้น: อมตะสั้น ๆ + ผียังไม่เล็ง
     socket.emit('td:warp', { map: to, maps: visited(p), x: Math.round(p.tx), y: Math.round(p.ty), how, players: tdPlayers(to).filter((q) => q.id !== p.id).map(publicTd) });
     queueSync(p);
     return w;
@@ -360,7 +363,7 @@ export function setupTD(io, players, opts = {}) {
     const p = players.get(socket.id);
     if (!p || p.world !== 'td' || (!p.dead && p.hp > 0)) return;
     const w = W(p);
-    p.dead = false; p.hp = p.maxHp; p.invulnUntil = Date.now() + 2000; p.save.deadAt = 0;
+    p.dead = false; p.hp = p.maxHp; p.invulnUntil = Date.now() + 2500; p.spawnGuardUntil = Date.now() + SPAWN_GUARD_MS; p.save.deadAt = 0;
     p.tx = w.M.spawn.x; p.ty = w.M.spawn.y; p.save.tdPos = { ...w.M.spawn }; p.hpDirty = true;
     refillFlasks(p.save); queueSync(p);
     socket.emit('td:respawn', { x: p.tx, y: p.ty, hp: Math.round(p.hp), maxHp: p.maxHp });

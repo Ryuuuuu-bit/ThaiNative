@@ -84,8 +84,28 @@ assert.equal(m.inventory.length, 1); assert.equal(m.gold, 0); assert.ok(m.hp > 0
 // 9) บอสภาค 5 ตัว + สูตรหลอมครบทุกชิ้น drop
 assert.equal(REGION_BOSS_IDS.length, 5);
 for (const id of REGION_BOSS_IDS) assert.ok(MONSTERS[id].regionBoss && MONSTERS[id].hp > 1000 && MAPS[MONSTERS[id].mapId]);
-assert.equal(FORGE.filter((r) => !r.util).length, 60);
+assert.ok(FORGE.filter((r) => !r.util).length >= 60, 'สูตรสร้างอุปกรณ์ (เดิม 60 · ตอนนี้รวมอุปกรณ์ทุกสาย Lv.22–150)');
+assert.equal(new Set(FORGE.map((r) => r.out)).size, FORGE.length, 'สูตรไม่ซ้ำ'); for (const r of FORGE) assert.ok(ITEMS[r.out], `ของที่ได้ ${r.out}`);
 for (const r of FORGE) for (const need of Object.keys(r.need)) assert.ok(ITEMS[need], `วัตถุดิบ ${need}`);
 assert.equal(grant(newCharacter('x', {}), { exp: 40 }).ups, 1);
+
+// 10) แคป EXP ตามช่วงเลเวล (แพตช์ #21)
+import { mobExp, expLevelMul, expToNext as e2n } from '../shared/stats.js';
+assert.equal(expLevelMul(50, 50), 1); assert.equal(expLevelMul(50, 55), 1); assert.equal(expLevelMul(50, 45), 1);
+assert.equal(expLevelMul(60, 50), 0.5); assert.equal(expLevelMul(99, 1), 0.1, 'ผีอ่อนมาก เหลือ 10%');
+assert.equal(expLevelMul(1, 57), 0.2, 'ผีเก่งมาก เหลือ 20%');
+assert.ok(mobExp(895, 1, 57) <= e2n(1) * 0.2 + 1, 'ฆ่าตัวเดียวได้ไม่เกิน 20% ของหลอด');
+assert.ok(mobExp(1e9, 10, 12, true) <= e2n(10), 'บอส: ไม่เกิน 1 เลเวล');
+
+// 11) บอสโลกพระราหู: เลือด 8M/คน · รางวัล EXP แคป 1 เลเวล · เกณฑ์ขั้นต่ำขยายตามคน
+import { wbHp, wbReward, WB_BASE_EXP, WB_MIN_SHARE } from '../shared/data/worldboss.js';
+assert.equal(wbHp(1), 8_000_000); assert.equal(wbHp(10), 80_000_000); assert.equal(wbHp(0.25), 8_000_000, 'ขั้นต่ำ 8M');
+for (const lv of [1, 10, 40, 99, 140]) {
+  const R = wbReward(1, 0.5, true), base = Math.round(WB_BASE_EXP * R.expK);
+  const c = newCharacter('wb', {}); c.level = lv; c.exp = 0;
+  const g = grant(c, { exp: mobExp(base, lv, 150, true) });
+  assert.ok(g.ups <= 1, `รางวัลราหู Lv.${lv}: ขึ้นไม่เกิน 1 เลเวล (ได้ ${g.ups})`);
+}
+{ const n = 200, minShare = Math.min(WB_MIN_SHARE, 0.2 / n); assert.ok(minShare < 1 / n, '200 คน: ตีเท่ากันทุกคนผ่านเกณฑ์'); }
 
 console.log('✔ economy tests passed');

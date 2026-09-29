@@ -43,8 +43,9 @@ export class TdSocial {
   bindDom() {
     // เมนูผู้เล่น
     $('#player-menu').onclick = (e) => {
-      const act = e.target.dataset?.act;
-      if (!act) return;
+      const btn = e.target.closest?.('[data-act]');                 // แตะโดนไอคอนในปุ่มก็นับ (ไอคอนเป็น element ซ้อนข้างใน)
+      const act = btn?.dataset.act;
+      if (!act || btn.disabled) return;
       const id = this.menuTarget;
       $('#player-menu').classList.add('hidden');
       if (act === 'party') this.invite(id);
@@ -94,6 +95,10 @@ export class TdSocial {
       this.sendOffer();
     };
     // ปาร์ตี้ / ผู้เล่น (P)
+    // กันปุ่มหายระหว่างกด: ชี้เมาส์อยู่บนแผง/เพิ่งแตะ → หยุดวาดรายชื่อใหม่ชั่วคราว (ลานบอสคนเดินเยอะ รายชื่อเปลี่ยนทุกวิ)
+    $('#social-panel').addEventListener('pointerenter', () => (this.socHover = true));
+    $('#social-panel').addEventListener('pointerleave', () => (this.socHover = false));
+    $('#social-panel').addEventListener('pointerdown', () => (this.socHoldAt = performance.now()), true);
     $('#social-panel').addEventListener('click', (e) => {
       const w = e.target.closest('[data-act="whisper"]');
       if (w) { this.ui.closeAll(); this.ui.chatBox?.whisperTo(w.dataset.name); return; }
@@ -126,13 +131,23 @@ export class TdSocial {
 
   /** ได้ฉายาใหม่ */
   onNewTitles(ids) {
-    for (const id of ids) {
-      const t = TITLE_BY_ID[id];
-      if (!t || id === 'rookie') continue;
-      this.ui.banner(`🏅 ได้รับฉายา “${t.nameTh}”`);
-      this.ui.toast(`🏅 ฉายาใหม่: ${t.nameTh} — เลือกใช้ได้ที่แผงสังคม (P) › ฉายา`, '', 6000);
-      this.scene.sfx.play('victory');
+    // server ส่งฉายามาทีละก้อน (ฉายาเลเวล/อันดับ/ค่าพลังมาห่างกันไม่กี่วิ) → รวบ 1.5 วิแล้วแจ้งทีเดียว
+    (this.titleQ ||= []).push(...ids);
+    clearTimeout(this.titleT);
+    this.titleT = setTimeout(() => { const q = [...new Set(this.titleQ)]; this.titleQ = []; this.showNewTitles(q); }, 1500);
+  }
+  showNewTitles(ids) {
+    const ts = ids.filter((id) => id !== 'rookie').map((id) => TITLE_BY_ID[id]).filter(Boolean);
+    if (!ts.length) return;
+    // ได้หลายอันพร้อมกัน (เช่นตัวใหม่/ติดอันดับ) → รวมเป็นแจ้งเตือนเดียว ไม่ให้เด้งเต็มจอ
+    if (ts.length === 1) {
+      this.ui.banner(`🏅 ได้รับฉายา “${ts[0].nameTh}”`);
+      this.ui.toast(`🏅 ฉายาใหม่: ${ts[0].nameTh} — เลือกใช้ได้ที่แผงสังคม (P) › ฉายา`, '', 6000);
+    } else {
+      this.ui.banner(`🏅 ได้รับฉายาใหม่ ${ts.length} อัน`, ts.slice(0, 3).map((t) => `“${t.nameTh}”`).join(' · ') + (ts.length > 3 ? ' …' : ''));
+      this.ui.toast(`🏅 ฉายาใหม่ ${ts.length} อัน: ${ts.map((t) => t.nameTh).join(', ')} — เลือกใช้ได้ที่แผงสังคม (P) › ฉายา`, '', 7000);
     }
+    this.scene.sfx.play('victory');
   }
 
   /** คลิกที่ผู้เล่นอื่น → เมนู */
@@ -203,6 +218,7 @@ export class TdSocial {
         this.scene.tweens.add({ targets: t, y: t.y - 20, alpha: 0, duration: 1200, onComplete: () => t.destroy() });
         if (ups) this.scene.combat?.levelUpFx?.(ups);
       })
+      .on('online:list', (list) => { this.online = Array.isArray(list) ? list : []; if (!$('#social-panel').classList.contains('hidden')) this.renderSocialPanel(); })
       .on('friends:state', (list) => { this.friends = list || []; if (!$('#social-panel').classList.contains('hidden')) this.renderFriends(); })
       .on('title:new', ({ id }) => this.onNewTitles([id]))
       .on('trade:request', ({ fromId, fromName }) => this.ask(
@@ -240,18 +256,26 @@ export class TdSocial {
     const inParty = new Set((this.party?.members || []).map((m) => m.id));
     const leader = this.party?.leader === me;
     $('#soc-party-info').textContent = this.party ? `(${this.party.members.length}/4)` : '';
-    $('#soc-party').innerHTML = this.party
+    const setP = (el, html) => { if (el && el._html !== html) { el._html = html; el.innerHTML = html; } };
+    setP($('#soc-party'), this.party
       ? this.party.members.map((m) => `<div class="soc-row"><span>${m.id === this.party.leader ? '👑' : '•'} ${esc(m.name)} <small>Lv.${m.level} ${JOBS[m.job]?.nameTh ?? 'ชาวบ้าน'}</small></span>
           ${m.id === me ? '<button class="btn ghost sm" data-act="leave">ออกจากปาร์ตี้</button>' : leader ? `<button class="btn ghost sm" data-act="kick" data-id="${m.id}">เชิญออก</button>` : ''}</div>`).join('')
-      : '<p class="empty">ยังไม่มีปาร์ตี้ – เชิญผู้เล่นจากรายชื่อด้านล่าง</p>';
-    const list = [...this.scene.remotes.values()];
-    $('#soc-players').innerHTML = !this.net.online ? '<p class="empty">ออฟไลน์อยู่</p>' : list.length
-      ? list.map((r) => `<div class="soc-row"><span>${esc(r.name)} <small>Lv.${r.level || '?'} · ห่าง ${Math.round(Math.hypot(r.x - this.player.x, r.y - this.player.y) / 16)} ม.</small></span>
-          <span>${inParty.has(r.id) ? '<small class="ok">ในปาร์ตี้</small>' : `<button class="btn ghost sm" data-act="invite" data-id="${r.id}">🤝 เชิญ</button>`}
-          <button class="btn ghost sm" data-act="trade" data-id="${r.id}">💱 เทรด</button>
-          <button class="btn ghost sm" data-act="friend" data-id="${r.id}" title="เพิ่มเพื่อน">➕👥</button>
-          <button class="btn ghost sm" data-act="whisper" data-name="${esc(r.name)}">💬</button></span></div>`).join('')
-      : '<p class="empty">ยังไม่มีผู้เล่นอื่นออนไลน์</p>';
+      : '<p class="empty">ยังไม่มีปาร์ตี้ – เชิญผู้เล่นจากรายชื่อด้านล่าง</p>');
+    // ผู้เล่นออนไลน์: แมพเดียวกัน (บอกระยะ) ก่อน แล้วแมพอื่น (บอกที่อยู่) · เชิญปาร์ตี้/กระซิบ/เพิ่มเพื่อนได้ทุกคน · เทรดเฉพาะแมพเดียวกัน
+    const near = [...this.scene.remotes.values()];
+    const nearIds = new Set(near.map((r) => r.id));
+    const far = (this.online || []).filter((o) => !nearIds.has(o.id));
+    const btns = (id, name, same) => `<span>${inParty.has(id) ? '<small class="ok">ในปาร์ตี้</small>' : `<button class="btn ghost sm" data-act="invite" data-id="${id}">🤝 เชิญ</button>`}
+          ${same ? `<button class="btn ghost sm" data-act="trade" data-id="${id}">💱 เทรด</button>` : ''}
+          <button class="btn ghost sm" data-act="friend" data-id="${id}" title="เพิ่มเพื่อน">➕👥</button>
+          <button class="btn ghost sm" data-act="whisper" data-name="${esc(name)}">💬</button></span>`;
+    const rowsNear = near.map((r) => `<div class="soc-row"><span>${esc(r.name)} <small>Lv.${r.level || '?'} · ห่าง ${Math.round(Math.hypot(r.x - this.player.x, r.y - this.player.y) / 16 / 5) * 5} ม.</small></span>${btns(r.id, r.name, true)}</div>`);
+    const rowsFar = far.map((o) => `<div class="soc-row far"><span>${esc(o.name)} <small>Lv.${o.level || '?'} · 📍 ${esc(o.where || '')}</small></span>${btns(o.id, o.name, false)}</div>`);
+    const setHtml = (el, html) => { if (el && el._html !== html) { el._html = html; el.innerHTML = html; } };
+    setHtml($('#soc-players'), !this.net.online ? '<p class="empty">ออฟไลน์อยู่</p>'
+      : rowsNear.length || rowsFar.length
+        ? `${rowsNear.length ? `<div class="soc-sub">📍 แมพเดียวกัน (${rowsNear.length})</div>${rowsNear.join('')}` : ''}${rowsFar.length ? `<div class="soc-sub">🌏 แมพอื่น (${rowsFar.length})</div>${rowsFar.join('')}` : ''}`
+        : '<p class="empty">ยังไม่มีผู้เล่นอื่นออนไลน์</p>');
     this.renderLeaderboard();
     this.renderFriends();
     const tl = $('#soc-titles');
@@ -437,8 +461,10 @@ export class TdSocial {
     // อัปเดตกรอบปาร์ตี้ทุก 0.5 วิ · แผงสังคมทุก 1 วิ (ถ้าเปิดอยู่)
     if (this.party && time - (this.lastPartyDraw || 0) > 500) { this.lastPartyDraw = time; this.renderParty(); }
     if (time - (this.lastSocDraw || 0) > 1000 && !$('#social-panel').classList.contains('hidden')) {
+      const busy = this.socOpen && (this.socHover || performance.now() - (this.socHoldAt || 0) < 1500);
       if (!this.socOpen) { this.socOpen = true; this.refreshFriends(); }
-      this.lastSocDraw = time; this.renderSocialPanel();
+      if (this.net.online && time - (this.lastOnlineAsk || 0) > 4000) { this.lastOnlineAsk = time; this.net.send('online:get'); }
+      this.lastSocDraw = time; if (!busy) this.renderSocialPanel();
     } else if ($('#social-panel').classList.contains('hidden')) this.socOpen = false;
   }
 }

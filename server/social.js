@@ -304,11 +304,27 @@ export function setupSocial(io, players, H = {}) {
   }
 
   // ===================== เพื่อน =====================
+  /** ชื่อที่อยู่ของผู้เล่น (แมพ · โซน) */
+  function whereOf(q) {
+    if (q.world !== 'td') return mapAt(q.x).nameTh;
+    const M = getMap(q.tmap), z = M.ZONES[M.zoneAt(q.tx, q.ty)]?.nameTh;
+    return M.realm ? `${M.nameTh}${z && z !== M.nameTh ? ` · ${z}` : ''}` : z || M.nameTh;
+  }
+  /** รายชื่อผู้เล่นออนไลน์ทั้งเซิร์ฟ (ทุกแมพ · ให้เชิญปาร์ตี้/เพิ่มเพื่อน/กระซิบข้ามแมพได้) */
+  function onlineList(p) {
+    const out = [];
+    for (const q of players.values()) {
+      if (q.id === p.id || !q.name || !q.save) continue;
+      out.push({ id: q.id, name: q.name, level: q.level || 1, job: q.appearance?.path || null, map: q.world === 'td' ? (q.tmap || 'ayutthaya') : 'side', where: whereOf(q), party: !!q.partyId });
+      if (out.length >= 200) break;
+    }
+    return out;
+  }
   function friendsState(p) {
     return (p.save.friends || []).map((f) => {
       const q = players.get(byAcc.get(f.acc));
       if (q) f.name = q.name;
-      return { acc: f.acc, name: f.name, online: !!q, id: q?.id || null, level: q?.level || null, map: q ? (q.world === 'td' ? (() => { const M = getMap(q.tmap); const z = M.ZONES[M.zoneAt(q.tx, q.ty)]?.nameTh; return M.realm ? `${M.nameTh}${z && z !== M.nameTh ? ` · ${z}` : ''}` : z || M.nameTh; })() : mapAt(q.x).nameTh) : null, job: q?.appearance?.path || null };
+      return { acc: f.acc, name: f.name, online: !!q, id: q?.id || null, level: q?.level || null, map: q ? whereOf(q) : null, job: q?.appearance?.path || null };
     });
   }
   function pushFriends(p) { emitTo(p.id, 'friends:state', friendsState(p)); }
@@ -435,6 +451,11 @@ export function setupSocial(io, players, H = {}) {
 
     // ---------- เพื่อน ----------
     socket.on('friends:get', () => { const p = me(); if (p) pushFriends(p); });
+    socket.on('online:get', () => {                                  // แผงสังคม: คนออนไลน์ทุกแมพ (จำกัดความถี่ 1 ครั้ง/2 วิ)
+      const p = me(); if (!p) return;
+      const now = Date.now(); if (now - (p.onlineAskAt || 0) < 2000) return; p.onlineAskAt = now;
+      emitTo(p.id, 'online:list', onlineList(p));
+    });
     socket.on('friends:add', ({ id } = {}) => {
       const p = me(), t = players.get(id);
       if (!p || !t || t.id === p.id || !t.acc) return;

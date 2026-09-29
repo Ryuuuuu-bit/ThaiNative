@@ -99,6 +99,23 @@ export class ChatBox {
     this.input.addEventListener('focus', () => { this.scene.input.keyboard.enabled = false; this.collapse(false); });
     this.input.addEventListener('blur', () => (this.scene.input.keyboard.enabled = true));
     if (document.body.classList.contains('touch')) this.collapse(true);
+    // คอม: ไม่มีความเคลื่อนไหว 12 วิ → กล่องแชทจางลงเหลือแต่ข้อความ (เห็นฉากด้านหลัง) · ชี้เมาส์/พิมพ์/ข้อความใหม่ = กลับมาเต็ม
+    root.addEventListener('pointerenter', () => { this.hover = true; this.wake(); });
+    root.addEventListener('pointerleave', () => { this.hover = false; this.wake(); });
+    this.input.addEventListener('focus', () => this.wake());
+    this.input.addEventListener('blur', () => this.wake());
+    this.wake();
+  }
+
+  /** ปลุกกล่องแชท แล้วนับถอยหลังจางใหม่ */
+  wake() {
+    const root = $('#chat'); if (!root) return;
+    root.classList.remove('cb-idle');
+    clearTimeout(this.idleT);
+    this.idleT = setTimeout(() => {
+      if (this.hover || document.activeElement === this.input || document.body.classList.contains('touch')) return this.wake();
+      root.classList.add('cb-idle');
+    }, 12000);
   }
 
   // ---------------- สถานะ ----------------
@@ -172,6 +189,7 @@ export class ChatBox {
     if (this.tab !== 'all' && this.tab !== ch && !rec.mine) { this.unread[ch]++; this.paintUnread(); }
     if ($('#chat').classList.contains('collapsed') && ch !== 'sys' && !rec.mine) { this.unreadMini = (this.unreadMini || 0) + 1; this.paintMini(); }
     if (this.shows(rec)) this.append(rec);
+    if (ch !== 'sys') this.wake();
     if (ch === 'local' && m.id) this.scene.chatBubble?.(m.id, rec.text);
     if (ch === 'whisper' && !rec.mine) this.scene.sfx?.play?.('invite');
     this.save();

@@ -54,7 +54,7 @@ const itemTag = (it) => (it.lv ? ` · Lv.${it.lv}` : '') + (it.legend ? ' · ✦
 const SHOP_PORT = { mae_kha: 'npc_yai_tim', lung_dam: 'npc_lung_dam', tailor: 'npc_mae_choy', pa_sa: 'npc_pa_sa', kru_sword: 'npc_kru_sword', kru_mage: 'npc_kru_mage', kru_archer: 'npc_kru_archer', kru_boxer: 'npc_kru_boxer', kru_healer: 'npc_pa_sa' };
 const portCache = new Map();
 /** ครอปหน้า NPC จาก assets/td/<key>/idle.png (แถวทิศใต้ เฟรมแรก) → dataURL (แคชไว้) */
-function npcPortrait(key) {
+export function npcPortrait(key) {
   if (portCache.has(key)) return portCache.get(key);
   const p = new Promise((res) => {
     const img = new Image();
