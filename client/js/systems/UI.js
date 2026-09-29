@@ -7,7 +7,7 @@ import { NewsBoard } from './NewsBoard.js';
 import { skillCalcHtml } from './SkillInfo.js';
 import { JOBS, JOB_IDS, PATH_LV, STAT_PLAN } from '/shared/data/classes.js';
 import { ITEMS, SHOPS, sellPrice, WTYPE_JOB } from '/shared/data/items.js';
-import { STAT_KEYS, STAT_INFO, expToNext, MAX_LEVEL } from '/shared/stats.js';
+import { STAT_KEYS, STAT_INFO, expToNext, MAX_LEVEL, expLevelMul } from '/shared/stats.js';
 import { getDerived, pathName } from './Character.js';
 import { combatPower } from '/shared/character.js';
 import * as Inv from './Inventory.js';
@@ -49,6 +49,36 @@ const rname = (it, name) => { const r = rarityOf(it); return r ? `<span class="r
 /** ป้ายแนวของอาวุธ / สายของชุด */
 const itemTag = (it) => (it.lv ? ` · Lv.${it.lv}` : '') + (it.legend ? ' · ✦ตำนาน' : '') + (it.wtype ? ` · แนว${JOBS[WTYPE_JOB[it.wtype]].nameTh}`
   : it.job ? ` · สาย${JOBS[it.job].nameTh}` : it.path ? ` · ชุดสาย${JOBS[it.path].nameTh}` : '');
+
+/** ร้าน → สไปรต์ NPC (ใช้ตอนเปิดร้านโดยไม่มีตัว NPC ส่งมา) */
+const SHOP_PORT = { mae_kha: 'npc_yai_tim', lung_dam: 'npc_lung_dam', tailor: 'npc_mae_choy', pa_sa: 'npc_pa_sa', kru_sword: 'npc_kru_sword', kru_mage: 'npc_kru_mage', kru_archer: 'npc_kru_archer', kru_boxer: 'npc_kru_boxer', kru_healer: 'npc_pa_sa' };
+const portCache = new Map();
+/** ครอปหน้า NPC จาก assets/td/<key>/idle.png (แถวทิศใต้ เฟรมแรก) → dataURL (แคชไว้) */
+function npcPortrait(key) {
+  if (portCache.has(key)) return portCache.get(key);
+  const p = new Promise((res) => {
+    const img = new Image();
+    img.onload = () => {
+      try {
+        const F = 72, c = document.createElement('canvas'); c.width = F; c.height = F;
+        const g = c.getContext('2d'); g.drawImage(img, 0, 0, F, F, 0, 0, F, F);
+        const d = g.getImageData(0, 0, F, F).data;
+        let x0 = F, y0 = F, x1 = 0;
+        for (let y = 0; y < F; y++) for (let x = 0; x < F; x++) if (d[(y * F + x) * 4 + 3] > 20) { x0 = Math.min(x0, x); x1 = Math.max(x1, x); y0 = Math.min(y0, y); }
+        if (x1 <= x0) return res(null);
+        const side = Math.max(24, Math.round((x1 - x0 + 1) * 0.95)), cx = (x0 + x1) / 2;   // สี่เหลี่ยมจัตุรัสจากหัวลงมา (หัว-ไหล่)
+        const out = document.createElement('canvas'); out.width = out.height = 96;
+        const o = out.getContext('2d'); o.imageSmoothingEnabled = false;
+        o.drawImage(c, Math.round(cx - side / 2), Math.max(0, y0 - 2), side, side, 0, 0, 96, 96);
+        res(out.toDataURL());
+      } catch { res(null); }
+    };
+    img.onerror = () => res(null);
+    img.src = `assets/td/${key}/idle.png`;
+  });
+  portCache.set(key, p);
+  return p;
+}
 
 export class UI {
   /** @param {Phaser.Scene} scene GameScene */
@@ -230,6 +260,10 @@ export class UI {
     $('#target').classList.toggle('hidden', !show);
     if (show) {
       $('#t-lv').textContent = `Lv.${t.def.level}`;
+      // สีเลเวลเป้าหมาย: เทา = อ่อนกว่ามาก (EXP ลด) · แดง = สูงกว่ามาก (EXP ลด) · ปกติ = ได้เต็ม
+      const lvGap = t.def.level - (p?.char?.level || 1), mul = expLevelMul(p?.char?.level || 1, t.def.level);
+      const tl = $('#t-lv'); tl.className = mul < 1 ? (lvGap < 0 ? 'lv-low' : 'lv-high') : '';
+      tl.title = mul < 1 ? `EXP ${Math.round(mul * 100)}% (เลเวลห่างเกิน 5)` : 'EXP เต็ม';
       $('#t-name').textContent = t.def.nameTh;
       $('#t-fill').style.width = `${Math.max(0, t.hp / t.def.hp) * 100}%`;
       $('#t-hp').textContent = `${Math.max(0, Math.ceil(t.hp))} / ${t.def.hp}`;
@@ -947,7 +981,7 @@ export class UI {
     const list = applyFilter(c, c.inventory, f);
     const ACT = { home: 'ใช้', consumable: 'ใช้', food: 'กิน', offering: 'ถวาย', weapon: 'ถือ', armor: 'สวม', helm: 'สวม', gloves: 'สวม', boots: 'สวม', belt: 'คาด', accessory: 'สวม', flask: 'ใส่', costume: 'แต่ง', reset: 'ใช้', reskill: 'ใช้', rename: 'ใช้', card: 'ใส่การ์ด' };
     const actOf = (id) => { const it = ITEMS[id]; return it.type === 'skin' ? (c.path === it.job ? null : 'เปลี่ยนสาย') : ACT[it.type] || null; };
-    const cells = Math.max(40, Math.ceil((list.length + 1) / 8) * 8);
+    const cells = list.length;   // ช่องว่างเติมหลังวาด (ตามจำนวนคอลัมน์จริง) ดู fillGrid
     const sel = list.some((st) => st.id === this.invSel) ? this.invSel : null;
     const slots = Array.from({ length: cells }, (_, i) => {
       const st = list[i];
@@ -974,12 +1008,19 @@ export class UI {
         <button class="hb-add" data-share="${sel}" title="แชร์ไอเทมลงแชท (Shift+คลิก ก็ได้)">💬</button>
         ${hotbarItemOk(sel) ? `<button class="hb-add" data-hbadd="${sel}" title="ใส่ Hotbar ช่องว่างแรก">⌨</button>` : ''}
         ${actOf(sel) ? `<button class="primary" data-use="${sel}">${actOf(sel)}</button>` : ''}</span></div>`
-      : `<div class="ro-bar hint"><b class="up">▲</b> ใส่แล้วแรงขึ้น · ดับเบิลคลิก = ใช้/สวม · คลิกขวา = ล็อก · ลากไปวางบนหุ่นได้ · คลิกช่องบนหุ่น = หาของใส่ช่องนั้น</div>`;
+      : `<div class="ro-bar hint"><span><b class="up">▲</b> ใส่แล้วแรงขึ้น · ดับเบิลคลิก = ใช้/สวม · คลิกขวา = ล็อก · ลากไปวางบนหุ่นได้ · คลิกช่องบนหุ่น = หาของใส่ช่องนั้น</span></div>`;
     $('#inv-list').innerHTML = `<div class="ro-bag">${filterBarHtml(c, f, c.inventory)}
       ${pick}<div class="ro-grid">${list.length ? slots : `<div class="empty" style="grid-column:1/-1">ไม่พบไอเทมตามตัวกรอง <button class="btn ghost sm" data-ifreset>ล้างตัวกรอง</button></div>`}</div>
       ${bar}
       <div class="ro-foot"><span>ช่องที่ใช้ ${c.inventory.length}${list.length !== c.inventory.length ? ` · แสดง ${list.length}` : ''}</span><span class="ro-zeny">฿ ${c.gold.toLocaleString()}</span></div></div>`;
     const inv = $('#inv-list');
+    // เติมช่องว่างให้เต็มแถว (อย่างน้อย 4 แถว) ตามจำนวนคอลัมน์ที่จอแสดงได้จริง
+    const grid = inv.querySelector('.ro-grid');
+    if (grid && list.length) {
+      const cols = Math.max(1, getComputedStyle(grid).gridTemplateColumns.split(' ').filter(Boolean).length);
+      const want = Math.max(cols * 4, Math.ceil(list.length / cols) * cols);
+      grid.insertAdjacentHTML('beforeend', '<div class="ro-slot empty"></div>'.repeat(Math.max(0, want - list.length)));
+    }
     bindFilterBar(inv, f, () => { this.invSel = null; this.renderInventory(); }, this.scene);
     inv.querySelector('[data-ifreset]')?.addEventListener('click', () => { this.invF = newFilter(); this.renderInventory(); });
     const toggleLock = (id) => this.scene.econ.act('lock', { id }).then((r) => {
@@ -1019,11 +1060,14 @@ export class UI {
     const [nm, ...rest] = shop.nameTh.split(' ');
     $('#shop-npc').textContent = npc?.nameTh || nm;
     $('#shop-role').textContent = npc?.role || rest.join(' ');
-    let port = '';
-    try { const spr = npc?.spr; if (spr?.texture && this.scene.textures.getBase64) port = this.scene.textures.getBase64(spr.texture.key, spr.frame?.name); } catch { port = ''; }
-    $('#shop-port').src = port || ''; $('#shop-port').style.display = port ? '' : 'none';
-    $('#shop-port-ic').textContent = port ? '' : (npc?.icon || '🛒');
-    const TAB_TH = { buy: '🛒 ซื้อ', sell: '💰 ขาย', enhance: `${uiIcon('anvil', '🔨')} ตีบวก`, cook: `${uiIcon('soup', '🍳')} ทำอาหาร`, brew: `${uiIcon('herb', '🌿')} ปรุงยา`, forge: '⚒️ หลอมอุปกรณ์', dye: '🎨 ย้อมสี', cards: '🃏 แลกการ์ด', quests: '📜 เควสอาชีพ', buyback: '↩ ซื้อคืน' };
+    // ภาพหน้า NPC: ตัดจากสไปรต์ 8 ทิศ (ท่ายืน หันหน้า) → ครอปช่วงหัว-ไหล่ใส่วงกลม
+    const pkey = npc?.key || SHOP_PORT[shopId];
+    $('#shop-port').style.display = 'none'; $('#shop-port-ic').innerHTML = uiIcon('shop', npc?.icon || '🛒');
+    if (pkey) npcPortrait(pkey).then((url) => {
+      if (!url || this.shopId !== shopId) return;
+      $('#shop-port').src = url; $('#shop-port').style.display = ''; $('#shop-port').classList.add('real'); $('#shop-port-ic').innerHTML = '';
+    });
+    const TAB_TH = { buy: '🛒 ซื้อ', sell: '💰 ขาย', enhance: `${uiIcon('anvil', '🔨')} ตีบวก`, cook: `${uiIcon('soup', '🍳')} ทำอาหาร`, brew: `${uiIcon('herb', '🌿')} ปรุงยา`, forge: '⚒️ สร้างอุปกรณ์', dye: '🎨 ย้อมสี', cards: '🃏 แลกการ์ด', quests: '📜 เควสอาชีพ', buyback: '↩ ซื้อคืน' };
     const tabs = [...(shop.tabs || ['buy', 'sell'])];
     if (tabs.includes('sell') && !tabs.includes('buyback')) tabs.splice(tabs.indexOf('sell') + 1, 0, 'buyback');   // ซื้อคืนของที่เพิ่งขาย (กันขายพลาด)
     this.shopTab = tabs[0];

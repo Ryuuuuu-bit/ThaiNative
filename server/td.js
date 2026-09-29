@@ -19,7 +19,7 @@ import { ITEMS } from '../shared/data/items.js';
 import { NPC_BY_ID } from '../shared/data/npcs.js';
 import { TILE, T, OX } from '../shared/td/ayutthaya.js';
 import { TD_MAPS, TD_MAP_IDS, EVENT_MAPS, getMap, validMap, arrivalPoint } from '../shared/td/maps.js';
-import { MAX_LEVEL } from '../shared/stats.js';
+import { MAX_LEVEL, mobExp } from '../shared/stats.js';
 
 export const TD_SPAWN = { ...TD_MAPS.ayutthaya.spawn };
 const SPEED = 92;                   // ความเร็วเดินผู้เล่น (ตรงกับ client)
@@ -202,7 +202,8 @@ export function setupTD(io, players, opts = {}) {
     const reward = (p, isKiller) => {
       if (!p?.save) return;
       const bl = blessingsOf(p.save);
-      const exp = Math.round(d.exp * tm.exp * bl.expMul);
+      const base = d.exp * tm.exp * bl.expMul;
+      const exp = mobExp(base, p.save.level, d.level, !!m.boss);                 // แคปตามช่วงเลเวล
       const out = { mid: m.mid, mon: m.id, kind: isKiller ? 'kill' : 'assist', exp, gold: 0, items: [], x: Math.round(m.x), y: Math.round(m.y), night: tm.exp > 1 };
       if (isKiller || m.boss) {                                                   // บอส: ทุกคนที่ช่วยตีได้ของ/การ์ดของตัวเอง
         out.gold = Math.round(rand(d.gold[0], d.gold[1]) * tm.gold * bl.goldMul);
@@ -226,7 +227,7 @@ export function setupTD(io, players, opts = {}) {
       Object.assign(out, grantKill(p.save, out));
       refresh(p); queueSync(p);
       io.to(p.id).emit('td:reward', out);
-      if (isKiller && !m.boss) shareExp(p, exp, assist);
+      if (isKiller && !m.boss) shareExp(p, d.exp * tm.exp, assist, d.level);
     };
     reward(killer, true);
     for (const id of assist) reward(players.get(id), false);

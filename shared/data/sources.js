@@ -51,7 +51,7 @@ function build() {
   const need = (n) => Object.entries(n).map(([k, q]) => `${ITEMS[k]?.nameTh || k}×${q}`).join(' + ');
   for (const r of RECIPES) add(r.out, { kind: 'craft', ic: '🍳', text: `ทำอาหารที่ป้าสา`, sub: need(r.need) });
   for (const r of BREWS) add(r.out, { kind: 'craft', ic: '🌿', text: `ปรุงยาที่ยายติ๋ม`, sub: need(r.need) });
-  for (const r of FORGE) add(r.out, { kind: 'craft', ic: '⚒️', text: `หลอมที่ลุงดำ · ฿${r.fee.toLocaleString()}`, sub: need(r.need) });
+  for (const r of FORGE) add(r.out, { kind: 'craft', ic: '⚒️', text: `สร้างที่ลุงดำ · ฿${r.fee.toLocaleString()}`, sub: need(r.need) });
   // 5) ตกปลา / เก็บสมุนไพร
   const fw = FISH.reduce((a, f) => a + f.w, 0);
   for (const f of FISH) add(f.id, { kind: 'life', ic: '🎣', text: `ตกปลา${f.night ? 'ตอนกลางคืน' : ''} · ~${pctTxt(f.w / fw)}`, sub: 'ริมน้ำกรุงศรีฯ และแดนต่าง ๆ (ยกเว้นนรกภูมิ)' });

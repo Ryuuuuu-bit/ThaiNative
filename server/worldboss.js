@@ -144,7 +144,8 @@ export function setupWorldBoss(io, players, { td, hurtPlayer, queueSync, social,
   // ------------------------------------------------------------
   function grant(win) {
     const rows = [...S.ledger.values()].sort((a, b) => b.dmg - a.dmg);
-    const total = Math.max(1, S.maxHp);
+    // สัดส่วน = ดาเมจของเรา ÷ ดาเมจรวมทุกคน (บอสฟื้นเลือดจากผลึกได้ → รวมเกินเลือดสูงสุด · ไม่ให้เกิน 100%)
+    const total = Math.max(1, S.maxHp, rows.reduce((a, r) => a + r.dmg, 0));
     const board = rows.slice(0, 10).map((r, i) => ({ rank: i + 1, name: r.name, dmg: r.dmg, pct: +(r.dmg / total * 100).toFixed(2) }));
     rows.forEach((r, i) => {
       const share = r.dmg / total, rank = i + 1, isMvp = win && S.mvp?.key === r.key;

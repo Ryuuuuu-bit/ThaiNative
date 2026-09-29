@@ -8,7 +8,7 @@
 import { WORLD } from '../shared/constants.js';
 import { MONSTERS, MONSTER_IDS } from '../shared/data/monsters.js';
 import { MAPS, mapAt, REGIONS } from '../shared/data/maps.js';
-import { rollDamage } from '../shared/stats.js';
+import { rollDamage, mobExp } from '../shared/stats.js';
 import { combatDerived, attackSpec, blessingsOf, attackGate } from '../shared/character.js';
 import { dayPhase, dayIndex, moonOf, nightMods, isNight } from '../shared/data/world.js';
 import { rollGearDrop } from '../shared/data/gear.js';
@@ -247,7 +247,7 @@ export function setupMobs(io, players, opts = {}) {
     const reward = (p, isKiller) => {
       if (!p?.save) return;
       const bl = blessingsOf(p.save);
-      const exp = Math.round(d.exp * tm.exp * bl.expMul);
+      const exp = mobExp(d.exp * tm.exp * bl.expMul, p.save.level, d.level);
       const out = { gi: m.gi, mon: m.id, kind: isKiller ? 'kill' : 'assist', exp, gold: 0, items: [], x: Math.round(m.x), y: Math.round(m.y), night: tm.exp > 1 };
       if (isKiller) {
         out.gold = Math.round(rand(d.gold[0], d.gold[1]) * tm.gold * bl.goldMul);
@@ -259,7 +259,7 @@ export function setupMobs(io, players, opts = {}) {
       Object.assign(out, g);
       refresh(p); queueSync(p);
       io.to(p.id).emit('mob:reward', out);
-      if (isKiller) shareExp(p, exp, assist);
+      if (isKiller) shareExp(p, d.exp * tm.exp, assist, d.level);
     };
     reward(killer, true);
     for (const id of assist) reward(players.get(id), false);
@@ -285,7 +285,7 @@ export function setupMobs(io, players, opts = {}) {
       if (Math.random() < 0.25 * bl.dropMul) { const g = rollGearDrop(d.level + 2, 1 / 0.012); if (g) items.push({ id: g, qty: 1, rare: true }); }
       if (Math.random() < 0.3) items.push({ id: 'black_iron', qty: 2 });
       if (d.level >= 20 && Math.random() < 0.15) items.push({ id: 'yant_guard', qty: 1 });
-      const r = { exp: Math.round(d.exp * mult * tm.exp * bl.expMul), gold: Math.round(rand(d.gold[0], d.gold[1]) * mult * bl.goldMul), items };
+      const r = { exp: mobExp(d.exp * mult * tm.exp * bl.expMul, p.save.level, d.level, true), gold: Math.round(rand(d.gold[0], d.gold[1]) * mult * bl.goldMul), items };
       p.save.rec ||= {}; p.save.rec.rboss = (p.save.rec.rboss || 0) + 1;
       (p.save.rec.rbossR ||= {})[d.region] = 1;
       const g = grant(p.save, r);

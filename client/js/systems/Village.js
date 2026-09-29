@@ -189,7 +189,7 @@ export class Village {
   // ============================================================
   renderCook(el) { this.renderCraft(el, 'cook', 'ตกปลาได้ทุกที่ริมน้ำ (คูเมือง/แม่น้ำ/บึง) · หน่อไม้ป่าเก็บได้ในป่าไผ่ปู่โสม · กลางคืนมีโอกาสได้ปลาพรายวิญญาณ'); }
   renderBrew(el) { this.renderCraft(el, 'brew', 'ว่านหางจระเข้/ตะไคร้/ขมิ้น อยู่ทุ่งนา · รวงผึ้ง/หน่อไม้ อยู่ป่าไผ่ · อัญชัน อยู่บึงผีพราย · เห็ดผีเรืองแสง อยู่ป่าไผ่ลึกและป่าช้า'); }
-  renderForge(el) { this.renderCraft(el, 'forge', 'หลอมอุปกรณ์ Lv.22–95 จากของดรอปผี + แร่เหล็กไหล · ไม่ต้องรอดวงดรอป · เขี้ยวพญายักษ์ได้จากบอสปู่โสม/เปรตอสุรกาย/ชาละวัน · Lv.35+ ใช้วัตถุดิบแดนต่าง ๆ'); }
+  renderForge(el) { this.renderCraft(el, 'forge', 'สร้างอุปกรณ์ Lv.22–150 จากของดรอปผี + แร่เหล็กไหล · ไม่ต้องรอดวงดรอป · เขี้ยวพญายักษ์ได้จากบอสปู่โสม/เปรตอสุรกาย/ชาละวัน · Lv.35+ ใช้วัตถุดิบแดนต่าง ๆ'); }
 
   /** รายการสูตร (ครัวป้าสา / ปรุงยายายติ๋ม / โรงหลอมลุงดำ) → ส่งคำสั่ง craft ให้ server */
   renderCraft(el, list, hint) {
@@ -214,13 +214,13 @@ export class Village {
       const under = it.lv && c.level < it.lv ? ' <span class="need-lv">🔒 ต้อง Lv.' + it.lv + '</span>' : '';
       return `<div class="item ${it.lv && c.level < it.lv ? 'under' : ''}"><span class="ic">${itemIcon(r.out, it.icon)}</span>
         <span>${esc(it.nameTh)}${under} <span class="meta">${eff}</span><div class="need">${needs} · ค่าแรง ฿${r.fee.toLocaleString()}</div></span>
-        <span class="craft-btns"><button data-craft="${i}" ${can ? '' : 'disabled'}>${list === 'forge' ? 'หลอม' : 'ทำ'}</button>${max > 1 && list !== 'forge' ? `<button data-craft="${i}" data-n="${max}">ทำ x${max}</button>` : ''}</span><span></span></div>`;
+        <span class="craft-btns"><button data-craft="${i}" ${can ? '' : 'disabled'}>${list === 'forge' ? 'สร้าง' : 'ทำ'}</button>${max > 1 && list !== 'forge' ? `<button data-craft="${i}" data-n="${max}">ทำ x${max}</button>` : ''}</span><span></span></div>`;
     }).join('') + (rows.length ? '' : '<div class="empty">ไม่มีสูตรในหมวดนี้</div>') + `<p class="hint">${hint}</p>`;
     el.querySelectorAll('[data-ff]').forEach((b) => (b.onclick = () => { this.forgeFilter = b.dataset.ff; this.scene.sfx.play('click'); this.renderForge(el); }));
     el.querySelectorAll('[data-craft]').forEach((b) => (b.onclick = () => {
       const n = +b.dataset.n || 1, idx = +b.dataset.craft;
       this.econ.act('craft', { list, idx, n }).then((r) => {
-        if (r.ok) { this.scene.sfx.play(r.forged ? 'levelup' : 'potion'); if (r.forged) { this.ui.banner(`⚒️ หลอมสำเร็จ: ${ITEMS[r.out].nameTh}`); this.scene.combat.burst(this.scene.player.x, this.scene.player.y - 20, 0xf39c12, 18); } }
+        if (r.ok) { this.scene.sfx.play(r.forged ? 'levelup' : 'potion'); if (r.forged) { this.ui.banner(`⚒️ สร้างสำเร็จ: ${ITEMS[r.out].nameTh}`); this.scene.combat.burst(this.scene.player.x, this.scene.player.y - 20, 0xf39c12, 18); } }
         this.ui.result(r);
       });
     }));

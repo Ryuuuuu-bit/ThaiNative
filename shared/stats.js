@@ -24,6 +24,24 @@ export function expToNext(level) {
   return Math.floor(40 * Math.pow(level, 1.6));
 }
 
+/** แคป EXP จากผีตามช่วงเลเวล (แบบ RO)
+ *  ▸ ห่างกันไม่เกิน ±5 เลเวล = 100%
+ *  ▸ ผีเลเวลต่ำกว่าเรา >5 → ลด 10%/เลเวล (เหลือต่ำสุด 10%) กันเก็บเวลผีอ่อน
+ *  ▸ ผีเลเวลสูงกว่าเรา >5 → ลด 10%/เลเวล (เหลือต่ำสุด 20%) กันพาเวล/ดูดเวล
+ *  ▸ ผีธรรมดา 1 ตัวได้ไม่เกิน 20% ของ EXP ที่ต้องใช้ขึ้นเลเวล · บอสไม่เกิน 1 เลเวล → ฆ่าตัวเดียวไม่กระโดดหลายเลเวล */
+export const EXP_BAND = 5, EXP_CAP_MOB = 0.2, EXP_CAP_BOSS = 1;
+export function expLevelMul(playerLv, mobLv) {
+  const d = (Number(mobLv) || 1) - (Number(playerLv) || 1);
+  if (d < -EXP_BAND) return Math.max(0.1, 1 - (-d - EXP_BAND) * 0.1);
+  if (d > EXP_BAND) return Math.max(0.2, 1 - (d - EXP_BAND) * 0.1);
+  return 1;
+}
+export function mobExp(base, playerLv, mobLv, boss = false) {
+  const raw = Math.max(0, base) * expLevelMul(playerLv, mobLv);
+  const cap = Math.max(1, expToNext(Math.max(1, Number(playerLv) || 1)) * (boss ? EXP_CAP_BOSS : EXP_CAP_MOB));
+  return Math.round(Math.min(raw, cap));
+}
+
 /** ค่าเริ่มต้นของตัวละครใหม่ */
 export function createBaseStats(job) {
   return {

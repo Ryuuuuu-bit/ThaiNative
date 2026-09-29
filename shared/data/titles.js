@@ -69,7 +69,7 @@ export const TITLES = [
   { id: 'fisher', cat: 'life',     nameTh: 'เซียนเบ็ดท่าน้ำ',      color: '#85c1e9', hint: 'ตกปลาได้ 100 ตัว',                         ok: (c, r) => (r.fish || 0) >= 100 },
   { id: 'buek', cat: 'life',       nameTh: 'ผู้พิชิตปลาบึก',       color: '#5dade2', hint: 'ตกปลาบึกยักษ์ได้',                         ok: (c, r) => (r.buek || 0) >= 1 },
   { id: 'herbal', cat: 'life',     nameTh: 'หมอยาป่า',            color: '#82e0aa', hint: 'เก็บสมุนไพร 100 ครั้ง',                     ok: (c, r) => (r.herb || 0) >= 100 },
-  { id: 'crafter', cat: 'life',    nameTh: 'ช่างฝีมือกรุงศรี',       color: '#f0b27a', hint: 'หลอม/ปรุง/ทำอาหาร 50 ครั้ง',                ok: (c, r) => (r.craft || 0) >= 50 },
+  { id: 'crafter', cat: 'life',    nameTh: 'ช่างฝีมือกรุงศรี',       color: '#f0b27a', hint: 'สร้างอุปกรณ์/ปรุงยา/ทำอาหาร 50 ครั้ง',                ok: (c, r) => (r.craft || 0) >= 50 },
   { id: 'rich', cat: 'misc',       nameTh: 'เศรษฐีกรุงศรี',          color: '#f7dc6f', hint: 'มีเงินติดตัว ฿1,000,000',                   ok: (c) => (c.gold || 0) >= 1_000_000 },
   { id: 'elder', cat: 'misc',      nameTh: 'ลูกรักผู้ใหญ่ชัย',       color: '#f8c471', hint: 'ทำเควสผู้ใหญ่ชัยครบทุกเควส',                  ok: (c) => QUESTS.every((q) => q.optional || c.quests?.done?.includes(q.id)) },
   { id: 'social', cat: 'misc',     nameTh: 'เพื่อนเยอะ',            color: '#76d7c4', hint: 'มีเพื่อนในรายชื่อ 5 คน',                     ok: (c) => (c.friends || []).length >= 5 },

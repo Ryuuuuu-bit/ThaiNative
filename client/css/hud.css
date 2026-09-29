@@ -433,3 +433,10 @@ body.td-mode.lowhp #hud::before { content: ''; position: absolute; inset: 0; z-i
 body.wb-on #target, body.wb-on #boss-bar { display: none !important; }
 body.wb-on #ticker { top: 17cqh; }
 @media (max-aspect-ratio: 4/3) { #wb-hud .wb-bar { width: min(92%, 36em); top: 22%; } body.wb-on #ticker { top: 33cqh; } }
+/* รางวัลบอสโลก: ไอคอนของขอบแดงห่อด้วย .ico-wrap (กว้าง 100%) → ล็อกขนาดเท่าไอคอนอื่น · กรอบแดงใช้ของการ์ดรางวัลอย่างเดียว */
+#wb-hud .wb-it .ico-wrap { flex: none; width: 1.8em; height: 1.8em; }
+#wb-hud .wb-it .ico-wrap::after { display: none; }
+#wb-hud .wb-it em { white-space: nowrap; }
+/* สีเลเวลเป้าหมาย (แคป EXP ตามช่วงเลเวล) */
+#t-lv.lv-low { color: #9aa0a6; }
+#t-lv.lv-high { color: #ff6b5a; }

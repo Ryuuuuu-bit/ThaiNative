@@ -9,7 +9,7 @@ import { MAPS, HUNT_MAPS, mapAt } from './maps.js';
 export const NPCS = [
   { id: 'shop',  key: 'npc_yai_tim',   x: 720,  nameTh: 'ยายติ๋ม', role: 'ร้านยา·ของใช้', color: '#82e0aa', tint: 0xd7bde2, flip: true, icon: '🧪' },
   { id: 'quest', key: 'npc_lung_chai', x: 520,  nameTh: 'ผู้ใหญ่ชัย', role: 'เควส', color: '#f7dc6f', tint: 0xf0b27a, icon: '❗' },
-  { id: 'smith', key: 'npc_lung_dam',  x: 846,  nameTh: 'ลุงดำ', role: 'ตีเหล็ก·หลอมอุปกรณ์', color: '#f5b041', tint: 0x7f8c8d, flip: true, icon: '🔨' },
+  { id: 'smith', key: 'npc_lung_dam',  x: 846,  nameTh: 'ลุงดำ', role: 'ตีเหล็ก·สร้างอุปกรณ์', color: '#f5b041', tint: 0x7f8c8d, flip: true, icon: '🔨' },
   { id: 'tailor', key: 'npc_mae_choy', x: 380,  nameTh: 'แม่ช้อย', role: 'ชุดแต่งตัว·ย้อมสี', color: '#f5b7b1', tint: 0xf5b7b1, flip: true, icon: '👘' },
   { id: 'cook',  key: 'npc_pa_sa',     x: -300, nameTh: 'ป้าสา', role: 'ครัว·รับซื้อปลา', color: '#85c1e9', tint: 0xf5cba7, flip: true, icon: '🍲' },
   { id: 'kru_sword',  key: 'npc_kru_sword',  x: -200, nameTh: 'ครูเหม',     role: 'สำนักดาบ',      color: '#f1948a', tint: 0xe6b0aa, flip: true, icon: '⚔️' },

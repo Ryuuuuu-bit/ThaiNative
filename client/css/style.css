@@ -1302,7 +1302,9 @@ body.td-mode #td-hud .td-zone { top: 42.1% !important; right: 1.2%; width: 16.67
 @media (max-width: 900px) { #inv-panel .inv-body { grid-template-columns: 1fr; } #inv-panel #inv-list { order: -1; } #inv-panel #inv-equip { position: static; } }
 #inv-panel.window.wide { width: min(58em, 96vw); }
 #inv-panel .inv-body { grid-template-columns: minmax(17em, 20em) minmax(0, 1fr); }
-#inv-panel .ro-grid { align-content: start; grid-auto-rows: min-content; max-height: min(15em, 42vh); }
+#inv-panel .ro-grid { align-content: start; grid-auto-rows: min-content; max-height: min(18em, 46vh); overflow-x: hidden;
+  grid-template-columns: repeat(auto-fill, minmax(54px, 1fr)); gap: 3px; }   /* ช่องเล็กลง (~56–64px) → เห็นของได้มากขึ้นต่อแถว */
+#inv-panel .ro-slot { font-size: 1.1em; }
 #inv-panel .ro-bar { flex-wrap: wrap; height: 4.6em; overflow-y: auto; align-content: center; }   /* สูงคงที่: เลือกไอเทมแล้วแผงไม่ยืด/หด */
 #inv-panel .ro-name { flex-basis: 12em; }
 @media (max-width: 900px) { #inv-panel .inv-body { grid-template-columns: 1fr; } }
@@ -1630,3 +1632,7 @@ body.touch #cb-size { display: none; }
 .btn.danger { background: linear-gradient(#e0645a, #a8342b); border-color: #ff9b91; color: #fff; }
 @keyframes dlgFade { from { opacity: 0; } }
 @keyframes dlgPop { from { transform: scale(.9); opacity: 0; } }
+
+/* หน้า NPC ในร้าน (ครอปจากสไปรต์จริง) */
+#shop-panel .npc-port img.real { width: 100%; height: 100%; object-fit: cover; object-position: 50% 0; transform: none; image-rendering: pixelated; }
+#shop-panel .npc-port span .px-ico { width: 1.4em; height: 1.4em; }

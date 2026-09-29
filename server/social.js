@@ -9,7 +9,7 @@ import { PARTY, WORLD } from '../shared/constants.js';
 import { ITEMS } from '../shared/data/items.js';
 import { LEGEND_IDS, rollGearDrop } from '../shared/data/gear.js';
 import { RAID_BOSS as RB } from '../shared/data/raid.js';
-import { rollDamage } from '../shared/stats.js';
+import { rollDamage, mobExp } from '../shared/stats.js';
 import { combatDerived, attackSpec, attackGate } from '../shared/character.js';
 import { count, addItem, removeItem, grant } from '../shared/economy.js';
 import { TITLE_BY_ID, checkTitles } from '../shared/data/titles.js';
@@ -225,14 +225,16 @@ export function setupSocial(io, players, H = {}) {
   }
 
   /** แบ่ง EXP ให้เพื่อนปาร์ตี้ที่อยู่ใกล้ (ใส่เซฟจริง) */
-  function shareExp(p, exp, exclude = []) {
+  function shareExp(p, exp, exclude = [], mobLv = null) {
     const party = partyOf(p);
     if (!party) return;
-    const share = Math.round(exp * PARTY.shareRatio);
-    if (!share) return;
+    if (!(exp * PARTY.shareRatio >= 1)) return;
     for (const id of party.members) {
       const m = players.get(id);
       if (id === p.id || !m?.save || exclude.includes(id) || apart(m, p) > PARTY.shareRange || m.dead) continue;
+      // แคปตามช่วงเลเวลของ "เพื่อนแต่ละคน" (เวลห่างจากผีมาก = ได้น้อย · กันพาเวล)
+      const share = mobLv != null ? mobExp(exp * PARTY.shareRatio, m.save.level, mobLv) : Math.round(exp * PARTY.shareRatio);
+      if (!share) continue;
       const g = grant(m.save, { exp: share });
       refresh(m); queueSync(m);
       emitTo(id, 'party:exp', { amount: share, from: p.name, ups: g.ups });

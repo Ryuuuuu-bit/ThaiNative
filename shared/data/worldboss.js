@@ -26,7 +26,7 @@ export const WB_TIMES = Array.from({ length: 12 }, (_, i) => [i * 2, 0]);   // �
 export const WB_FIGHT_MS = 30 * 60e3;        // เวลาสู้
 export const WB_ANNOUNCE_MS = 10 * 60e3;     // ประกาศล่วงหน้า (เปิดลาน/วาร์ปได้)
 export const WB_CLOSE_MS = 3 * 60e3;         // หลังจบ → แจกรางวัล แล้วปิดลาน
-export const WB_MVP_MS = 30 * 60e3;          // ป้าย MVP ค้างเหนือหัว
+export const WB_MVP_MS = 10 * 60e3;          // ป้าย MVP ค้างเหนือหัว
 
 /** รอบล่าสุดที่เริ่มไปแล้ว (≤ now) · ใช้ตอน server รีสตาร์ทกลางอีเวนต์ */
 export function lastSpawnAt(now = Date.now()) {
@@ -51,7 +51,7 @@ export function nextSpawnAt(now = Date.now()) {
 
 // ---------------- เลือดบอส ----------------
 /** เลือด = max(ขั้นต่ำ, ออนไลน์ทั้งเซิร์ฟ × ต่อคน) แล้วไม่เกินเพดาน (ล็อกตอนบอสเกิด) */
-export const WB_HP = { min: 1_000_000, per: 50_000, cap: 20_000_000 };
+export const WB_HP = { min: 8_000_000, per: 8_000_000, cap: 2_000_000_000 };   // 8M ต่อคนออนไลน์
 export const wbHp = (online) => Math.min(WB_HP.cap, Math.max(WB_HP.min, Math.round(online) * WB_HP.per));
 
 /** เฟส (ตาม % เลือด) */

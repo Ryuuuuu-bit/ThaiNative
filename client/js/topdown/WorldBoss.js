@@ -2,7 +2,7 @@
 //  บอสโลก "พระราหู ผู้กลืนจันทร์" – ฝั่ง client
 //  ▸ HUD: แถบประกาศ + ปุ่มวาร์ป · แถบเลือดบอส/เฟส/เวลา · ป้ายชื่อท่า + วิธีหลบ · ผลรางวัล/อันดับ
 //  ▸ ภาพเตือนท่าบนพื้น (ม่วง = ดาเมจ · เงิน = ปลอดภัย/เป้า · แดง = อันตรายสูง) + กับดักในลาน
-//  ▸ ป้าย ★ MVP ★ เหนือหัวคนปิดฉาก 30 นาที (ทุกคนเห็น)
+//  ▸ ป้าย ★ MVP ★ เหนือหัวคนปิดฉาก 10 นาที (ทุกคนเห็น)
 // ============================================================
 import { makeText, itemIcon } from '../systems/util.js';
 import { ITEMS } from '/shared/data/items.js';
@@ -248,7 +248,10 @@ export class WorldBossUI {
     for (const [id, spr] of want) {
       let t = this.mvpTags.get(id);
       if (!t) { t = makeText(s, 0, 0, '★ MVP ★', { fontSize: '8px', color: '#ffd35c', stroke: '#5a3300', strokeThickness: 3 }).setOrigin(0.5, 1).setDepth(99999); this.mvpTags.set(id, t); s.tweens.add({ targets: t, alpha: 0.6, yoyo: true, repeat: -1, duration: 700 }); }
-      t.setPosition(spr.x, spr.y - spr.displayHeight - 22);
+      // วางเหนือป้ายบนสุด (ชื่อ/ฉายา) ไม่ให้ทับกัน
+      const tags = (spr === s.player ? [s.nameTag, s.titleTag] : spr._tags || []).filter((g) => g?.visible && g.scene);
+      const top = tags.length ? Math.min(...tags.map((g) => g.y - g.displayHeight)) : spr.y - spr.displayHeight - 12;
+      t.setPosition(spr.x, top - 1);
     }
   }
   /** บ่อเงาดูด: ช้าลง 40% (เฉพาะตอนสู้) */

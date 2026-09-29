@@ -364,7 +364,7 @@ function craft(c, { list, idx, n = 1 }, ctx) {
   if (!done) return NO(Object.entries(r.need).every(([id, k]) => count(c, id) >= k) ? 'เงินไม่พอจ่ายค่าแรง' : 'วัตถุดิบไม่พอ');
   rec(c, 'craft', done);
   const it = ITEMS[r.out];
-  return OK(`${L.who}${list === 'forge' ? 'หลอม' : 'ทำ'} ${it.icon} ${it.nameTh}${done > 1 ? ` x${done}` : ''} ให้แล้ว!${extra ? ` (ฝีมือดี ได้เพิ่ม ${extra})` : ''}`, { done, out: r.out, forged: list === 'forge' && !r.util, life });
+  return OK(`${L.who}${list === 'forge' ? 'สร้าง' : 'ทำ'} ${it.icon} ${it.nameTh}${done > 1 ? ` x${done}` : ''} ให้แล้ว!${extra ? ` (ฝีมือดี ได้เพิ่ม ${extra})` : ''}`, { done, out: r.out, forged: list === 'forge' && !r.util, life });
 }
 
 // ------------------------------------------------------------
