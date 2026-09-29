@@ -1,7 +1,7 @@
 {
   "name": "thainative",
   "version": "0.1.0",
-  "description": "ThaiNative Online - 2D side-scroller web RPG ธีมผีไทย (Phaser 3 + Socket.io)",
+  "description": "ThaiNative Online - top-down web MMORPG ธีมผีไทย (Phaser 3 + Socket.io + PostgreSQL)",
   "main": "server/index.js",
   "scripts": {
     "start": "node server/index.js",
