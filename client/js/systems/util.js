@@ -115,3 +115,11 @@ export function watchEmoji() {
   }).observe(document.body, { childList: true, subtree: true, characterData: true });
   iconizeEmoji(document.body);
 }
+
+/** ป้ายชื่อ GM: ตัวอักษรแดง ขอบขาว เรืองแสงแดง (on=false → คืนสไตล์ปกติ) */
+export function gmStyle(t, on = true, normal = '#fff3c4') {
+  if (!t) return t;
+  if (on) t.setColor('#ff2a2a').setStroke('#ffffff', 4).setShadow(0, 0, '#ff1a1a', 7, true, true).setFontStyle('700');
+  else t.setColor(normal).setStroke('#000000', 3).setShadow(0, 1, '#000', 2, true, true).setFontStyle('500');
+  return t;
+}

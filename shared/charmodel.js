@@ -7,7 +7,7 @@ import { baseItemId } from './data/affixes.js';
 const lookOf = (id) => { const b = baseItemId(id); return (b && ITEMS[b]?.lookAs) || b; };
 import { ENHANCE } from './data/village.js';
 import { JOBS, VILLAGER, PATH_LV, SUB_CAP } from './data/classes.js';
-import { ITEMS, STARTING_GOLD, STARTING_ITEMS, STARTER_WEAPON } from './data/items.js';
+import { ITEMS, STARTING_GOLD, STARTING_ITEMS, STARTER_WEAPON, WTYPE_JOB } from './data/items.js';
 import { sanitizeAppearance } from './data/appearance.js';
 import { expToNext, POINTS_PER_LEVEL, STAT_KEYS, MAX_LEVEL } from './stats.js';
 import { getDerived } from './character.js';
@@ -72,6 +72,7 @@ export function syncAppearance(c) {
   c.appearance = sanitizeAppearance({ ...c.appearance, weapon: lookOf(c.equipment.weapon), armor: lookOf(c.equipment.armor), path: c.path, aura: ENHANCE.auraTier(top), costume: c.costume,
     wenh: c.equipment.weapon ? e.weapon || 0 : 0, aenh: c.equipment.armor ? e.armor || 0 : 0, title: c.title || null });
   if (oldStyle && oldStyle !== c.appearance.job) swapHotbar(c, oldStyle, c.appearance.job);
+  if (oldStyle !== c.appearance.job) { recomputePath(c); c.appearance.path = c.path; }   // สลับแนวอาวุธ → อาชีพตามอาวุธที่ถือ (ถ้าชำนาญถึงเกณฑ์)
   return before !== JSON.stringify(c.appearance);
 }
 
@@ -98,13 +99,19 @@ export const pathName = (c) => (c.path ? JOBS[c.path].nameTh : VILLAGER.nameTh);
 /** แต้มพรสวรรค์ที่ยังไม่ได้ลง */
 export const passiveFree = (c) => !PASSIVES_ON ? 0 : Math.max(0, totalPassivePoints(c.level) - ((c.passives?.length || 1) - 1));
 
-/** อาชีพ (สาย) = กิ่งพรสวรรค์ที่ลงมากสุด × 3 + ความชำนาญอาวุธ · ต้องถึงเกณฑ์ก่อนถึงได้ฉายา ไม่งั้นเป็นชาวบ้าน */
+/** อาชีพ (สาย) = กิ่งพรสวรรค์ที่ลงมากสุด × 3 + ความชำนาญอาวุธ · ต้องถึงเกณฑ์ก่อนถึงได้ฉายา ไม่งั้นเป็นชาวบ้าน
+ *  ▸ ปิดพรสวรรค์อยู่: อาวุธที่ถืออยู่มีความชำนาญถึงเกณฑ์ → เป็นสายนั้นเลย (สลับอาวุธหลักได้ ไม่ติดสายเก่าที่เคยฟาร์ม)
+ *    อาวุธที่ถือยังไม่ถึงเกณฑ์ → ใช้สายที่ชำนาญสูงสุดเหมือนเดิม */
 export function recomputePath(c) {
+  const cur = c.appearance?.job;
+  if (!PASSIVES_ON && JOBS[cur] && masteryLevel(c.wm?.[cur] || 0).lv >= 3) return (c.path = cur);
   const bp = branchPoints(c.passives || []);
-  let best = null, score = 0;
+  // เลเวลเท่ากัน → ตัดสินด้วยแต้มความชำนาญรวม (ฆ่ามากกว่า) → ยังเท่าอีก = คงอาชีพเดิม (ไม่สลับไปมาตามลำดับในตาราง)
+  const prev = c.path;
+  let best = null, score = 0, xp = -1;
   for (const j of Object.keys(JOBS)) {
-    const s = (PASSIVES_ON ? bp[j] * 3 : 0) + masteryLevel(c.wm?.[j] || 0).lv;
-    if (s > score) { score = s; best = j; }
+    const s = (PASSIVES_ON ? bp[j] * 3 : 0) + masteryLevel(c.wm?.[j] || 0).lv, x = c.wm?.[j] || 0;
+    if (s > score || (s === score && s > 0 && (x > xp || (x === xp && j === prev)))) { score = s; best = j; xp = x; }
   }
   c.path = score >= (PASSIVES_ON ? 9 : 3) ? best : null;
   return c.path;
@@ -261,6 +268,71 @@ export function resetWeaponSkills(c, job) {
   return back;
 }
 
+// ------------------------------------------------------------
+//  ชุดการเล่น 2 ชุด (Preset A / B) · กด Tab สลับ
+//  ▸ แต่ละชุดจำ: อุปกรณ์ที่สวม (ยกเว้นขวดยา) · แต้มสถานะ · สกิลที่เรียน + SP · Hotbar
+//  ▸ ชุดที่ใช้อยู่ = ค่าบนตัวละครตามปกติ (โค้ดเดิมทั้งหมดใช้ต่อได้) · อีกชุดเก็บใน c.presets[i]
+//  ▸ แต้มสถานะ/SP ของแต่ละชุดคิดจากเลเวลเต็มจำนวน (ชุดละ 1 SP/เลเวล · 5 แต้มสถานะ/เลเวล) → คำนวณใหม่ตอนสลับเข้า
+//  ▸ ของไม่ถูกคัดลอก: ชุดจำแค่ "ใส่ชิ้นไหน" ของจริงอยู่ในกระเป๋า (ขาย/เทรดไปแล้ว = ช่องนั้นว่าง)
+//  ▸ ขั้นตีบวก/การ์ด ผูกกับช่อง → ใช้ร่วมทั้งสองชุด
+// ------------------------------------------------------------
+export const PRESET_N = 2, PRESET_LABEL = ['A', 'B'];
+export const PRESET_SLOTS = EQUIP_SLOTS.filter((s) => !FLASK_SLOTS.includes(s));
+export const totalStatPts = (c) => (c.level - 1) * POINTS_PER_LEVEL + (c.bonusPoints || 0);
+const statSpent = (st) => STAT_KEYS.reduce((a, k) => a + Math.max(0, (st[k] | 0) - VILLAGER.startStats[k]), 0);
+const spSpent = (sk) => Object.values(sk).reduce((a, v) => a + (v | 0), 0);
+
+/** ถ่ายค่าชุดที่ใช้อยู่ */
+export function snapPreset(c) {
+  return {
+    eq: Object.fromEntries(PRESET_SLOTS.map((s) => [s, c.equipment[s] || null])),
+    stats: { ...c.stats }, skills: { ...(c.skills || {}) },
+    hotbar: { ...c.hotbar }, hotbars: JSON.parse(JSON.stringify(c.hotbars || {})),
+  };
+}
+/** ชุดใหม่ (ยังไม่เคยใช้): ว่าง · แต้มเต็ม */
+export function blankPreset() {
+  return { eq: {}, stats: { ...VILLAGER.startStats }, skills: {}, hotbar: emptyHotbar(), hotbars: {} };
+}
+/** ตรวจโครงสร้างชุด (เซฟเก่า/ข้อมูลเสีย) */
+function cleanPreset(p) {
+  if (!p || typeof p !== 'object') return null;
+  const eq = {};
+  for (const s of PRESET_SLOTS) { const id = p.eq?.[s]; eq[s] = typeof id === 'string' && ITEMS[id]?.type === SLOT_TYPE[s] ? id : null; }
+  const stats = {};
+  for (const k of STAT_KEYS) stats[k] = Math.max(VILLAGER.startStats[k], Math.min(999, Math.floor(+p.stats?.[k] || 0)));
+  const skills = {};
+  for (const [id, lv] of Object.entries(p.skills || {})) if (SKILL_BY_ID[id] && lv > 0) skills[id] = Math.min(5, Math.floor(+lv) || 0);
+  const hb = p.hotbar && typeof p.hotbar === 'object' ? p.hotbar : emptyHotbar();
+  const hotbars = p.hotbars && typeof p.hotbars === 'object' ? p.hotbars : {};
+  return { eq, stats, skills, hotbar: hb, hotbars };
+}
+export function ensurePresets(c) {
+  if (!Array.isArray(c.presets) || c.presets.length !== PRESET_N) c.presets = [null, null];
+  c.pset = c.pset === 1 ? 1 : 0;
+  c.presets = c.presets.map((p, i) => (i === c.pset ? null : cleanPreset(p)));
+  return c.presets;
+}
+/** โหลดค่าสถานะ/สกิลของชุด p เข้าตัวละคร (แต้มที่เหลือคำนวณจากเลเวลปัจจุบัน · เกิน = ล้างใหม่) */
+export function applyPresetStats(c, p) {
+  c.stats = { ...VILLAGER.startStats, ...p.stats };
+  c.statPoints = totalStatPts(c) - statSpent(c.stats);
+  if (c.statPoints < 0) resetStats(c);
+  c.skills = { ...p.skills };
+  c.sp = totalSp(c) - spSpent(c.skills);
+  if (c.sp < 0) { c.skills = {}; c.sp = totalSp(c); }
+  clampSkills(c);
+}
+/** ความคืบหน้าของชุดที่ไม่ได้ใช้ (ไว้โชว์ใน UI) */
+export function presetInfo(c, i) {
+  ensurePresets(c);
+  if (i === c.pset) return { i, active: true, weapon: c.equipment.weapon || null, job: c.appearance?.job, statPoints: c.statPoints, sp: c.sp };
+  const p = c.presets[i];
+  if (!p) return { i, active: false, empty: true, weapon: null, job: null, statPoints: totalStatPts(c), sp: totalSp(c) };
+  const w = p.eq.weapon ? ITEMS[p.eq.weapon] : null;
+  return { i, active: false, weapon: p.eq.weapon, job: w ? WTYPE_JOB[w.wtype] || null : 'boxer', statPoints: totalStatPts(c) - statSpent(p.stats), sp: totalSp(c) - spSpent(p.skills) };
+}
+
 export function resetStats(c) {
   c.stats = { ...VILLAGER.startStats };
   c.statPoints = (c.level - 1) * POINTS_PER_LEVEL + (c.bonusPoints || 0);
@@ -356,6 +428,7 @@ export function migrate(c) {
       c.wm[c.path] = Math.max(c.wm[c.path] || 0, 60);
     }
   }
+  ensurePresets(c);
   fixPassives(c);
   recomputePath(c);
   clampSkills(c);

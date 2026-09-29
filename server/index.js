@@ -337,7 +337,8 @@ io.on('connection', (socket) => {
     }
     if (r.warp === 'home' && r.ok && p.world === 'td') td.warpHome(p, socket);   // ยันต์คืนถิ่นในโลกใหม่ → ลานน้ำพุกลางเมือง
     if (r.ok && (r.potion || r.ate || r.flask) && p.world === 'td') socket.to(td.room(p)).emit('td:fx', { id: p.id, kind: r.kind, big: !!r.flask });   // คนอื่นเห็นเอฟเฟกต์ดื่มยา
-    if (a === 'title' && r.ok) io.emit('td:title', { id: p.id, title: p.save.title || null });   // ฉายาเหนือชื่อ → ทุกคนเห็นทันที
+    if (a === 'title' && r.ok) io.emit('td:title', { id: p.id, title: p.save.title || null });
+    if (a === 'preset' && r.ok) p.hpDirty = true;                               // สลับชุด: HP สูงสุดเปลี่ยน → ส่ง HP ใหม่ให้ปาร์ตี้/ตัวเอง   // ฉายาเหนือชื่อ → ทุกคนเห็นทันที
     if (a === 'enhance' && r.slot && r.lv >= 10 && r.success) io.emit('chat', { id: null, name: '🔨 ลุงดำ', text: `${p.name} ตีบวกสำเร็จ +${r.lv}!` });
     refresh(p);
     if (r.ok && r.gmWarp && p.admin && p.world === 'td') td.gmWarp(p, socket, r.gmWarp);
@@ -413,7 +414,7 @@ io.on('connection', (socket) => {
     if (invCount(p.save, 'rename_ticket') <= 0) return reply({ ok: false, msg: 'ไม่มีใบเปลี่ยนชื่อ' });
     if (p.renaming) return reply({ ok: false, msg: 'กำลังเปลี่ยนชื่ออยู่' });
     if (p.tradeId) return reply({ ok: false, msg: 'ปิดหน้าต่างเทรดก่อน' });
-    const chk = checkName(d.name);
+    const chk = checkName(d.name, { admin: p.admin });
     if (!chk.ok) return reply({ ok: false, msg: chk.msg });
     const oldName = p.save.name, oldKey = p.save.nk || nameKey(oldName);
     if (chk.name === oldName) return reply({ ok: false, msg: 'เป็นชื่อเดิมอยู่แล้ว' });
@@ -435,7 +436,7 @@ io.on('connection', (socket) => {
       if (oldKey !== chk.key) await store.holdName?.(oldKey, p.acc);
       await store.releaseHold?.(chk.key);
       queueSync(p);
-      io.emit('player:rename', { id: p.id, name: chk.name, old: oldName });
+      io.emit('player:rename', { id: p.id, name: chk.name, old: oldName, gm: !!p.admin && /^gm/i.test(chk.name) });
       reply({ ok: true, name: chk.name });
     } finally { p.renaming = false; }
   });
@@ -452,11 +453,11 @@ io.on('connection', (socket) => {
     if (wm) {
       const t = [...players.values()].find((q) => String(q.name).toLowerCase().replace(/\s+#/, '#') === wm[1].toLowerCase());
       if (!t) return socket.emit('chat', { id: null, name: '📢 ระบบ', text: `ไม่พบผู้เล่นชื่อ "${wm[1]}" ที่ออนไลน์อยู่` });
-      io.to(t.id).emit('chat', { id: p.id, name: `[กระซิบจาก ${p.name}]`, text: wm[2], whisper: true, from: p.name, nm: p.name, lv: p.save?.level });
+      io.to(t.id).emit('chat', { id: p.id, name: `[กระซิบจาก ${p.name}]`, text: wm[2], whisper: true, from: p.name, nm: p.name, lv: p.save?.level, gm: !!p.admin && /^gm/i.test(p.name || '') });
       if (t.id !== p.id) socket.emit('chat', { id: p.id, name: `[กระซิบถึง ${t.name}]`, text: wm[2], whisper: true, to: t.name, toId: t.id, nm: p.name });
       return;
     }
-    io.emit('chat', { id: p.id, name: p.name, text: msg, nm: p.name, lv: p.save?.level, title: p.save?.title || null });
+    io.emit('chat', { id: p.id, name: p.name, text: msg, nm: p.name, lv: p.save?.level, title: p.save?.title || null, gm: !!p.admin && /^gm/i.test(p.name || '') });
   });
 
   socket.on('disconnect', () => leave(socket.id));

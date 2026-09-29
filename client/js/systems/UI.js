@@ -16,7 +16,7 @@ import { TITLES, TITLE_BY_ID, TITLE_CATS } from '/shared/data/titles.js';
 import { DYE_PRICE } from '/shared/economy.js';
 import { OUTFITS, HAIRSTYLES } from '/shared/data/appearance.js';
 import { SKILLS, SKILL_SLOTS, SKILL_BY_ID, MAX_SKILL_LV, skillStats, canLearn, skillCap, isItemSlot, slotItemId, skillUsable, skillWeaponTh, masteryOf, skillMastery, MASTERY_MAX as SK_MMAX } from '/shared/data/skills.js';
-import { hotbarItemOk, passiveFree, classTitle } from '/shared/charmodel.js';
+import { hotbarItemOk, passiveFree, classTitle, PRESET_LABEL, presetInfo } from '/shared/charmodel.js';
 import { PASSIVES, BRANCHES, KEYSTONE, canAllocate, branchPoints, bonusText, totalPassivePoints, PASSIVES_ON } from '/shared/data/passives.js';
 import { LIFE, LIFE_IDS, lifeLevel, masteryLevel, MASTERY_MAX } from '/shared/data/life.js';
 import { passiveResetCost } from '/shared/economy.js';
@@ -483,7 +483,8 @@ export class UI {
     $('#sk-pp-lbl')?.classList.toggle('hidden', !PASSIVES_ON);
     if (!PASSIVES_ON && this.skTab === 'hybrid') this.skTab = null;
     $('#sk-job').textContent = classTitle(c);
-    $('#sk-sp').textContent = c.sp;
+    $('#sk-sp').textContent = `${c.sp}`; $('#sk-sp').title = `SP ของชุด ${PRESET_LABEL[c.pset === 1 ? 1 : 0]} (แต้มสกิลแยกตามชุด · Tab สลับชุด)`;
+    { const h = $('#sk-sp')?.parentElement; if (h) h.dataset.pset = `ชุด ${PRESET_LABEL[c.pset === 1 ? 1 : 0]}`; }
     $('#sk-pp').textContent = passiveFree(c);
     document.querySelectorAll('#sk-modes [data-mode]').forEach((b) => {
       b.classList.toggle('active', b.dataset.mode === this.skMode);
@@ -871,12 +872,38 @@ export class UI {
       ...((d.healPow || 1) > 1 || c.appearance?.job === 'healer' ? [['พลังรักษา 💚', 'healPow', (v) => `${Math.round(((v || 1) - 1) * 100)}%`]] : []),
     ];
     const cp0 = combatPower(c, d), cp1 = used ? combatPower(c, after) : cp0, rk = c.rec?.cpRank;
+    { const ps = $('#st-preset'); if (ps) { ps.innerHTML = this.presetStrip(c); ps.querySelectorAll('[data-pset]').forEach((b) => (b.onclick = () => this.scene.swapPreset?.())); } }
     $('#st-derived').innerHTML = `<div class="cp-line"><span>⚔ ค่าพลังรวม</span><b>${cp0.toLocaleString('en-US')}${cp1 !== cp0 ? ` <em class="up">→ ${cp1.toLocaleString('en-US')}</em>` : ''}${rk ? ` <small>อันดับ #${rk}</small>` : ''}</b></div>` + rows.map(([label, key, f = (v) => v]) => {
       const up = after[key] !== d[key];
       return `<div><span>${label}</span><b>${f(d[key])}${up ? ` <em class="up">→ ${f(after[key])}</em>` : ''}</b></div>`;
     }).join('')
       + `<div class="path-line"><span>อาชีพ${PASSIVES_ON ? ' (พรสวรรค์ + อาวุธ)' : ' (ความชำนาญอาวุธ)'}</span><b>${classTitle(c)}${PASSIVES_ON ? ` · แต้มพรสวรรค์เหลือ ${passiveFree(c)} (K)` : ''}</b></div>`
-      + `<div class="path-line"><span>แนวต่อสู้ (ตามอาวุธ)</span><b>${JOBS[c.appearance.job].icon} ${JOBS[c.appearance.job].nameTh}</b></div>`;
+      + `<div class="path-line"><span>แนวต่อสู้ (ตามอาวุธ)</span><b>${JOBS[c.appearance.job].icon} ${JOBS[c.appearance.job].nameTh} · ชำนาญ Lv.${masteryLevel(c.wm?.[c.appearance.job] || 0).lv}</b></div>`
+      + this.masteryHtml(c);
+  }
+
+  /** แถบชุดการเล่น A/B ในหน้าสถานะ: ชุดที่ใช้ + แต้มเหลือของแต่ละชุด · คลิกอีกชุด = สลับ */
+  presetStrip(c) {
+    const chip = (i) => {
+      const o = presetInfo(c, i), j = JOBS[o.job];
+      const name = o.empty ? 'ยังว่าง' : j ? `${j.icon} ${j.nameTh}` : 'มือเปล่า';
+      return `<button class="ps-chip ${o.active ? 'on' : ''} ${i ? 'b' : 'a'}" data-pset="${i}" ${o.active ? 'disabled' : ''}>
+        <b>ชุด ${PRESET_LABEL[i]}${o.active ? ' <em class="ps-on">● ใช้อยู่</em>' : ' <em class="ps-go">คลิกเพื่อสลับ</em>'}</b><span>${name}</span><small>แต้มสถานะ ${o.statPoints} · SP ${o.sp}</small></button>`;
+    };
+    return `<div class="preset-strip">${chip(0)}${chip(1)}<small class="ps-hint">Tab = สลับชุด · แต่ละชุดมีอาวุธ/อุปกรณ์/แต้มสถานะ/สกิลของตัวเอง</small></div>`;
+  }
+
+  /** ความชำนาญอาวุธ 5 แนว: เลเวล · หลอดความคืบหน้า · โบนัสโจมตี · ★ = อาชีพ · ✋ = ถืออยู่ */
+  masteryHtml(c) {
+    const rows = JOB_IDS.map((j) => {
+      const m = masteryLevel(c.wm?.[j] || 0), max = m.lv >= MASTERY_MAX, pct = max ? 100 : Math.round((m.cur / m.need) * 100);
+      const tags = `${c.path === j ? '<em class="ms-tag cls" title="อาชีพปัจจุบัน">★ อาชีพ</em>' : ''}${c.appearance?.job === j ? '<em class="ms-tag hold" title="อาวุธที่ถืออยู่">✋ ถืออยู่</em>' : ''}`;
+      return `<div class="ms-row ${c.appearance?.job === j ? 'cur' : ''} ${m.lv ? '' : 'zero'}" title="${max ? 'เต็มแล้ว' : `อีก ${m.need - m.cur} แต้ม ถึง Lv.${m.lv + 1}`} · โจมตีด้วยอาวุธนี้ +${m.lv}%">
+        <span class="ms-name">${JOBS[j].icon} ${JOBS[j].weaponTh}${tags}</span>
+        <div class="ms-bar"><i style="width:${pct}%"></i><small>${max ? 'MAX' : `${m.cur}/${m.need}`}</small></div>
+        <b>Lv.${m.lv}<small>/${MASTERY_MAX}</small></b><span class="ms-bonus">+${m.lv}%</span></div>`;
+    }).join('');
+    return `<div class="ms mastery-box"><div class="ms-hd"><span>🗡️ ความชำนาญอาวุธ</span><small>ฆ่าผีด้วยอาวุธไหน แนวนั้นขึ้น · ทุก Lv โจมตี +1% · ถือแนวที่ชำนาญ Lv.3+ = เป็นอาชีพนั้น</small></div>${rows}</div>`;
   }
 
   /** กันทับ: ชิ้น HUD ใดที่อยู่ใต้หน้าต่างที่เปิด → ซ่อนชั่วคราว (หน้าต่างอยู่ช่วงกลาง ไม่บังแถบสกิล) */

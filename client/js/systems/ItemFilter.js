@@ -50,7 +50,8 @@ export function slotFor(c, it) {
 /** สวมได้ไหม (เลเวลถึง) */
 export const canWear = (c, it) => !!it && (GEAR_TYPES.includes(it.type) || it.type === 'flask') && !(it.lv && c.level < it.lv);
 /** ของสายเรา (ไม่มีสาย = ใช้ได้ทุกสาย) */
-export const isMine = (c, it) => !it?.job || it.job === (c.path || c.appearance?.job) || (it.wtype && WTYPE_JOB[it.wtype] === (c.path || c.appearance?.job));
+/** ของสายเรา = ตามแนวอาวุธที่ถืออยู่ (ถือไม้เท้าสมุนไพร → แนะนำของหมอยา แม้เคยฟาร์มด้วยอาวุธอื่น) */
+export const isMine = (c, it) => { const j = c.appearance?.job || c.path; return !it?.job || it.job === j || (!!it.wtype && WTYPE_JOB[it.wtype] === j); };
 
 /** แคช CP ต่อรอบวาด (คีย์ = อุปกรณ์ที่ใส่ + เลเวล/สถานะ) */
 let cache = { sig: '', base: 0, map: new Map() };

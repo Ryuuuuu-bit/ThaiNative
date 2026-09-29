@@ -9,10 +9,10 @@ import { MONSTERS } from '/shared/data/monsters.js';
 import { ITEMS } from '/shared/data/items.js';
 import { JOBS } from '/shared/data/classes.js';
 import { getDerived } from '/shared/character.js';
-import { gainExp } from '/shared/charmodel.js';
+import { gainExp, PRESET_LABEL, presetInfo } from '/shared/charmodel.js';
 import { bakeCharacter } from '../gfx/SpriteFactory.js';
 import { bakeFx, popupNumber, hitSpark, yantCircle, squash } from '../gfx/Fx.js';
-import { makeText, uiIcon, itemIcon as itemIconHtml, ICONS, EMO_ICON } from '../systems/util.js';
+import { makeText, gmStyle, uiIcon, itemIcon as itemIconHtml, ICONS, EMO_ICON } from '../systems/util.js';
 import { sound } from '../systems/Sound.js';
 import { loadSettings, saveSettings } from '../systems/Settings.js';
 import { saveCharacter } from '../systems/Character.js';
@@ -489,6 +489,8 @@ export class TopDownScene extends Phaser.Scene {
     this.applyHero(p, char.appearance, () => this.playerAnim('idle', true));
     this.blockCollider = this.physics.add.collider(p, this.blocks);
     this.nameTag = makeText(this, 0, 0, char.name, { fontSize: '7px', color: '#fff3c4', align: 'center' }).setOrigin(0.5, 1).setDepth(99999);
+    this.selfGm = () => !!account.account?.admin && /^gm/i.test(this.player?.char?.name || char.name);
+    gmStyle(this.nameTag, this.selfGm());
     this.titleTag = makeText(this, 0, 0, '', { fontSize: '7px', color: '#ffffff', align: 'center' }).setOrigin(0.5, 1).setDepth(99999).setVisible(false);
     this.refreshNameTag();
     p.on('animationcomplete', (anim) => { if (/:(attack|cast|hit|slash|shoot)(:|$)/.test(anim.key) && p.alive) p.st = 'idle'; });
@@ -1095,6 +1097,38 @@ export class TopDownScene extends Phaser.Scene {
   }
 
   /** เปิด/ปิด Auto Skill (ปุ่ม R หรือปุ่ม AUTO ข้างแถบสกิล) */
+  /** สลับชุดการเล่น A ⇄ B (Tab / ปุ่ม A⇄B) */
+  swapPreset() {
+    const c = this.player?.char;
+    if (!c || this.player.dead || this.warping || this._pswap) return;
+    const i = c.pset === 1 ? 0 : 1;
+    this._pswap = true;
+    Promise.resolve(this.econ.act('preset', { i })).then((r) => {
+      this._pswap = false;
+      if (!r) return;
+      this.ui.result(r);
+      if (!r.ok) return this.sfx.play('error');
+      this.sfx.play('equip');
+      yantCircle(this, this.player.x, this.player.y, { tint: i ? 0x85c1e9 : 0xf4d03f, size: 46, ms: 600 });
+      this.player.target = null; this.player.autoTarget = null;
+      this.refreshPresetBtn(true);
+    }, () => { this._pswap = false; });
+  }
+
+  /** ปุ่ม A⇄B บน HUD: ชุดที่ใช้ + ไอคอนอาชีพ · tooltip บอกอีกชุด */
+  refreshPresetBtn(force = false) {
+    const b = document.getElementById('preset-btn'), c = this.player?.char;
+    if (!b || !c) return;
+    const cur = c.pset === 1 ? 1 : 0, o = presetInfo(c, 1 - cur), job = JOBS[c.appearance?.job];
+    const key = `${cur}|${job?.icon}|${o.job}|${o.empty}`;
+    if (!force && key === this._pbKey) return;
+    this._pbKey = key;
+    b.querySelector('.pl').textContent = PRESET_LABEL[cur];
+    b.querySelector('.pj').textContent = job?.icon || '';
+    b.classList.toggle('b', cur === 1);
+    b.title = `ชุด ${PRESET_LABEL[cur]}: ${job?.nameTh || ''} · กด Tab สลับไปชุด ${PRESET_LABEL[1 - cur]}: ${o.empty ? 'ยังว่าง (แต้มเต็ม)' : JOBS[o.job]?.nameTh || 'มือเปล่า'}`;
+  }
+
   toggleAutoSkill(on = !this.settings.autoSkill) {
     this.settings.autoSkill = on; saveSettings(this.settings);
     $('#auto-skill')?.classList.toggle('on', on);
@@ -1143,7 +1177,7 @@ export class TopDownScene extends Phaser.Scene {
   refreshNameTag() {
     const c = this.player?.char; if (!c || !this.nameTag) return;
     const t = TITLE_BY_ID[c.title];
-    if (this.nameTag.text !== c.name) this.nameTag.setText(c.name);
+    if (this.nameTag.text !== c.name) { this.nameTag.setText(c.name); gmStyle(this.nameTag, this.selfGm?.()); }
     const tt = t ? `«${t.nameTh}»` : '';
     if (this.titleTag && this.titleTag.text !== tt) this.titleTag.setText(tt).setColor(t?.color || '#ffffff').setVisible(!!t);
   }
@@ -1201,9 +1235,9 @@ export class TopDownScene extends Phaser.Scene {
       .on('td:matk', ({ mid }) => { const m = this.mobs[mid]; if (!m) return; if (!m.alive || m.alpha < 0.5 || !m.visible) { m.alive = true; if (m.sx != null) m.setPosition(m.sx, m.sy); this.setMobVisible(m, true); } playDir(m, 'attack', m.dir, true); })
       .on('td:aoe', (a) => this.bossAoe(a))
       .on('td:title', ({ id, title }) => this.remotes.get(id)?.setTitle(title))
-      .on('player:rename', ({ id, name, old }) => {
+      .on('player:rename', ({ id, name, old, gm }) => {
         if (id === this.net.selfId) { this.player.char.name = name; this.refreshNameTag(); this.ui.hudCache = ''; }
-        else this.remotes.get(id)?.rename(name);
+        else this.remotes.get(id)?.rename(name, gm);
         if (old) this.ui.chat({ id: null, name: '📝 ระบบ', text: `${old} เปลี่ยนชื่อเป็น ${name}` });
       })
       .on('news:live', (l) => this.ui.news?.setLive(l))
@@ -1246,6 +1280,7 @@ export class TopDownScene extends Phaser.Scene {
     this.weapons?.attach(s, () => q.appearance, () => ({ anim: r.anim }));
     this.costumes?.attach(s, () => q.appearance);
     const tag = makeText(this, q.x, q.y, `${q.name} Lv.${q.level}`, { fontSize: '7px', color: '#aed6f1', align: 'center' }).setOrigin(0.5, 1);
+    if (q.gm) gmStyle(tag);                                                          // GM: ชื่อแดงขอบขาวเรืองแสง
     const ttl = makeText(this, q.x, q.y, '', { fontSize: '7px', color: '#ffffff', align: 'center' }).setOrigin(0.5, 1);   // ฉายา (สีตามฉายา) เหนือชื่อ
     const paintTitle = (t) => { const T = TITLE_BY_ID[t]; ttl.setText(T ? `«${T.nameTh}»` : '').setColor(T?.color || '#ffffff').setVisible(!!T); };
     paintTitle(q.title);
@@ -1274,7 +1309,7 @@ export class TopDownScene extends Phaser.Scene {
       destroy: () => { this.weapons?.detach(s); this.costumes?.detach(s); s.destroy(); tag.destroy(); ttl.destroy(); sh.destroy(); this.shadows = this.shadows.filter((x) => x.obj !== s); },
       get x() { return s.x; }, get y() { return s.y; },
       setTitle(t) { paintTitle(t); },
-      rename(n) { q.name = n; r.name = n; tag.setText(`${n} Lv.${r.level}`); },
+      rename(n, gm) { q.name = n; r.name = n; tag.setText(`${n} Lv.${r.level}`); gmStyle(tag, !!gm, '#aed6f1'); },
       setAppearance: (a) => { q.appearance = a; this.applyHero(s, a); },
     };
     this.remotes.set(q.id, r);
@@ -1314,6 +1349,8 @@ export class TopDownScene extends Phaser.Scene {
     });
     for (const k of SKILL_SLOTS) kb.on(`keydown-${SLOT_KEYNAME[k]}`, () => this.useSlot(k));   // Hotbar 1–0 (สกิล/ไอเทม)
     kb.on('keydown-B', () => this.recall());
+    kb.on('keydown-TAB', (e) => { if (this.ui.typing || document.activeElement?.matches?.('input, textarea, select')) return; e?.preventDefault?.(); this.swapPreset(); });
+    { const pb = $('#preset-btn'); if (pb) pb.onclick = (e) => { e.stopPropagation(); this.swapPreset(); }; }
     kb.on('keydown-Q', () => { if (!this.ui.typing && !this.ui.anyOpen?.()) this.drinkFlask('flask'); });
     kb.on('keydown-E', () => { if (!this.ui.typing && !this.ui.anyOpen?.()) this.drinkFlask('flask2'); });
     document.querySelectorAll('.flask-btn').forEach((b) => (b.onclick = () => this.drinkFlask(b.dataset.flask)));
@@ -1519,7 +1556,7 @@ export class TopDownScene extends Phaser.Scene {
     this.nameTag.setPosition(p.x, Math.min(p.y - p.displayHeight - 3, p._cosTop ?? Infinity));   // สวมหมวก/มงกุฎสูง → ยกป้ายชื่อขึ้น
     if (this.titleTag?.visible) this.titleTag.setPosition(p.x, this.nameTag.y - this.nameTag.displayHeight);
     if (time > (this.nextAutoMenu || 0)) { this.nextAutoMenu = time + 1000; this.refreshAutoMenuCounts(); }
-    if (time > (this.nextTalkPill || 0)) { this.nextTalkPill = time + 150; this.updateTalkPill(); }
+    if (time > (this.nextTalkPill || 0)) { this.nextTalkPill = time + 150; this.updateTalkPill(); this.refreshPresetBtn(); }
     if (this.tut?.on) { if (time > (this.nextTut || 0)) { this.nextTut = time + 120; this.tut.update(); } }
     else if (!this.tut && this.net?.selfId && time > 2500) this.tut = new Tutorial(this);   // ผู้เล่นใหม่: แนะนำ 4 ขั้น
     this.folk?.update(delta);

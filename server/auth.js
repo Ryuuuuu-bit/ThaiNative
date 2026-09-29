@@ -122,7 +122,7 @@ export function setupAuth(app, hooks = {}) {
     if (live(req.account.id)) return res.status(409).json({ error: 'บัญชีนี้กำลังออนไลน์อยู่ที่อื่น' });
     if (await req.store.getCharacter(req.account.id, slot)) return res.status(409).json({ error: 'ช่องนี้มีตัวละครอยู่แล้ว' });
     // ชื่อแบบ Ragnarok: ห้ามซ้ำทั้งเซิร์ฟเวอร์ (ไม่เติมเลขให้) · ซ้ำ → ตอบกลับพร้อมชื่อแนะนำ
-    const chk = checkName(name);
+    const chk = checkName(name, { admin: isAdmin(req.account.username) });
     if (!chk.ok) return res.status(400).json({ error: chk.msg });
     if (await req.store.nameTaken(chk.key, req.account.id)) return res.status(409).json({ error: `ชื่อ “${chk.name}” มีคนใช้แล้ว`, ideas: await freeIdeas(req.store, chk.name, req.account.id) });
     const c = newCharacter(chk.name, appearance);
@@ -136,7 +136,7 @@ export function setupAuth(app, hooks = {}) {
 
   // ตรวจชื่อระหว่างพิมพ์ (หน้าสร้างตัวละคร/ใบเปลี่ยนชื่อ) → { ok, msg, ideas }
   api.get('/name/check', auth(async (req, res) => {
-    const chk = checkName(req.query?.name);
+    const chk = checkName(req.query?.name, { admin: isAdmin(req.account.username) });
     if (!chk.ok) return res.json({ ok: false, msg: chk.msg, ideas: [] });
     if (await req.store.nameTaken(chk.key, req.account.id)) return res.json({ ok: false, msg: `ชื่อ “${chk.name}” มีคนใช้แล้ว`, ideas: await freeIdeas(req.store, chk.name, req.account.id) });
     res.json({ ok: true, msg: `ชื่อ “${chk.name}” ใช้ได้`, ideas: [] });

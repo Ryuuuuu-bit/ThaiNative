@@ -183,7 +183,7 @@ export class ChatBox {
     const ch = m.party ? 'party' : m.whisper ? 'whisper' : m.id ? 'local' : 'sys';
     if (m.whisper && m.from) this.ui.lastWhisper = m.from;
     const peer = m.whisper ? (m.from || m.to || null) : null;
-    const rec = { t: Date.now(), ch, id: m.id || null, nm: m.nm || null, name: m.name, text: String(m.text ?? ''), lv: m.lv, peer, mine: !!m.id && m.id === this.sid };
+    const rec = { t: Date.now(), ch, id: m.id || null, nm: m.nm || null, name: m.name, text: String(m.text ?? ''), lv: m.lv, peer, mine: !!m.id && m.id === this.sid, gm: !!m.gm };
     this.msgs.push(rec);
     if (this.msgs.length > MAX) this.msgs.splice(0, this.msgs.length - MAX);
     if (this.tab !== 'all' && this.tab !== ch && !rec.mine) { this.unread[ch]++; this.paintUnread(); }
@@ -202,8 +202,8 @@ export class ChatBox {
     const tag = { party: '<em class="cb-tag party">ปาร์ตี้</em>', whisper: '<em class="cb-tag whisper">กระซิบ</em>' }[r.ch] || '';
     let who;
     if (r.ch === 'sys') who = `<b class="cb-sys">${esc(r.name)}</b>`;
-    else if (r.ch === 'whisper') who = r.mine ? `<b class="cb-me">ถึง</b> <b class="cb-name" data-wname="${esc(r.peer)}">${esc(r.peer)}</b>` : `<b class="cb-name" data-pid="${esc(r.id)}" data-nm="${esc(r.nm || r.peer)}">${esc(r.nm || r.peer)}</b>`;
-    else who = `<b class="cb-name${r.mine ? ' cb-me' : ''}" ${r.mine ? '' : `data-pid="${esc(r.id)}" data-nm="${esc(r.nm || r.name)}"`}>${esc(r.nm || String(r.name).replace(/^\[ปาร์ตี้\]\s*/, ''))}</b>`;
+    else if (r.ch === 'whisper') who = r.mine ? `<b class="cb-me">ถึง</b> <b class="cb-name" data-wname="${esc(r.peer)}">${esc(r.peer)}</b>` : `<b class="cb-name${r.gm ? ' cb-gm' : ''}" data-pid="${esc(r.id)}" data-nm="${esc(r.nm || r.peer)}">${esc(r.nm || r.peer)}</b>`;
+    else who = `<b class="cb-name${r.mine ? ' cb-me' : ''}${r.gm ? ' cb-gm' : ''}" ${r.mine ? '' : `data-pid="${esc(r.id)}" data-nm="${esc(r.nm || r.name)}"`}>${esc(r.nm || String(r.name).replace(/^\[ปาร์ตี้\]\s*/, ''))}</b>`;
     return `<div class="cb-line ch-${r.ch}"><small class="cb-t">${hh}:${mm}</small>${tag}${who}<span class="cb-txt">${this.fmt(r.text)}</span></div>`;
   }
   /** ข้อความ → HTML (escape + ลิงก์ไอเทม) */

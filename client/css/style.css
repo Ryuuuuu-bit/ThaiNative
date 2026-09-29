@@ -1667,3 +1667,46 @@ body.touch-dev #title-discord .td-lb { display: none; }
 body.touch-dev #title-discord { padding: 8px 12px; }
 #title-credit b { color: #ffd76a; font-weight: 600; }
 @media (max-height: 520px) { #title-credit { top: 8px; left: 12px; right: auto; bottom: auto; font-size: 11px; } }
+
+/* ===== ความชำนาญอาวุธ (หน้าสถานะ) ===== */
+.derived .mastery-box { grid-column: 1 / -1; gap: .35em; }
+.mastery-box .ms-hd { display: flex; flex-direction: column; gap: .1em; margin-bottom: .15em; }
+.mastery-box .ms-hd span { color: var(--gold-soft); font-weight: 600; }
+.mastery-box .ms-hd small { color: var(--muted); font-size: .78em; line-height: 1.3; }
+.mastery-box .ms-row { grid-template-columns: minmax(9em, 1.4fr) 2fr 3.6em 2.6em; font-size: .9em; }
+.mastery-box .ms-row.cur span::after { content: none; }
+.mastery-box .ms-row.zero { opacity: .55; }
+.mastery-box .ms-row.cur { background: rgba(212,175,55,.08); border-radius: 6px; padding: .1em .3em; margin: 0 -.3em; }
+.mastery-box .ms-name { display: flex; align-items: center; gap: .3em; flex-wrap: wrap; white-space: nowrap; }
+.mastery-box .ms-tag { font-style: normal; font-size: .72em; padding: 0 .4em; border-radius: 1em; line-height: 1.5; }
+.mastery-box .ms-tag.cls { background: #7d5a0f; color: #ffe9a6; }
+.mastery-box .ms-tag.hold { background: #1e5a2a; color: #b9f6ca; }
+.mastery-box .ms-bar { position: relative; height: 1.05em; }
+.mastery-box .ms-bar small { position: absolute; inset: 0; display: grid; place-items: center; font-size: .72em; color: #fff; text-shadow: 0 0 2px #000, 0 0 2px #000; }
+.mastery-box .ms-row b small { color: var(--muted); font-size: .75em; }
+.mastery-box .ms-bonus { color: #82e0aa; text-align: right; font-size: .85em; }
+.derived .mastery-box { display: flex !important; flex-direction: column; justify-content: flex-start; }
+.derived .mastery-box .ms-hd { display: flex; flex-direction: column; justify-content: flex-start; }
+.derived .mastery-box .ms-row { display: grid !important; }
+.derived .mastery-box .ms-bar { display: block !important; width: 100%; }
+
+/* ===== แถบชุดการเล่น A/B (หน้าสถานะ) ===== */
+#st-preset { margin: .2em 0 .4em; }
+#st-preset .preset-strip { display: grid; grid-template-columns: 1fr 1fr; gap: .5em; }
+.derived .preset-strip { grid-column: 1 / -1; display: grid !important; grid-template-columns: 1fr 1fr; gap: .5em; margin-bottom: .4em; }
+.preset-strip .ps-chip { display: flex; flex-direction: column; align-items: flex-start; gap: .1em; padding: .35em .6em; border-radius: 8px; cursor: pointer; text-align: left;
+  border: 1px solid rgba(212,175,55,.35); background: #1a1024; color: var(--muted); font: inherit; }
+.preset-strip .ps-chip b { color: var(--gold-soft); }
+.preset-strip .ps-chip span { color: #f6ecd9; font-size: .95em; }
+.preset-strip .ps-chip small { font-size: .75em; }
+.preset-strip .ps-chip.on { border-color: var(--gold); background: linear-gradient(180deg, #3b2511, #221307); box-shadow: 0 0 8px rgba(244,208,63,.35); cursor: default; }
+.preset-strip .ps-chip.b.on { border-color: #5dade2; background: linear-gradient(180deg, #13304a, #0a1622); box-shadow: 0 0 8px rgba(93,173,226,.35); }
+.preset-strip .ps-chip:not(.on):hover { border-color: var(--gold); color: #fff; }
+.preset-strip .ps-chip.on, .preset-strip .ps-chip:disabled { opacity: 1 !important; filter: none !important; color: #f6ecd9; }
+.preset-strip .ps-chip:not(.on) { opacity: .72; }
+.preset-strip .ps-chip:not(.on):hover { opacity: 1; }
+.preset-strip .ps-chip b em { font-style: normal; font-size: .7em; font-weight: normal; margin-left: .4em; }
+.preset-strip .ps-on { color: #7dcea0; }
+.preset-strip .ps-go { color: var(--muted); }
+.preset-strip .ps-hint { grid-column: 1 / -1; font-size: .75em; color: var(--muted); }
+#skill-panel header .sp[data-pset]::before { content: attr(data-pset) ' · '; color: var(--gold-soft); font-size: .8em; }

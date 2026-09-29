@@ -197,10 +197,10 @@ export class Village {
     let filt = '';
     let rows = all.map((r, i) => ({ r, i }));
     if (list === 'forge') {                                             // กรอง: สายตัวเอง / ทั้งหมด / ของใช้
-      const F = { mine: `สาย${JOBS[c.path]?.nameTh || 'ตัวเอง'}`, all: 'ทุกสาย', util: 'ของใช้' };
-      const f = this.forgeFilter || (c.path ? 'mine' : 'all');
+      const mj = c.appearance?.job || c.path, F = { mine: `สาย${JOBS[mj]?.nameTh || 'ตัวเอง'}`, all: 'ทุกสาย', util: 'ของใช้' };
+      const f = this.forgeFilter || (mj ? 'mine' : 'all');
       filt = `<div class="qty-bar gear-filter"><span>แสดง:</span>${Object.entries(F).map(([k, l]) => `<button data-ff="${k}" class="${k === f ? 'active' : ''}">${l}</button>`).join('')}</div>`;
-      rows = rows.filter(({ r }) => f === 'all' ? !r.util : f === 'util' ? r.util : r.job === c.path);
+      rows = rows.filter(({ r }) => f === 'all' ? !r.util : f === 'util' ? r.util : r.job === mj);
     }
     el.innerHTML = filt + rows.map(({ r, i }) => {
       const it = ITEMS[r.out];

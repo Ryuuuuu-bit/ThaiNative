@@ -91,7 +91,7 @@ export class CreateScene extends Phaser.Scene {
     };
     this.checkName = () => {
       clearTimeout(this.nameT);
-      const v = $('#cc-name').value, chk = checkName(v);
+      const v = $('#cc-name').value, chk = checkName(v, { admin: !!account.account?.admin });
       if (!v.trim()) return show(null, 'ชื่อต้องไม่ซ้ำใคร · ไทย/อังกฤษ/ตัวเลข/_ · 2–16 ตัว');
       if (!chk.ok) return show(false, `✖ ${chk.msg}`);
       if (!online) return show(true, '✔ ใช้ได้ (โหมดออฟไลน์)');

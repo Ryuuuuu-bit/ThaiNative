@@ -20,7 +20,7 @@ import { getDerived, EQUIP_SLOTS, SLOT_TYPE } from './character.js';
 import { OUTFITS, HAIRSTYLES } from './data/appearance.js';
 import { STAT_KEYS, expToNext, MAX_LEVEL } from './stats.js';
 import { SKILL_BY_ID } from './data/skills.js';
-import { gainExp, resetStats, resetSkills, resetWeaponSkills, syncAppearance, learnSkill, assignHotbar, allocateStat, allocPassive, resetPassives, addLifeXp, lifeLv, addMastery, recomputePath } from './charmodel.js';
+import { gainExp, resetStats, resetSkills, resetWeaponSkills, syncAppearance, learnSkill, assignHotbar, allocateStat, allocPassive, resetPassives, addLifeXp, lifeLv, addMastery, recomputePath, ensurePresets, snapPreset, blankPreset, applyPresetStats, PRESET_SLOTS, PRESET_LABEL } from './charmodel.js';
 import { HERB_SPOTS } from './td/ayutthaya.js';
 import { CARDS, CARD_BY_ID, SLOT_CARD, CARD_SLOT_TH, socketCount, cardRemoveCost } from './data/cards.js';
 import { WEAR_TYPES, FLASK_SLOTS, ENH_SLOTS, SLOT_TH } from './data/slots.js';
@@ -704,11 +704,43 @@ function cardTrade(c, { ids }, ctx) {
   return OK(`🃏 แลกได้ ${got.nameTh}!${isNew ? ' (ใบใหม่ในสมุด)' : ''}`, { card: got.id, isNew });
 }
 
+/** สลับชุดการเล่น A ⇄ B (Tab) · คูลดาวน์ 8 วิ · HP/MP คงสัดส่วนเดิม (สลับไปชุด VIT สูงไม่ได้ฟื้นเลือดฟรี) */
+export const PRESET_CD = 8000;
+function preset(c, { i }, ctx) {
+  ensurePresets(c);
+  i = Number(i) === 1 ? 1 : 0;
+  if (i === c.pset) return NO(`ใช้ชุด ${PRESET_LABEL[i]} อยู่แล้ว`);
+  const S = ctx.sess || {}, left = PRESET_CD - (ctx.now - (S.psetAt || 0));
+  if (left > 0) return NO(`สลับชุดได้อีกครั้งใน ${Math.ceil(left / 1000)} วิ`);
+  const d0 = getDerived(c), hpR = d0.maxHp ? c.hp / d0.maxHp : 1, mpR = d0.maxMp ? c.mp / d0.maxMp : 1;
+  const nx = c.presets[i] || blankPreset();
+  c.presets[c.pset] = snapPreset(c);
+  // 1) ถอดของชุดเดิมเข้ากระเป๋า (ยกเว้นขวดยา) → 2) สวมของชุดใหม่ที่ยังมีในกระเป๋า
+  for (const s of PRESET_SLOTS) { const id = c.equipment[s]; if (id) { c.equipment[s] = null; addItem(c, id); } }
+  const missing = [];
+  for (const s of PRESET_SLOTS) {
+    const id = nx.eq?.[s];
+    if (!id) continue;
+    const it = ITEMS[id];
+    if (!it || !count(c, id) || (it.lv && c.level < it.lv)) { missing.push(it?.nameTh || id); continue; }
+    removeItem(c, id); c.equipment[s] = id;
+  }
+  c.pset = i; c.presets[i] = null;
+  syncAppearance(c);                                             // แนวอาวุธ/อาชีพเปลี่ยนตามอาวุธของชุดใหม่
+  applyPresetStats(c, nx);
+  c.hotbar = { ...nx.hotbar }; c.hotbars = JSON.parse(JSON.stringify(nx.hotbars || {}));
+  syncAppearance(c); recomputePath(c);
+  const d1 = getDerived(c);
+  c.hp = Math.max(1, Math.min(d1.maxHp, Math.round(hpR * d1.maxHp))); c.mp = Math.max(0, Math.min(d1.maxMp, Math.round(mpR * d1.maxMp)));
+  S.psetAt = ctx.now;
+  return OK(`⇄ ชุด ${PRESET_LABEL[i]} · ${JOBS[c.appearance.job]?.nameTh || ''}${missing.length ? ` (ไม่พบ: ${missing.join(', ')})` : ''}`, { jobChanged: true, preset: i, missing });
+}
+
 // ------------------------------------------------------------
 export const ACTIONS = {
   use, equip, unequip, cosOff, buy, sell, sellMany, sellCart, buyback, lock, offer, siamsi, craft, enhance,
   qAccept, qDrop, qClaim, path, passive, passiveReset, bounty, fishBite, fishLand, fishLose, gather, chest,
-  alloc, learn, hotbar, recall, dye, title, friendDel, gm, cardIn, cardOut, cardTrade, flask,
+  alloc, learn, hotbar, recall, dye, title, friendDel, gm, cardIn, cardOut, cardTrade, flask, preset,
 };
 /** ระหว่างเทรด ห้ามทำสิ่งที่แตะกระเป๋า/เงิน (กันของซ้ำ) */
 const TRADE_SAFE = new Set(['flask', 'lock', 'qAccept', 'qDrop', 'hotbar', 'title', 'friendDel', 'fishBite', 'fishLand', 'fishLose', 'gather', 'chest', 'learn', 'alloc', 'passive']);

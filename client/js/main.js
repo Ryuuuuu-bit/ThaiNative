@@ -7,9 +7,11 @@ import { CreateScene } from './scenes/CreateScene.js';
 import { LobbyScene } from './scenes/LobbyScene.js';
 import { TopDownScene } from './scenes/TopDownScene.js';
 import { setupOrientationHint } from './systems/Orientation.js';
+import { applyDeviceClass } from './systems/Screen.js';
 import { setupTrailer } from './systems/Trailer.js';
 
 setupTrailer();                               // ตัวอย่างเรื่องราวบนหน้าเข้าสู่ระบบ
+applyDeviceClass();                           // จัดกลุ่มเครื่อง pc / phone / tablet → body.dev-*
 setupOrientationHint();                       // มือถือถือแนวตั้ง → แนะนำหมุนจอ (ทุกหน้า ตั้งแต่หน้าแรก)
 
 const config = {
@@ -62,10 +64,10 @@ window.game = new Phaser.Game(config);
 //  ▸ เฉพาะตอนอยู่ในเกม (td-mode) · หน้าล็อกอิน/สร้างตัวละครคง 16:9 · สูงสุด 2.3:1
 // ------------------------------------------------------------
 {
-  const game = window.game, BASE = 16 / 9, MAX = 2.3, H = VIEW.height * RENDER_SCALE;
+  const game = window.game, BASE = 16 / 9, MIN = 4 / 3, MAX = 2.3, H = VIEW.height * RENDER_SCALE;
   let cur = BASE;
   const fit = () => {
-    const ar = document.body.classList.contains('td-mode') ? Math.min(MAX, Math.max(BASE, innerWidth / Math.max(1, innerHeight))) : BASE;
+    const ar = document.body.classList.contains('td-mode') ? Math.min(MAX, Math.max(MIN, innerWidth / Math.max(1, innerHeight))) : BASE;
     if (Math.abs(ar - cur) < 0.01) return;
     cur = ar;
     document.documentElement.style.setProperty('--ar', ar.toFixed(4));

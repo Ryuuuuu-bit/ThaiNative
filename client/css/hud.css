@@ -614,3 +614,47 @@ body.touch-dev #shop-panel button:not(.tab):not(.close) { min-height: max(5.4cqh
 body.touch-dev #travel-panel { max-height: 96cqh !important; overflow-y: auto !important; }
 body.touch-dev .td-wm .wm-stage { height: 44cqh; }
 body.touch-dev #skill-panel .sk-up { min-height: max(5.4cqh, 30px); min-width: max(6cqh, 34px); }
+
+/* ===== จอแคบกว่า 16:9 (4:3 · 16:10 · iPad): ฉากเต็มจอ ไม่มีแถบดำ → ยกปุ่มเมนูขวาล่างขึ้นเหนือแถบสกิล ===== */
+@media (max-aspect-ratio: 17/10) {
+  body.td-mode:not(.touch) #hud > .hud-buttons.dock { bottom: calc(2.6cqh + var(--hud-pad) + 9.6cqh) !important; }
+}
+/* ===== เปิดหน้าต่างอยู่: ข้อความแจ้งเตือนย้ายไปแถบล่าง (ทับแถบสกิลที่ใช้ไม่ได้ตอนเปิดหน้าต่าง) ไม่บังชื่อหน้าต่าง ===== */
+body.td-mode.win-open #toasts { top: auto !important; bottom: 1.2cqh !important; max-height: 9cqh; flex-direction: column; justify-content: flex-end; z-index: 30; }
+/* จอแคบ: กล่องแจ้งเตือนไม่กว้างจนทับการ์ดแนะนำซ้าย/มินิแมพขวา */
+body.td-mode:not(.win-open) #toasts, body.td-mode:not(.win-open) #toasts .toast { max-width: max(38cqh, min(80cqh, calc(100cqw - 100cqh))) !important; }
+body.td-mode.win-open #toasts .toast { background: linear-gradient(180deg, #2a1838f5, #160c20f5) !important; border: 1px solid rgba(212,175,55,.8) !important; box-shadow: 0 .6cqh 2cqh #000c !important; opacity: 1 !important; }
+body.td-mode.touch-dev.win-open #toasts { max-height: none !important; } body.td-mode.touch-dev.win-open #toasts .toast:not(:last-child) { display: none !important; }   /* มือถือ: เปิดหน้าต่างอยู่ → โชว์เฉพาะแจ้งเตือนล่าสุด 1 อัน
+ */
+
+/* ===== แท็บเล็ต (body.dev-tablet · systems/Screen.js): จอใหญ่ → ปุ่มสัมผัสเล็กลง 28% หดเข้าหามุมจอ (ไม่บังฉาก) ===== */
+body.dev-tablet { --ts: .72; }
+body.dev-tablet.td-mode.touch .t-stick { scale: var(--ts); transform-origin: calc(-1 * (var(--hud-pad) + 1cqh)) calc(100% + 6cqh); }
+body.dev-tablet.td-mode.touch #skillbar.t-arc { scale: var(--ts); transform-origin: 100% 100%; }
+body.dev-tablet.td-mode.touch .t-atk { scale: var(--ts); transform-origin: calc(100% + var(--hud-pad) + 2cqh) calc(100% + 24cqh); }
+body.dev-tablet.td-mode.touch .auto-wrap.t-auto { scale: var(--ts); transform-origin: calc(100% + var(--hud-pad) + 4.5cqh) calc(100% + 41.5cqh); }
+body.dev-tablet.td-mode.touch .t-page { scale: var(--ts); transform-origin: calc(100% + var(--hud-pad) + 27cqh) calc(100% + 26.8cqh); }
+body.dev-tablet.td-mode.touch #flask-bar.t-flasks { scale: var(--ts); transform-origin: calc(-1 * (var(--hud-pad) + 2cqh)) calc(100% + 40cqh); }
+body.touch-dev #social-panel .btn.ghost { min-width: max(5.4cqh, 30px); min-height: max(5.4cqh, 30px); }
+
+/* ===== ชื่อ GM ในแชท: แดง ขอบขาว เรืองแสง ===== */
+#chat .cb-name.cb-gm { color: #ff2a2a !important; font-weight: 700;
+  text-shadow: -1px -1px 0 #fff, 1px -1px 0 #fff, -1px 1px 0 #fff, 1px 1px 0 #fff, 0 0 6px #ff1a1a, 0 0 12px #ff1a1a; animation: gm-glow 1.8s ease-in-out infinite; }
+#chat .cb-name.cb-gm::before { content: 'GM'; display: inline-block; margin-right: .3em; padding: 0 .35em; border-radius: .3em; font-size: .72em; line-height: 1.4; color: #fff; background: #c0392b; text-shadow: none; box-shadow: 0 0 6px #ff3b3b; vertical-align: 1px; }
+@keyframes gm-glow { 50% { text-shadow: -1px -1px 0 #fff, 1px -1px 0 #fff, -1px 1px 0 #fff, 1px 1px 0 #fff, 0 0 10px #ff4d4d, 0 0 20px #ff1a1a; } }
+
+/* ===== ชุดการเล่น A ⇄ B (ปุ่มซ้ายของขวดยา · Tab) ===== */
+.preset-btn { position: relative; display: grid; place-items: center; padding: 0; cursor: pointer; color: #ffe9a6;
+  border: 2px solid #b7950b; border-radius: 8px; background: linear-gradient(180deg, #3b2511, #1a0f07); box-shadow: 0 0 6px #0008 inset; }
+.preset-btn.b { border-color: #5dade2; color: #d6eaf8; background: linear-gradient(180deg, #13304a, #0a1622); }
+.preset-btn .pl { font-size: 1.25em; line-height: 1; font-weight: 700; text-shadow: 0 0 4px #000; }
+.preset-btn .pj { position: absolute; bottom: 1px; right: 2px; font-size: .62em; }
+.preset-btn .k { position: absolute; top: 0; left: 2px; font-size: .5em; color: var(--gold-soft); }
+.preset-btn::after { content: '⇄'; position: absolute; top: -.1em; right: .15em; font-size: .6em; opacity: .8; }
+.preset-btn:hover { filter: brightness(1.25); }
+body.td-mode .preset-btn { width: 5.6cqh; height: 7.2cqh; font-size: 2.6cqh; margin-right: .6cqh; }
+/* จอสัมผัส: ปุ่มกลมซ้าย เหนือขวดยา */
+body.td-mode.touch #preset-btn.t-preset { position: absolute; left: calc(var(--hud-pad) + 2cqh + env(safe-area-inset-left, 0px)); bottom: 52cqh; width: 9cqh; height: 9cqh; border-radius: 50%; font-size: 3.6cqh; margin: 0; pointer-events: auto; }
+body.td-mode.touch #preset-btn.t-preset .k { display: none; }
+body.dev-tablet.td-mode.touch #preset-btn.t-preset { scale: var(--ts); transform-origin: calc(-1 * (var(--hud-pad) + 2cqh)) calc(100% + 52cqh); }
+body.m-hud.win-open #touch-ui > #preset-btn { visibility: hidden !important; }

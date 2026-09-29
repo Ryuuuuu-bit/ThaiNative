@@ -5,8 +5,9 @@
 //  ▸ แนวตั้ง → หน้าแนะนำหมุนจอ (systems/Orientation.js ทุกหน้า) · ปุ่มเต็มจอ (ล็อกแนวนอนได้บน Android)
 // ============================================================
 
-export const isTouchDevice = () =>
-  (window.matchMedia?.('(pointer: coarse)').matches || navigator.maxTouchPoints > 0) && Math.min(screen.width, screen.height) < 900;
+/** จอสัมผัส (มือถือ/แท็บเล็ต ทุกขนาด รวม iPad Pro) · จอสัมผัสที่ใช้เมาส์เป็นหลัก = แบบ PC (systems/Screen.js) */
+import { deviceClass } from '../systems/Screen.js';
+export const isTouchDevice = () => deviceClass() !== 'pc';
 
 export class TouchControls {
   constructor(scene) {
@@ -43,6 +44,7 @@ export class TouchControls {
     adopt('.actionbar .auto-wrap', 't-auto');
     adopt('.actionbar #skillbar', 't-arc');
     adopt('.actionbar #flask-bar', 't-flasks');
+    adopt('.actionbar #preset-btn', 't-preset');
     // กดค้างที่ช่องสกิล/ไอเทม = ดูคำอธิบาย (มือถือไม่มีเมาส์ชี้) · ไม่ร่ายสกิล
     const bar = document.getElementById('skillbar');
     if (bar) {
