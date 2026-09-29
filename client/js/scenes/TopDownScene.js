@@ -46,6 +46,7 @@ import { bakeGround, makeWater, TdAtmosphere, bakeTdFx, TdVfx, TdMinimap } from 
 import { uiBlocked } from '../systems/uiGuard.js';
 import { heroId, baseHeroId } from '../systems/HeroPreview.js';
 import { CostumeOverlay } from '../topdown/CostumeOverlay.js';
+import { Townsfolk } from '../topdown/Townsfolk.js';
 const NONE = '__none';                                  // autoMobs: ยกเลิกทั้งหมด (Auto ไม่ไล่ตีผี)
 
 const $ = (s) => document.querySelector(s);
@@ -129,6 +130,7 @@ export class TopDownScene extends Phaser.Scene {
     const cam = this.cameras.main;
     cam.setBounds(0, 0, this.mapW * TILE, this.mapH * TILE).setZoom(1.5 * RENDER_SCALE).startFollow(this.player, false, 0.14, 0.14).setRoundPixels(false);
     this.atmo = new TdAtmosphere(this, this.layout); this.atmo.setLayout(this.layout, this.M.style);
+    this.folk = new Townsfolk(this); this.folk.build();                                  // ชาวกรุงเดินไปมาในเมือง (ตกแต่ง)
     this.life.setMap(this.M);
     this.vfx = new TdVfx(this);
     this.skills = new TdSkills(this);
@@ -239,8 +241,10 @@ export class TopDownScene extends Phaser.Scene {
     this.blocks.clear(true, true); this.blocks.destroy(); this.monsters?.clear(false, false); this.monsters?.destroy();
     this.shadows = this.shadows.filter((sh) => { if (sh.obj.scene) return true; sh.img.destroy(); return false; });
     this.remotes.forEach((r) => r.destroy()); this.remotes.clear();
+    this.folk?.clear();
     this.setMapDef(id);
     this.mapObjs = this.track(() => { this.buildMap(); this.buildProps(); this.buildNpcs(); this.buildMonsters(); this.buildPortals(); });
+    this.folk?.build();
     this.blockCollider?.destroy(); this.blockCollider = this.physics.add.collider(p, this.blocks);
     const at = pos && !this.solid[Math.floor((pos.y - 2) / TILE)]?.[Math.floor(pos.x / TILE)] ? pos : this.M.spawn;
     p.setPosition(at.x, at.y); p.char.tdMap = id; p.char.tdPos = { x: Math.round(at.x), y: Math.round(at.y) }; p.char.tdMaps = [...this.visitedMaps];
@@ -444,7 +448,8 @@ export class TopDownScene extends Phaser.Scene {
     const bigLabel = (x, y, text, color) => makeText(this, x * TILE, y * TILE, text, { fontSize: '10px', color }).setOrigin(0.5).setDepth(9000).setAlpha(0.8);
     if (this.M.realm) { for (const [x, y, text] of this.layout.labels || []) bigLabel(x, y, text, '#ffe9a6'); return; }
     const zoneLabel = (tx, ty, text) => makeText(this, (tx + OX) * TILE, ty * TILE, text, { fontSize: '8px', color: '#ffe9a6' }).setOrigin(0.5).setDepth(9000).setAlpha(0.85);
-    zoneLabel(86, 16, '✦ วัดพระศรีสรรเพชญ์ ✦'); zoneLabel(33, 14, '✦ วัดไชยวัฒนาราม ✦'); zoneLabel(60, 42, '⛲ ลานเมือง'); zoneLabel(60, 106, '🌾 ทุ่งนาบางปะอิน'); zoneLabel(60, 62, '🧺 ตลาดหัวรอ'); zoneLabel(30, 50, '🥊 สำนักดาบ·มวย'); zoneLabel(92, 50, '🔨 ย่านช่างน้ำพี้'); zoneLabel(45, 37, '🪷 สวนหลวง'); zoneLabel(46, 52, '🌿 ศาลาโอสถ'); zoneLabel(60, 76, '🏘 ชุมชนริมซอย');
+    zoneLabel(86, 16, '✦ วัดพระศรีสรรเพชญ์ ✦'); zoneLabel(33, 14, '✦ วัดไชยวัฒนาราม ✦'); zoneLabel(60, 42, '⛲ ลานเมือง'); zoneLabel(60, 106, '🌾 ทุ่งนาบางปะอิน'); zoneLabel(60, 63, '🏮 ถนนคนเดินหัวรอ'); zoneLabel(30, 50, '🥊 ย่านสำนัก 5 สาย'); zoneLabel(86, 68, '🔨 ซอยช่างเหล็ก'); zoneLabel(45, 37, '🪷 สวนหลวง'); zoneLabel(46, 52, '🌿 ศาลาโอสถ');
+    zoneLabel(70, 79, '🍜 ลานอาหาร'); zoneLabel(30, 79, '🏘 ชุมชนเรือนไทย'); zoneLabel(98, 52, '🛶 ชุมชนริมคลอง'); zoneLabel(80, 57, '🌸 สวนหลวงตะวันออก');
     bigLabel(28, 60, '🎋 ป่าไผ่ปู่โสม', '#b9f6ca'); bigLabel(204, 58, '🪦 ป่าช้าวัดร้าง', '#e8daef'); bigLabel(OX + 60, 150, '🪷 บึงผีพราย', '#d6eaf8'); bigLabel(132, 176, '🌀 ประตูมิติหิมพานต์', '#e8daef');
   }
 
@@ -1515,6 +1520,7 @@ export class TopDownScene extends Phaser.Scene {
     if (time > (this.nextTalkPill || 0)) { this.nextTalkPill = time + 150; this.updateTalkPill(); }
     if (this.tut?.on) { if (time > (this.nextTut || 0)) { this.nextTut = time + 120; this.tut.update(); } }
     else if (!this.tut && this.net?.selfId && time > 2500) this.tut = new Tutorial(this);   // ผู้เล่นใหม่: แนะนำ 4 ขั้น
+    this.folk?.update(delta);
     for (const sh of this.shadows) sh.img.setPosition(sh.obj.x, sh.obj.y + 1).setVisible(sh.obj.visible && sh.obj.alpha > 0.2);
     for (const m of this.mobs) { if (this.econ.server) this.updateMobOnline(m, dt); else this.updateMobLocal(m, time); this.drawMob(m); }
     if (time > (this.nextDeclutter || 0)) { this.nextDeclutter = time + 200; this.declutterMobLabels(); }
