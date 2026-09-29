@@ -299,17 +299,27 @@ export class PartyWindow {
     const eff = buffText(sk.type === 'revive' ? { undying: true } : sk.buff) || (sk.heal ? `ฟื้น HP ${Math.round(sk.heal * 100)}%` : '');
     const dur = Math.round((sk.type === 'revive' ? sk.undying : sk.duration) / 1000);
     let host = $('#buff-notes');
-    if (!host) { host = document.createElement('div'); host.id = 'buff-notes'; document.querySelector('#ui')?.appendChild(host) || document.body.appendChild(host); }
-    const card = document.createElement('div');
-    card.className = 'buff-note';
-    card.style.setProperty('--jc', JOB_COLOR[jobOf(m || {})] || '#f4d03f');
-    card.innerHTML = `<span class="bn-face">${face ? `<img src="${face}" alt="">` : JOB_ICON[jobOf(m || {})] || '🙂'}</span>
-      <span class="bn-sk">${sk.icon || '✨'}</span>
-      <div class="bn-txt"><span><b>${esc(from)}</b> ใช้ <b class="bn-name">${esc(sk.nameTh)}</b>${lv > 1 ? ` <small class="bn-lv">Lv.${lv}</small>` : ''} ให้คุณ</span><small>${esc(eff)}${dur ? ` · ${dur} วิ` : ''}</small></div>`;
-    host.appendChild(card);
-    while (host.children.length > 3) host.firstChild.remove();
-    setTimeout(() => card.classList.add('out'), 3000);
-    setTimeout(() => card.remove(), 3400);
+    if (!host) { host = document.createElement('div'); host.id = 'buff-notes'; document.body.appendChild(host); }
+    // คนเดียวกันร่ายหลายสกิลติด ๆ กัน → รวมเป็นการ์ดเดียว (ไม่ซ้อนหลายใบบังจอ)
+    const now = performance.now();
+    let card = [...host.children].find((c) => c.dataset.from === fromId && now - (+c.dataset.at || 0) < 2500 && !c.classList.contains('out'));
+    const line = `<div class="bn-row"><span class="bn-sk">${sk.icon || '✨'}</span><b class="bn-name">${esc(sk.nameTh)}</b>${lv > 1 ? `<small class="bn-lv">Lv.${lv}</small>` : ''}<small class="bn-eff">${esc(eff)}${dur ? ` · ${dur}วิ` : ''}</small></div>`;
+    if (card) {
+      card.querySelector('.bn-list').insertAdjacentHTML('beforeend', line);
+      const rows = card.querySelectorAll('.bn-row'); if (rows.length > 3) rows[0].remove();
+      clearTimeout(card._t1); clearTimeout(card._t2);
+    } else {
+      card = document.createElement('div');
+      card.className = 'buff-note'; card.dataset.from = fromId || from;
+      card.style.setProperty('--jc', JOB_COLOR[jobOf(m || {})] || '#f4d03f');
+      card.innerHTML = `<span class="bn-face">${face ? `<img src="${face}" alt="">` : JOB_ICON[jobOf(m || {})] || '🙂'}</span>
+        <div class="bn-txt"><div class="bn-who">✨ <b>${esc(from)}</b> ให้บัฟคุณ</div><div class="bn-list">${line}</div></div>`;
+      host.appendChild(card);
+      while (host.children.length > 2) host.firstChild.remove();
+    }
+    card.dataset.at = now;
+    card._t1 = setTimeout(() => card.classList.add('out'), 2600);
+    card._t2 = setTimeout(() => card.remove(), 2950);
     // ที่ตัวละคร: วงแสง + ตัวหนังสือลอย
     const s = this.scene, p = s.player;
     try {

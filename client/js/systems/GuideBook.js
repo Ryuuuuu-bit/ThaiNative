@@ -119,7 +119,7 @@ export class GuideBook {
   detail(id) {
     const { mobs } = build(), m = mobs.find((x) => x.id === id); if (!m) return '';
     const d = m.d, cid = CARD_OF_MON[id], cd = cid && CARD_BY_ID[cid];
-    const stats = [['HP', d.hp?.toLocaleString('en-US')], ['โจมตี', d.atk], ['ป้องกัน', d.def], ['หลบ', d.eva], ['EXP', d.exp?.toLocaleString('en-US')], ['เงิน', Array.isArray(d.gold) ? `฿${d.gold[0]}–${d.gold[1]}` : '—']];
+    const stats = [['HP', d.hp?.toLocaleString('en-US')], ['โจมตี', d.atk], ['ป้องกัน', d.def], ['หลบ', d.eva], ['EXP', d.exp ? d.exp.toLocaleString('en-US') : 'พิเศษ'], ['เงิน', Array.isArray(d.gold) && d.gold[1] ? `฿${d.gold[0].toLocaleString('en-US')}–${d.gold[1].toLocaleString('en-US')}` : 'พิเศษ']];
     const gearLv = d.boss ? [Math.min(d.level + 6, 148) - 4, Math.min(d.level + 6, 148) + 2] : [Math.min(d.level, 148) - 4, Math.min(d.level, 148) + 2];
     const drops = [
       ...(d.drops || []).filter((dr) => ITEMS[dr.item]).map((dr) => ({ html: `${itemIcon(dr.item, ITEMS[dr.item].icon)}<span>${esc(ITEMS[dr.item].nameTh)}</span>`, tip: dr.item, rate: dr.chance })),

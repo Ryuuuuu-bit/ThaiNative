@@ -139,6 +139,46 @@ export class GrandFx {
   }
 
   tween(t) { return this.s.tweens.add(t); }
+  has(key) { return this.s.textures.exists(key); }
+  /** วงยันต์บนพื้น (ภาพ PixelLab) หมุนแบบมุมมองเอียง: container บีบแกน y · ภาพข้างในหมุน */
+  mandala(x, y, { size = 120, tint = 0xffffff, ms = 1600, spin = 60, alpha = 0.9, key = 'vfx_mandala', depth } = {}) {
+    if (!this.has(key)) return this.rune(x, y, { size, tint, ms, spin });
+    const c = this.s.add.container(x, y).setDepth(depth ?? y - 2).setScale(1, 0.5);
+    const im = this.s.add.image(0, 0, key).setBlendMode(ADD()).setTint(tint).setAlpha(0);
+    const glow = this.s.add.image(0, 0, key).setBlendMode(ADD()).setTint(tint).setAlpha(0);
+    im.setDisplaySize(size * 0.2, size * 0.2); glow.setDisplaySize(size * 0.2, size * 0.2);
+    c.add([glow, im]);
+    this.tween({ targets: [im], displayWidth: size, displayHeight: size, alpha, duration: 380, ease: 'Back.easeOut' });
+    this.tween({ targets: [glow], displayWidth: size * 1.18, displayHeight: size * 1.18, alpha: alpha * 0.35, duration: 520, ease: 'Sine.easeOut' });
+    this.tween({ targets: [im, glow], angle: spin * ms / 1000, duration: ms });
+    this.tween({ targets: [im, glow], alpha: 0, delay: ms - 420, duration: 420, onComplete: () => c.destroy() });
+    return c;
+  }
+  /** ภาพวิญญาณ/สัญลักษณ์ลอยขึ้น (เทพ · เสือ · ดอกบัว · คนโท) + แสงเรือง + ภาพติดตา */
+  spirit(x, y, key, { size = 64, rise = 36, ms = 1300, tint = 0xffffff, add = false, halo = 0xfff0b0, dx = 0, depth = TOP, trail = 0 } = {}) {
+    if (!this.has(key)) return null;
+    const h = this.img(x, y, 'fx_glow', { tint: halo, alpha: 0 }).setDisplaySize(size * 1.6, size * 1.6).setDepth(depth - 1);
+    const im = this.s.add.image(x, y, key).setDepth(depth).setAlpha(0).setScale(0.2 * size / 64);
+    if (add) im.setBlendMode(ADD()); if (tint !== 0xffffff) im.setTint(tint);
+    const S = size / Math.max(im.width, im.height);
+    this.tween({ targets: im, alpha: 1, scale: S, duration: 320, ease: 'Back.easeOut' });
+    this.tween({ targets: h, alpha: 0.55, duration: 300, yoyo: true, hold: ms - 700 });
+    this.tween({ targets: [im, h], y: y - rise, x: x + dx, duration: ms, ease: 'Sine.easeOut' });
+    this.tween({ targets: im, alpha: 0, delay: ms - 380, duration: 380, onComplete: () => { im.destroy(); h.destroy(); } });
+    for (let k = 1; k <= trail; k++) this.s.time.delayedCall(k * 90, () => {        // ภาพติดตา
+      const g = this.s.add.image(im.x, im.y, key).setScale(im.scaleX).setAlpha(0.35).setDepth(depth - 1).setBlendMode(ADD()).setTint(halo);
+      this.tween({ targets: g, alpha: 0, duration: 320, onComplete: () => g.destroy() });
+    });
+    return im;
+  }
+  /** ระเบิดสมุนไพร (ภาพ PixelLab) + วงแสง */
+  herbBurst(x, y, { size = 90, tint = 0xffffff } = {}) {
+    if (!this.has('vfx_herbburst')) return this.explode(x, y, { r: size * 0.4, tint: 0x7dffb0, shake: false });
+    const im = this.s.add.image(x, y, 'vfx_herbburst').setDepth(TOP).setBlendMode(ADD()).setTint(tint).setScale(0.2).setAlpha(1);
+    this.tween({ targets: im, scale: size / 96, angle: 40, duration: 260, ease: 'Cubic.easeOut' });
+    this.tween({ targets: im, alpha: 0, scale: size / 96 * 1.25, delay: 220, duration: 420, onComplete: () => im.destroy() });
+    this.glow(x, y, { size: size * 1.1, tint: 0x9dffb0, ms: 360 });
+  }
   shake(ms = 180, k = 0.006) { this.s.cameras.main.shake(ms, k); }             // ปิดได้ในตั้งค่า (ดู TopDownScene)
   /** ความแรงแสงวาบตามตั้งค่า: เต็ม 1 · ลดลง 0.3 · ปิด 0 */
   get flashK() { const f = this.s.settings?.fxFlash; return f === 'off' ? 0 : f === 'soft' ? 0.3 : 1; }
@@ -915,10 +955,10 @@ export class TdSkills {
       case 'heal_mist':                                         // หมอกยาชโลมใจ
       case 'heal_tonic':                                        // ยาบำรุงกำลังเจ็ดพลัง
       case 'heal_mother': {                                     // พรแม่โพสพ
-        fx.rune(cx, cy, { size: sk.radius * 0.9, tint, ms: 1600, spin: 50 });
-        if (sk.id === 'heal_mist') fx.smoke(cx, cy, { n: 14, r: 70, tint });
-        else if (sk.id === 'heal_tonic') fx.flames(cx, cy, { n: 10, tint, r: 24, h: 30, ms: 900 });
-        else { fx.petals(cx, cy, { n: 18, tint: 0xfff0a0, r: 80 }); fx.pillar(cx, cy, { tint, h: 160, ms: 1100, w: 44 }); }
+        fx.mandala(cx, cy, { size: sk.radius * 1.1, tint, ms: 1900, spin: 50 });
+        if (sk.id === 'heal_mist') { fx.smoke(cx, cy, { n: 18, r: 80, tint }); fx.spirit(cx, cy - 30, 'vfx_lotus', { size: 44, rise: 30, ms: 1400, halo: 0xa8f0ff, add: true }); }
+        else if (sk.id === 'heal_tonic') { fx.flames(cx, cy, { n: 12, tint, r: 26, h: 34, ms: 1000 }); fx.spirit(cx, cy - 22, 'vfx_amrita', { size: 46, rise: 26, ms: 1300, halo: 0xff9a5a }); }
+        else { fx.petals(cx, cy, { n: 22, tint: 0xfff0a0, r: 90 }); fx.pillar(cx, cy, { tint, h: 180, ms: 1300, w: 50 }); fx.spirit(cx, cy - 36, 'vfx_posop', { size: 78, rise: 34, ms: 1800, halo: 0xfff0a0, trail: 2 }); }
         at(260, () => { fx.flash(160, tint, 0.2); fx.shock(cx, cy, { r: 90, tint, ms: 600 }); });
         this.partyTargets(sk, o).forEach((m, i) => at(420 + i * 90, () => {
           const t = m.spr || m; fx.aura(m, { tint, ms: 2400 }); fx.stars(t.x, t.y - 20, { n: 4, tint, r: 14, size: 14, up: 14 });

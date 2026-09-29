@@ -264,12 +264,14 @@
    "anims": [
     "idle",
     "attack",
-    "walk"
+    "walk",
+    "die"
    ],
    "frames": {
     "idle": 4,
     "attack": 6,
-    "walk": 6
+    "walk": 6,
+    "die": 7
    },
    "frame": 72,
    "scale": 0.6
@@ -1363,6 +1365,134 @@
    },
    "frame": 72,
    "scale": 0.6
+  },
+  "mob_rahu_crystal": {
+   "anims": [
+    "idle",
+    "walk",
+    "attack",
+    "die"
+   ],
+   "frames": {
+    "idle": 4,
+    "walk": 6,
+    "attack": 6,
+    "die": 7
+   },
+   "frame": 72,
+   "scale": 0.6
+  },
+  "mob_krahang": {
+   "anims": [
+    "idle",
+    "attack",
+    "die",
+    "walk"
+   ],
+   "frames": {
+    "idle": 4,
+    "attack": 6,
+    "die": 7,
+    "walk": 6
+   },
+   "frame": 72,
+   "scale": 0.6
+  },
+  "mob_phi_phong": {
+   "anims": [
+    "idle",
+    "attack",
+    "die",
+    "walk"
+   ],
+   "frames": {
+    "idle": 4,
+    "attack": 6,
+    "die": 7,
+    "walk": 6
+   },
+   "frame": 72,
+   "scale": 0.6
+  },
+  "mob_kong_koi": {
+   "anims": [
+    "idle",
+    "attack",
+    "die",
+    "walk"
+   ],
+   "frames": {
+    "idle": 4,
+    "attack": 6,
+    "die": 7,
+    "walk": 6
+   },
+   "frame": 72,
+   "scale": 0.6
+  },
+  "mob_rahu_shade": {
+   "anims": [
+    "idle",
+    "attack",
+    "die",
+    "walk"
+   ],
+   "frames": {
+    "idle": 4,
+    "attack": 6,
+    "die": 7,
+    "walk": 6
+   },
+   "frame": 72,
+   "scale": 0.6
+  },
+  "npc_mo_phon": {
+   "anims": [
+    "idle",
+    "walk"
+   ],
+   "frames": {
+    "idle": 4,
+    "walk": 6
+   },
+   "frame": 72,
+   "scale": 0.6
+  },
+  "npc_ruesi": {
+   "anims": [
+    "idle",
+    "walk"
+   ],
+   "frames": {
+    "idle": 4,
+    "walk": 6
+   },
+   "frame": 72,
+   "scale": 0.6
+  },
+  "npc_horluang": {
+   "anims": [
+    "idle",
+    "walk"
+   ],
+   "frames": {
+    "idle": 4,
+    "walk": 6
+   },
+   "frame": 72,
+   "scale": 0.6
+  },
+  "npc_sapparer": {
+   "anims": [
+    "idle",
+    "walk"
+   ],
+   "frames": {
+    "idle": 4,
+    "walk": 6
+   },
+   "frame": 72,
+   "scale": 0.6
   }
  },
  "images": [
@@ -1493,7 +1623,13 @@
   "env/p_coop",
   "env/p_firewood",
   "env/p_oven",
-  "env/p_mortar"
+  "env/p_mortar",
+  "vfx_mandala",
+  "vfx_lotus",
+  "vfx_tiger",
+  "vfx_posop",
+  "vfx_amrita",
+  "vfx_herbburst"
  ],
  "tilesets": [
   "water__grass",

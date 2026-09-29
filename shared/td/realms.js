@@ -156,7 +156,7 @@ export function buildRealm(def) {
   P('env/p_spirit', hb.x - 1, hb.y - 6, { foot: [2, 1], scale: 1.1, label: hb.nameTh, glow: [-20, 40, def.glow, 0.8] });
   const npcKey = (k) => k;
   npcs.push(
-    { id: 'warp', key: npcKey('npc_kru_mage'), x: (hb.x - 3) * TILE, y: (hb.y + 2) * TILE, nameTh: 'ฤๅษีเฝ้าประตูมิติ', role: 'วาร์ปต่างแดน', color: '#d2b4de', lines: ['ข้าส่งเจ้าไปยังแดนที่เคยไปถึงแล้วได้ทุกเมื่อ', 'ยิ่งลึกเข้าไปผียิ่งดุร้าย เตรียมขวดยาให้พร้อม'] },
+    { id: 'warp', key: npcKey('npc_ruesi'), x: (hb.x - 3) * TILE, y: (hb.y + 2) * TILE, nameTh: 'ฤๅษีเฝ้าประตูมิติ', role: 'วาร์ปต่างแดน', color: '#d2b4de', lines: ['ข้าส่งเจ้าไปยังแดนที่เคยไปถึงแล้วได้ทุกเมื่อ', 'ยิ่งลึกเข้าไปผียิ่งดุร้าย เตรียมขวดยาให้พร้อม'] },
     { id: 'shop', key: npcKey('npc_yai_tim'), x: (hb.x + 3) * TILE, y: (hb.y - 2) * TILE, nameTh: 'ยายติ๋ม (ร้านเร่)', role: 'ร้านยา·ของใช้', color: '#82e0aa', lines: ['ของดีจากกรุงศรีฯ แบกมาไกล ราคาเท่าเดิมนะจ๊ะ', 'ขวดยาเติมเต็มเมื่อพักในค่ายนี้'] },
   );
   // ---- แหล่งผี ----

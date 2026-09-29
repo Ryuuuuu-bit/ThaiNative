@@ -912,6 +912,22 @@
     "ui_monkey": "assets/icons/ui_monkey.png",
     "ui_croc": "assets/icons/ui_croc.png",
     "ui_garuda": "assets/icons/ui_garuda.png",
-    "ui_comet": "assets/icons/ui_comet.png"
+    "ui_comet": "assets/icons/ui_comet.png",
+    "it_deva_silk": "assets/icons/it_deva_silk.png",
+    "it_asura_gold": "assets/icons/it_asura_gold.png",
+    "it_rahu_eye": "assets/icons/it_rahu_eye.png",
+    "it_garuda_plume": "assets/icons/it_garuda_plume.png",
+    "it_sumeru_crystal": "assets/icons/it_sumeru_crystal.png",
+    "it_mara_crown": "assets/icons/it_mara_crown.png",
+    "it_crypt_dust": "assets/icons/it_crypt_dust.png",
+    "ui_realm_dusit": "assets/icons/ui_realm_dusit.png",
+    "ui_realm_sumeru": "assets/icons/ui_realm_sumeru.png",
+    "ui_realm_suriya": "assets/icons/ui_realm_suriya.png",
+    "ui_jar": "assets/icons/ui_jar.png",
+    "ui_rain": "assets/icons/ui_rain.png",
+    "ui_sprout": "assets/icons/ui_sprout.png",
+    "ui_tiger": "assets/icons/ui_tiger.png",
+    "ui_drum": "assets/icons/ui_drum.png",
+    "ui_wand": "assets/icons/ui_wand.png"
   }
 }

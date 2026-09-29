@@ -224,7 +224,7 @@ export class HealerKit {
     const hand = { x: cx + o.ux * 8, y: cy - 22 };
     switch (sk.id) {
       case 'heal_vine': {
-        F.rune(cx, cy, { size: 46, tint, ms: 700, spin: 120, inner: false });
+        F.mandala ? F.mandala(cx, cy, { size: 60, tint, ms: 900, spin: 120 }) : F.rune(cx, cy, { size: 46, tint, ms: 700, spin: 120, inner: false });
         this.leaves(hand.x, hand.y, 6, 26);
         if (local && !s.econ.server) {                     // ออฟไลน์: ผูกตัวเอง
           this.tetherFx({ id: 'me', tid: 'me', ms: sk.duration });
@@ -260,6 +260,7 @@ export class HealerKit {
               F.tween({ targets: num, alpha: 0, y: num.y - 10, delay: 500, duration: 300, onComplete: () => num.destroy() });
               if (n.mob) { if (local) sys.hit(n.mob, sk, 0xc8a060); F.smoke(to.x, to.y + 12, { n: 4, tint: 0x8a7a4a, r: 12 }); F.sparks(to.x, to.y, { n: 8, tint: 0xd8c070, speed: [40, 110], life: 380, scale: 0.25 }); }
               else { F.glow(to.x, to.y, { size: 42, tint: 0x9dff6a, ms: 300 }); F.petals(to.x, to.y + 10, { n: 5, tint: 0xffc6e0, r: 12, fall: false, ms: 900 }); if (local && !s.econ.server && n.spr === s.player) this.localHeal(this.matk() * sk.hmult, 'pill'); }
+              if (i === chain.length - 1) F.herbBurst?.(to.x, to.y, { size: chain.length >= 5 ? 90 : 60 });
               if (i === chain.length - 1 && chain.length >= 5) { F.explode(to.x, to.y + 10, { r: 30, tint: 0x9dff6a, shake: false }); popupNumber(s, to.x, to.y - 30, 'ครบห้าทิศ!', 'exp'); }
             } });
         }));
@@ -267,7 +268,7 @@ export class HealerKit {
       }
       case 'heal_seed': {
         const t = o.prep?.ally || o.t || s.player;
-        F.fly('hl_seed', hand.x, hand.y, t.x, t.y - 4, { speed: 380, add: false, trail: GOLD, trailScale: 0.25, spin: 540, onArrive: () => { F.glow(t.x, t.y, { size: 36, tint: GOLD, ms: 300 }); F.shock(t.x, t.y, { r: 18, tint: GREEN, ms: 360 }); } });
+        F.fly('hl_seed', hand.x, hand.y, t.x, t.y - 4, { speed: 380, add: false, trail: GOLD, trailScale: 0.25, spin: 540, onArrive: () => { F.glow(t.x, t.y, { size: 36, tint: GOLD, ms: 300 }); F.shock(t.x, t.y, { r: 18, tint: GREEN, ms: 360 }); F.spirit?.(t.x, t.y - 10, 'vfx_lotus', { size: 30, rise: 14, ms: 1100, halo: PINK }); } });
         if (local && !s.econ.server) { this.seedFx({ id: 'me', ms: sk.delay }); at(sk.delay, () => this.localHeal(this.matk() * sk.hmult, 'bloom')); }
         break;
       }
@@ -278,10 +279,12 @@ export class HealerKit {
         for (let k = 0; k < 6; k++) at(k * 90, () => { const st = F.img(cx + rand(-8, 8), cy - 22, 'fx_glow', { tint: 0xffd9a0, alpha: 0.5 }).setDisplaySize(12, 12); F.tween({ targets: st, y: st.y - 40, displayWidth: 34, displayHeight: 26, alpha: 0, duration: 800, onComplete: () => st.destroy() }); });
         at(420, () => {                                     // วิญญาณเสือไฟกระโจนออกจากหม้อ
           sys.snd('skSlam'); F.flash(160, 0xffa040, 0.25);
-          const tg = F.img(cx, cy - 30, 'hl_tiger', { tint: 0xffa040 }).setScale(0.3).setAlpha(0.95);
-          F.tween({ targets: tg, scale: 1.1, y: cy - 50, alpha: 0, duration: 700, ease: 'Cubic.easeOut', onComplete: () => tg.destroy() });
+          if (!F.spirit?.(cx, cy - 30, 'vfx_tiger', { size: 80, rise: 46, dx: o.ux * 26, ms: 1100, halo: 0xffa040, trail: 4 })) {
+            const tg = F.img(cx, cy - 30, 'hl_tiger', { tint: 0xffa040 }).setScale(0.3).setAlpha(0.95);
+            F.tween({ targets: tg, scale: 1.1, y: cy - 50, alpha: 0, duration: 700, ease: 'Cubic.easeOut', onComplete: () => tg.destroy() });
+          }
           popupNumber(s, cx, cy - 64, 'พยัคฆ์เหิน!', 'exp');
-          F.shock(cx, cy, { r: sk.radius * 0.9, tint: 0xffa040, ms: 700 }); F.rune(cx, cy, { size: sk.radius * 1.1, tint: 0xffa040, ms: 1400, spin: 50 });
+          F.shock(cx, cy, { r: sk.radius * 0.9, tint: 0xffa040, ms: 700 }); (F.mandala || F.rune).call(F, cx, cy, { size: sk.radius * 1.1, tint: 0xffa040, ms: 1600, spin: 50 });
         });
         at(1100, () => F.tween({ targets: pot, alpha: 0, duration: 300, onComplete: () => pot.destroy() }));
         sys.partyTargets(sk, o).forEach((m, i) => at(560 + i * 80, () => { F.aura(m, { tint: 0xffa040, ms: sk.duration }); this.tigerMarks(m, sk.duration); }));
@@ -290,11 +293,12 @@ export class HealerKit {
       }
       case 'heal_amrita':                                     // น้ำอมฤต: ใช้พิธีเดียวกับสู่ขวัญ (สีทองขาว)
       case 'heal_khwan': {                                    // บายศรี + เทียน 8 เล่ม → สายสิญจน์พุ่งไปทุกคน → ลำแสงทอง
-        const bs = F.img(cx + o.ux * 16, cy - 2, 'hl_baisri', { add: false, depth: cy + 2 }).setOrigin(0.5, 1).setScale(0.1);
-        F.tween({ targets: bs, scale: 0.75, duration: 420, ease: 'Back.easeOut' });
+        const amr = sk.id === 'heal_amrita' && F.has?.('vfx_amrita');
+        const bs = F.img(cx + o.ux * 16, cy - 2, amr ? 'vfx_amrita' : 'hl_baisri', { add: false, depth: cy + 2 }).setOrigin(0.5, 1).setScale(0.1);
+        F.tween({ targets: bs, scale: amr ? 0.55 : 0.75, duration: 420, ease: 'Back.easeOut' });
         const cand = [];
         for (let i = 0; i < 8; i++) { const a = (i / 8) * Math.PI * 2, c = F.img(cx + Math.cos(a) * 34, cy + Math.sin(a) * 14, 'hl_candle', { add: false, depth: cy + Math.sin(a) * 14 }).setOrigin(0.5, 1).setAlpha(0); cand.push(c); F.tween({ targets: c, alpha: 1, delay: i * 90, duration: 160 }); }
-        F.rune(cx, cy, { size: 110, tint: GOLD, ms: (sk.castMs || 1200) + 900, spin: 45 });
+        (F.mandala || F.rune).call(F, cx, cy, { size: 130, tint: GOLD, ms: (sk.castMs || 1200) + 1100, spin: 45 });
         at(sk.castMs || 1200, () => {
           sys.snd('skFlash'); F.flash(220, GOLD, 0.3);
           F.pillar(cx, cy, { tint: GOLD, h: 190, ms: 1200, w: 50 });
@@ -303,7 +307,9 @@ export class HealerKit {
             const g = s.add.graphics().setDepth(TOP).setBlendMode(ADD()); g.lineStyle(1.5, 0xfff6d0, 0.9); g.beginPath(); g.moveTo(cx, cy - 40); g.lineTo(t.x, t.y - 20); g.strokePath();
             F.tween({ targets: g, alpha: 0, duration: 700, onComplete: () => g.destroy() });
             F.aura(t, { tint: GOLD, ms: sk.undying });
+            F.spirit?.(t.x, t.y - 26, 'vfx_lotus', { size: 34, rise: 22, ms: 1400, halo: GOLD, add: true });
           });
+          F.spirit?.(cx, cy - 60, 'vfx_lotus', { size: 70, rise: 30, ms: 1700, halo: GOLD, trail: 3 });
           if (local && !s.econ.server) this.localHeal((s.player.derived?.maxHp || 100) * sk.heal, 'khwan');
           if (local) { const p = s.player; p.buffs = (p.buffs || []).filter((b) => b.sk !== sk.id); p.buffs.push({ buff: { undying: true }, until: s.time.now + sk.undying, sk: sk.id, icon: sk.icon, name: 'ขวัญกันตาย' }); s.ui.toast?.('🪷 ขวัญกันตาย 10 วิ!', 'ok', 1600); }
         });
@@ -312,7 +318,7 @@ export class HealerKit {
       }
       case 'heal_mortar': {
         const c = o.prep?.c || sys.center(sk, o), R = sk.radius;
-        F.rune(c.x, c.y, { size: R * 2, tint: GOLD, ms: 200 + sk.hits * sk.interval + 1500, spin: -90 });
+        (F.mandala || F.rune).call(F, c.x, c.y, { size: R * 2, tint: GOLD, ms: 200 + sk.hits * sk.interval + 1500, spin: -90 });
         const mo = F.img(c.x, c.y + 4, 'hl_mortar', { add: false, depth: c.y + 5 }).setOrigin(0.5, 1).setScale(0.2).setAlpha(0);
         F.tween({ targets: mo, scale: 1, alpha: 1, duration: 200, ease: 'Back.easeOut' });
         const pe = F.img(c.x + 4, c.y - 60, 'hl_pestle', { add: false, depth: c.y + 6 }).setOrigin(0.5, 1).setAlpha(0);
@@ -324,7 +330,7 @@ export class HealerKit {
             sys.snd('skSlam'); F.shock(c.x, c.y, { r: R * (0.6 + i * 0.2), tint: i === sk.hits - 1 ? GREEN : 0xd8c070, ms: 460 }); F.crack(c.x, c.y, { scale: 0.8 + i * 0.3 }); F.shake(120, 0.004 + i * 0.002);
             F.smoke(c.x, c.y, { n: 5, tint: 0x5a8a4a, r: R * 0.4 });
             if (i === sk.hits - 1) {
-              F.explode(c.x, c.y, { r: R * 0.55, tint: GREEN, shake: false }); this.leaves(c.x, c.y - 10, 16, R * 0.9);
+              F.explode(c.x, c.y, { r: R * 0.55, tint: GREEN, shake: false }); F.herbBurst?.(c.x, c.y - 14, { size: R * 1.4 }); this.leaves(c.x, c.y - 10, 16, R * 0.9);
               const ms = sys.mobsNear(c.x, c.y, R); hitN = ms.length;
               ms.forEach((m) => { if (local) sys.hit(m, sk, 0xd8c070); F.flames(m.x, m.y, { n: 3, tint: 0xff9a3c, r: 6, h: 18, ms: 500 }); sys.dizzy(m, 700); });
               if (hitN) popupNumber(s, c.x, c.y - 60, `ผีโดน ${hitN} ตัว · รักษา +${Math.round(Math.min(sk.perMax, sk.perHit * hitN) * 100)}%`, 'exp');
