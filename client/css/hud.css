@@ -440,3 +440,19 @@ body.wb-on #ticker { top: 17cqh; }
 /* สีเลเวลเป้าหมาย (แคป EXP ตามช่วงเลเวล) */
 #t-lv.lv-low { color: #9aa0a6; }
 #t-lv.lv-high { color: #ff6b5a; }
+/* ปุ่ม/หน้าต่างสนับสนุนผู้พัฒนา */
+#btn-donate { top: calc(2 * (5cqh + .7cqh)); background: linear-gradient(180deg, #e0567f, #9c2c55); border-color: rgba(255,200,215,.8); color: #fff; }
+#btn-donate .nb-ic { font-size: 2.3cqh; }
+#donate-panel { width: min(36em, 94vw); }
+#donate-panel .dn-body { display: grid; grid-template-columns: auto 1fr; grid-template-areas: "lead lead" "qr acc" "qr note"; align-items: start; gap: .8em 1em; padding: .4em .3em .3em; }
+#donate-panel .dn-lead { grid-area: lead; margin: 0; line-height: 1.5; text-align: center; }
+#donate-panel .dn-qr { grid-area: qr; width: min(12em, 40vw); border-radius: .6em; background: #fff; box-shadow: 0 0 0 .2em rgba(255,255,255,.15); }
+#donate-panel .dn-acc { grid-area: acc; display: grid; gap: .5em; background: rgba(0,0,0,.25); border-radius: .5em; padding: .7em .8em; }
+#donate-panel .dn-acc > div { display: flex; flex-direction: column; gap: .1em; }
+#donate-panel .dn-acc span { font-size: .8em; opacity: .7; }
+#donate-panel .dn-acc b { color: #ffe08a; letter-spacing: .02em; }
+#donate-panel .dn-no { display: flex; align-items: center; gap: .5em; flex-wrap: wrap; }
+#donate-panel #dn-copy { padding: .15em .6em; font-size: .85em; }
+#donate-panel .dn-note { grid-area: note; margin: 0; font-size: .8em; opacity: .7; line-height: 1.45; }
+@media (max-width: 560px) { #donate-panel .dn-body { grid-template-columns: 1fr; grid-template-areas: "lead" "qr" "acc" "note"; justify-items: center; } }
+#donate-panel .dn-dev { color: #ffb3c8; }

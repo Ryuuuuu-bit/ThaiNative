@@ -526,6 +526,14 @@ export class TopDownScene extends Phaser.Scene {
     return top - 2 - h - 1;                                                                // ขอบบนของป้าย
   }
 
+  /** คลิกตัวผู้เล่นคนอื่นแล้วเปิดเมนูไหม: Shift+คลิกเปิดเสมอ · ระหว่างสู้ (ลานบอสโลก/มีเป้าผี/ผีอยู่ใกล้จุดคลิก) = คลิกทะลุไปเดิน/ตีแทน */
+  playerMenuClick(ptr) {
+    if (ptr?.event?.shiftKey) return true;
+    if (this.wb?.here || this.player?.target?.alive) return false;
+    const w = this.cameras.main.getWorldPoint(ptr.x, ptr.y);
+    return !this.mobAt(w.x, w.y, 40);
+  }
+
   talk(n) {
     const p = this.player;
     if (dist(p, n) > 52) { this.moveTo(n.x, n.y + 14); this.pendingTalk = n; return; }
@@ -534,7 +542,10 @@ export class TopDownScene extends Phaser.Scene {
     if (n.id === 'quest') return this.village.openQuests();
     if (n.id === 'warp') return this.openWarp();
     if (NPC_OPEN[n.id]) return this.ui.openShop(NPC_OPEN[n.id], n);
-    this.ui.toast(`💬 ${n.nameTh}: “${n.lines[n.line++ % n.lines.length]}”`, '', 4500);
+    const lines = Array.isArray(n.lines) && n.lines.length ? n.lines : null;
+    if (!lines) return;
+    n.line = Number.isFinite(n.line) ? n.line : 0;                                          // บาง NPC (แมพอีเวนต์) ไม่มีตัวนับ → เคยขึ้น "undefined"
+    this.ui.toast(`💬 ${n.nameTh}: “${lines[n.line++ % lines.length]}”`, '', 4500);
   }
 
   // ------------------------------------------------------------
@@ -615,7 +626,7 @@ export class TopDownScene extends Phaser.Scene {
     return [...kinds.values()].sort((a, b) => a.def.level - b.def.level);
   }
 
-  /** เมนูเลือกเป้า Auto (ปุ่ม ▾ ข้างปุ่ม AUTO หรือ Shift+A) */
+  /** เมนูเลือกเป้า Auto (ปุ่ม ▾ ข้างปุ่ม AUTO หรือ Shift+R) */
   toggleAutoMenu(open = $('#auto-menu')?.classList.contains('hidden')) {
     const box = $('#auto-menu');
     if (!box) return;
@@ -668,7 +679,7 @@ export class TopDownScene extends Phaser.Scene {
     const bt = $('#auto-skill'); if (!bt) return;
     const only = this.autoFilter();
     bt.classList.toggle('filtered', !!only);
-    bt.title = `Auto (A) – ตีผี${only ? `ที่เลือก ${this.autoCount(only)} ชนิด` : 'ทุกตัว'}ในหน้าจอ + ร่ายสกิลในแถบ 1–0 อัตโนมัติ · เลือกเป้า: ปุ่ม ▾ / Shift+A`;
+    bt.title = `Auto (R) – ตีผี${only ? `ที่เลือก ${this.autoCount(only)} ชนิด` : 'ทุกตัว'}ในหน้าจอ + ร่ายสกิลในแถบ 1–0 อัตโนมัติ · เลือกเป้า: ปุ่ม ▾ / Shift+R`;
   }
 
   setMobVisible(m, on) {
@@ -981,7 +992,7 @@ export class TopDownScene extends Phaser.Scene {
     this.quickUse([id]);
   }
 
-  /** เปิด/ปิด Auto Skill (ปุ่ม A หรือปุ่ม AUTO ข้างแถบสกิล) */
+  /** เปิด/ปิด Auto Skill (ปุ่ม R หรือปุ่ม AUTO ข้างแถบสกิล) */
   toggleAutoSkill(on = !this.settings.autoSkill) {
     this.settings.autoSkill = on; saveSettings(this.settings);
     $('#auto-skill')?.classList.toggle('on', on);
@@ -1127,7 +1138,8 @@ export class TopDownScene extends Phaser.Scene {
     paintTitle(q.title);
     s._tags = [tag, ttl];
     s.setInteractive({ useHandCursor: true });                                   // คลิกผู้เล่น → เมนู เชิญ/เทรด/เพื่อน/กระซิบ
-    s.on('pointerdown', (ptr) => { if (uiBlocked(ptr)) return; ptr.event?.stopPropagation?.(); this.social?.openPlayerMenu(r, { x: ptr.x, y: ptr.y }); });
+    s._remote = true;
+    s.on('pointerdown', (ptr) => { if (uiBlocked(ptr) || ptr.rightButtonDown() || !this.playerMenuClick(ptr)) return; ptr.event?.stopPropagation?.(); this.social?.openPlayerMenu(r, { x: ptr.x, y: ptr.y }); });
     const sh = this.addShadow(s, 22);
     const r = {
       id: q.id, netId: q.id, name: q.name, level: q.level, hp: q.hp, maxHp: q.maxHp, spr: s,
@@ -1154,7 +1166,7 @@ export class TopDownScene extends Phaser.Scene {
   // ------------------------------------------------------------
   buildInput() {
     const kb = this.input.keyboard;
-    this.keys = kb.addKeys('UP,LEFT,DOWN,RIGHT', false);
+    this.keys = kb.addKeys('UP,LEFT,DOWN,RIGHT,W,A,S,D', false);          // เดิน: ลูกศร หรือ WASD
     this.input.mouse?.disableContextMenu();                    // คลิกขวาไม่เปิดเมนูของเบราว์เซอร์
     this.input.on('pointerdown', (ptr, over) => {
       if (this.touch?.owns(ptr)) return;                        // นิ้วที่กำลังใช้จอยสติ๊ก/ปุ่มบนจอ
@@ -1164,7 +1176,8 @@ export class TopDownScene extends Phaser.Scene {
       // คลิกขวา = โจมตีผีที่ชี้ (หรือตัวที่ใกล้จุดคลิกที่สุด) · ไม่มีผีก็ไม่เดิน
       if (ptr.rightButtonDown()) { if (hitMob) this.setTarget(hitMob); return; }
       if (hitMob) { this.setTarget(hitMob); return; }           // คลิกซ้าย/แตะโดนผี = โจมตี
-      if (over.length) return;                                   // NPC/ของที่มีคำสั่งของตัวเอง
+      // ตัวผู้เล่นคนอื่นไม่บังการเดินตอนสู้ (เมนูผู้เล่นเปิดเฉพาะตอนไม่สู้ หรือ Shift+คลิก)
+      if (over.some((o) => !(o._remote && !this.playerMenuClick(ptr)))) return;   // NPC/ของที่มีคำสั่งของตัวเอง
       this.player.target = null;
       this.moveTo(w.x, w.y);
       this.clickMark(w.x, w.y);
@@ -1183,7 +1196,7 @@ export class TopDownScene extends Phaser.Scene {
     kb.on('keydown-Q', () => { if (!this.ui.typing && !this.ui.anyOpen?.()) this.drinkFlask('flask'); });
     kb.on('keydown-E', () => { if (!this.ui.typing && !this.ui.anyOpen?.()) this.drinkFlask('flask2'); });
     document.querySelectorAll('.flask-btn').forEach((b) => (b.onclick = () => this.drinkFlask(b.dataset.flask)));
-    kb.on('keydown-A', (e) => { if (this.ui.anyOpen?.()) return; if (e.shiftKey) this.toggleAutoMenu(); else this.toggleAutoSkill(); });
+    kb.on('keydown-R', (e) => { if (this.ui.typing || this.ui.anyOpen?.()) return; if (e.shiftKey) this.toggleAutoMenu(); else this.toggleAutoSkill(); });   // A ใช้เดินแล้ว → Auto ย้ายมา R
     { const bt = $('#auto-skill'); if (bt) { bt.classList.toggle('on', !!this.settings.autoSkill); bt.onclick = () => this.toggleAutoSkill(); bt.oncontextmenu = (e) => { e.preventDefault(); this.toggleAutoMenu(); }; } }
     { const cf = $('#auto-cfg'); if (cf) cf.onclick = (e) => { e.stopPropagation(); this.toggleAutoMenu(); }; }
     this.onAutoMenuOutside = (e) => { const box = $('#auto-menu'); if (box && !box.classList.contains('hidden') && !e.target.closest('#auto-menu, #auto-cfg, #auto-skill')) box.classList.add('hidden'); };
@@ -1305,8 +1318,9 @@ export class TopDownScene extends Phaser.Scene {
     const p = this.player, k = this.keys, dt = delta / 1000;
     const typing = this.ui.typing;
     if (p.alive) {
-      let vx = typing ? 0 : k.RIGHT.isDown - k.LEFT.isDown;
-      let vy = typing ? 0 : k.DOWN.isDown - k.UP.isDown;
+      const kR = k.RIGHT.isDown || k.D.isDown, kL = k.LEFT.isDown || k.A.isDown, kD = k.DOWN.isDown || k.S.isDown, kU = k.UP.isDown || k.W.isDown;
+      let vx = typing ? 0 : kR - kL;
+      let vy = typing ? 0 : kD - kU;
       if (this.touch?.vec) { vx += this.touch.vec.x; vy += this.touch.vec.y; }   // จอยสติ๊กบนมือถือ
       if (vx || vy) { p.path = []; p.target = null; this.pendingTalk = null; }
       else if (p.target) {
@@ -1342,7 +1356,7 @@ export class TopDownScene extends Phaser.Scene {
         p.setVelocity(vx / len * sp, vy / len * sp);
         p.dir = stableDir(vx, vy, p.dir); p.st = 'walk'; this.playerAnim('walk');
       } else { p.setVelocity(0, 0); p.st = 'idle'; this.playerAnim('idle'); }
-      this.unstick(p, time, !!(k.RIGHT.isDown || k.LEFT.isDown || k.DOWN.isDown || k.UP.isDown || this.touch?.vec));
+      this.unstick(p, time, !!(!typing && (kR || kL || kD || kU) || this.touch?.vec));
       if (!this.econ.server && this.inTown() && p.char.hp < p.derived.maxHp) p.char.hp = Math.min(p.derived.maxHp, p.char.hp + p.derived.maxHp * 0.04 * dt);
     } else p.setVelocity(0, 0);
     p.setDepth(p.y);

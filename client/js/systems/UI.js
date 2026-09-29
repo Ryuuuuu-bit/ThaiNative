@@ -96,6 +96,11 @@ export class UI {
 
     // ปุ่มเปิด/ปิดหน้าต่าง
     document.querySelectorAll('[data-open]').forEach((b) => (b.onclick = () => (b.dataset.open === 'map-panel' ? this.scene.world.toggleMap() : this.toggle(b.dataset.open))));
+    { const cp = $('#dn-copy'); if (cp) cp.onclick = () => {                                 // คัดลอกเลขบัญชี (ไม่มีขีด)
+      const no = ($('#dn-no')?.textContent || '').replace(/\D/g, '');
+      const ok = () => this.toast('📋 คัดลอกเลขบัญชีแล้ว', 'ok', 1600);
+      if (navigator.clipboard?.writeText) navigator.clipboard.writeText(no).then(ok, () => this.toast(no, '', 4000)); else this.toast(no, '', 4000);
+    }; }
     document.querySelectorAll('.window .close').forEach((b) => (b.onclick = () => b.closest('.window').classList.add('hidden')));
     $('#shop-tabs').onclick = (e) => {
       const b = e.target.closest('button[data-tab]');

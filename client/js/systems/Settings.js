@@ -11,10 +11,10 @@ export const DEFAULT_SETTINGS = {
   fxShake: true,                // จอสั่นตอนสกิล/โดนตี
   fxFlash: 'full',              // แสงวาบ/ฟ้ามืดของสกิล: full | soft | off
   autoHp: 0, autoMp: 0,         // กินยาอัตโนมัติเมื่อต่ำกว่า % (0 = ปิด)
-  autoSkill: false,             // Auto: ตีผีในหน้าจอ + ร่ายสกิลในแถบอัตโนมัติ (ปุ่ม A)
+  autoSkill: false,             // Auto: ตีผีในหน้าจอ + ร่ายสกิลในแถบอัตโนมัติ (ปุ่ม R)
   chatBubble: true,             // ฟองคำพูดเหนือหัวผู้เล่น
   otherSfx: 'full',             // เสียงของผู้เล่นอื่น/ผีตายรอบตัว: full | soft | off (ดังเบาตามระยะเสมอ)
-  autoMobs: [],                 // ชนิดผีที่ Auto จะตี (ว่าง = ตีทุกตัว) · เลือกที่ปุ่ม ▾ / Shift+A
+  autoMobs: [],                 // ชนิดผีที่ Auto จะตี (ว่าง = ตีทุกตัว) · เลือกที่ปุ่ม ▾ / Shift+R
 };
 
 export function loadSettings() {

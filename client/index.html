@@ -36,7 +36,7 @@
       <div class="td-target" id="td-target"></div>
       <div class="td-toast hidden" id="td-toast"></div>
       <button class="td-act hidden" id="td-act"></button>
-      <div class="td-bottom"><span class="t-hint">👆 แตะพื้น = เดิน · แตะผี / ปุ่ม ⚔️ = ตี · แตะช่องสกิล = ร่าย · ⚡ = ออโต้ (ตีเอง) · จอยซ้าย = เดิน</span><span class="k-hint">🖱️ คลิกพื้น = เดิน · คลิกผี = โจมตี · คลิก NPC = ร้าน/เควส · ลูกศร เดิน · 1–0 Hotbar (สกิล/ไอเทม) · A ออโต้ (ตีผีทั้งจอ · Shift+A เลือกผี) · O การ์ดผี · B ยันต์คืนถิ่น · I กระเป๋า · C สถานะ · K สกิล · J เควส · คลิกขวาที่ผี = ตี</span></div>
+      <div class="td-bottom"><span class="t-hint">👆 แตะพื้น = เดิน · แตะผี / ปุ่ม ⚔️ = ตี · แตะช่องสกิล = ร่าย · ⚡ = ออโต้ (ตีเอง) · จอยซ้าย = เดิน</span><span class="k-hint">🖱️ คลิกพื้น = เดิน · คลิกผี = โจมตี · คลิก NPC = ร้าน/เควส · WASD/ลูกศร เดิน · 1–0 Hotbar (สกิล/ไอเทม) · R ออโต้ (ตีผีทั้งจอ · Shift+R เลือกผี) · O การ์ดผี · B ยันต์คืนถิ่น · I กระเป๋า · C สถานะ · K สกิล · J เควส · คลิกขวาที่ผี = ตี · Shift+คลิกผู้เล่น = เมนู</span></div>
     </div>
     <div id="game"></div>
 
@@ -175,6 +175,7 @@
         <!-- ขวาบน: เขต / ออนไลน์ / มินิแมป / เมนู -->
         <div class="hud-right">
           <a id="btn-discord" class="news-btn discord-btn" href="https://discord.gg/aYy4StWaQ6" target="_blank" rel="noopener noreferrer" title="Discord ชุมชนผู้เล่น · แจ้งบั๊ก · ข่าวสาร"><span class="nb-ic">💬</span><span class="nb-lb">Discord</span></a>
+          <button id="btn-donate" class="news-btn" data-open="donate-panel" title="สนับสนุนผู้พัฒนา"><span class="nb-ic">💖</span><span class="nb-lb">สนับสนุน</span></button>
           <button id="btn-news" class="news-btn" title="ข่าวสาร (N)"><span class="nb-ic">📰</span><span class="nb-lb">ข่าวสาร</span><i class="nb-n"></i></button>
           <div class="zone"><b id="zone-name"></b><span id="net-status" class="net off">● ออฟไลน์</span></div>
           <div class="clock" id="clock">☀️ 12:00</div>
@@ -199,8 +200,8 @@
             <div id="flask-bar"><button class="flask-btn" data-flask="flask"></button><button class="flask-btn" data-flask="flask2"></button></div>
             <div id="skillbar"></div>
             <div class="auto-wrap">
-              <button class="slot auto-skill" id="auto-skill" title="Auto (A) – ตีผีในหน้าจอ + ร่ายสกิลในแถบ 1–0 อัตโนมัติ"><span class="k">A</span><span class="ic">⚡</span><span class="lbl">AUTO</span></button>
-              <button class="auto-cfg" id="auto-cfg" title="เลือกผีที่จะให้ Auto ตี (Shift+A)">▾</button>
+              <button class="slot auto-skill" id="auto-skill" title="Auto (R) – ตีผีในหน้าจอ + ร่ายสกิลในแถบ 1–0 อัตโนมัติ"><span class="k">R</span><span class="ic">⚡</span><span class="lbl">AUTO</span></button>
+              <button class="auto-cfg" id="auto-cfg" title="เลือกผีที่จะให้ Auto ตี (Shift+R)">▾</button>
               <div id="auto-menu" class="auto-menu hidden"></div>
             </div>
           </div>
@@ -232,6 +233,20 @@
       </section>
 
       <!-- เควสผู้ใหญ่ชัย (J) -->
+      <!-- สนับสนุนผู้พัฒนา (โดเนท · ไม่มีของในเกมแลก) -->
+      <section id="donate-panel" class="panel window hidden">
+        <header>💖 สนับสนุนผู้พัฒนา <button class="close">✕</button></header>
+        <div class="dn-body">
+          <p class="dn-lead">ThaiNative Online พัฒนาโดย <b class="dn-dev">Ryuu</b> และ <b class="dn-dev">Joker</b><br />ถ้าชอบเกมนี้ ร่วมเลี้ยงกาแฟ/ช่วยค่าเซิร์ฟได้ตามสะดวก ขอบคุณมากครับ 🙏</p>
+          <img class="dn-qr" src="assets/ui/donate_qr.jpg" alt="QR พร้อมเพย์ สำหรับโอนสนับสนุน" loading="lazy" />
+          <div class="dn-acc">
+            <div><span>ธนาคาร</span><b>กสิกรไทย (KBank)</b></div>
+            <div><span>เลขบัญชี</span><div class="dn-no"><b id="dn-no">176-3-58590-1</b><button id="dn-copy" class="btn ghost">📋 คัดลอก</button></div></div>
+            <div><span>ชื่อบัญชี</span><b>นาย ภาณุพงศ มั่นถาวร</b></div>
+          </div>
+          <p class="dn-note">สแกน QR ด้วยแอปธนาคารใดก็ได้ · การสนับสนุนเป็นความสมัครใจ ไม่มีไอเทมหรือสิทธิพิเศษในเกมแลกเปลี่ยน · โปรดตรวจชื่อบัญชีก่อนโอนทุกครั้ง</p>
+        </div>
+      </section>
       <section id="news-panel" class="panel window wide hidden">
         <header>📰 ข่าวสาร · กรุงศรีอยุธยา <button class="close">✕</button></header>
         <div id="news-tabs" class="news-tabs"></div>
@@ -386,7 +401,7 @@
           <div class="set-row"><label><input type="checkbox" id="set-shake" /> จอสั่น (สกิล/โดนตี)</label></div>
           <div class="set-row"><span>🔊 เสียงผู้เล่นอื่น</span><select id="set-othersfx"><option value="full">ปกติ</option><option value="soft">เบา</option><option value="off">ปิด</option></select></div>
           <div class="set-row"><span>✨ แสงวาบของสกิล</span><select id="set-flash"><option value="full">เต็ม</option><option value="soft">ลดลง</option><option value="off">ปิด</option></select></div>
-          <div class="set-row"><button id="set-fullscreen" class="btn ghost">⛶ เต็มจอ (Fullscreen)</button></div>
+          <div class="set-row"><button id="set-fullscreen" class="btn ghost">⛶ เต็มจอ (Fullscreen)</button> <button class="btn ghost" data-open="donate-panel">💖 สนับสนุนผู้พัฒนา</button></div>
         </div>
         <div class="set-group">
           <div class="set-row"><span>🧪 กินยา HP อัตโนมัติเมื่อต่ำกว่า</span><select id="set-auto-hp"><option value="0">ปิด</option><option value="30">30%</option><option value="50">50%</option><option value="70">70%</option></select></div>
@@ -411,9 +426,9 @@
       <section id="help-panel" class="panel window hidden">
         <header>วิธีเล่น <button class="close">✕</button></header>
         <div class="keys">
-          <div>🖱️ <b>คลิกพื้น</b> = เดินไปจุดนั้น · <b>คลิกผี</b> = โจมตี · คลิก NPC = คุย/เปิดร้าน</div><div><kbd>←</kbd><kbd>↑</kbd><kbd>↓</kbd><kbd>→</kbd> เดินเอง · มือถือ: จอยสติ๊กซ้ายล่าง</div>
+          <div>🖱️ <b>คลิกพื้น</b> = เดินไปจุดนั้น · <b>คลิกผี</b> = โจมตี · คลิก NPC = คุย/เปิดร้าน</div><div><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> / <kbd>←</kbd><kbd>↑</kbd><kbd>↓</kbd><kbd>→</kbd> เดินเอง · มือถือ: จอยสติ๊กซ้ายล่าง</div>
           <div><kbd>1</kbd>–<kbd>0</kbd> สกิล/ไอเทมใน Hotbar (ลากสกิลจาก <kbd>K</kbd> มาใส่)</div><div><kbd>Q</kbd> <kbd>E</kbd> ดื่มขวดยา 2 ช่อง · ฆ่าผีเติมประจุ · กลับเมือง/ค่ายพัก = เต็ม</div>
-          <div><kbd>A</kbd> Auto ตีผีในจอ + ร่ายสกิล · <kbd>Shift</kbd>+<kbd>A</kbd> เลือกชนิดผี</div><div><kbd>F</kbd> คุย NPC · เก็บสมุนไพร (ประกายวิบวับ) · ตกปลาริมน้ำ</div>
+          <div><kbd>R</kbd> Auto ตีผีในจอ + ร่ายสกิล · <kbd>Shift</kbd>+<kbd>R</kbd> เลือกชนิดผี</div><div><kbd>Shift</kbd>+คลิกผู้เล่น = เมนูเชิญ/เทรด (ตอนสู้คลิกโดนคนอื่นจะเดินทะลุ)</div><div><kbd>F</kbd> คุย NPC · เก็บสมุนไพร (ประกายวิบวับ) · ตกปลาริมน้ำ</div>
           <div><kbd>M</kbd> แผนที่ (คลิกบนแผนที่ = เดินไป) · <kbd>B</kbd> ยันต์คืนถิ่น กลับกรุงศรีฯ</div><div><kbd>I</kbd> กระเป๋า · <kbd>C</kbd> สถานะ · <kbd>K</kbd> สกิล/พรสวรรค์ · <kbd>J</kbd> เควส · <kbd>O</kbd> การ์ดผี · <kbd>P</kbd> สังคม · <kbd>Enter</kbd> แชท · <kbd>Esc</kbd> ตั้งค่า</div>
           <div>🏯 <b>กรุงศรีอยุธยา Lv.1–30</b>: ทุ่งนา (ใต้) → ป่าไผ่ (ตะวันตก) → ป่าช้าวัดร้าง (ตะวันออก) → บึงผีพราย (ใต้สุด)</div><div>🌀 <b>แดนต่าง ๆ</b>: ประตูมิติกลางบึงผีพราย → ป่าหิมพานต์ Lv.30 → เมืองบาดาล Lv.50 → นรกภูมิ Lv.75–99</div>
           <div>🧙 <b>ฤๅษีเฝ้าประตูมิติ</b> (ข้างน้ำพุ/ในค่ายพัก) วาร์ปไปแดนที่เคยไปแล้วได้ทันที</div><div>👑 <b>บอสประจำโซน</b> 7 ตัว เกิดใหม่ทุก 20 นาที · ทุกคนที่ช่วยตีได้รางวัล · ปราบแล้วได้ฉายา</div>
