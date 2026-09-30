@@ -72,7 +72,7 @@ export const EMO_ICON = {
   '📊': 'chart', '📖': 'book', '❔': 'qmark', '🧙': 'hermit', '🌅': 'sunrise', '🌇': 'sunset', '🌕': 'fullmoon', '🌑': 'newmoon',
   '🌾': 'rice', '🪷': 'lotus', '🎯': 'target', '🛡': 'shield', '🔥': 'fire', '💧': 'water', '💥': 'boom', '🎋': 'bamboo', '📝': 'memo', '🪨': 'rock',
   '🕯': 'candle', '🪶': 'feather', '🏘': 'village', '❤': 'heart', '📘': 'book_blue', '🐉': 'naga',
-  '☠': 'crossbones', '👘': 'thai_dress', '🗡': 'dagger', '🌼': 'flower', '🐗': 'boar', '🧧': 'envelope', '🧵': 'thread', '🌈': 'rainbow', '💪': 'arm',
+  '👘': 'thai_dress', '🗡': 'dagger', '🌼': 'flower', '🐗': 'boar', '🧧': 'envelope', '🧵': 'thread', '🌈': 'rainbow', '💪': 'arm',
   '⌨': 'keyboard', '🎨': 'palette', '💇': 'scissors', '🚶': 'walk', '📱': 'phone', '👆': 'tap', '☁': 'cloud', '🏔': 'mountain', '🦁': 'lion',
   '🥤': 'cup', '🥚': 'egg', '🐷': 'pig', '🍶': 'jar', '🌧': 'rain', '🌱': 'sprout', '🐯': 'tiger', '🥁': 'drum', '🪄': 'wand',
   '🧴': 'it:hp_s', '🥥': 'it:mp_s', '🪙': 'gold', '💰': 'gold', '🐟': 'fish', '🍳': 'soup', '🔨': 'anvil', '✅': 'check', '☑': 'check',

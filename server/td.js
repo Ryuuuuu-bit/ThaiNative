@@ -200,11 +200,12 @@ export function setupTD(io, players, opts = {}) {
     if (m.wb) wb?.onDmg(m, p, r.dmg);
     // ผลพิเศษของสกิล: มึน (บอสติดครึ่งเวลา) · พิษ (ต่อเนื่อง ticks ครั้ง ครั้งละ ratio × ดาเมจที่โดน)
     const eff = spec.effect || {}, effMul = m.boss ? 0.5 : 1;                                            // บอสติดสถานะครึ่งเวลา
+    m.slowActive = now < (m.slowUntil || 0); m.defActive = now < (m.defDownUntil || 0); m.weakActive = now < (m.weakUntil || 0);   // ดีบัฟเดิมหมดแล้ว = ใช้ความแรงใหม่ (ไม่ค้างค่าแรงสุด)
     if (eff.stun && m.hp > 0) m.stunUntil = Math.max(m.stunUntil || 0, now + eff.stun.ms * effMul);
     for (const k of ['poison', 'bleed', 'burn']) if (eff[k] && m.hp > 0) { const P = eff[k]; (m.dots ||= {})[k] = { by: p.id, dmg: Math.max(1, Math.round(r.dmg * P.ratio)), left: P.ticks, every: P.every, next: now + P.every }; }
-    if (eff.slow && m.hp > 0) { m.slowUntil = Math.max(m.slowUntil || 0, now + eff.slow.ms * effMul); m.slowPct = Math.max(m.slowPct || 0, eff.slow.pct); }
-    if (eff.armorBreak && m.hp > 0) { m.defDownUntil = Math.max(m.defDownUntil || 0, now + eff.armorBreak.ms * effMul); m.defDownPct = Math.max(m.defDownPct || 0, eff.armorBreak.pct); }
-    if (eff.weak && m.hp > 0) { m.weakUntil = Math.max(m.weakUntil || 0, now + eff.weak.ms * effMul); m.weakPct = Math.max(m.weakPct || 0, eff.weak.pct); }
+    if (eff.slow && m.hp > 0) { m.slowUntil = Math.max(m.slowUntil || 0, now + eff.slow.ms * effMul); m.slowPct = m.slowActive ? Math.max(m.slowPct, eff.slow.pct) : eff.slow.pct; }
+    if (eff.armorBreak && m.hp > 0) { m.defDownUntil = Math.max(m.defDownUntil || 0, now + eff.armorBreak.ms * effMul); m.defDownPct = m.defActive ? Math.max(m.defDownPct, eff.armorBreak.pct) : eff.armorBreak.pct; }
+    if (eff.weak && m.hp > 0) { m.weakUntil = Math.max(m.weakUntil || 0, now + eff.weak.ms * effMul); m.weakPct = m.weakActive ? Math.max(m.weakPct, eff.weak.pct) : eff.weak.pct; }
     if (m.st !== 'chase') { m.st = 'chase'; m.target = p.id; }
     io.to(room).emit('td:dmg', { mid: m.mid, by: p.id, hit: true, crit: r.crit, dmg: r.dmg, hp: Math.max(0, Math.round(m.hp)) });
     if (m.hp <= 0) kill(m, p);
@@ -241,7 +242,7 @@ export function setupTD(io, players, opts = {}) {
 
   function kill(m, killer) {
     const d = m.d, tm = timeMods(d);
-    m.hp = 0; m.st = 'dead'; m.pending = [];
+    m.hp = 0; m.st = 'dead'; m.pending = []; m.dots = null;
     // คนเยอะในแมพ → ผีเกิดเร็วขึ้น (สูงสุด ×2 เมื่อ 8 คนขึ้นไป · บอสไม่เร่ง)
     const crowd = m.boss ? 1 : Math.min(2, 1 + 0.15 * Math.max(0, tdPlayers(mapId).length - 1));
     m.respawnAt = CR ? Infinity : Date.now() + Math.round((d.respawnMs || RESPAWN_MS) / crowd);
@@ -392,6 +393,7 @@ export function setupTD(io, players, opts = {}) {
       return moveMap(socket, p, to, arrivalPoint(mapOf(p), to), 'portal');
     }
     if (!w.nearNpc(p, 'warp')) return no('ต้องคุยกับฤๅษีเฝ้าประตูมิติ');
+    if ((p.save.karma || 0) > 0 && to === 'ayutthaya') return no('☠️ หัวแดง: ฤๅษีไม่ส่งกลับกรุงศรีฯ จนกว่าบาปจะหมด');
     if (!visited(p).includes(to)) return no(`ยังไม่เคยไป${M.nameTh} · ต้องเดินผ่านประตูมิติก่อน 1 ครั้ง`);
     moveMap(socket, p, to, { ...M.spawn }, 'npc');
   }
@@ -433,7 +435,8 @@ export function setupTD(io, players, opts = {}) {
 
   function onRespawn(socket) {
     const p = players.get(socket.id);
-    if (!p || p.world !== 'td' || (!p.dead && p.hp > 0)) return;
+    if (!p || p.world !== 'td') return;
+    if (!p.dead && p.hp > 0) return socket.emit('td:respawn', { x: Math.round(p.tx), y: Math.round(p.ty), hp: Math.round(p.hp), maxHp: p.maxHp });   // เน็ตหลุดตอนตาย/ต่อใหม่แล้ว server ฟื้นให้แล้ว → บอก client ให้เลิกค้างเป็นศพ
     if (p.save.deadAt && Date.now() - p.save.deadAt < RESPAWN_WAIT_MS - 500) return;   // ต้องรอครบ 10 วิ (กันกดฟื้นเร็ว · หมอยาชุบได้ระหว่างนี้)
     const w = W(p);
     p.dead = false; p.hp = p.maxHp; p.invulnUntil = Date.now() + 2500; p.spawnGuardUntil = Date.now() + SPAWN_GUARD_MS; p.save.deadAt = 0;

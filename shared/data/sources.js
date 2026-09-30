@@ -42,6 +42,7 @@ function build() {
   // 2) การ์ดผี
   for (const [cid, c] of Object.entries(CARD_BY_ID)) {
     const m = MONSTERS[c.mon]; if (!m || !W[c.mon]) continue;
+    if (m.worldBoss) { add(cid, { kind: 'mon', sort: -0.25, ic: '🃏', text: `${monTxt(c.mon, m)} · รางวัลตามอันดับดาเมจ 5–25% (ขั้น 4–5)`, sub: W[c.mon] }); continue; }   // บอสโลก: ไม่ใช่ดรอปต่อตัว
     const p = m.boss ? CARD_DROP.boss : m.elite ? CARD_DROP.elite : CARD_DROP.normal;
     add(cid, { kind: 'mon', sort: -p, ic: '🃏', text: `${monTxt(c.mon, m)} · ${pctTxt(p)}`, sub: W[c.mon] });
   }

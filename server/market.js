@@ -31,12 +31,14 @@ export function setupMarket(io, players, { td, refresh, persist, storeReady, isN
     try { const st = await storeReady; await st.setMeta?.('market_v1', JSON.stringify({ ...S, travel: { ...S.travel }, gen: st.gen || '' })); } catch (e) { console.error('[market] save', e.message); }   // แปะรุ่นข้อมูล (Fresh Server)
   }
   (async () => {
+    let stale = false;
     try {
       const st = await storeReady, d = JSON.parse((await st.getMeta?.('market_v1')) || 'null');
-      if (d && (d.gen || '') !== (st.gen || '')) console.log('[market] ข้อมูลก่อน wipe (รุ่นไม่ตรง) → ทิ้ง');
+      if (d && (d.gen || '') !== (st.gen || '')) { console.log('[market] ข้อมูลก่อน wipe (รุ่นไม่ตรง) → ทิ้ง'); stale = true; }
       else if (d) Object.assign(S, d, { travel: d.travel?.active && d.travel.until > Date.now() ? d.travel : { active: false, next: Date.now() + rand(15, 35) * 60e3 } });
     } catch (e) { console.error('[market] load', e.message); }
     loaded = true;
+    if (stale) flush();                                                          // ทิ้งข้อมูลเก่าแล้ว → เซฟรุ่นใหม่ทับทันที (crash ก่อนเซฟรอบแรกก็ไม่โหลดของเก่ากลับ)
     console.log(`[market] ${S.listings.length} แผง · ${S.orders.length} ป้ายรับซื้อ`);
   })();
 
@@ -222,8 +224,9 @@ export function setupMarket(io, players, { td, refresh, persist, storeReady, isN
         if (now - (p.mkT || 0) > 1000) { p.mkT = now; p.mkN = 0; }
         if (++p.mkN > 12) return done({ r: NO('ทำรายการถี่เกินไป') });
         if (WRITES.has(op) && (p.dead || p.tradeId)) return done({ r: NO(p.dead ? 'ตายอยู่ – รอฟื้นก่อน' : 'กำลังเทรดอยู่') });
+        if ((op === 'buy' || op === 'travelBuy') && (p.save.karma || 0) > 0) return done({ r: NO(`☠️ หัวแดง (บาป ${p.save.karma}): พ่อค้าไม่ขายให้ · บาปลด 5/นาทีที่ออนไลน์`) });
         const c = p.save, r = fn(p, c, d) || NO('');
-        if (WRITES.has(op) && r.ok) { refresh(p); dirty(); persist(p); }
+        if (WRITES.has(op) && r.ok) { refresh(p); flush().then(() => persist(p)); }   // เซฟตลาดก่อน แล้วค่อยเซฟผู้เล่น (crash กลางทางไม่เกิดของซ้ำ)
         done({ r, v: view(p), t: travelView(), s: WRITES.has(op) ? packChar(c) : undefined });
       });
     },

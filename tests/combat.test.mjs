@@ -137,6 +137,24 @@ assert.equal(weaponStyle('horn_bow'), 'archer');
   assert.deepEqual(big.skills, {}, 'ใช้เกิน → รีสกิลฟรี'); assert.equal(big.sp, spAt(100)); assert.ok(big.spNotice);
 }
 
+// 6c3) กันบั๊กจากการตรวจระบบ: การ์ดที่เทรดมาถอดแล้วไม่เข้าสมุด · สกิลนับรอบตามเวลาร่าย (กระสุนถึงช้าไม่โดนปัดตก)
+{
+  const { newCharacter } = await import('../shared/charmodel.js');
+  const { runAction, addItem } = await import('../shared/economy.js');
+  const { CARD_BY_ID } = await import('../shared/data/cards.js');
+  const { attackGate } = await import('../shared/character.js');
+  const c = newCharacter('การ์ด', {}); c.gold = 1e6; c.level = 30;
+  const cid = Object.keys(CARD_BY_ID).find((id) => CARD_BY_ID[id].slot === 'weapon');
+  addItem(c, cid, 1, false);                                                   // ได้มาจากเทรด (ไม่นับสมุด)
+  assert.ok(runAction(c, 'cardIn', { slot: 'weapon', id: cid }, { now: Date.now() }).ok, 'ใส่การ์ด');
+  assert.ok(runAction(c, 'cardOut', { slot: 'weapon', idx: 0 }, { now: Date.now() }).ok, 'ถอดการ์ด');
+  assert.ok(!(c.cardBook?.[cid] > 0), 'ถอดการ์ดที่เทรดมา ไม่นับเข้าสมุดสะสม');
+  const p = { char: { skills: { mage_yant: 5 } }, skillAt: { mage_yant: 1000 } };
+  assert.ok(attackGate(p, 'mage_yant', false, 2000), 'ร่ายครั้งแรกโดน');
+  p.skillAt.mage_yant = 4500;                                                  // ร่ายใหม่หลังคูลดาวน์ (กระสุนครั้งก่อนถึงช้า)
+  assert.ok(attackGate(p, 'mage_yant', false, 4550), 'ร่ายรอบใหม่ไม่โดนปัดตก แม้ห่างจากกระสุนนัดก่อนไม่ถึงคูลดาวน์');
+}
+
 // 6d) สกิลติดตัว (Passive): มีผลใน getDerived เฉพาะตอนถืออาวุธแนวนั้น · ใส่ Hotbar ไม่ได้
 import { newCharacter, assignHotbar } from '../shared/charmodel.js';
 import { getDerived } from '../shared/character.js';

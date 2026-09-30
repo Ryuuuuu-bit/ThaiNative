@@ -9,7 +9,7 @@ import { PARTY, WORLD } from '../shared/constants.js';
 import { ITEMS } from '../shared/data/items.js';
 import { LEGEND_IDS, rollGearDrop } from '../shared/data/gear.js';
 import { RAID_BOSS as RB } from '../shared/data/raid.js';
-import { rollDamage, mobExp, attackInterval, expToNext } from '../shared/stats.js';
+import { rollDamage, mobExp, attackInterval, expToNext, buffAspd } from '../shared/stats.js';
 import { combatDerived, attackSpec, attackGate, getDerived } from '../shared/character.js';
 import { SKILL_BY_ID } from '../shared/data/skills.js';
 import { JOBS } from '../shared/data/classes.js';
@@ -501,7 +501,7 @@ export function setupSocial(io, players, H = {}) {
       if (!r.hit) return;
       const wasInnocent = innocent(t, now);
       if (wasInnocent && !isRed(p)) { const had = isPurple(p, now); p.pkFlagUntil = now + PK_FLAG_MS; flagged.add(p.id); if (!had) pushPk(p); }   // ตีคนบริสุทธิ์ = ม่วง
-      else if (wasInnocent) p.pkFlagUntil = now + PK_FLAG_MS;
+      else if (wasInnocent) { p.pkFlagUntil = now + PK_FLAG_MS; flagged.add(p.id); }
       hurtPlayer(t, r.dmg, { hit: true, crit: r.crit, x: Math.round(pos(t).x), force: true, td: true, iframe: 200 });
       if (t.dead) onPkKill(p, t, wasInnocent);
     });
@@ -627,7 +627,7 @@ export function setupSocial(io, players, H = {}) {
       if (seen[skId] === at) return null;
       seen[skId] = at;
     } else {
-      const cdMs = attackInterval(JOBS[p.appearance.job]?.attack?.cooldown || 500, getDerived(p.char).aspd) * 0.7;
+      const cdMs = attackInterval(JOBS[p.appearance.job]?.attack?.cooldown || 500, getDerived(p.char).aspd + buffAspd(p.buffs, now)) * 0.7;   // รวมบัฟตีเร็ว (ตรงกับ client)
       if (now - (p[key] || 0) < cdMs) return null;
       p[key] = now;
     }
@@ -656,7 +656,7 @@ export function setupSocial(io, players, H = {}) {
   function pkZone(q) {
     if (!pkEnv || q.world !== 'td') return false;
     const M = getMap(pkEnv.mapOf(q));
-    return !!M?.realm && !M.event && M.id !== 'suriya' && !pkEnv.inTown(q);
+    return !!M?.realm && !M.event && !M.crypt && M.id !== 'suriya' && !pkEnv.inTown(q);   // สุสานห้าม PK
   }
   /** เหตุผลที่ตีไม่ได้ (null = ตีได้) */
   function pkBlock(p, t, now) {
@@ -682,12 +682,12 @@ export function setupSocial(io, players, H = {}) {
     // หัวแดงตาย: เสีย EXP + ของหล่นให้คนฆ่า
     const c = t.save, lossExp = Math.min(c.exp || 0, Math.round(expToNext(c.level || 1) * 0.05));
     c.exp = Math.max(0, (c.exp || 0) - lossExp);
-    const pool = (c.inventory || []).filter((s) => s && ITEMS[s.id] && s.qty > 0 && !c.locked?.includes(s.id) && count(c, s.id) - presetReserved(c, s.id) > 0);
+    const pool = (c.inventory || []).filter((s) => s && ITEMS[s.id] && s.qty > 0 && count(c, s.id) - presetReserved(c, s.id) > 0);   // หัวแดง: ของล็อกก็หล่นได้ (กันล็อกทั้งกระเป๋าเลี่ยงโทษ)
     const got = [];
     for (let n = 1 + Math.floor(Math.random() * 3); n > 0 && pool.length; n--) {
       const s = pool.splice(Math.floor(Math.random() * pool.length), 1)[0];
       if (!removeItem(c, s.id, 1)) continue;
-      addItem(p.save, s.id, 1); got.push(ITEMS[s.id].nameTh);
+      addItem(p.save, s.id, 1, false); got.push(ITEMS[s.id].nameTh);   // ของหล่นจาก PK ไม่นับเข้าสมุดการ์ด
     }
     t.dirty = true; p.dirty = true; refresh(t); refresh(p); queueSync(t); queueSync(p);
     sys(t.id, `☠️ คุณตายขณะเป็นหัวแดง: EXP −${lossExp.toLocaleString()}${got.length ? ` · ของหล่น: ${got.join(', ')}` : ''}`);
@@ -780,6 +780,6 @@ export function setupSocial(io, players, H = {}) {
     }
     return `PK ตอนนี้: ${pkEnabled ? 'เปิด' : 'ปิด'} · ใช้ /gm pk on|off · /gm karma <ชื่อ> [ค่า]`;
   }
-  function setKarma(t, n) { const was = isRed(t); t.save.karma = Math.max(0, n); t.dirty = true; queueSync(t); if (was !== isRed(t)) pushPk(t); }
+  function setKarma(t, n) { if (isPurple(t)) flagged.add(t.id); const was = isRed(t); t.save.karma = Math.max(0, n); t.dirty = true; queueSync(t); if (was !== isRed(t)) pushPk(t); }
   return { setPkEnv, pkGm, setKarma, pkColor, partyBonus, partyMates, friendGone, friendRenamed, onConnection, onDisconnect, onJoin, tick, bossPublic, shareExp, announceTitles, partyOf, pushParty, leaveParty, _boss: boss, _parties: parties, _trades: trades };
 }

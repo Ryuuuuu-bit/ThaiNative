@@ -276,7 +276,7 @@ export class UI {
       // สีเลเวลเป้าหมาย: เทา = อ่อนกว่ามาก (EXP ลด) · แดง = สูงเกิน 10 เลเวล (EXP ลด) · เขียว = สูงกว่า 1–10 (EXP โบนัส) · ปกติ = เต็ม
       const lvGap = t.def.level - (p?.char?.level || 1), mul = expLevelMul(p?.char?.level || 1, t.def.level);
       const tl = $('#t-lv'); tl.className = t.isPlayer ? 'lv-high' : mul < 1 ? (lvGap < 0 ? 'lv-low' : 'lv-high') : mul > 1 ? 'lv-bonus' : '';   // เป้าเป็นผู้เล่น (PK) = แดงเสมอ
-      tl.title = t.isPlayer ? 'ผู้เล่น (PK)' : mul < 1 ? (lvGap < 0 ? `EXP ${Math.round(mul * 100)}% (ผีอ่อนกว่ามาก)` : `EXP ${Math.round(mul * 100)}% (สูงกว่าเกิน 10 เลเวล)`) : mul > 1 ? `EXP +${Math.round((mul - 1) * 100)}% (ผีเลเวลสูงกว่า)` : 'EXP เต็ม';
+      tl.title = t.isPlayer ? 'ผู้เล่น (PK)' : mul < 1 ? (lvGap < 0 ? `EXP ${Math.round(mul * 100)}% (ผีอ่อนกว่ามาก)` : `EXP ${Math.round(mul * 100)}% (สูงกว่าเกิน 12 เลเวล)`) : mul > 1 ? `EXP +${Math.round((mul - 1) * 100)}% (ผีเลเวลสูงกว่า)` : 'EXP เต็ม';
       $('#t-name').textContent = t.def.nameTh;
       $('#t-fill').style.width = `${Math.max(0, t.hp / t.def.hp) * 100}%`;
       $('#t-hp').textContent = `${Math.max(0, Math.ceil(t.hp))} / ${t.def.hp}`;

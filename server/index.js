@@ -336,7 +336,7 @@ io.on('connection', (socket) => {
     if (now - (p.econT || 0) > 1000) { p.econT = now; p.econN = 0; }
     if (++p.econN > 25) return done({ r: { ok: false, msg: 'ทำรายการถี่เกินไป' } });
     const a = String(d.a || '');
-    if ((p.save.karma || 0) > 0 && (['buy', 'buyback', 'recall'].includes(a) || (a === 'use' && String(d.id || '').startsWith('yant_home'))))   // หัวแดง: ร้านไม่ขาย · วาร์ปกลับเมืองไม่ได้
+    if ((p.save.karma || 0) > 0 && (['buy', 'buyback', 'recall'].includes(a) || (a === 'craft' && d.list === 'barter') || (a === 'use' && String(d.id || '').startsWith('yant_home'))))   // หัวแดง: ร้านไม่ขาย · วาร์ปกลับเมืองไม่ได้
       return done({ r: { ok: false, msg: `☠️ หัวแดง (บาป ${p.save.karma}): ร้านไม่ขายให้ และวาร์ปกลับเมืองไม่ได้ · บาปลด 5/นาทีที่ออนไลน์` } });
     if (p.dead && !['lock', 'hotbar', 'title', 'qDrop', 'friendDel', 'cosAck', 'statsAck', 'spAck'].includes(a)) return done({ r: { ok: false, msg: 'ตายอยู่ – รอฟื้นก่อน' } });
     // โลก top-down: ร้าน/NPC ตรวจจากตำแหน่ง NPC ในอยุธยา (แปลงเป็นพิกัดหมู่บ้านเดิม) · ไม่ใกล้ใคร = นอกหมู่บ้าน

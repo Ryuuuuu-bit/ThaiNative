@@ -9,6 +9,7 @@ import { ITEMS } from '/shared/data/items.js';
 import { CARD_OF_MON, CARD_BY_ID, CARD_DROP, CARD_SLOT_TH, cardText } from '/shared/data/cards.js';
 import { TD_MAPS, TD_MAP_IDS } from '/shared/td/maps.js';
 import { CRYPT_ZONES } from '/shared/data/crypt.js';
+import { WB_TIERS, WB_STONE, WB_MIN_SHARE, WB_FIGHT_MS, wbReward } from '/shared/data/worldboss.js';
 import { itemIcon } from './util.js';
 
 const $ = (s) => document.querySelector(s);
@@ -49,7 +50,7 @@ function build() {
   const byItem = {};
   for (const m of mobs) {
     for (const dr of m.d.drops || []) if (ITEMS[dr.item]) (byItem[dr.item] ||= []).push({ id: m.id, chance: dr.chance });
-    const cid = CARD_OF_MON[m.id]; if (cid) (byItem[cid] ||= []).push({ id: m.id, chance: cardRate(m.d) });
+    const cid = CARD_OF_MON[m.id]; if (cid && !m.d.worldBoss) (byItem[cid] ||= []).push({ id: m.id, chance: cardRate(m.d) });   // บอสโลก: รางวัลตามอันดับ (ดูหน้าบอส)
   }
   DB = { mobs, byItem };
   return DB;
@@ -107,7 +108,7 @@ export class GuideBook {
       const d = m.d, mul = expLevelMul(me, d.level), col = mul < 1 ? (d.level < me ? 'easy' : 'hard') : 'even';   // สี = EXP: เทา/แดง = โดนลด · ปกติ = เต็ม/โบนัส
       return `<button class="gb-row${m.id === sel ? ' on' : ''}" data-mon="${m.id}">
         ${this.art(m.id, d)}<span class="gb-nm"><b>${esc(d.nameTh)}</b><small>${d.boss ? '👑 บอส · ' : d.elite ? '⭐ หัวหน้า · ' : ''}${esc(m.where[0]?.mapTh || '')}${d.nightOnly ? ' · 🌙' : ''}</small></span>
-        <span class="gb-lv ${col}">Lv.${d.level}</span></button>`;
+        <span class="gb-lv ${d.worldBoss ? 'hard' : col}">${d.worldBoss ? `Lv.${WB_TIERS[0].lv}–${WB_TIERS[WB_TIERS.length - 1].lv}` : `Lv.${d.level}`}</span></button>`;
     }).join('') || '<p class="empty">ไม่พบผีตามตัวกรอง</p>';
     return `<div class="gb-split"><div class="gb-list">${rows}</div><div class="gb-detail">${sel ? this.detail(sel) : ''}</div></div>`;
   }
@@ -117,8 +118,41 @@ export class GuideBook {
     return `<span class="gb-art${big ? ' big' : ''}${d.boss ? ' boss' : ''}">${img}</span>`;
   }
 
+  /** บอสโลก (พระราหู): รางวัลตามอันดับดาเมจ ไม่ใช่ดรอปต่อตัว · สเตตัสโตตามขั้น → หน้าเฉพาะ */
+  worldBossHtml(id, m) {
+    const d = m.d, cid = CARD_OF_MON[id], cd = cid && CARD_BY_ID[cid], T0 = WB_TIERS[0], T5 = WB_TIERS[WB_TIERS.length - 1];
+    const R = (r, mvp = false) => wbReward(r, 0.1, mvp);
+    const range = (k) => `${pct(R(20)[k])}–${pct(R(1, true)[k])}`;
+    const redIc = ITEMS.g_sword_wred ? itemIcon('g_sword_wred', '☾') : '☾';
+    const stats = [['HP', 'ตามจำนวนคน'], ['เลเวล', `${T0.lv}–${T5.lv}`], ['โจมตี', '% HP ผู้เล่น'], ['ป้องกัน', 'ตามขั้น'], ['EXP', 'ตามอันดับ'], ['เงิน', 'ตามอันดับ']];
+    const rewards = [
+      { html: `${itemIcon(WB_STONE, '🌑')}<span>${esc(ITEMS[WB_STONE]?.nameTh || 'ศิลาราหู')} <small>${R(20).stone}–${R(1, true).stone} ก้อน (ขั้นต่ำได้น้อยลง) · ใช้หลอมของแดง</small></span>`, rate: 1 },
+      { html: `${redIc}<span>ของแดงชุดสุริยคราส <small>ขั้นตามราหูรอบนั้น (I–IV · Lv.140) · สายตามอาวุธที่ถือ</small></span>`, rate: R(1, true).red, txt: range('red') },
+      { html: `${itemIcon('yak_fang', '🦷')}<span>${esc(ITEMS.yak_fang?.nameTh || 'เขี้ยวพญายักษ์')} <small>${R(20).fang}–${R(1, true).fang} ชิ้น · เฉพาะขั้น 3 ขึ้นไป</small></span>`, rate: 1, txt: 'ขั้น 3+' },
+      ...(cd ? [{ html: `${itemIcon(cid, '🃏')}<span>${esc(cd.nameTh)} <small>ช่อง${CARD_SLOT_TH[cd.slot]} · ${esc(cardText(cd))} · เฉพาะขั้น 4–5</small></span>`, tip: cid, rate: R(1, true).card, txt: range('card') }] : []),
+    ];
+    const tiers = WB_TIERS.map((t) => `<div>ขั้น ${t.n} <b>${esc(t.nameTh)}</b> Lv.${t.lv} <small>(เลเวลเฉลี่ย 5 คนเก่งสุด ≥ ${t.from})</small></div>`).join('');
+    const notes = [
+      `🌑 ลงมาทุก 1 ชั่วโมงตรง (ประกาศล่วงหน้า 10 นาที) · สู้ได้ ${Math.round(WB_FIGHT_MS / 60000)} นาที · ทั้งเซิร์ฟช่วยกัน`,
+      `🏆 รางวัลตามอันดับดาเมจ: ต้องทำดาเมจอย่างน้อย ${pct(WB_MIN_SHARE)} ของเลือดบอส · MVP ได้มากสุด · ชนะไม่ทัน = ได้ 1/4`,
+      '📈 ขั้นเลือกจากเลเวลคนในลานตอนบอสเกิด → เลือด/เกราะ/ผลึก/บริวาร/รางวัล ตามขั้น',
+    ];
+    return `<div class="gb-card">
+      <div class="gb-top">${this.art(id, d, true)}<div><h3>${esc(d.nameTh)} <small>${esc(d.nameEn || '')}</small></h3>
+        <div class="gb-tags"><span class="gb-lv hard">Lv.${T0.lv}–${T5.lv}</span><span class="gb-tag boss">🌑 บอสโลก</span></div>
+        ${d.desc ? `<p class="gb-desc">${esc(d.desc)}</p>` : ''}</div></div>
+      <div class="gb-stats">${stats.map(([k, v]) => `<div><small>${k}</small><b>${v}</b></div>`).join('')}</div>
+      <h4>📍 ที่อยู่</h4><ul class="gb-where">${m.where.map((w) => `<li>${w.icon} <b>${esc(w.mapTh)}</b> <small>· อีเวนต์บอสโลก (กดปุ่ม "ไปลานสุริยคราส" ตอนประกาศ)</small></li>`).join('')}</ul>
+      <h4>🎁 รางวัล <small>(ตามอันดับดาเมจ · อันดับท้าย → MVP)</small></h4>
+      <div class="gb-drops">${rewards.map((x) => `<div class="gb-drop"${x.tip ? ` data-tip-item="${x.tip}"` : ''}>${x.html}<b>${x.txt || pct(x.rate)}</b></div>`).join('')}</div>
+      <h4>📊 ขั้นของราหู</h4><div class="gb-notes">${tiers}</div>
+      <div class="gb-notes">${notes.map((n) => `<div>${n}</div>`).join('')}</div>
+    </div>`;
+  }
+
   detail(id) {
     const { mobs } = build(), m = mobs.find((x) => x.id === id); if (!m) return '';
+    if (m.d.worldBoss) return this.worldBossHtml(id, m);
     const d = m.d, cid = CARD_OF_MON[id], cd = cid && CARD_BY_ID[cid];
     const me = this.char?.level || 1, eff = d.exp ? mobExp(d.exp, me, d.level, !!d.boss) : 0;   // EXP จริงตามเลเวลเรา (โบนัสผีเวลสูง/แคปผีอ่อน)
     const expCell = !d.exp ? 'พิเศษ' : eff === d.exp ? eff.toLocaleString('en-US')

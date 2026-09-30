@@ -1117,11 +1117,14 @@ export class TopDownScene extends Phaser.Scene {
     const doc = (this.social?.party?.members || []).some((m) => m.id !== this.net?.selfId && m.wj === 'healer' && !m.dead);
     const wait = RESPAWN_WAIT_MS, where = this.M.realm ? `ฟื้นที่${this.M.ZONES.hub.nameTh}` : 'ฟื้นที่ประตูเมือง';   // รอ 10 วิเสมอ (หมอยาชุบได้ก่อน)
     this.ui.banner('💀 คุณสลบไป…', doc ? `🌿 มีหมอยาในปาร์ตี้ — รอพิธีสู่ขวัญ… (${where}ใน 10 วินาที)` : `${where}ใน 10 วินาที`);
-    this.time.delayedCall(wait, () => {
+    this.social && (this.social.pkTarget = null);                              // ตาย = เลิกไล่เป้า PK
+    const tryRespawn = () => {                                                  // ส่งซ้ำทุก 3 วิจนกว่าจะฟื้น (เน็ตหลุด/ต่อใหม่ช่วงรอ ไม่ค้างเป็นศพ)
       if (!p.dead) return;
-      if (this.econ.server) return this.net.send('td:respawn');
-      this.onRespawn({ x: this.M.spawn.x, y: this.M.spawn.y, hp: p.derived.maxHp });
-    });
+      if (!this.econ.server) return this.onRespawn({ x: this.M.spawn.x, y: this.M.spawn.y, hp: p.derived.maxHp });
+      this.net.send('td:respawn');
+      this.time.delayedCall(3000, tryRespawn);
+    };
+    this.time.delayedCall(wait, tryRespawn);
   }
 
   /** หมอยาชุบชีวิต (พิธีสู่ขวัญ) → ฟื้นตรงที่สลบ ไม่ต้องกลับเมือง */
@@ -1656,7 +1659,7 @@ export class TopDownScene extends Phaser.Scene {
       } else if (this.social?.duel || this.social?.pkTarget) {                // ดวล/PK: ไม่มีเป้าผี → ตีปกติใส่ผู้เล่นเป้าเมื่ออยู่ในระยะ (สกิลกดใช้ตามปกติ)
         const pk = !this.social.duel, foe = this.remotes.get(pk ? this.social.pkTarget : this.social.duel.foe);
         if (pk && foe && this.ui.target === this.social.pkFrame) this.ui.targetUntil = performance.now() + 4000;   // ล็อกอยู่ → กรอบเป้าหมายค้างไว้
-        if (!foe) { if (pk) this.social.pkTarget = null; }
+        if (!foe || (pk && !(foe.hp > 0))) { if (pk) this.social.pkTarget = null; }   // เป้าหาย/ตายแล้ว = เลิกไล่
         else if (Math.hypot(foe.x - p.x, foe.y - p.y) > this.attackRange() + 14) {
           if (pk && time > (p.nextPath || 0)) { p.nextPath = time + 400; p.path = this.findPath(p.x, p.y - 2, foe.x, foe.y); if (!p.path.length) this.social.pkTarget = null; }   // PK: ไล่ตาม
         } else if (time >= p.nextAtk && p.st !== 'attack') {

@@ -62,7 +62,7 @@ export function setupWorldBoss(io, players, { td, hurtPlayer, queueSync, social,
   // ------------------------------------------------------------
   // ---------- เก็บรางวัลค้าง + ป้าย MVP ลงฐานข้อมูล (รีสตาร์ต/deploy ไม่หาย) ----------
   let persistT = null;
-  function persist() {
+  function persist(now = false) {
     if (!storeReady) return;
     clearTimeout(persistT);
     persistT = setTimeout(async () => {
@@ -72,12 +72,12 @@ export function setupWorldBoss(io, players, { td, hurtPlayer, queueSync, social,
         const st = await storeReady, data = { pending, mvp: S.mvp && S.mvp.until > now ? S.mvp : null, gen: st.gen || '' };   // แปะรุ่นข้อมูล (Fresh Server)
         await st.setMeta?.('wb_state', JSON.stringify(data));
       } catch (e) { console.error('[wb] persist', e.message); }
-    }, 500);
+    }, now ? 0 : 500);
   }
   storeReady?.then(async (st) => {
     try {
       const d = JSON.parse((await st.getMeta?.('wb_state')) || 'null'); if (!d) return;
-      if ((d.gen || '') !== (st.gen || '')) return console.log('[wb] ข้อมูลก่อน wipe (รุ่นไม่ตรง) → ทิ้ง');
+      if ((d.gen || '') !== (st.gen || '')) { console.log('[wb] ข้อมูลก่อน wipe (รุ่นไม่ตรง) → ทิ้ง'); return persist(); }   // เซฟรุ่นใหม่ทับทันที
       const now = Date.now();
       for (const [k, v] of d.pending || []) if (v?.until > now && !S.pending.has(k)) S.pending.set(k, v);
       if (d.mvp?.until > now && !S.mvp) { S.mvp = d.mvp; S.lastMvp = d.mvp; }
@@ -121,7 +121,7 @@ export function setupWorldBoss(io, players, { td, hurtPlayer, queueSync, social,
     const T = wbTier(inRoom.map((p) => p.level || 1));
     S.tier = T; S.lv = T.lv;
     S.maxHp = wbHp(Math.max(1, inRoom.reduce((a, p) => a + ((p.level || 1) >= T.lv - 15 ? 1 : 0.25), 0)), T.hpPer);
-    Object.assign(b, { x: ARENA_C.x, y: ARENA_C.y + TILE / 2, hp: S.maxHp, st: 'idle', target: null, pending: [], dmgBy: new Map(), stunUntil: 0, dots: null, respawnAt: Infinity, aoe: null,
+    Object.assign(b, { x: ARENA_C.x, y: ARENA_C.y + TILE / 2, hp: S.maxHp, st: 'idle', target: null, pending: [], dmgBy: new Map(), stunUntil: 0, dots: null, slowUntil: 0, defDownUntil: 0, weakUntil: 0, respawnAt: Infinity, aoe: null,
       wbDef: Math.round((b.d.def || 0) * T.lv / 150) });                                  // เกราะตามขั้น (คนเลเวลต่ำยังตีเข้า)
     S.state = 'fight'; S.fightEnd = Date.now() + WB_FIGHT_MS; S.ledger = new Map(); S.phase = 0; S.tele = []; S.nextSkill = {}; S.gcd = Date.now() + 3000;
     S.traps = { yant: [], thornNext: Date.now() + 4000, thornSet: 0, fireNext: 0, fires: [] };
@@ -205,17 +205,21 @@ export function setupWorldBoss(io, players, { td, hurtPlayer, queueSync, social,
   function deliver(p, out) {
     const c = p.save;
     if (out.ok) {
-      if (out.expBase != null) out.exp = mobExp(out.expBase, c.level || 1, out.lv || 150, true);   // แคปเหมือนบอสอื่น: ได้ไม่เกิน 1 เลเวลต่อครั้ง · เลเวลตามขั้นราหู
+      // รางวัลค้างหลายรอบ (ออฟไลน์ตอนจบ) → คิดแยกทีละรอบ: EXP แคปตามเลเวลราหูรอบนั้น · ของแดงตามขั้นรอบนั้น (ไม่ปนขั้นกัน)
+      const rounds = out.rounds || [{ expBase: out.expBase, lv: out.lv, redLv: out.redLv, red: out.red }];
+      out.exp = rounds.reduce((a, r) => a + (r.expBase != null ? mobExp(r.expBase, c.level || 1, r.lv || 150, true) : 0), 0);   // แคป 1 เลเวลต่อรอบ
       gainExp(c, out.exp); c.gold = (c.gold || 0) + out.gold;
       for (const it of out.items) addItem(c, it.id, it.qty);
       if (out.items.some((it) => it.card)) say(`🃏 ${p.name} ได้การ์ดพระราหู!`, '🃏 การ์ดหายาก');
-      if (out.red) {
-        const job = c.appearance?.job, lvl = out.redLv || 140, tierPool = RED_GEAR.filter((id) => ITEMS[id].lv === lvl);   // ของแดงขั้นเดียวกับราหูรอบนั้น
+      for (const r of rounds) {
+        if (!r.red) continue;
+        const job = c.appearance?.job, lvl = r.redLv || 140, tierPool = RED_GEAR.filter((id) => ITEMS[id].lv === lvl);   // ของแดงขั้นเดียวกับราหูรอบนั้น
         const pool = tierPool.filter((id) => ITEMS[id].job === job);
         const id = pick(pool.length ? pool : tierPool.length ? tierPool : RED_GEAR);
-        addItem(c, id, 1); out.items.push({ id, qty: 1, red: true }); out.red = false;
+        addItem(c, id, 1); out.items.push({ id, qty: 1, red: true });
         say(`✨ ${p.name} ได้ ${ITEMS[id].nameTh} (อุปกรณ์ขอบแดง)!`, '✨ ของหายาก');
       }
+      out.red = false; out.rounds = null;
       c.rec ||= {}; c.rec.wbJoin = (c.rec.wbJoin || 0) + 1;
       if (out.mvp) c.rec.wbMvp = (c.rec.wbMvp || 0) + 1;
       const got = checkTitles(c);
@@ -268,7 +272,7 @@ export function setupWorldBoss(io, players, { td, hurtPlayer, queueSync, social,
       const mobs = W().mobs.filter((m) => m.wb === 'crystal');
       if (mobs.some((m) => m.st !== 'dead')) return false;
       const hp = Math.round(Math.min(400000, 30000 + S.online * 6000) * (S.tier?.k ?? 1));   // ผลึกตามขั้นราหู
-      mobs.forEach((m, i) => { const a = Math.PI / 4 + i * Math.PI / 2 + rand(-0.3, 0.3), d = rand(12, 18) * TILE; Object.assign(m, { x: ARENA_C.x + Math.cos(a) * d, y: ARENA_C.y + Math.sin(a) * d, hp, st: 'idle', pending: [], dmgBy: new Map(), stunUntil: 0, poison: null, maxHp: hp }); });
+      mobs.forEach((m, i) => { const a = Math.PI / 4 + i * Math.PI / 2 + rand(-0.3, 0.3), d = rand(12, 18) * TILE; Object.assign(m, { x: ARENA_C.x + Math.cos(a) * d, y: ARENA_C.y + Math.sin(a) * d, hp, st: 'idle', pending: [], dmgBy: new Map(), stunUntil: 0, dots: null, slowUntil: 0, defDownUntil: 0, weakUntil: 0, maxHp: hp }); });
       S.crystals = mobs.map((m) => ({ mid: m.mid, until: now + sk.life }));
       io.to(room).emit('wb:crystal', { mids: mobs.map((m) => m.mid), hp, until: now + sk.life });
       say('💎 ผลึกจันทร์ 4 ก้อนผุดขึ้นรอบลาน! ตีให้แตกใน 30 วิ ไม่งั้นพระราหูฟื้นเลือด', '🌑 ลานสุริยคราส');
@@ -281,7 +285,7 @@ export function setupWorldBoss(io, players, { td, hurtPlayer, queueSync, social,
       free.forEach((m, i) => {
         const a = S.face + (i - 1) * 0.9, x = ARENA_C.x + Math.cos(a) * 4 * TILE, y = ARENA_C.y + Math.sin(a) * 4 * TILE;
         const t = f.length ? f[Math.floor(Math.random() * f.length)] : null;
-        Object.assign(m, { x, y, hp: Math.round(m.d.hp * (S.tier?.k ?? 1)), maxHp: Math.round(m.d.hp * (S.tier?.k ?? 1)), st: t ? 'chase' : 'wander', target: t?.id || null, pending: [], dmgBy: new Map(), stunUntil: 0, poison: null, nextAtk: now + 800, s: { ...m.s, x, y } });
+        Object.assign(m, { x, y, hp: Math.round(m.d.hp * (S.tier?.k ?? 1)), maxHp: Math.round(m.d.hp * (S.tier?.k ?? 1)), st: t ? 'chase' : 'wander', target: t?.id || null, pending: [], dmgBy: new Map(), stunUntil: 0, dots: null, slowUntil: 0, defDownUntil: 0, weakUntil: 0, nextAtk: now + 800, s: { ...m.s, x, y } });
       });
       tele({ kind: 'minion', shape: 'burst', x: ARENA_C.x, y: ARENA_C.y, ms: sk.warn, at: now + sk.warn, dmg: 0, color: sk.color, hit: null });
       return true;
@@ -423,7 +427,8 @@ export function setupWorldBoss(io, players, { td, hurtPlayer, queueSync, social,
     if (!a) return b;
     const items = [...(a.items || [])];
     for (const it of b.items || []) { const x = items.find((y) => y.id === it.id && !y.card === !it.card); if (x) x.qty += it.qty; else items.push({ ...it }); }
-    return { ...a, ...b, gold: (a.gold || 0) + (b.gold || 0), expBase: (a.expBase || 0) + (b.expBase || 0), items, red: a.red || b.red, mvp: a.mvp || b.mvp, ok: true };
+    const round = (o) => o.rounds || [{ expBase: o.expBase, lv: o.lv, redLv: o.redLv, red: o.red }];   // เก็บแต่ละรอบแยก (ขั้น/EXP/ของแดง ไม่ปนกัน)
+    return { ...a, ...b, gold: (a.gold || 0) + (b.gold || 0), items, rounds: [...round(a), ...round(b)], red: false, mvp: a.mvp || b.mvp, ok: true };
   }
   const api = {
     isOpen: () => S.state !== 'idle',
@@ -432,7 +437,7 @@ export function setupWorldBoss(io, players, { td, hurtPlayer, queueSync, social,
       const k = `${p.acc}:${p.slot || 0}`, r = S.pending.get(k); if (!r) return;
       if (r.until <= Date.now()) { S.pending.delete(k); persist(); return; }
       // มอบหลังเข้าเกม 4 วิ · ลบรายการค้างเฉพาะเมื่อมอบสำเร็จ (ออกก่อน/เซิร์ฟรีสตาร์ต → ยังค้างไว้รอรอบหน้า)
-      setTimeout(() => { if (players.get(p.id) !== p || S.pending.get(k) !== r) return; S.pending.delete(k); persist(); deliver(p, r.out); }, 4000);
+      setTimeout(() => { if (players.get(p.id) !== p || S.pending.get(k) !== r) return; S.pending.delete(k); persist(true); deliver(p, r.out); }, 4000);   // ลบรายการค้างลงฐานข้อมูลทันที (ก่อนเซฟตัวละคร · crash ไม่ได้ของซ้ำ)
     },
     /** 4) หมอยา: ฮีลเพื่อนในลานระหว่างสู้ = นับเป็นส่วนร่วม (1 HP ที่ฮีล = ดาเมจ 1) */
     onHeal(p, amt) {

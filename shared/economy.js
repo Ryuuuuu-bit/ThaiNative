@@ -305,7 +305,12 @@ function sellCart(c, { items }, ctx) {
 function lock(c, { id }) {
   if (!ITEMS[id]) return NO('');
   c.locked ||= [];
-  if (isLocked(c, id)) c.locked = c.locked.filter((x) => x !== id); else c.locked.push(id);
+  if (isLocked(c, id)) c.locked = c.locked.filter((x) => x !== id);
+  else {
+    if (!count(c, id) && !Object.values(c.equipment || {}).includes(id)) return NO('ไม่มีไอเทมนี้');   // ต้องมีของจริง (กันส่ง id มั่ว ๆ จนเซฟบวม)
+    if (c.locked.length >= 400) return NO('ล็อกได้สูงสุด 400 ชนิด');
+    c.locked.push(id);
+  }
   return OK('', { locked: isLocked(c, id) });
 }
 
@@ -713,8 +718,7 @@ function cardOut(c, { slot, idx = 0 }) {
   if (c.gold < cost) return NO(`ถอดการ์ดต้องใช้ ฿${cost.toLocaleString()}`);
   c.gold -= cost;
   list.splice(i, 1);
-  addItem(c, id);
-  c.cardBook[id] = Math.max(1, (c.cardBook[id] || 1) - 1);        // ถอดคืน ไม่นับเป็นการได้ใหม่
+  addItem(c, id, 1, false);                                        // ถอดคืน ไม่นับเข้าสมุด (กันวนเทรด→ใส่→ถอด ปั๊มสมุดสะสม)
   clampHp(c);
   return OK(`ถอด${CARD_BY_ID[id].nameTh}คืนกระเป๋า (-฿${cost.toLocaleString()})`);
 }

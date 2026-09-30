@@ -8,6 +8,8 @@ import crypto from 'node:crypto';
 const SESSION_DAYS = 60;
 /** จำนวนช่องตัวละครต่อบัญชี (แบบ RO) */
 import { nameKey, NAME_HOLD_MS } from '../shared/data/names.js';
+/** meta ที่ผูกกับบัญชี (ต้องล้างตอน wipe + ห้ามเซิร์ฟรุ่นเก่าเขียนทับ) */
+const GEN_KEYS = new Set(['market_v1', 'wb_state', 'news']);
 export const MAX_SLOTS = 3;
 const slotOf = (v) => (Number.isInteger(+v) && +v >= 0 && +v < MAX_SLOTS ? +v : 0);
 const toList = (rows) => { const out = Array(MAX_SLOTS).fill(null); for (const r of rows) if (r.slot >= 0 && r.slot < MAX_SLOTS) out[r.slot] = r.data; return out; };
@@ -79,7 +81,7 @@ class PgStore {
       await this.pool.query('CREATE TABLE IF NOT EXISTS meta (key TEXT PRIMARY KEY, value TEXT)');
       const { rows } = await this.pool.query("SELECT value FROM meta WHERE key = 'reset'");
       if (rows[0]?.value !== reset) {
-        await this.pool.query('TRUNCATE characters, sessions, accounts RESTART IDENTITY CASCADE');
+        await this.pool.query('TRUNCATE characters, sessions, accounts CASCADE');   // ไม่ RESTART IDENTITY: เลขบัญชีใหม่ไม่ซ้ำของเก่า → เซิร์ฟตัวเก่าตอน deploy ซ้อนเซฟตัวละครเก่าทับบัญชีใหม่ไม่ได้
         // Fresh Server: ล้างข้อมูลเกมที่ผูกกับบัญชีด้วย (id บัญชีเริ่มนับ 1 ใหม่ → ถ้าไม่ล้าง บัญชีใหม่จะได้กล่องตลาด/รางวัลราหูของบัญชีเก่าเลขเดียวกัน)
         //  ▸ market_v1 = ตลาด/ป้ายรับซื้อ/กล่องรับของ/พ่อค้าเร่ · wb_state = รางวัลราหูค้างส่ง/MVP · news = ข่าวด่วน GM · name_holds = ชื่อที่กันไว้
         //  ▸ เก็บไว้: reset (กันล้างซ้ำ) · discord_news (ไม่ให้ข่าวเก่าทั้งหมดถูกโพสต์ซ้ำเข้า Discord) · ธงแปลงข้อมูล (names_v2 ฯลฯ)
@@ -230,6 +232,10 @@ class PgStore {
   }
   async setMeta(key, value) {
     await this.pool.query('CREATE TABLE IF NOT EXISTS meta (key TEXT PRIMARY KEY, value TEXT)');
+    if (GEN_KEYS.has(key)) {                                                    // ข้อมูลเกมผูกบัญชี: รุ่นไม่ตรงกับ reset ล่าสุด = เซิร์ฟตัวนี้เป็นของก่อน wipe → ห้ามเขียนทับ
+      const { rows } = await this.pool.query("SELECT value FROM meta WHERE key = 'reset'");
+      if ((rows[0]?.value || '') !== (this.gen || '')) { console.warn(`[store] ข้ามการเซฟ ${key}: เซิร์ฟนี้เป็นรุ่นก่อน wipe`); return; }
+    }
     await this.pool.query('INSERT INTO meta (key, value) VALUES ($1, $2) ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value', [key, value]);
   }
   /** ตารางอันดับ: เลเวล/EXP + ตีบวกสูงสุด (ข้อมูลย่อ) */

@@ -157,7 +157,9 @@ export function attackGate(p, skillId, combo, now = Date.now()) {
     const base = SKILL_BY_ID[skillId];
     if (!base) return false;
     const st = (g.sk[skillId] ||= { at: 0, n: 0 });
-    if (now - st.at > 1500) {
+    const castAt = p.skillAt?.[skillId] || 0;                               // เวลาร่ายจริง (server/index.js skill:cast ตรวจคูลดาวน์ + ชำนาญ + DEX แล้ว)
+    if (castAt) { if (st.at !== castAt) { st.at = castAt; st.n = 0; } }     // ร่ายใหม่ = รอบใหม่ (ไม่ขึ้นกับเวลากระสุนถึงเป้า)
+    else if (now - st.at > 1500) {
       const cd = skillCooldown(skillStats(base, p.char?.skills?.[skillId] || 1).cd || 0, p.char ? getDerived(p.char).castRed : 0);   // DEX ลดคูลดาวน์
       if (st.at && now - st.at < cd * 0.8) return false;
       st.at = now; st.n = 0;
