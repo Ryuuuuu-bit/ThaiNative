@@ -1,7 +1,7 @@
 // ============================================================
 //  คู่มือผี (G) – มอนสเตอร์ · บอส · ของดรอป · ที่อยู่
 //  ▸ ข้อมูลสร้างจากไฟล์ข้อมูลเกมโดยตรง (MONSTERS · ผังแมพ · การ์ด · สุสานใต้ดิน) → อัปเดตเองเมื่อแก้ข้อมูล
-//  ▸ แท็บ: ผีทั้งหมด / บอส / ค้นหาของดรอป · กรองตามแมพ · ค้นหาชื่อ
+//  ▸ แท็บ: ผี / บอส / ปลา (ปลาประจำแดนจาก FISH_BY_MAP) · กรองตามแมพ · ค้นหาชื่อ
 // ============================================================
 import { mobAtkMul, mobExp, expLevelMul } from '/shared/stats.js';
 import { MONSTERS } from '/shared/data/monsters.js';
@@ -10,6 +10,7 @@ import { CARD_OF_MON, CARD_BY_ID, CARD_DROP, CARD_SLOT_TH, cardText } from '/sha
 import { TD_MAPS, TD_MAP_IDS } from '/shared/td/maps.js';
 import { CRYPT_ZONES } from '/shared/data/crypt.js';
 import { WB_TIERS, WB_STONE, WB_MIN_SHARE, WB_FIGHT_MS, wbReward } from '/shared/data/worldboss.js';
+import { FISH_BY_MAP } from '/shared/data/village.js';
 import { itemIcon } from './util.js';
 
 const $ = (s) => document.querySelector(s);
@@ -87,13 +88,13 @@ export class GuideBook {
     const el = $('#guide-body'); if (!el) return;
     build();
     if (this.tab === 'drop') this.tab = 'mob';                     // แท็บค้นหาของดรอปเอาออกแล้ว (ค้นชื่อของได้ในช่องค้นหาของแท็บผี/บอส)
-    const tabs = [['mob', '👻 ผี'], ['boss', '👑 บอส']];
+    const tabs = [['mob', '👻 ผี'], ['boss', '👑 บอส'], ['fish', '🎣 ปลา']];
     const maps = [['all', 'ทุกแมพ'], ...TD_MAP_IDS.filter((m) => TD_MAPS[m]).map((m) => [m, `${TD_MAPS[m].icon || ''} ${TD_MAPS[m].nameTh}`]), ['crypt', '💀 สุสานใต้ดิน']];
     const head = `<div class="gb-tabs">${tabs.map(([k, l]) => `<button class="gb-tab${this.tab === k ? ' on' : ''}" data-gtab="${k}">${l}</button>`).join('')}</div>
       <div class="gb-filter">${this.tab !== 'drop' ? `<select class="gb-map">${maps.map(([k, l]) => `<option value="${k}"${this.map === k ? ' selected' : ''}>${esc(l)}</option>`).join('')}</select>` : ''}
-        <input type="search" class="gb-q" placeholder="${this.tab === 'drop' ? '🔍 ชื่อไอเทม / การ์ด' : '🔍 ชื่อผี หรือของที่ดรอป'}" value="${esc(this.q)}"></div>`;
+        <input type="search" class="gb-q" placeholder="${this.tab === 'fish' ? '🔍 ชื่อปลา' : '🔍 ชื่อผี หรือของที่ดรอป'}" value="${esc(this.q)}"></div>`;
     const keep = el.querySelector('.gb-list')?.scrollTop || 0, keepEl = el.scrollTop;   // คงตำแหน่งเลื่อนรายชื่อ
-    el.innerHTML = head + this.mobHtml();
+    el.innerHTML = head + (this.tab === 'fish' ? this.fishHtml() : this.mobHtml());
     const li = el.querySelector('.gb-list'); if (li) li.scrollTop = keep;
     el.scrollTop = keepEl;
     this.bind(el);
@@ -111,6 +112,32 @@ export class GuideBook {
         <span class="gb-lv ${d.worldBoss ? 'hard' : col}">${d.worldBoss ? `Lv.${WB_TIERS[0].lv}–${WB_TIERS[WB_TIERS.length - 1].lv}` : `Lv.${d.level}`}</span></button>`;
     }).join('') || '<p class="empty">ไม่พบผีตามตัวกรอง</p>';
     return `<div class="gb-split"><div class="gb-list">${rows}</div><div class="gb-detail">${sel ? this.detail(sel) : ''}</div></div>`;
+  }
+
+  /** ปลาประจำแดน: โอกาสต่อครั้ง (กลางวัน/กลางคืน) คิดจากน้ำหนักใน FISH_BY_MAP · ความยาก = แถบดึงปลาแคบลง */
+  fishHtml() {
+    const q = this.q.trim().toLowerCase();
+    const maps = Object.keys(FISH_BY_MAP).filter((m) => TD_MAPS[m] && (this.map === 'all' || this.map === m));
+    const noFish = TD_MAP_IDS.filter((m) => TD_MAPS[m]?.noFish && !TD_MAPS[m].event).map((m) => TD_MAPS[m].nameTh);
+    const hardTh = (h) => (h >= 0.9 ? 'ยากมาก' : h >= 0.6 ? 'ยาก' : h >= 0.35 ? 'ปานกลาง' : 'ง่าย');
+    const secs = maps.map((mid) => {
+      const pool = FISH_BY_MAP[mid], M = TD_MAPS[mid];
+      const sum = (night) => pool.reduce((a, f) => a + (!f.night || night ? f.w : 0), 0), wd = sum(false), wn = sum(true);
+      const rows = pool.filter((f) => ITEMS[f.id] && (!q || ITEMS[f.id].nameTh.toLowerCase().includes(q))).map((f) => {
+        const it = ITEMS[f.id], legend = it.legendFish || f.legend;
+        const tag = legend ? ' <small class="gb-tag boss">✦ ตำนาน</small>' : f.night ? ' <small class="gb-tag night">🌙 กลางคืน</small>' : '';
+        const rate = f.night ? `${pct(f.w / wn)} <small>(คืน)</small>` : `${pct(f.w / wd)}<small> · คืน ${pct(f.w / wn)}</small>`;
+        return `<div class="gb-drop" data-tip-item="${f.id}">${itemIcon(f.id, it.icon)}<span>${esc(it.nameTh)}${tag}<br><small>ขาย ฿${(it.sell || 0).toLocaleString('en-US')} · ${hardTh(f.hard)} · EXP ตกปลา ${f.xp || 4}</small></span><b>${rate}</b></div>`;
+      }).join('');
+      return rows ? `<h4>${M.icon || '🗺️'} ${esc(M.nameTh)}${Array.isArray(M.lv) ? ` <small>Lv.${M.lv[0]}–${M.lv[1]}</small>` : ''}</h4><div class="gb-drops">${rows}</div>` : '';
+    }).join('');
+    const notes = [
+      '🎣 ยืนริมน้ำแล้วกด F (มือถือ: ปุ่ม 🎣) · แต่ละแดนมีปลาของตัวเอง · เปอร์เซ็นต์ = โอกาสต่อครั้งที่ปลากิน',
+      '🌙 ปลากลางคืนขึ้นเฉพาะตอนมืด (ดูเวลาที่นาฬิกาใต้มินิแมพ) · ✦ ปลาตำนานตกได้ประกาศทั้งเซิร์ฟ',
+      '💰 "ขายปลาทั้งหมด" ไม่ขายปลาหายาก/ตำนาน',
+      noFish.length ? `🚫 ตกปลาไม่ได้: ${noFish.map(esc).join(' · ')} · สุสานใต้ดิน` : '',
+    ].filter(Boolean);
+    return `<div class="gb-card gb-fish">${secs || '<p class="empty">ไม่พบปลาตามตัวกรอง</p>'}<div class="gb-notes">${notes.map((n) => `<div>${n}</div>`).join('')}</div></div>`;
   }
 
   art(id, d, big = false) {

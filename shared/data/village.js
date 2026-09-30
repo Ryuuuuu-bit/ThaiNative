@@ -15,8 +15,23 @@ export const FISH = [
   { id: 'pla_phrai',   w: 3,  hard: 0.8, night: true },
 ];
 
-export function rollFish(night, rnd = Math.random) {
-  const pool = FISH.filter((f) => !f.night || night);
+/** ปลาประจำแดน (แดนต่าง ๆ) · xp = EXP ทักษะตกปลาต่อตัว · legend = ปลาตำนาน (ประกาศทั้งเซิร์ฟ) · แมพที่ไม่มีในนี้ใช้ปลากรุงศรีฯ */
+const realmFish = (xp, [a, b, c, d]) => [
+  { id: 'junk_boot', w: 8, hard: 0.05, xp: 1 },
+  { id: a, w: 40, hard: 0.35 + xp * 0.02, xp },
+  { id: b, w: 30, hard: 0.45 + xp * 0.02, xp },
+  { id: c, w: 12, hard: 0.6 + xp * 0.02, xp: xp * 2, night: true },
+  { id: d, w: 0.8, hard: 0.95, xp: 40, legend: true },
+];
+export const FISH_BY_MAP = {
+  ayutthaya: FISH,
+  himmaphan: realmFish(6, ['pla_kaewhim', 'kung_rung', 'pla_khrai', 'pla_takhian_thong']),
+  nagaphop: realmFish(8, ['pla_lai_nak', 'hoi_muk', 'pla_ngoen_badan', 'pla_krahoe']),
+  dusit: realmFish(10, ['pla_thep', 'kung_kaew', 'pla_suwan', 'pla_thip']),
+  sumeru: realmFish(12, ['pla_hin', 'pu_sithan', 'pla_nam_khaeng', 'pla_anon']),
+};
+export function rollFish(night, rnd = Math.random, map = 'ayutthaya') {
+  const pool = (FISH_BY_MAP[map] || FISH).filter((f) => !f.night || night);
   let r = rnd() * pool.reduce((a, f) => a + f.w, 0);
   for (const f of pool) if ((r -= f.w) <= 0) return f;
   return pool[0];

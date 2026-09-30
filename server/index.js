@@ -344,7 +344,7 @@ io.on('connection', (socket) => {
     if (p.world === 'td' && a === 'recall' && d.to === 'hunt') return done({ r: { ok: false, msg: 'ในโลกใหม่ใช้ได้เฉพาะวาร์ปกลับเมือง' } });
     // MP เป็นของ client: รับค่าล่าสุดมาก่อนรันคำสั่ง (เช่น ดื่มยา MP) แล้วส่งค่าหลังรันกลับไป
     takeMp(p, d.mp);
-    const tdCtx = p.world === 'td' ? { td: true, tdNpc: td.npcNear(p), tdPos: td.mapOf(p) === 'ayutthaya' ? { x: p.tx, y: p.ty } : { x: -1e6, y: -1e6 }, tdFish: td.nearWater(p) } : {};   // สมุนไพรมีเฉพาะกรุงศรีฯ
+    const tdCtx = p.world === 'td' ? { td: true, tdNpc: td.npcNear(p), tdPos: td.mapOf(p) === 'ayutthaya' ? { x: p.tx, y: p.ty } : { x: -1e6, y: -1e6 }, tdFish: td.nearWater(p), tdMap: td.mapOf(p) } : {};   // สมุนไพรมีเฉพาะกรุงศรีฯ
     const r = runAction(p.save, a, d, { rnd: Math.random, now, x: ex, night: nightNow(), admin: p.admin, trade: !!p.tradeId, sess: p.sess, ...tdCtx });
     if (r.warp && r.ok && p.world !== 'td') {
       if (r.warp === 'home') warpTo(p, MAPS.village, MAPS.village.arriveX);
@@ -356,6 +356,7 @@ io.on('connection', (socket) => {
     if (r.ok && (r.potion || r.ate || r.flask) && p.world === 'td') socket.to(td.room(p)).emit('td:fx', { id: p.id, kind: r.kind, big: !!r.flask });   // คนอื่นเห็นเอฟเฟกต์ดื่มยา
     if (a === 'title' && r.ok) io.emit('td:title', { id: p.id, title: p.save.title || null });
     if (a === 'preset' && r.ok) p.hpDirty = true;                               // สลับชุด: HP สูงสุดเปลี่ยน → ส่ง HP ใหม่ให้ปาร์ตี้/ตัวเอง   // ฉายาเหนือชื่อ → ทุกคนเห็นทันที
+    if (a === 'fishLand' && r.ok && r.legend) io.emit('chat', { id: null, name: '🎣 ตำนาน', text: `${p.name} ตกได้ ${ITEMS[r.id]?.nameTh || 'ปลาตำนาน'}!! นักตกปลาทั้งเซิร์ฟตะลึง` });   // ปลาตำนานประกาศทั้งเซิร์ฟ
     if (a === 'enhance' && r.slot && r.lv >= 10 && r.success) io.emit('chat', { id: null, name: '🔨 ลุงดำ', text: `${p.name} ตีบวกสำเร็จ +${r.lv}!` });
     refresh(p);
     if (r.ok && r.gmWarp && p.admin && p.world === 'td') td.gmWarp(p, socket, r.gmWarp);

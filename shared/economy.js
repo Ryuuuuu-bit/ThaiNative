@@ -59,7 +59,7 @@ export function bulkSellList(c, kind = 'drop') {
   return c.inventory.filter((s) => {
     const it = ITEMS[s.id];
     if (!it || isLocked(c, s.id) || !sellPrice(s.id)) return false;
-    return kind === 'fish' ? it.type === 'fish' : it.type === 'material' && !it.price;
+    return kind === 'fish' ? it.type === 'fish' && !it.rare : it.type === 'material' && !it.price;   // ขายปลาเหมา: ไม่รวมปลาหายาก/ตำนาน (ขายทีละตัวได้)
   });
 }
 const rec = (c, k, n = 1) => { c.rec ||= {}; c.rec[k] = (c.rec[k] || 0) + n; };
@@ -494,8 +494,8 @@ function fishBite(c, a, ctx) {
   if (ctx.td ? !ctx.tdFish : (ctx.x != null && !atFish(ctx.x))) return NO('ต้องยืนริมน้ำ');
   if (ctx.now - (S.fishAt || 0) < 2000) return NO('ปลายังไม่กินเบ็ด');
   S.fishAt = ctx.now;
-  const f = rollFish(ctx.night, ctx.rnd);
-  S.fish = { id: f.id, at: ctx.now };
+  const f = rollFish(ctx.night, ctx.rnd, ctx.tdMap);   // ปลาประจำแดนที่ยืนอยู่
+  S.fish = { id: f.id, at: ctx.now, xp: f.xp, legend: !!f.legend };
   return OK('', { fish: f.id, hard: f.hard });
 }
 function fishLand(c, a, ctx) {
@@ -505,11 +505,11 @@ function fishLand(c, a, ctx) {
   addItem(c, f.id);
   let bonus = 0;
   if (f.id !== 'junk_boot' && ctx.rnd && ctx.rnd() < lifeLv(c, 'fish') * 0.02) { addItem(c, f.id); bonus = 1; }
-  const life = addLifeXp(c, 'fish', f.id === 'junk_boot' ? 1 : 4);
+  const life = addLifeXp(c, 'fish', f.id === 'junk_boot' ? 1 : f.xp || 4);   // ปลาแดนสูงได้ EXP ทักษะมากขึ้น
   if (f.id !== 'junk_boot') rec(c, 'fish');
   if (f.id === 'pla_buek') rec(c, 'buek');
   const quests = questEvent(c, 'fish', f.id);
-  return OK('', { id: f.id, quests, bonus, life });
+  return OK('', { id: f.id, quests, bonus, life, legend: f.legend });
 }
 function fishLose(c, a, ctx) { ctx.sess.fish = null; return OK(''); }
 function gather(c, { node }, ctx) {

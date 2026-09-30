@@ -7,7 +7,7 @@ import { ITEMS, SHOPS, baseItemId } from './items.js';
 import { MONSTERS } from './monsters.js';
 import { CARD_BY_ID, CARD_DROP } from './cards.js';
 import { GEAR } from './gear.js';
-import { FISH, RECIPES, BREWS, QUESTS, questGiver, GIVER_TH } from './village.js';
+import { FISH, FISH_BY_MAP, RECIPES, BREWS, QUESTS, questGiver, GIVER_TH } from './village.js';
 import { FORGE } from './crafting.js';
 import { TD_MAPS, TD_MAP_IDS } from '../td/maps.js';
 import { HERB_SPOTS } from '../td/ayutthaya.js';
@@ -54,8 +54,10 @@ function build() {
   for (const r of BREWS) add(r.out, { kind: 'craft', ic: '🌿', text: `ปรุงยาที่ยายติ๋ม`, sub: need(r.need) });
   for (const r of FORGE) add(r.out, { kind: 'craft', ic: '⚒️', text: `สร้างที่ลุงดำ · ฿${r.fee.toLocaleString()}`, sub: need(r.need) });
   // 5) ตกปลา / เก็บสมุนไพร
-  const fw = FISH.reduce((a, f) => a + f.w, 0);
-  for (const f of FISH) add(f.id, { kind: 'life', ic: '🎣', text: `ตกปลา${f.night ? 'ตอนกลางคืน' : ''} · ~${pctTxt(f.w / fw)}`, sub: 'ริมน้ำกรุงศรีฯ และแดนต่าง ๆ (ยกเว้นนรกภูมิ)' });
+  for (const [mapId, list] of Object.entries(FISH_BY_MAP)) {                  // ปลาประจำแดน: บอกแดนที่ตกได้
+    const fw = list.reduce((a, f) => a + f.w, 0), where = `ริมน้ำ${TD_MAPS[mapId]?.nameTh || mapId}`;
+    for (const f of list) if (f.id !== 'junk_boot' || mapId === 'ayutthaya') add(f.id, { kind: 'life', ic: '🎣', text: `ตกปลา${f.night ? 'ตอนกลางคืน' : ''}${f.legend ? ' · ✦ ปลาตำนาน' : ''} · ~${pctTxt(f.w / fw)}`, sub: where });
+  }
   const A = TD_MAPS.ayutthaya, herbZ = {};
   for (const h of HERB_SPOTS) (herbZ[h.item] ||= new Set()).add(A.ZONES[A.zoneAt(h.x, h.y)]?.nameTh || A.nameTh);
   for (const [id, zs] of Object.entries(herbZ)) add(id, { kind: 'life', ic: '🌾', text: 'เก็บสมุนไพร (กด F ข้างต้น)', sub: [...zs].join(' · ') });

@@ -158,7 +158,7 @@ export class TdLife {
       const it = ITEMS[r.id];
       s.sfx.play(r.id === 'junk_boot' ? 'error' : 'coin');
       s.combat.popupText(f.bobX, f.bobY - 12, `${it.icon} ${it.nameTh}${r.bonus ? ' x2' : ''}`);
-      if (['pla_buek', 'pla_phrai'].includes(r.id)) { s.ui.banner(`🎣 ได้ ${it.icon} ${it.nameTh}!!`); s.sfx.play('levelup'); }
+      if (it.rare || ['pla_buek', 'pla_phrai'].includes(r.id)) { s.ui.banner(`🎣 ได้ ${it.icon} ${it.nameTh}!!`, it.legendFish ? '✦ ปลาตำนาน! ทั้งเซิร์ฟรู้แล้ว' : ''); s.sfx.play('levelup'); if (it.legendFish) s.cameras.main.flash(400, 255, 215, 120); }   // ปลาหายาก/ตำนาน
       if (r.quests?.length) s.ui.result?.({ ok: true, quests: r.quests });
       this.lifeUp(r.life);
       this.stop(`ได้ ${it.icon} ${it.nameTh}${r.bonus ? ' 2 ตัว! (ฝีมือตกปลา)' : ''}${r.id === 'junk_boot' ? ' (ซวยจัง)' : ''}`);

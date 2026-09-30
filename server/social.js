@@ -605,14 +605,28 @@ export function setupSocial(io, players, H = {}) {
   //  ▸ สถานะ (มึน/พิษ ฯลฯ) ยังไม่ติดผู้เล่นในดวล (เวอร์ชันแรก)
   const duels = new Map();                 // playerId → { foe, until }
   const duelReqs = new Map();              // targetId → Map(fromId → expireAt)
-  const DUEL_MS = 180000, DUEL_RANGE = 700, DUEL_END_HP = 0.1, PVP_DMG = 0.4;
+  const DUEL_MS = 180000, DUEL_RANGE = 700, DUEL_END_HP = 0.1, PVP_DMG = 0.4, DUEL_REPEAT_MS = 10 * 60e3;
+  const duelWinAt = new Map();             // "ผู้ชนะ>ผู้แพ้" → เวลาที่นับชนะล่าสุด (กันปั๊มสถิติดวล)
+  /** เพิ่มสถิติ PVP ในเซฟ แล้วตรวจฉายาใหม่ (ประกาศถ้าได้) */
+  function addRec(q, key, n = 1) {
+    if (!q?.save) return;
+    (q.save.rec ||= {})[key] = (q.save.rec[key] || 0) + n; q.dirty = true;
+    const got = checkTitles(q.save);
+    if (got.length) announceTitles(q, got);
+    queueSync(q);
+  }
   let lastDuelChk = 0;
   function endDuel(id, winnerId = null, reason = '') {
     const d = duels.get(id);
     if (!d) return;
     const A = players.get(id), B = players.get(d.foe);
     duels.delete(id); duels.delete(d.foe);
-    const W = winnerId ? players.get(winnerId) : null;
+    const W = winnerId ? players.get(winnerId) : null, L = W ? (W === A ? B : A) : null;
+    if (W?.save && L?.save) {
+      const pair = `${W.acc}:${W.slot || 0}>${L.acc}:${L.slot || 0}`, now = Date.now();
+      if (now - (duelWinAt.get(pair) || 0) > DUEL_REPEAT_MS) { duelWinAt.set(pair, now); addRec(W, 'duelWin'); }   // ชนะคู่เดิมถี่ ๆ ไม่นับ
+      addRec(L, 'duelLoss');
+    }
     for (const q of [A, B]) if (q) emitTo(q.id, 'pvp:state', { phase: 'end', winner: W?.name || null, winnerId: winnerId || null, reason });
     if (A && B && W) io.emit('chat', { id: null, name: '⚔️ ดวล', text: `${W.name} ชนะการดวลกับ ${(W.id === A.id ? B : A).name}!` });
   }
@@ -671,7 +685,9 @@ export function setupSocial(io, players, H = {}) {
   }
   /** ฆ่าได้ในโหมด PK */
   function onPkKill(p, t, wasInnocent) {
+    addRec(t, 'pkDeath');
     if (wasInnocent) {
+      addRec(p, 'pkKill');
       const was = isRed(p);
       p.save.karma = (p.save.karma || 0) + PK_KARMA; p.dirty = true; queueSync(p);
       if (!was) pushPk(p);
@@ -680,6 +696,7 @@ export function setupSocial(io, players, H = {}) {
     }
     if (!isRed(t)) return io.emit('chat', { id: null, name: '⚔️ PK', text: `${p.name} ปราบ ${t.name} ในการต่อสู้` });
     // หัวแดงตาย: เสีย EXP + ของหล่นให้คนฆ่า
+    addRec(p, 'redKill');
     const c = t.save, lossExp = Math.min(c.exp || 0, Math.round(expToNext(c.level || 1) * 0.05));
     c.exp = Math.max(0, (c.exp || 0) - lossExp);
     const pool = (c.inventory || []).filter((s) => s && ITEMS[s.id] && s.qty > 0 && count(c, s.id) - presetReserved(c, s.id) > 0);   // หัวแดง: ของล็อกก็หล่นได้ (กันล็อกทั้งกระเป๋าเลี่ยงโทษ)

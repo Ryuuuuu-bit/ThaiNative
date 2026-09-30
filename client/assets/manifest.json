@@ -923,6 +923,22 @@
     "ui_slow": "assets/icons/ui_slow.png",
     "ui_hourglass": "assets/icons/ui_hourglass.png",
     "ui_trap": "assets/icons/ui_trap.png",
-    "it_junk_coin": "assets/icons/it_junk_coin.png"
+    "it_junk_coin": "assets/icons/it_junk_coin.png",
+    "it_pla_kaewhim": "assets/icons/it_pla_kaewhim.png",
+    "it_kung_rung": "assets/icons/it_kung_rung.png",
+    "it_pla_khrai": "assets/icons/it_pla_khrai.png",
+    "it_pla_takhian_thong": "assets/icons/it_pla_takhian_thong.png",
+    "it_pla_lai_nak": "assets/icons/it_pla_lai_nak.png",
+    "it_hoi_muk": "assets/icons/it_hoi_muk.png",
+    "it_pla_ngoen_badan": "assets/icons/it_pla_ngoen_badan.png",
+    "it_pla_krahoe": "assets/icons/it_pla_krahoe.png",
+    "it_pla_thep": "assets/icons/it_pla_thep.png",
+    "it_kung_kaew": "assets/icons/it_kung_kaew.png",
+    "it_pla_suwan": "assets/icons/it_pla_suwan.png",
+    "it_pla_thip": "assets/icons/it_pla_thip.png",
+    "it_pla_hin": "assets/icons/it_pla_hin.png",
+    "it_pu_sithan": "assets/icons/it_pu_sithan.png",
+    "it_pla_nam_khaeng": "assets/icons/it_pla_nam_khaeng.png",
+    "it_pla_anon": "assets/icons/it_pla_anon.png"
   }
 }

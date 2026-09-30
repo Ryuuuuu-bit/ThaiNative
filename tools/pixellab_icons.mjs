@@ -20,6 +20,22 @@ const ICONS = {
   blood: 'one red liquid water droplet shape, teardrop, glossy highlight, simple object, no face, no skull',
   trap: 'open iron jaw trap device lying on the ground, metal spring hunting snare with saw-tooth jaws, object only, no animal',
   slow: 'cute green snail with spiral shell',
+  'it:pla_kaewhim': 'small translucent glass-clear fish with faint blue shimmer',
+  'it:kung_rung': 'rainbow colored river shrimp, seven color shell',
+  'it:pla_khrai': 'golden featherback fish, long knife-shaped body, golden scales',
+  'it:pla_takhian_thong': 'legendary shining pure gold carp fish with glowing aura, sparkles',
+  'it:pla_lai_nak': 'dark green eel with golden naga serpent scale pattern',
+  'it:hoi_muk': 'underwater pearl oyster shell slightly open showing a white pearl',
+  'it:pla_ngoen_badan': 'silver deep water fish with glowing blue eyes',
+  'it:pla_krahoe': 'legendary giant golden Siamese carp fish with naga crown fins, glowing aura',
+  'it:pla_thep': 'celestial white fish with flowing silk-like fins, soft glow',
+  'it:kung_kaew': 'transparent crystal shrimp glowing softly',
+  'it:pla_suwan': 'shiny golden carp fish with long flowing fins, side view, fish only, no bird, no wings',
+  'it:pla_thip': 'legendary divine fish made of glowing elixir water, rainbow aura',
+  'it:pla_hin': 'stone scaled ancient fish, grey rock texture',
+  'it:pu_sithan': 'golden sea crab with shiny golden shell',
+  'it:pla_nam_khaeng': 'ice crystal fish, frosty blue translucent body',
+  'it:pla_anon': 'legendary colossal cosmic whale fish carrying a mountain on its back, mythical, glowing',
   'it:junk_coin': 'old bronze Chinese trade coin with square hole in the middle, junk ship emblem, slightly worn',   // เบี้ยสำเภา (ไอเทม)
 };
 
@@ -45,8 +61,12 @@ console.log('จะสร้าง', todo.length, 'ไอคอน:', todo.map((
 
 const jobs = [];
 for (const [key, desc] of todo) {
-  const res = await call('create_image_pixflux', { description: `${desc}, ${STYLE}`, width: 48, height: 48, no_background: true, outline: 'single color black outline', shading: 'medium shading', detail: 'highly detailed' });
-  const id = /job_id:\s*([0-9a-f-]+)/.exec(res.content?.[0]?.text || '')?.[1];
+  let res, id;
+  for (let tryN = 0; tryN < 40 && !id; tryN++) {                               // โควต้างานพร้อมกันเต็ม (20 งาน) → รอแล้วลองใหม่
+    res = await call('create_image_pixflux', { description: `${desc}, ${STYLE}`, width: 48, height: 48, no_background: true, outline: 'single color black outline', shading: 'medium shading', detail: 'highly detailed' });
+    id = /job_id:\s*([0-9a-f-]+)/.exec(res.content?.[0]?.text || '')?.[1];
+    if (!id && /rate limit/i.test(res.content?.[0]?.text || '')) { console.log('⏳ คิวเต็ม รอ 15 วิ…', key); await sleep(15000); } else break;
+  }
   if (!id) { console.error('สร้างไม่ได้', key, res.content?.[0]?.text); continue; }
   jobs.push({ key, id });
 }

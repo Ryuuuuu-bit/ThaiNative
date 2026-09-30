@@ -6,7 +6,7 @@ import { QUESTS } from './village.js';
 import { combatPower } from '../character.js';
 
 /** หมวดฉายา (เรียงตามนี้ในหน้าเลือกฉายา) */
-export const TITLE_CATS = [['lv', 'เลเวล'], ['cp', 'ค่าพลังรวม'], ['rank', 'อันดับเซิร์ฟ'], ['boss', 'ปราบบอส'], ['explore', 'สำรวจ'], ['hunt', 'ล่าผี'], ['smith', 'ตีบวก'], ['support', 'สายซัพพอร์ต'], ['life', 'อาชีพเสริม'], ['misc', 'อื่น ๆ']];
+export const TITLE_CATS = [['lv', 'เลเวล'], ['cp', 'ค่าพลังรวม'], ['rank', 'อันดับเซิร์ฟ'], ['boss', 'ปราบบอส'], ['explore', 'สำรวจ'], ['hunt', 'ล่าผี'], ['smith', 'ตีบวก'], ['support', 'สายซัพพอร์ต'], ['pvp', 'PVP'], ['life', 'อาชีพเสริม'], ['misc', 'อื่น ๆ']];
 /** ค่าพลังรวมของตัวละคร (แคชตามรอบตรวจ) */
 const cpOf = (c) => { try { return combatPower(c); } catch { return 0; } };
 
@@ -65,6 +65,17 @@ export const TITLES = [
   { id: 'medic', cat: 'support',      nameTh: 'หมอยาประจำขบวน',       color: '#48c9b0', hint: 'รักษาเพื่อนรวม 20,000 HP',                   ok: (c, r) => (r.healOut || 0) >= 20000 },
   { id: 'medic2', cat: 'support',     nameTh: 'หมอเทวดาแห่งกรุงศรี',    color: '#76d7c4', hint: 'รักษาเพื่อนรวม 500,000 HP',                  ok: (c, r) => (r.healOut || 0) >= 500000 },
   { id: 'khwan10', cat: 'support',    nameTh: 'ผู้เรียกขวัญ',            color: '#f9e79f', hint: 'ชุบชีวิตเพื่อนด้วยพิธีสู่ขวัญ 10 ครั้ง',         ok: (c, r) => (r.revive || 0) >= 10 },
+  // ---- PVP: ดวล (ชนะคู่เดิมนับซ้ำได้ทุก 10 นาที) · ล่าหัวแดง · หัวแดง ----
+  { id: 'duel1',   cat: 'pvp', nameTh: 'นักประลองหน้าใหม่',     color: '#aed6f1', hint: 'ชนะการดวล 1 ครั้ง',                         ok: (c, r) => (r.duelWin || 0) >= 1 },
+  { id: 'duel10',  cat: 'pvp', nameTh: 'ยอดนักประลอง',          color: '#5dade2', hint: 'ชนะการดวล 10 ครั้ง',                        ok: (c, r) => (r.duelWin || 0) >= 10 },
+  { id: 'duel50',  cat: 'pvp', nameTh: 'เซียนเวทีประลอง',        color: '#f5b041', hint: 'ชนะการดวล 50 ครั้ง',                        ok: (c, r) => (r.duelWin || 0) >= 50 },
+  { id: 'duel100', cat: 'pvp', nameTh: 'ราชันแห่งการดวล',        color: '#ffd700', hint: 'ชนะการดวล 100 ครั้ง',                       ok: (c, r) => (r.duelWin || 0) >= 100 },
+  { id: 'redhunt1',  cat: 'pvp', nameTh: 'ผู้พิทักษ์ธรรม',       color: '#82e0aa', hint: 'ปราบหัวแดง 1 คน',                          ok: (c, r) => (r.redKill || 0) >= 1 },
+  { id: 'redhunt10', cat: 'pvp', nameTh: 'นักล่าค่าหัว',          color: '#48c9b0', hint: 'ปราบหัวแดง 10 คน',                         ok: (c, r) => (r.redKill || 0) >= 10 },
+  { id: 'redhunt50', cat: 'pvp', nameTh: 'มือปราบทรชน',          color: '#f9e79f', hint: 'ปราบหัวแดง 50 คน',                         ok: (c, r) => (r.redKill || 0) >= 50 },
+  { id: 'pk1',  cat: 'pvp', nameTh: 'มือเปื้อนเลือด',             color: '#e74c3c', hint: 'สังหารผู้บริสุทธิ์ 1 คน (กลายเป็นหัวแดง)',       ok: (c, r) => (r.pkKill || 0) >= 1 },
+  { id: 'pk10', cat: 'pvp', nameTh: 'ทรชนแห่งพงไพร',            color: '#c0392b', hint: 'สังหารผู้บริสุทธิ์ 10 คน',                      ok: (c, r) => (r.pkKill || 0) >= 10 },
+  { id: 'pk50', cat: 'pvp', nameTh: 'จอมโจรเลือดเย็น',           color: '#8e1b1b', hint: 'สังหารผู้บริสุทธิ์ 50 คน',                      ok: (c, r) => (r.pkKill || 0) >= 50 },
   // ---- ชีวิต · อื่น ๆ ----
   { id: 'fisher', cat: 'life',     nameTh: 'เซียนเบ็ดท่าน้ำ',      color: '#85c1e9', hint: 'ตกปลาได้ 100 ตัว',                         ok: (c, r) => (r.fish || 0) >= 100 },
   { id: 'buek', cat: 'life',       nameTh: 'ผู้พิชิตปลาบึก',       color: '#5dade2', hint: 'ตกปลาบึกยักษ์ได้',                         ok: (c, r) => (r.buek || 0) >= 1 },

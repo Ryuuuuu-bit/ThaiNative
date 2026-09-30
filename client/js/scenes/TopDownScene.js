@@ -981,6 +981,8 @@ export class TopDownScene extends Phaser.Scene {
     const a = this.atmo; if (!a) return;
     const mmss = (ms) => { const s = Math.max(0, Math.ceil(ms / 1000)); return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`; };
     const N = nightInfo(Date.now() + (a.offset || 0), a.dayMs), moon = N.moon.id !== 'normal' ? ` ${N.moon.icon}` : '';
+    const clk = document.getElementById('clock'), ct = `${N.period.icon} ${N.clock}`;   // นาฬิกาในเกมเหนือมินิแมพ (1 วันเกม = 20 นาทีจริง)
+    if (clk && clk._t !== ct) { clk._t = ct; clk.textContent = ct; clk.title = `เวลาในเกม · ${N.period.nameTh}${N.moon.nameTh ? ` · คืนนี้${N.moon.nameTh}` : ''} (1 วันในเกม = 20 นาทีจริง)`; }
     const rows = [N.night
       ? `<div class="ev on" title="กลางคืน: ผีแรงขึ้น แต่ได้ EXP/เงินมากขึ้น${N.moon.nameTh ? ` · ${N.moon.nameTh}` : ''}">🌙 กลางคืน${moon} <b>EXP ×${N.exp}</b> <small>สว่างใน ${mmss(N.msLeft)}</small></div>`
       : `<div class="ev" title="กลางคืนผีแรงขึ้น แต่ได้ EXP/เงินมากขึ้น${N.moon.nameTh ? ` · คืนนี้${N.moon.nameTh}` : ''}">${N.period.icon} ${N.period.nameTh} ${N.clock} <small>🌙 EXP ×${N.nightExp}${moon} ใน ${mmss(N.msLeft)}</small></div>`];

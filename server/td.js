@@ -67,7 +67,9 @@ export function setupTD(io, players, opts = {}) {
   const mobs = L.spawns.map((s, i) => spawn({ mid: i, id: s.id, d: MONSTERS[s.id], s, boss: !!(s.boss || MONSTERS[s.id]?.boss) }, true));
   for (const m of mobs) if (m.s.wb) { m.hp = 0; m.st = 'dead'; m.respawnAt = Infinity; m.wb = m.s.wb; }   // บอสโลก/ผลึก/บริวาร: หลับไว้ ตัวควบคุมอีเวนต์ปลุก
   // ผีส่วนเพิ่ม (MOB_DENSITY) เกิดตามจำนวนคนในแมพ: 1 คน = 30% · 5 คนขึ้นไป = ครบ → เซิร์ฟคนน้อยไม่แน่นจนโดนรุม
-  const extras = mobs.filter((m) => m.s.extra && !m.s.wb);
+  // เรียงแบบกระจาย (golden-ratio) ไม่ใช่ตามลำดับกอง → ตอนคนน้อย ส่วนเพิ่มที่เปิดกระจายทุกโซน ไม่กองอยู่แค่โซนแรก
+  const spread = (m) => (m.mid * 0.6180339887) % 1;
+  const extras = mobs.filter((m) => m.s.extra && !m.s.wb).sort((a, b) => spread(a) - spread(b));
   extras.forEach((m, i) => { m.extraIdx = i; });
   const extraCap = (n) => Math.ceil(extras.length * Math.max(0.3, Math.min(1, n / 5)));
   for (const m of extras) if (m.extraIdx >= extraCap(0)) { m.hp = 0; m.st = 'dead'; m.respawnAt = 0; }   // เริ่มต้น: เปิดแค่ 30%

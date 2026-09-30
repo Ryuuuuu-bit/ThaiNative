@@ -105,6 +105,23 @@ const ITEMS_BASE = {
   pla_buek:    { nameTh: 'ปลาบึกยักษ์',        type: 'fish', icon: '🐋', sell: 120 },
   pla_phrai:   { nameTh: 'ปลาพรายวิญญาณ',     type: 'fish', icon: '👻', sell: 90 },
   junk_boot:   { nameTh: 'รองเท้าแตะเก่า',     type: 'material', icon: '🩴', sell: 1 },
+  // ---- ปลาประจำแดน (ตกได้เฉพาะแดนนั้น · rare = หายาก · legendFish = ปลาตำนาน ประกาศทั้งเซิร์ฟ) ----
+  pla_kaewhim:  { nameTh: 'ปลาแก้วหิมพานต์',      type: 'fish', icon: '🐟', sell: 150, desc: 'ปลาใสดั่งแก้วในลำธารป่าหิมพานต์' },
+  kung_rung:    { nameTh: 'กุ้งสายรุ้ง',           type: 'fish', icon: '🦐', sell: 200, desc: 'กุ้งเปลือกเจ็ดสีใต้น้ำตกหิมพานต์' },
+  pla_khrai:    { nameTh: 'ปลากรายทอง',           type: 'fish', icon: '🐟', sell: 450, rare: true, desc: 'ขึ้นมากินเหยื่อเฉพาะกลางคืน · หายาก' },
+  pla_takhian_thong: { nameTh: 'ปลาตะเพียนทองหิมพานต์', type: 'fish', icon: '🐟', sell: 6000, rare: true, legendFish: true, desc: '✦ ปลาตำนานแห่งป่าหิมพานต์ เกล็ดทองคำแท้' },
+  pla_lai_nak:  { nameTh: 'ปลาไหลนาค',            type: 'fish', icon: '🐍', sell: 220, desc: 'ปลาไหลลายเกล็ดนาคในคูเมืองบาดาล' },
+  hoi_muk:      { nameTh: 'หอยมุกบาดาล',          type: 'fish', icon: '🦪', sell: 300, desc: 'หอยที่อาจมีมุกของนาคราชอยู่ข้างใน' },
+  pla_ngoen_badan: { nameTh: 'ปลาเงินบาดาล',       type: 'fish', icon: '🐟', sell: 700, rare: true, desc: 'ขึ้นมากินเหยื่อเฉพาะกลางคืน · หายาก' },
+  pla_krahoe:   { nameTh: 'ปลากระโห้ทองนาคราช',    type: 'fish', icon: '🐋', sell: 9000, rare: true, legendFish: true, desc: '✦ ปลาตำนานแห่งเมืองบาดาล สัตว์เลี้ยงของพญานาค' },
+  pla_thep:     { nameTh: 'ปลาเทพธารา',            type: 'fish', icon: '🐟', sell: 400, desc: 'ว่ายในธารน้ำทิพย์บนสวรรค์ชั้นดาวดึงส์' },
+  kung_kaew:    { nameTh: 'กุ้งแก้วดาวดึงส์',        type: 'fish', icon: '🦐', sell: 520, desc: 'กุ้งตัวใสเรืองแสงอ่อน ๆ' },
+  pla_suwan:    { nameTh: 'ปลาสุวรรณหงส์',         type: 'fish', icon: '🐟', sell: 1200, rare: true, desc: 'ขึ้นมากินเหยื่อเฉพาะกลางคืน · หายาก' },
+  pla_thip:     { nameTh: 'ปลาทิพย์อมฤต',          type: 'fish', icon: '🐟', sell: 15000, rare: true, legendFish: true, desc: '✦ ปลาตำนานแห่งดาวดึงส์ ว่ายในสระอมฤต' },
+  pla_hin:      { nameTh: 'ปลาหินพันปี',            type: 'fish', icon: '🐟', sell: 520, desc: 'ปลาเกล็ดแข็งดั่งหินแห่งเขาพระสุเมรุ' },
+  pu_sithan:    { nameTh: 'ปูทองสีทันดร',          type: 'fish', icon: '🦀', sell: 700, desc: 'ปูจากมหาสมุทรสีทันดรที่ล้อมเขาพระสุเมรุ' },
+  pla_nam_khaeng: { nameTh: 'ปลาน้ำแข็งสุเมรุ',     type: 'fish', icon: '🐟', sell: 1600, rare: true, desc: 'ขึ้นมากินเหยื่อเฉพาะกลางคืน · หายาก' },
+  pla_anon:     { nameTh: 'ปลาอานนท์',             type: 'fish', icon: '🐋', sell: 20000, rare: true, legendFish: true, desc: '✦ ปลายักษ์ใต้เขาพระสุเมรุที่หนุนโลกไว้ ตำนานที่สุดของนักตกปลา' },
 
   // ---------- อาหารฝีมือป้าสา (ฟื้น HP/MP + บัฟ) ----------
   food_pla_pao: { nameTh: 'ปลาเผาเกลือ',       type: 'food', icon: '🍢', price: 60, effect: { hp: 250 }, buff: { minutes: 10, mods: { def: 4 }, textTh: 'ป้องกัน +4' } },

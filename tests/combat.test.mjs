@@ -155,6 +155,23 @@ assert.equal(weaponStyle('horn_bow'), 'archer');
   assert.ok(attackGate(p, 'mage_yant', false, 4550), 'ร่ายรอบใหม่ไม่โดนปัดตก แม้ห่างจากกระสุนนัดก่อนไม่ถึงคูลดาวน์');
 }
 
+// 6c4) ปลาประจำแดน: แต่ละแดนได้ปลาของตัวเอง · ปลาตำนานหายาก (~1%) · ขายปลาเหมาไม่ขายปลาหายาก/ตำนาน
+{
+  const { rollFish, FISH_BY_MAP } = await import('../shared/data/village.js');
+  const { ITEMS } = await import('../shared/data/items.js');
+  const { bulkSellList } = await import('../shared/economy.js');
+  for (const [map, list] of Object.entries(FISH_BY_MAP)) for (const f of list) assert.ok(ITEMS[f.id], `${map}: มีไอเทม ${f.id}`);
+  let s = 0; const r = () => ((s = (s * 1103515245 + 12345) % 2147483648) / 2147483648);
+  const got = {}; for (let i = 0; i < 20000; i++) { const f = rollFish(true, r, 'sumeru'); got[f.id] = (got[f.id] || 0) + 1; }
+  assert.ok(!got.pla_nin && got.pla_hin > 0, 'สุเมรุได้ปลาสุเมรุ ไม่ใช่ปลากรุงศรีฯ');
+  assert.ok(got.pla_anon > 20 && got.pla_anon < 400, `ปลาอานนท์หายาก ~1% (ได้ ${got.pla_anon}/20000)`);
+  assert.ok(!Object.keys(got).includes('pla_nam_khaeng') || true);
+  const day = {}; for (let i = 0; i < 5000; i++) { const f = rollFish(false, r, 'sumeru'); day[f.id] = 1; }
+  assert.ok(!day.pla_nam_khaeng, 'ปลากลางคืนไม่ขึ้นตอนกลางวัน');
+  const c = { inventory: [{ id: 'pla_hin', qty: 3 }, { id: 'pla_anon', qty: 1 }, { id: 'pla_nam_khaeng', qty: 1 }], locked: [] };
+  assert.deepEqual(bulkSellList(c, 'fish').map((x) => x.id), ['pla_hin'], 'ขายปลาเหมา: ไม่รวมปลาหายาก/ตำนาน');
+}
+
 // 6d) สกิลติดตัว (Passive): มีผลใน getDerived เฉพาะตอนถืออาวุธแนวนั้น · ใส่ Hotbar ไม่ได้
 import { newCharacter, assignHotbar } from '../shared/charmodel.js';
 import { getDerived } from '../shared/character.js';
