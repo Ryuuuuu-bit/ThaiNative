@@ -43,6 +43,17 @@ export function moonOf(dayIdx) {
   return { id: 'normal', nameTh: '', icon: '🌙' };
 }
 
+/** สรุปเวลาในเกมสำหรับ HUD: ช่วงเวลา · ดวงจันทร์คืนนี้ · ตัวคูณ EXP ตอนนี้ · ms จนถึงช่วงถัดไป (กลางคืนเริ่ม 19:00 จบ 06:00)
+ *  ▸ ดวงจันทร์คิดแบบเดียวกับ server: moonOf(dayIndex(t + dayMs×0.25)) */
+export function nightInfo(t, dayMs = DAY_MS_DEFAULT) {
+  const phase = dayPhase(t, dayMs), night = isNight(phase), NIGHT_AT = 13 / 24;   // phase 13/24 = 19:00
+  const nextNightT = night ? t : t + (NIGHT_AT - phase) * dayMs;                      // คืนนี้ (หรือคืนที่กำลังเป็นอยู่)
+  const moon = moonOf(dayIndex(nextNightT + dayMs * 0.25, dayMs));
+  const mods = nightMods(NIGHT_AT + 0.01, moon);                                      // ตัวคูณของคืนนั้น
+  return { night, period: periodOf(phase), clock: clockText(phase), moon, exp: night ? mods.exp : 1, nightExp: mods.exp,
+    msLeft: night ? (1 - phase) * dayMs : (NIGHT_AT - phase) * dayMs };
+}
+
 /** ตัวคูณของผีตามเวลา  (กลางคืนผีแรงขึ้น แต่ให้ EXP/เงินมากขึ้น) */
 export function nightMods(phase, moon) {
   if (!isNight(phase)) return { atk: 1, hp: 1, exp: 1, gold: 1 };

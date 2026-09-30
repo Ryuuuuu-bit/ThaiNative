@@ -29,6 +29,7 @@ import { QUESTS } from '/shared/data/village.js';
 import { count } from '../systems/Inventory.js';
 import { TILE, T, SPAWN as TD_SPAWN, isIsland, bakeTileset, bakeProps, OX } from '../topdown/AyutthayaMap.js';
 import { TD_MAPS, EVENT_MAPS, getMap, validMap, arrivalPoint, RESPAWN_WAIT_MS } from '/shared/td/maps.js';
+import { nightInfo } from '/shared/data/world.js';
 import { CRYPT_ZONES, lvOf } from '/shared/data/crypt.js';
 import { WorldBossUI } from '../topdown/WorldBoss.js';
 import { hasDir8, resolveAct } from '../topdown/Dir8.js';
@@ -973,6 +974,23 @@ export class TopDownScene extends Phaser.Scene {
   attackRange() { const a = JOBS[this.player.char.appearance.job]?.attack; return a?.style === 'projectile' ? Math.min(240, a.range) : 28; }   // ธนู 240 · เวท 220 · หมอยา 200 (server รับถึง range+30)
   attackCd() { const c = this.player.char; return attackInterval(JOBS[c.appearance.job]?.attack?.cooldown || 600, getDerived(c).aspd + buffAspd(this.player.buffs, this.time.now)); }   // AGI เร่งความเร็วตี (แบบ RO)
 
+  /** ใต้มินิแมพ: กลางวัน/กลางคืน (ตัวคูณ EXP · ดวงจันทร์ · เวลาถึงช่วงถัดไป) + พระราหูรอบถัดไป */
+  updateEventInfo() {
+    let el = document.getElementById('td-events');
+    if (!el) { el = document.createElement('div'); el.id = 'td-events'; el.className = 'td-events'; document.getElementById('td-hud')?.appendChild(el); }
+    const a = this.atmo; if (!a) return;
+    const mmss = (ms) => { const s = Math.max(0, Math.ceil(ms / 1000)); return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`; };
+    const N = nightInfo(Date.now() + (a.offset || 0), a.dayMs), moon = N.moon.id !== 'normal' ? ` ${N.moon.icon}` : '';
+    const rows = [N.night
+      ? `<div class="ev on" title="กลางคืน: ผีแรงขึ้น แต่ได้ EXP/เงินมากขึ้น${N.moon.nameTh ? ` · ${N.moon.nameTh}` : ''}">🌙 กลางคืน${moon} <b>EXP ×${N.exp}</b> <small>สว่างใน ${mmss(N.msLeft)}</small></div>`
+      : `<div class="ev" title="กลางคืนผีแรงขึ้น แต่ได้ EXP/เงินมากขึ้น${N.moon.nameTh ? ` · คืนนี้${N.moon.nameTh}` : ''}">${N.period.icon} ${N.period.nameTh} ${N.clock} <small>🌙 EXP ×${N.nightExp}${moon} ใน ${mmss(N.msLeft)}</small></div>`];
+    const S = this.wb?.st, now = this.wb?.now ?? Date.now();
+    if (S && (S.state === 'open' || S.state === 'idle') && S.at > now) rows.push(`<div class="ev${S.state === 'open' ? ' hot' : ''}">🌑 พระราหู <small>${S.state === 'open' ? 'ประกาศแล้ว · ลงใน' : 'ลงใน'} ${mmss(S.at - now)}</small></div>`);
+    else if (S?.state === 'fight') rows.push(`<div class="ev hot">🌑 พระราหูกำลังสู้ <small>${S.maxHp ? Math.round(S.hp / S.maxHp * 100) : 100}% · เหลือ ${mmss(S.fightEnd - now)}</small></div>`);
+    const html = rows.join('');
+    if (el._html !== html) { el._html = html; el.innerHTML = html; }
+  }
+
   /** ดาเมจที่เราทำใส่คู่ดวล (server แจ้งกลับ) → ตัวเลขลอยบนหัวอีกฝ่าย */
   pvpDmg({ id, dmg, crit, miss } = {}) {
     const r = this.remotes.get(id);
@@ -1745,9 +1763,11 @@ export class TopDownScene extends Phaser.Scene {
       if (was !== undefined && !(area === 'outskirts' && was === 'town') && !(area === 'town' && was === 'outskirts')) this.ui.banner(Z.nameTh, Z.sub);
       $('#zone-name').textContent = area === 'town' ? 'กรุงศรีอยุธยา' : this.M.realm ? this.M.nameTh : Z.nameTh;
       const ICON = { town: '🏯', outskirts: '🌳', field: '🌾', bamboo: '🎋', graveyard: '🪦', swamp: '🪷', hub: '⛺', wild: this.M.icon, lair: '👑' };
+      this.eventsAt = 0;
       $('#td-zone').textContent = `${ICON[area] || ''} ${area === 'town' ? 'เกาะเมือง (Safe Zone)' : area === 'hub' ? `${Z.nameTh} (Safe Zone)` : `${Z.nameTh} · ${Z.sub.split(' · ')[0]}`}`;
     }
     this.checkPortals();
+    if (time - (this.eventsAt || 0) > 500) { this.eventsAt = time; this.updateEventInfo(); }   // ช่วงเวลาอีเวนต์ใต้มินิแมพ
     if (zone !== this.zone) this.zone = zone;
     this.sfx.setMood({ lowHp: p.alive && p.char.hp / p.derived.maxHp < 0.25, boss: this.mobs.some((m) => m.def.boss && m.alive && dist(m, p) < 320) ? 1 : 0 });
     this.ui.updateHud();

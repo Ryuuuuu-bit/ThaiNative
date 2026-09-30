@@ -34,6 +34,14 @@ body.td-mode .pf .bar { height: 2.6cqh; margin: 0; }
 body.td-mode .pf .bar span { font-size: 1.7cqh; line-height: 2.6cqh; }
 body.td-mode .pf .buffs { min-height: 0; margin: 0; }
 body.td-mode .pf .buffs:empty { display: none; }
+/* บัฟในกรอบโปรไฟล์: กล่องจัตุรัสเล็กเท่ากัน แถวเดียว ไม่ล้นกรอบ · เวลาเหลือมุมขวาล่าง · หน้าผู้ให้มุมขวาบน */
+body.td-mode .pf .buffs { display: flex; flex-wrap: nowrap; gap: .5cqh; overflow: hidden; max-width: 100%; }
+body.td-mode .pf .buff { flex: none; width: 4.2cqh; height: 4.2cqh; padding: 0 !important; display: grid; place-items: center; font-size: 2.4cqh; line-height: 1; border-radius: .8cqh; }
+body.td-mode .pf .buff .px-ico { width: 3cqh; height: 3cqh; }
+body.td-mode .pf .buff small { position: absolute; right: .15cqh; bottom: -.3cqh; margin: 0; font-size: 1.35cqh; font-weight: 700; color: #fff; text-shadow: 0 0 .3cqh #000, 0 .1cqh 0 #000; }
+body.td-mode .pf .buff .bf-face { right: -.5cqh; top: -.5cqh; bottom: auto; width: 1.7cqh; height: 1.7cqh; font-size: 1.1cqh; line-height: 1.7cqh; }
+/* EXP ปาร์ตี้: เลเวลห่างเกิน = ไม่แบ่ง EXP (สีเตือน) */
+.pw-exp.warn, .pf-bonus.warn { color: #ffb35c !important; border-color: rgba(255,179,92,.5) !important; background: rgba(90,50,10,.35) !important; }
 /* เงิน: อยู่ในกรอบ (มุมขวาล่าง) ไม่ห้อยออกนอกกรอบแล้ว */
 body.td-mode .pf .gold { position: absolute !important; left: auto !important; right: 1.2cqh !important; bottom: -1.6cqh !important; top: auto !important;
   font-size: 1.8cqh !important; line-height: 2.8cqh !important; padding: 0 1.2cqh !important; border-radius: 2cqh !important;
@@ -129,6 +137,14 @@ body.td-mode.touch .t-stick { bottom: 6cqh !important; left: calc(var(--hud-pad)
 /* ขวา: เขต/แมพ → เควส (สั้นลง) → ปุ่มตี · ของที่ได้ อยู่ซ้ายปุ่มตี */
 body.td-mode.touch #td-minimap { width: var(--hud-col) !important; }
 body.td-mode.touch #td-hud .td-zone { width: var(--hud-col) !important; }
+/* ช่วงเวลาอีเวนต์ใต้มินิแมพ (กลางวัน/กลางคืน · พระราหู) */
+body.td-mode #td-hud .td-events { position: absolute; top: calc(var(--hud-pad) + 8.6cqh + var(--hud-col) * 110 / 150 + 3.4cqh); right: var(--hud-pad); width: var(--hud-col);
+  display: flex; flex-direction: column; gap: .3cqh; pointer-events: none; font-size: 1.6cqh; }
+body.td-mode #td-hud .td-events .ev { padding: .25cqh .9cqh; border-radius: .7cqh; background: rgba(20,11,29,.78); border: 1px solid rgba(212,175,55,.35); color: #efe3cc; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+body.td-mode #td-hud .td-events .ev small { color: #a894b8; margin-left: .3em; }
+body.td-mode #td-hud .td-events .ev b { color: #9be15d; }
+body.td-mode #td-hud .td-events .ev.on { border-color: rgba(155,225,93,.55); }
+body.td-mode #td-hud .td-events .ev.hot { border-color: #b57dff; color: #ffd35c; }
 body.td-mode.touch .quest-track { max-height: 10cqh !important; }
 body.td-mode.touch .t-atk { right: calc(var(--hud-pad) + 2cqh + env(safe-area-inset-right, 0px)) !important; bottom: 24cqh !important; width: 25cqh !important; height: 25cqh !important; font-size: 11cqh; }
 body.td-mode.touch .t-fs { right: calc(var(--hud-pad) + 2cqh + env(safe-area-inset-right, 0px)) !important; bottom: 7cqh !important; width: 11cqh !important; height: 11cqh !important; }
@@ -453,6 +469,10 @@ body.wb-on #ticker { top: 17cqh; }
 /* ป้ายสถานะ PK (โหมดเปิด / ชื่อม่วง / หัวแดง) ใต้กรอบผู้เล่น */
 #pk-badge { position: absolute; left: calc(var(--hud-pad, 12px) + 45cqh); top: calc(var(--hud-pad, 12px) + .6cqh); z-index: 15; pointer-events: auto; cursor: pointer; white-space: nowrap;   /* ติดขอบขวากรอบโปรไฟล์ (กรอบกว้าง 44cqh) ไม่ซ่อนหลังกรอบ */
   padding: .35cqh 1.2cqh; border-radius: 1cqh; font-size: 1.9cqh; font-weight: 700; color: #fff; background: rgba(90,20,30,.88); border: .2cqh solid #ff6b5a; box-shadow: 0 0 1.2cqh rgba(255,60,50,.5); }
+#pk-badge { font-family: inherit; }
+#pk-badge.off { color: #cfd6e0; background: rgba(30,26,40,.82); border-color: #6b6f86; box-shadow: none; }
+#pk-badge.off:hover { color: #fff; border-color: #ff6b5a; }
+#pk-badge.on:hover { filter: brightness(1.15); }
 #pk-badge.hidden { display: none; }
 #pk-badge.purple { background: rgba(70,30,100,.9); border-color: #d38cff; box-shadow: 0 0 1.2cqh rgba(200,120,255,.5); }
 #pk-badge.red { background: rgba(140,10,10,.92); border-color: #ff4a3d; animation: pk-pulse 1.4s ease-in-out infinite; }

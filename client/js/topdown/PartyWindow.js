@@ -28,6 +28,17 @@ export const teamRank = (avg) => RANKS.find(([, v]) => avg >= v)[0];
 const jobOf = (m) => m.wj || m.job || 'villager';
 const frameOf = (lv) => (lv >= 100 ? 'gold' : lv >= 50 ? 'purple' : 'silver');
 
+/** สถานะหาร EXP ปาร์ตี้ตามกติกาจริงของ server: เพื่อนแมพเดียวกัน + เลเวลทุกคนห่างกันไม่เกิน PARTY.lvGap */
+export function partyExpState(scene, members, selfId) {
+  const same = members.filter((m) => m.id !== selfId && scene.remotes.has(m.id));
+  const lv = [scene.player?.char?.level || 1, ...same.map((m) => m.level || 1)];
+  const gap = same.length ? Math.max(...lv) - Math.min(...lv) : 0;
+  return { here: same.length, gap, ok: !!same.length && gap <= PARTY.lvGap };
+}
+const expHtml = (st, total, long) => (!st.here ? `✨ EXP ปาร์ตี้ — <small>${long ? 'เพื่อนแมพเดียวกัน' : 'แมพเดียวกัน'} 0/${total}${long ? ' คน' : ''}</small>`
+  : st.ok ? `✨ EXP ปาร์ตี้ +${Math.round(st.here * PARTY.mapBonus * 100)}% <small>${long ? `เพื่อนแมพเดียวกัน ${st.here}/${total} คน · หาร EXP กันทั้งแมพ` : `แมพเดียวกัน ${st.here}/${total}`}</small>`
+  : `⚠ ไม่แบ่ง EXP <small>เลเวลห่าง ${st.gap} (เกิน ${PARTY.lvGap})${long ? ' · ต่างคนต่างได้ EXP ของตัวเอง' : ''}</small>`);
+
 /** ข้อความผลบัฟ */
 export function buffText(b = {}) {
   const o = [];
@@ -134,10 +145,10 @@ export class PartyWindow {
       roles.has('range') ? '<span class="pw-tag">🏹 ตีไกล</span>' : '',
       roles.has('heal') ? '<span class="pw-tag heal">🌿 มีหมอยา</span>' : '<span class="pw-tag warn" title="ไม่มีหมอยาคอยรักษา/ชุบชีวิต">⚠ ไม่มีหมอยา</span>',
       `<span class="pw-tag">👥 ${P.members.length}/${PARTY.maxSize} คน</span>`].join('');
-    const here = P.members.filter((m) => m.id !== me && this.scene.remotes.has(m.id)).length;
+    const xs = partyExpState(this.scene, P.members, me), here = xs.ok ? xs.here : 0;
     setHtml(box.querySelector('.pw-head'), `<div class="pw-tags">${tags}</div>
       <div class="pw-title"><span>ปาร์ตี้ของ <b>${esc(lead?.name || '?')}</b></span><span class="pw-power"><b>⚔ ${fmt(sum)}</b> <small>พลังรวมทีม</small></span></div>
-      <div class="pw-exp${here ? ' on' : ''}">✨ EXP ปาร์ตี้ ${here ? `+${Math.round(here * PARTY.mapBonus * 100)}%` : '—'} <small>เพื่อนแมพเดียวกัน ${here}/${P.members.length - 1} คน · แบ่ง EXP ทั้งแมพ</small></div>`);
+      <div class="pw-exp${here ? ' on' : ''}${xs.here && !xs.ok ? ' warn' : ''}">${expHtml(xs, P.members.length - 1, true)}</div>`);
     // ---------- การ์ดสมาชิก (หัวหน้าก่อน → ตัวเรา → คนอื่น) ----------
     const order = [...P.members].sort((a, b) => (b.id === P.leader) - (a.id === P.leader) || (b.id === me) - (a.id === me));
     const wrap = box.querySelector('.pw-cards');
@@ -217,10 +228,10 @@ export class PartyWindow {
     if (!others.length) { pf.innerHTML = ''; this.rows.clear(); return; }
     let bonus = pf.querySelector('.pf-bonus');
     if (!bonus) { bonus = document.createElement('div'); bonus.className = 'pf-bonus'; pf.prepend(bonus); }
-    const here = others.filter((m) => this.scene.remotes.has(m.id)).length;
-    bonus.classList.toggle('on', !!here);
-    bonus.title = `เพื่อนปาร์ตี้ที่อยู่แมพเดียวกัน: EXP +${Math.round(PARTY.mapBonus * 100)}% ต่อคน และแชร์ EXP กันทั้งแมพ`;
-    setHtml(bonus, `✨ EXP ปาร์ตี้ ${here ? `+${Math.round(here * PARTY.mapBonus * 100)}%` : '—'} <small>แมพเดียวกัน ${here}/${others.length}</small>${this.following ? ' <b class="pf-fol" title="กำลังติดตามหัวหน้า">🧭</b>' : ''}`);
+    const xs = partyExpState(this.scene, P.members, this.selfId);
+    bonus.classList.toggle('on', xs.ok); bonus.classList.toggle('warn', xs.here > 0 && !xs.ok);
+    bonus.title = `เพื่อนแมพเดียวกันที่เลเวลห่างกันไม่เกิน ${PARTY.lvGap}: หาร EXP กันทั้งแมพ + โบนัส ${Math.round(PARTY.mapBonus * 100)}% ต่อคน`;
+    setHtml(bonus, `${expHtml(xs, others.length, false)}${this.following ? ' <b class="pf-fol" title="กำลังติดตามหัวหน้า">🧭</b>' : ''}`);
     const live = new Set(others.map((m) => m.id));
     for (const [id, el] of this.rows) if (!live.has(id)) { el.remove(); this.rows.delete(id); }
     for (const m of others) {

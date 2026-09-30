@@ -214,17 +214,28 @@ export class TdSocial {
     if (!on) this.pkTarget = null;
     document.body.classList.toggle('pk-on', this.pkOn);
     this.pkBadge();
-    this.ui.toast(msg || (on ? '☠️ เปิดโหมด PK · คลิกผู้เล่นในแดน (นอกค่ายพัก) เพื่อโจมตี · Shift+คลิก = เมนู · พิมพ์ /pk อีกครั้งเพื่อปิด' : '🕊️ ปิดโหมด PK'), on ? 'warn' : '', 3500);
+    this.ui.toast(msg || (on ? '☠️ เปิดโหมด PK · คลิกผู้เล่นในแดน (นอกค่ายพัก) เพื่อโจมตี · Shift+คลิก = เมนู · กดปุ่ม PK อีกครั้งเพื่อปิด' : '🕊️ ปิดโหมด PK'), on ? 'warn' : '', 3500);
     this.scene.sfx.play(on ? 'invite' : 'click');
   }
   /** ป้ายสถานะ PK มุมจอ (โหมดเปิด / ชื่อม่วง / หัวแดง) */
+  /** ปุ่ม PK เปิด/ปิด ข้างกรอบโปรไฟล์ (Lv.30+ เห็นตลอด) · บอกสถานะชื่อม่วง/หัวแดงด้วย */
   pkBadge() {
     let el = document.getElementById('pk-badge');
-    if (!el) { el = document.createElement('div'); el.id = 'pk-badge'; el.title = 'คลิกเพื่อปิดโหมด PK'; el.onclick = () => this.togglePk(false); document.getElementById('td-hud')?.appendChild(el); }
-    const me = this.selfPk;
-    el.className = me === 'red' ? 'red' : me === 'purple' ? 'purple' : '';
-    el.innerHTML = me === 'red' ? '☠️ หัวแดง' : me === 'purple' ? '⚔️ ชื่อม่วง' : '☠️ PK';
-    el.classList.toggle('hidden', !this.pkOn && !me);
+    if (!el) { el = document.createElement('button'); el.id = 'pk-badge'; el.type = 'button'; document.getElementById('td-hud')?.appendChild(el); }
+    if (el._owner !== this) {                                                   // ผูกกับ TdSocial ตัวปัจจุบัน (เปลี่ยนซีนแล้วไม่ซ้อนตัวจับเวลา)
+      clearInterval(el._t); el._owner = this; el._sig = null;
+      el.onclick = (e) => { e.stopPropagation(); this.togglePk(); };
+      el._t = setInterval(() => this.pkBadge(), 1000);                          // เลเวลถึง 30 ระหว่างเล่น → ปุ่มโผล่เอง
+    }
+    const me = this.selfPk, lv = this.player?.char?.level || 1, can = lv >= 30;
+    const sig = `${this.pkOn}|${me}|${can}`;
+    if (el._sig === sig) return;
+    el._sig = sig;
+    el.className = `${this.pkOn ? 'on' : 'off'}${me === 'red' ? ' red' : me === 'purple' ? ' purple' : ''}`;
+    el.innerHTML = `${this.pkOn ? '☠️ PK: เปิด' : '🕊️ PK: ปิด'}${me === 'red' ? ' · หัวแดง' : me === 'purple' ? ' · ชื่อม่วง' : ''}`;
+    el.title = this.pkOn ? 'คลิกเพื่อปิดโหมด PK · คลิกผู้เล่นในแดน (นอกค่ายพัก) = โจมตี · Shift+คลิก = เมนู'
+      : 'คลิกเพื่อเปิดโหมด PK (ตีผู้เล่นอื่นในแดนได้ · ห้ามในเมือง/ค่ายพัก/สุสาน/ลานราหู · ฆ่าคนบริสุทธิ์ = หัวแดง)';
+    el.classList.toggle('hidden', !can && !me);                               // ต่ำกว่า Lv.30 ซ่อน (ยกเว้นติดสถานะอยู่)
   }
   /** เลือกผู้เล่นเป็นเป้า PK แล้วเดินเข้าไปตี */
   pkAttack(id, fromMenu = false) {
@@ -239,7 +250,7 @@ export class TdSocial {
     this.ui.toast(`☠️ ล็อกเป้า ${r.name}`, 'warn', 1400);
   }
   /** เข้าเกม: บาปค้างจากรอบก่อน → ชื่อแดงทันที (ไม่ต้องรอ server) */
-  syncSelfPk() { if ((this.player?.char?.karma || 0) > 0 && this.selfPk !== 'red') { this.selfPk = 'red'; this.onPkState({ id: this.net.selfId, pk: 'red' }); } }
+  syncSelfPk() { if ((this.player?.char?.karma || 0) > 0 && this.selfPk !== 'red') { this.selfPk = 'red'; this.onPkState({ id: this.net.selfId, pk: 'red' }); } this.pkBadge(); }
   /** สีชื่อ PK ของใครสักคนเปลี่ยน */
   onPkState({ id, pk } = {}) {
     if (id === this.net.selfId) {

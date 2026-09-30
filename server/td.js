@@ -26,7 +26,7 @@ import { PARTY } from '../shared/constants.js';
 export const TD_SPAWN = { ...TD_MAPS.ayutthaya.spawn };
 const SPEED = 92;                   // ความเร็วเดินผู้เล่น (ตรงกับ client)
 const AGGRO = 110, LEASH = 260, RESPAWN_MS = 7000, STRIKE_MS = 260;
-const PARTY_LV_GAP = 15;                                          // ปาร์ตี้หาร EXP ได้เมื่อเลเวลห่างกันไม่เกินนี้ (แบบ RO Even Share)
+const PARTY_LV_GAP = PARTY.lvGap;                                 // ปาร์ตี้หาร EXP ได้เมื่อเลเวลห่างกันไม่เกินนี้ (ใช้ค่าเดียวกับ client)
 const BOSS_AGGRO = 150, BOSS_LEASH = 340, AOE_WARN_MS = 1000, BOSS_SHARE = 0.05;
 export const TD_MAP_V = 2;           // เวอร์ชันผังแผนที่ (2 = ขยายโซนรอบเมือง · เมืองเดิมเลื่อนไป OX ไทล์)
 const NPC_R = 56;                   // ระยะคุยกับ NPC
