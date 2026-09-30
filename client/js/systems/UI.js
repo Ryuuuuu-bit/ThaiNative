@@ -698,6 +698,8 @@ export class UI {
       $('#set-dmg').checked = st.damageNumbers; $('#set-mm').checked = st.minimap;
       $('#set-shake').checked = st.fxShake !== false; $('#set-flash').value = st.fxFlash || 'full'; $('#set-othersfx').value = st.otherSfx || 'full';
       $('#set-auto-hp').value = String(st.autoHp || 0); $('#set-auto-mp').value = String(st.autoMp || 0);
+      $('#set-touch').value = String(st.touchSize || 0);
+      if (st.touchSize) document.body.style.setProperty('--ts', String(st.touchSize / 100)); else document.body.style.removeProperty('--ts');   // 0 = ค่าตามอุปกรณ์ (hud.css)
       document.querySelector('.minimap').classList.toggle('hidden', !st.minimap);
     };
     const apply = () => { this.scene.sfx.applySettings(st); saveSettings(st); sync(); };
@@ -713,6 +715,7 @@ export class UI {
     $('#set-othersfx').onchange = (e) => { st.otherSfx = e.target.value; apply(); };
     $('#set-auto-hp').onchange = (e) => { st.autoHp = +e.target.value; apply(); };
     $('#set-auto-mp').onchange = (e) => { st.autoMp = +e.target.value; apply(); };
+    $('#set-touch').onchange = (e) => { st.touchSize = +e.target.value; apply(); };
     $('#set-fullscreen').onclick = () => toggleFullscreen();
     $('#set-close').onclick = () => this.toggle('settings-panel', false);
     apply();

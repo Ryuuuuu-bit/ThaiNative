@@ -23,7 +23,7 @@ const ITEMS_BASE = {
   yant_staff:  { nameTh: 'คทาลงยันต์',       type: 'weapon', icon: '🔮', price: 340, wtype: 'staff', bonus: { matk: 22, mp: 30 } },
   bamboo_bow:  { nameTh: 'ธนูไม้ไผ่',         type: 'weapon', icon: '🏹', price: 80,  sell: 10, wtype: 'bow', bonus: { atk: 5, DEX: 2 } },
   horn_bow:    { nameTh: 'ธนูเขาควาย',        type: 'weapon', icon: '🎯', price: 330, wtype: 'bow', bonus: { atk: 15, DEX: 4 } },
-  hand_wrap:   { nameTh: 'ผ้าพันมือคาดเชือก',   type: 'weapon', icon: '🥊', price: 80,  wtype: 'wraps', bonus: { atk: 5, STR: 1 } },
+  hand_wrap:   { nameTh: 'ผ้าพันมือคาดเชือก',   type: 'weapon', icon: '🥊', price: 80,  sell: 10, wtype: 'wraps', bonus: { atk: 5, STR: 1 } },
   herb_staff:  { nameTh: 'ไม้เท้าเถาบอระเพ็ด', type: 'weapon', icon: '🌿', price: 80,  sell: 10, wtype: 'herb', art: 'g_healer_w01', bonus: { matk: 7, mp: 10, hp: 10 } },
   mongkol:     { nameTh: 'มงคลศักดิ์สิทธิ์',     type: 'weapon', icon: '🪢', price: 320, wtype: 'wraps', bonus: { atk: 14, VIT: 3, crit: 0.02 } },
 
@@ -261,7 +261,7 @@ export const SHOPS = {
 
 export const STARTING_GOLD = 150;
 export const STARTING_ITEMS = [{ id: 'hp_s', qty: 3 }, { id: 'mp_s', qty: 2 }, { id: 'yant_home', qty: 3 },
-  { id: 'wood_sword', qty: 1 }, { id: 'oak_staff', qty: 1 }, { id: 'bamboo_bow', qty: 1 }, { id: 'herb_staff', qty: 1 }];   // อาวุธฝึกให้ลองทุกแนว
+  { id: 'wood_sword', qty: 1 }, { id: 'oak_staff', qty: 1 }, { id: 'bamboo_bow', qty: 1 }, { id: 'hand_wrap', qty: 1 }, { id: 'herb_staff', qty: 1 }];   // อาวุธฝึกให้ลองทุกแนว
 
 /** แนวต่อสู้ตามชนิดอาวุธ → id สายใน classes.js */
 export const WTYPE_JOB = { sword: 'swordman', staff: 'mage', bow: 'archer', wraps: 'boxer', herb: 'healer' };

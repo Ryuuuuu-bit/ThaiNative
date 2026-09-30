@@ -394,6 +394,11 @@ export function migrate(c) {
   if (!c.flaskCh || typeof c.flaskCh !== 'object') c.flaskCh = {};
   for (const s of FLASK_SLOTS) { const f = ITEMS[c.equipment[s]]?.flask; c.flaskCh[s] = f ? Math.max(0, Math.min(f.max, Number.isFinite(+c.flaskCh[s]) ? +c.flaskCh[s] : f.max)) : 0; }
   if (!Array.isArray(c.inventory)) c.inventory = [];
+  // ผ้าพันมือ (อาวุธฝึกสายมวย) เคยตกหล่นจากชุดเริ่มต้น → แจกครั้งเดียวให้ตัวที่ยังไม่มีอาวุธสายมวยเลย
+  if (!c.starterWrap) {
+    c.starterWrap = true;
+    if (ITEMS[c.equipment.weapon]?.wtype !== 'wraps' && !c.inventory.some((s) => ITEMS[s?.id]?.wtype === 'wraps')) c.inventory.push({ id: 'hand_wrap', qty: 1 });
+  }
   // ระบบชุดแต่งตัวเอาออกจากเกมแล้ว → คืนเงินครั้งเดียว (ชุดในกระเป๋า + ที่สวมอยู่) · ต้องทำก่อนกรองไอเทมที่ไม่มีในเกม
   if (!c.cosRefund) {
     let gold = 0, n = 0;
