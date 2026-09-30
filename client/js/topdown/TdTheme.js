@@ -518,7 +518,20 @@ export class TdMinimap {
       g.beginPath(); g.arc(cx, cy, r, 0, Math.PI * 2); g.fillStyle = c; g.fill(); g.lineWidth = 1; g.strokeStyle = ring; g.stroke();
     };
     for (const m of s.mobs || []) if (m.alive && !m.def?.boss) dot(m.x, m.y, '#ff5a5a', 1.3, 'rgba(60,0,0,.6)');
-    for (const pt of s.layout?.portals || []) dot(pt.x, pt.y, '#c79bff', 3, '#ffffff');                                  // ประตูมิติ
+    // ประตูมิติ · สุสาน: บันไดลงสีฟ้า (ชั้นบอสสีแดง) ใหญ่กว่า · ทางกลับสีทอง
+    const pcol = (pt) => (pt.to === 'crypt_down' ? (pt.boss ? '#ff5a4a' : '#8fd0ff') : pt.to === 'crypt_exit' ? '#ffd27a' : '#c79bff');
+    for (const pt of s.layout?.portals || []) dot(pt.x, pt.y, pcol(pt), pt.to === 'crypt_down' ? 3.8 : 3, '#ffffff');
+    // บันไดลงอยู่นอกกรอบมินิแมพ → ลูกศรที่ขอบชี้ไปทางนั้น
+    for (const pt of s.layout?.portals || []) {
+      if (pt.to !== 'crypt_down') continue;
+      const [qx, qy] = at(pt.x, pt.y); if (qx >= 0 && qy >= 0 && qx <= W && qy <= H) continue;
+      const [mx, my] = at(p.x, p.y), a = Math.atan2(qy - my, qx - mx), M = 7;
+      const k = Math.min(Math.abs((Math.cos(a) > 0 ? W - M - mx : mx - M) / (Math.cos(a) || 1e-6)), Math.abs((Math.sin(a) > 0 ? H - M - my : my - M) / (Math.sin(a) || 1e-6)));
+      g.save(); g.translate(mx + Math.cos(a) * k, my + Math.sin(a) * k); g.rotate(a);
+      g.globalAlpha = time % 1000 < 600 ? 1 : 0.55;
+      g.beginPath(); g.moveTo(6, 0); g.lineTo(-4, -5); g.lineTo(-4, 5); g.closePath();
+      g.fillStyle = pcol(pt); g.fill(); g.lineWidth = 1.2; g.strokeStyle = '#ffffff'; g.stroke(); g.restore();
+    }
     for (const n of s.npcs || []) dot(n.x, n.y, '#ffd35c', 2.3);
     s.remotes?.forEach((r) => dot(r.x, r.y, '#6ec8ff', 2.2));
     for (const m of s.mobs || []) if (m.alive && m.def?.boss) dot(m.x, m.y, time % 800 < 400 ? '#ff2d2d' : '#ffd76a', 3.6, '#000');   // บอส (กะพริบ)

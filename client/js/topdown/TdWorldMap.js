@@ -100,10 +100,7 @@ export class TdWorldMap {
         const p = this.s.player; p.target = null; p.autoTarget = null;
         this.panel.classList.add('hidden');
         this.s.talk(n);
-        if (this.s.pendingTalk === n) {
-          if (!p.path?.length) { this.s.pendingTalk = null; return this.s.ui.toast('หาทางไปไม่เจอ ลองเดินเข้าใกล้ก่อน', 'warn', 1800); }
-          this.s.ui.toast(`🚶 กำลังเดินไปหา ${n.nameTh} (เดินเอง/คลิกพื้นเพื่อยกเลิก)`, '', 2200);
-        }
+        if (this.s.pendingTalk === n) this.s.ui.toast(`🚶 กำลังเดินไปหา ${n.nameTh} (เดินเอง/แตะพื้นเพื่อยกเลิก)`, '', 2200);   // หาทางไม่เจอ → talk() แจ้งเอง
       };
     });
     stage.onclick = (e) => {
@@ -126,7 +123,11 @@ export class TdWorldMap {
       const m = MONSTERS[c.id]; if (!m) continue;
       tags.push(`<div class="wm-camp" style="${P(c.x, c.y)}"><i></i><span><em>${m.level}</em></span></div>`);
     }
-    for (const pt of this.s.layout.portals || []) { const T2 = TD_MAPS[pt.to]; if (T2) tags.push(`<div class="wm-boss wm-portal" style="${P(pt.x, pt.y)}"><i>🌀</i><span>${esc(T2.nameTh)} <em>Lv.${T2.reqLv}+</em></span></div>`); }
+    for (const pt of this.s.layout.portals || []) {
+      const T2 = TD_MAPS[pt.to];
+      if (T2) tags.push(`<div class="wm-boss wm-portal" style="${P(pt.x, pt.y)}"><i>🌀</i><span>${esc(T2.nameTh)} <em>Lv.${T2.reqLv}+</em></span></div>`);
+      else if (pt.to.startsWith('crypt_')) tags.push(`<div class="wm-boss wm-portal" style="${P(pt.x, pt.y)}"><i>🌀</i><span>${esc(this.s.cryptLabel(pt).replace(/\s+/g, ' '))}</span></div>`);   // สุสาน: บันไดลงชั้นถัดไป / ทางกลับ
+    }
     for (const n of this.s.layout.npcs || []) tags.push(`<div class="wm-npc" style="${P(n.x, n.y)}" title="${esc(n.nameTh)} · ${esc(n.role || '')}"><i></i></div>`);
     for (const sp of (this.s.layout.spawns || []).filter((q) => q.boss)) {
       const m = MONSTERS[sp.id]; if (!m) continue;
@@ -151,7 +152,7 @@ export class TdWorldMap {
     for (const sp of this.s.layout.spawns || []) { if (!sp.boss) continue; const d = Math.hypot(sp.x - wx, sp.y - wy); if (d < bd) { bd = d; best = `👑 ${MONSTERS[sp.id]?.nameTh} Lv.${MONSTERS[sp.id]?.level}`; } }
     for (const c of this.camps) { const d = Math.hypot(c.x - wx, c.y - wy); if (d < bd) { bd = d; best = `👻 ${MONSTERS[c.id]?.nameTh} Lv.${MONSTERS[c.id]?.level}`; } }
     for (const n of this.s.layout.npcs || []) { const d = Math.hypot(n.x - wx, n.y - wy); if (d < bd * 0.6) { bd = d / 0.6; best = `🧑 ${n.nameTh} · ${n.role || ''}`; } }
-    for (const pt of this.s.layout.portals || []) { const d = Math.hypot(pt.x - wx, pt.y - wy); if (d < bd) { bd = d; best = `🌀 ประตูมิติ → ${TD_MAPS[pt.to]?.nameTh} (Lv.${TD_MAPS[pt.to]?.reqLv}+)`; } }
+    for (const pt of this.s.layout.portals || []) { const d = Math.hypot(pt.x - wx, pt.y - wy); if (d < bd) { bd = d; best = TD_MAPS[pt.to] ? `🌀 ประตูมิติ → ${TD_MAPS[pt.to].nameTh} (Lv.${TD_MAPS[pt.to].reqLv}+)` : `🌀 ${this.s.cryptLabel(pt).replace(/\s+/g, ' ')}`; } }
     return best;
   }
 

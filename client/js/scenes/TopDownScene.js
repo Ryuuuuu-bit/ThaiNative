@@ -679,7 +679,15 @@ export class TopDownScene extends Phaser.Scene {
   talk(n, quick = false) {
     const p = this.player;
     if (!n) return;
-    if (dist(p, n) > 52) { this.moveTo(n.x, n.y + 14); this.pendingTalk = n; this.pendingQuick = quick; return; }
+    if (dist(p, n) > 52) {
+      const again = this.pendingTalk === null && this.talkRetry?.n === n && performance.now() - this.talkRetry.t < 1500;   // เพิ่งเดินถึงปลายทางแล้วยังไม่ใกล้พอ (NPC ขยับ)
+      const tries = again ? this.talkRetry.k + 1 : 0;
+      this.moveTo(n.x, n.y + 14);
+      if (!p.path.length || tries > 2) { p.path = []; this.talkRetry = null; this.ui.toast(tries > 2 ? `เดินไปหา ${n.nameTh || 'NPC'} ไม่ถึง ลองเดินเข้าใกล้อีกนิด` : 'หาทางไปไม่เจอ ลองเดินเข้าใกล้ก่อน', 'warn', 1800); return; }
+      this.pendingTalk = n; this.pendingQuick = quick; this.talkRetry = { n, k: tries, t: 0 };
+      return;
+    }
+    this.talkRetry = null;
     this.pendingTalk = null; this.pendingQuick = false;
     this.npcLife?.unhover();
     this.sfx.play('npc');
@@ -739,7 +747,7 @@ export class TopDownScene extends Phaser.Scene {
   setTarget(m, auto = false) {
     if (!m.alive) return;
     this.player.target = m; this.player.path = [];
-    if (!auto) { this.player.autoTarget = null; this.social?.pw?.stopFollow(); }   // เลือกเองด้วยมือ → ไม่ยอมแพ้ไล่เป้าอัตโนมัติ · เลิกติดตามหัวหน้า
+    if (!auto) { this.player.autoTarget = null; this.pendingTalk = null; this.social?.pw?.stopFollow(); }   // เลือกเองด้วยมือ → ไม่ยอมแพ้ไล่เป้าอัตโนมัติ · เลิกติดตามหัวหน้า
     this.ui.setTarget({ def: { ...m.def, hp: m.maxHp }, get hp() { return m.hp; }, get alive() { return m.alive; } });
     if (!auto) this.sfx.play('target');
   }
@@ -1554,7 +1562,7 @@ export class TopDownScene extends Phaser.Scene {
     return [];
   }
 
-  moveTo(x, y) { const p = this.player; if (p.alive) p.path = this.findPath(p.x, p.y - 2, x, y); }
+  moveTo(x, y) { const p = this.player; this.pendingTalk = null; if (p.alive) p.path = this.findPath(p.x, p.y - 2, x, y); }   // สั่งเดินที่ใหม่ = เลิกเดินไปคุย NPC ที่ค้างอยู่ (talk() ตั้งกลับเองหลังเรียก)
 
   /**
    * กันติดสิ่งก่อสร้าง: เดินตามทาง (คลิก/Auto) แต่ตำแหน่งไม่ขยับเกิน 0.45 วิ
@@ -1615,7 +1623,7 @@ export class TopDownScene extends Phaser.Scene {
         while (time > (p.noShortcut || 0) && p.path.length > 1 && this.lineClear(p.x, p.y - 2, p.path[1].x, p.path[1].y)) p.path.shift();
         const n = p.path[0], dx = n.x - p.x, dy = n.y - (p.y - 2), d = Math.hypot(dx, dy);
         if (d < 5) p.path.shift(); else { vx = dx / d; vy = dy / d; }
-        if (!p.path.length && this.pendingTalk) { const n2 = this.pendingTalk, q2 = this.pendingQuick; this.pendingTalk = null; this.talk(n2, q2); }
+        if (!p.path.length && this.pendingTalk) { const n2 = this.pendingTalk, q2 = this.pendingQuick; this.pendingTalk = null; if (this.talkRetry) this.talkRetry.t = performance.now(); this.talk(n2, q2); }
       }
       if (p.st === 'attack') p.setVelocity(0, 0);
       else if (vx || vy) {
