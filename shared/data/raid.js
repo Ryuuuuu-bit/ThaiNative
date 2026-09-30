@@ -24,6 +24,6 @@ export const RAID_BOSS = {
     roar:  { nameTh: 'คำรามอสูร',      windup: 1300, range: 260, dmg: 80, cd: 9000 },   // รอบตัว + ติดมึนงง
     rain:  { nameTh: 'ห่าไฟนรก',       windup: 1100, range: 0,   dmg: 125, cd: 7000, count: 5 }, // ลูกไฟตกเป็นจุด
   },
-  rewards: { exp: 6000, gold: 1500, items: [['hp_m', 3], ['mp_m', 2], ['yak_fang', 1]], rare: [['acc_yant_gold', 0.2], ['cs_head_emperor', 0.1], ['yant_guard', 0.25]] },
+  rewards: { exp: 6000, gold: 1500, items: [['hp_m', 3], ['mp_m', 2], ['yak_fang', 1]], rare: [['acc_yant_gold', 0.2], ['yant_guard', 0.25]] },
   maxHitPerLevel: 90,      // ดาเมจต่อครั้งสูงสุดที่ server ยอมรับ = 400 + lv*90 (กันโกง)
 };

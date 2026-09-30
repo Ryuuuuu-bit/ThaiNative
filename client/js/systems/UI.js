@@ -36,6 +36,7 @@ import { CardUI } from './Cards.js';
 import { askQty } from './QtyPicker.js';
 import { GuideBook } from './GuideBook.js';
 import { ShopViews } from './ShopUI.js';
+import { MarketViews, MK_TABS } from './MarketUI.js';
 import { CARD_BY_ID, SLOT_CARD, CARD_SLOT_TH, socketCount, cardText } from '/shared/data/cards.js';
 import { KINDS, rarityOf, newFilter, loadFilter, saveFilter, applyFilter, filterBarHtml, bindFilterBar, gainBadge, gainText, cpGain, bestSlotFor, bestLoadout, cardGain, bestCardSlot, baseCp, canWear, isMine } from './ItemFilter.js';
 import { ItemTip, impactLine, inlineStats, itemCard } from './ItemTip.js';
@@ -94,6 +95,7 @@ export class UI {
 
     this.cards = new CardUI(this);
     this.guide = new GuideBook(this);
+    this.mkV = new MarketViews(this);
     this.shopV = new ShopViews(this);
     this.itemTip = new ItemTip(this, rarityOf);
     this.setupLayoutGuard();
@@ -975,9 +977,6 @@ export class UI {
     $('#inv-equip').innerHTML = `<div class="eq-head"><span class="eq-cp">⚔ ค่าพลังรวม <b>${cpNow.toLocaleString('en-US')}</b></span>
       <button class="btn sm ${plan.length ? 'primary' : 'ghost'}" data-bestgear ${plan.length ? '' : 'disabled'} title="สวมของในกระเป๋าที่ให้ค่าพลังรวมสูงสุดทุกช่อง">⚡ ใส่ชุดที่ดีที่สุด${plan.length ? ` (${plan.length})` : ''}</button></div>
       <div class="eq-grid">${['weapon', 'helm', 'accessory', 'armor', 'accessory2', 'gloves', 'boots', 'flask', 'belt', 'flask2'].map(cell).join('')}</div>`;
-    const COS_TH = { head: 'หมวก/มงกุฎ', face: 'หน้ากาก', back: 'ของหลัง', outfit: 'ชุดแต่งตัว' };
-    $('#inv-equip').innerHTML += `<div class="eq-cos">${Object.entries(COS_TH).map(([slot, th]) => { const id = c.costume?.[slot];
-      return `<div class="eq cos"><small>${th}</small>${id ? `${itemIcon(id, ITEMS[id].icon)} ${ITEMS[id].nameTh} <button class="close" data-uncos="${slot}">✕</button>` : '—'}</div>`; }).join('')}</div>`;
     // โบนัสชุดประจำสาย
     const si = setInfo(c.equipment);
     const fmt = (b) => inlineStats(b);
@@ -987,7 +986,6 @@ export class UI {
       : '<div class="set-box off"><span class="meta">✦ โบนัสชุด: สวมอุปกรณ์สายเดียวกัน 2/3/4/6 ชิ้น (ซื้อจากครูประจำสาย) จะได้โบนัสเพิ่ม · ยิ่งเลเวลของสูงยิ่งแรง</span></div>';
     const eqEl = $('#inv-equip');
     eqEl.querySelectorAll('[data-unequip]').forEach((b) => (b.onclick = (e) => { e.stopPropagation(); this.result(this.scene.econ.act('unequip', { slot: b.dataset.unequip })); }));
-    eqEl.querySelectorAll('[data-uncos]').forEach((b) => (b.onclick = () => this.result(this.scene.econ.act('cosOff', { slot: b.dataset.uncos }))));
     eqEl.querySelectorAll('[data-eqslot]').forEach((d) => {
       const slot = d.dataset.eqslot, t = typeOfSlot(slot);
       // คลิก = กรองกระเป๋าให้เหลือของที่ใส่ช่องนี้ได้ (คลิกซ้ำ = ยกเลิก) · ดับเบิลคลิก = ถอด
@@ -1024,7 +1022,7 @@ export class UI {
     // ---------- กระเป๋าแบบ Ragnarok + ตัวกรองมาตรฐาน (หมวด · ช่อง · สายฉัน · ใส่ได้ · ▲ ดีกว่า · หายาก · เรียง · ค้นหา) ----------
     //  คลิก = เลือก · ดับเบิลคลิก = ใช้/สวม · คลิกขวา = ล็อก · ลากไปหุ่น/Hotbar ได้
     const list = applyFilter(c, c.inventory, f);
-    const ACT = { home: 'ใช้', consumable: 'ใช้', food: 'กิน', offering: 'ถวาย', weapon: 'ถือ', armor: 'สวม', helm: 'สวม', gloves: 'สวม', boots: 'สวม', belt: 'คาด', accessory: 'สวม', flask: 'ใส่', costume: 'แต่ง', reset: 'ใช้', reskill: 'ใช้', rename: 'ใช้', card: 'ใส่การ์ด' };
+    const ACT = { home: 'ใช้', consumable: 'ใช้', food: 'กิน', offering: 'ถวาย', weapon: 'ถือ', armor: 'สวม', helm: 'สวม', gloves: 'สวม', boots: 'สวม', belt: 'คาด', accessory: 'สวม', flask: 'ใส่', reset: 'ใช้', reskill: 'ใช้', rename: 'ใช้', card: 'ใส่การ์ด' };
     const actOf = (id) => { const it = ITEMS[id]; return it.type === 'skin' ? (c.path === it.job ? null : 'เปลี่ยนสาย') : ACT[it.type] || null; };
     const cells = list.length;   // ช่องว่างเติมหลังวาด (ตามจำนวนคอลัมน์จริง) ดู fillGrid
     const sel = list.some((st) => st.id === this.invSel) ? this.invSel : null;
@@ -1115,7 +1113,7 @@ export class UI {
     if (tabs.includes('sell') && !tabs.includes('buyback')) tabs.splice(tabs.indexOf('sell') + 1, 0, 'buyback');   // ซื้อคืนของที่เพิ่งขาย (กันขายพลาด)
     this.shopTabs = tabs;
     this.shopTab = tabs[0];
-    this.shopV.tryOn = {};
+    if (shopId === 'market') this.mkV.fetch(true);                        // ข้อมูลตลาดล่าสุด
     this.closeAll();
     this.toggle('shop-panel', true);
   }
@@ -1129,7 +1127,10 @@ export class UI {
     pan.classList.toggle('selling', this.shopTab === 'sell');
     pan.dataset.tab = this.shopTab;
     const sell = this.shopTab === 'sell' || this.shopTab === 'buyback';
-    el.classList.toggle('sh-pad', !['buy', 'enhance', 'cook', 'brew', 'forge', 'sell'].includes(this.shopTab));
+    el.classList.toggle('sh-pad', !['buy', 'enhance', 'cook', 'brew', 'forge', 'sell', 'barter', 'demand', 'market', 'mylist', 'orders'].includes(this.shopTab));
+    if (MK_TABS.has(this.shopTab)) return this.shopTab === 'travel' ? this.mkV.travelShop(el) : this.mkV[this.shopTab](el);
+    if (this.shopTab === 'demand') return this.mkV.demand(el, this.shopId);
+    if (this.shopTab === 'barter') return V.craft(el, 'barter', 'เอาของดรอปที่เหลือเยอะมาแลกเป็นเบี้ยสำเภา แล้วใช้เบี้ยแลกของดี · เบี้ยได้จากรับซื้อพิเศษประจำวันด้วย (ทุก 10 ชิ้น)');
     if (this.shopTab === 'enhance') return V.enhance(el, this.shopId);
     if (this.shopTab === 'cards') return this.cards.renderTrade(el);
     if (this.shopTab === 'cook') return V.craft(el, 'cook', 'ตกปลาได้ทุกที่ริมน้ำ (คูเมือง/แม่น้ำ/บึง) · หน่อไม้ป่าเก็บได้ในป่าไผ่ปู่โสม · กลางคืนมีโอกาสได้ปลาพรายวิญญาณ');
@@ -1138,7 +1139,7 @@ export class UI {
     if (this.shopTab === 'dye') return this.renderDye(el);
     if (this.shopTab === 'quests') return this.scene.village.renderQuestList(el, this.shopId);
     if (this.shopTab === 'buyback') return this.renderBuyback(el);
-    if (this.shopTab === 'buy') return this.shopId === 'tailor' ? V.buyTailor(el, this.shopId) : shop.job ? V.buyTeacher(el, this.shopId) : V.buyList(el, this.shopId);
+    if (this.shopTab === 'buy') return shop.job ? V.buyTeacher(el, this.shopId) : V.buyList(el, this.shopId);
     if (sell) return this.renderSell();
     return this.renderSell();
   }
@@ -1299,9 +1300,8 @@ export class UI {
   preview(id) {
     const s = this.scene, p = s.player, it = ITEMS[id];
     if (!it) return;
-    const a = { ...p.char.appearance, costume: { ...(p.char.appearance.costume || {}) } };
-    if (it.type === 'costume') a.costume[it.slot] = id;
-    else if (it.type === 'armor') a.armor = id;
+    const a = { ...p.char.appearance };
+    if (it.type === 'armor') a.armor = id;
     else if (it.type === 'weapon') a.weapon = id;
     p.previewAppearance(a);
     this.toast(`👁 ลองใส่ ${it.nameTh} (ดูตัวละคร 6 วิ)`);

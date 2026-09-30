@@ -45,8 +45,9 @@ import { ALL_ASSETS } from '/shared/data/td_assets.js';
 import { bakeGround, makeWater, TdAtmosphere, bakeTdFx, TdVfx, TdMinimap } from '../topdown/TdTheme.js';
 import { uiBlocked } from '../systems/uiGuard.js';
 import { NpcDialog } from '../topdown/NpcDialog.js';
+import { notice } from '../systems/Dialog.js';
+import { NpcLife, SERVICE } from '../topdown/NpcLife.js';
 import { heroId, baseHeroId } from '../systems/HeroPreview.js';
-import { CostumeOverlay } from '../topdown/CostumeOverlay.js';
 import { Townsfolk } from '../topdown/Townsfolk.js';
 const NONE = '__none';                                  // autoMobs: ยกเลิกทั้งหมด (Auto ไม่ไล่ตีผี)
 
@@ -63,8 +64,8 @@ const AYT_SPAWN = TD_SPAWN;                                 // ลานน้�
 const HP_POTS = ['hp_s', 'hp_m', 'pot_aloe', 'pot_turmeric'];
 const MP_POTS = ['mp_s', 'mp_m', 'pot_anchan'];
 /** NPC → หน้าต่างบริการ (ชุดเดียวกับโลกเดิม) */
-const NPC_OPEN = { shop: 'mae_kha', smith: 'lung_dam', cook: 'pa_sa', tailor: 'tailor', kru_sword: 'kru_sword', kru_mage: 'kru_mage', kru_archer: 'kru_archer', kru_boxer: 'kru_boxer', kru_healer: 'kru_healer' };
-const NPC_ICON = { shop: '🧪', quest: '❗', smith: '🔨', tailor: '👘', cook: '🍲', kru_sword: '⚔️', kru_mage: '🔮', kru_archer: '🏹', kru_boxer: '🥊', kru_healer: '🌿', crypt: '💀' };
+const NPC_OPEN = { market: 'market', travel: 'travel', shop: 'mae_kha', smith: 'lung_dam', cook: 'pa_sa', tailor: 'tailor', kru_sword: 'kru_sword', kru_mage: 'kru_mage', kru_archer: 'kru_archer', kru_boxer: 'kru_boxer', kru_healer: 'kru_healer' };
+const NPC_ICON = { market: '⚓', travel: '🎁', shop: '🧪', quest: '❗', smith: '🔨', tailor: '👘', cook: '🍲', kru_sword: '⚔️', kru_mage: '🔮', kru_archer: '🏹', kru_boxer: '🥊', kru_healer: '🌿', crypt: '💀' };
 const rand = (a, b) => a + Math.random() * (b - a);
 const dist = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
 const DIRS = ['east', 'south-east', 'south', 'south-west', 'west', 'north-west', 'north', 'north-east'];
@@ -136,16 +137,15 @@ export class TopDownScene extends Phaser.Scene {
     this.vfx = new TdVfx(this);
     this.skills = new TdSkills(this);
     this.weapons = new WeaponOverlay(this);
-    this.costumes = new CostumeOverlay(this);
     this.touch = new TouchControls(this);
     this.ui.chatBox?.load(`${account.slot ?? 0}_${char.name}`);
     if (document.body.classList.contains('touch')) this.ui.chatBox?.collapse(true);
     this.weapons.attach(this.player, () => this.player.look(), () => ({ anim: this.player.st }));
-    this.costumes.attach(this.player, () => this.player.look());
     this.minimap = new TdMinimap(this.groundMini);
     this.zone = null;
     this.ui.updateHud();
     this.setupNetwork();
+    this.time.delayedCall(2500, () => this.cosRefundNotice());          // เคยมีชุดแต่งตัว → แจ้งยอดเงินที่คืน
     if ((this.player?.char?.level || 1) > 3) this.ui.news?.autoOpen();   // มีข่าวใหม่ → เปิดกระดานข่าวครั้งเดียว · ตัวใหม่ (Lv.1–3) ให้เห็นการแนะนำก่อน
     if (this.econ.server) { this.social = new TdSocial(this); this.wb = new WorldBossUI(this); this.wb.bind(this.net); }   // บอสโลกพระราหู           // ปาร์ตี้ · เทรด · เพื่อน · อันดับ · ฉายา (ต้องออนไลน์)
     this.ui.toast(this.M.realm ? `${this.M.icon} ${this.M.nameTh} · ${this.M.sub}` : '🏯 ยินดีต้อนรับสู่กรุงศรีอยุธยา · คลิกพื้นเพื่อเดิน คลิกผีเพื่อโจมตี · คลิก NPC เพื่อเปิดร้าน', '', 6000);
@@ -542,27 +542,66 @@ export class TopDownScene extends Phaser.Scene {
   //  NPC
   // ------------------------------------------------------------
   buildNpcs() {
-    this.npcs = this.layout.npcs.map((n) => {
+    this.npcs = this.layout.npcs.map((n) => this.makeNpc(n));
+    if (this.travelState) this.onTravel(this.travelState);
+  }
+
+  /** สร้าง NPC 1 ตัว (สไปรต์ · ป้ายชื่อ · ป้ายบริการ · เครื่องหมายเควส) → คืนอ็อบเจกต์ NPC */
+  makeNpc(n) {
+    const life = (this.npcLife ||= new NpcLife(this));
+    {
+      let o = null;                                                                     // ตัว NPC (สร้างท้ายฟังก์ชัน)
       const real = this.textures.exists(n.key), key = real ? n.key : 'npc_maekha';
       const spr = this.add.sprite(n.x, n.y, key, 'idle_0').setOrigin(0.5, 1).setDepth(n.y);
       spr.legacyKey = key; spr.d8id = n.key; playDir(spr, 'idle', 'south');
       this.addShadow(spr, 20);
       const plateTop = this.npcPlate(n, spr);
       spr.setInteractive({ useHandCursor: true });
-      spr.on('pointerdown', (ptr) => { if (uiBlocked(ptr)) return; ptr.event.stopPropagation(); this.talk(n); });
-      spr.on('pointerover', () => { this.hovered = spr; document.body.dataset.cursor = 'talk'; });
-      spr.on('pointerout', () => { if (this.hovered === spr) this.hovered = null; delete document.body.dataset.cursor; });
+      spr.on('pointerdown', (ptr) => { if (uiBlocked(ptr)) return; ptr.event.stopPropagation(); this.talk(o, ptr.rightButtonDown()); });   // คลิกขวา = ทางลัด
+      spr.on('pointerover', (ptr) => { this.hovered = spr; document.body.dataset.cursor = 'talk'; life.hover(o, ptr); });
+      spr.on('pointermove', (ptr) => life.moveTip(ptr));
+      spr.on('pointerout', () => { if (this.hovered === spr) this.hovered = null; delete document.body.dataset.cursor; life.unhover(o); });
       if (n.id === 'quest' || /^kru_/.test(n.id)) {                                        // เครื่องหมาย !/? ทองลอยเหนือป้ายชื่อ (ผู้ใหญ่ชัย + ครูประจำอาชีพ)
-        const y0 = plateTop - 9;                                                          // ลอยเหนือกรอบป้าย ไม่ทับ
+        const y0 = plateTop - 9, qx = SERVICE[n.id] ? n.x + 12 : n.x;                    // ลอยเหนือกรอบป้าย ไม่ทับ · ครูมีป้ายร้านอยู่กลาง → ขยับไปขวา
         const g = this.add.graphics().setDepth(n.y + 3);
         g.fillStyle(0x5a1611, 1).fillCircle(0, 0, 6).lineStyle(1.5, 0xf4d03f).strokeCircle(0, 0, 6);
         const t = makeText(this, 0, 1, '!', { fontSize: '9px', color: '#ffe082' }).setOrigin(0.5);
-        const q = this.add.container(n.x, y0, [g, t]).setDepth(n.y + 3);
+        const q = this.add.container(qx, y0, [g, t]).setDepth(n.y + 3);
+        n._qmark = q;
         this.tweens.add({ targets: q, y: y0 - 4, duration: 650, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
         (this.questMarks ||= {})[n.id] = { q, g, t }; this.updateQuestMark();
       }
-      return { ...n, icon: NPC_ICON[n.id], spr, line: 0 };
-    });
+      o = { ...n, icon: NPC_ICON[n.id], spr, line: 0 };
+      life.attach(o, plateTop);
+      if (n._qmark) { const off = n._qmark.x - n.x, q = n._qmark; o._follow.push({ get x() { return q.x - off; }, set x(v) { q.x = v + off; } }); }
+      o._shadow = this.shadows[this.shadows.length - 1]?.obj === spr ? this.shadows[this.shadows.length - 1] : this.shadows.find((sh) => sh.obj === spr);
+      return o;
+    }
+  }
+
+  /** ลบ NPC (พ่อค้าเร่เก็บร้าน) */
+  removeNpc(o) {
+    if (!o) return;
+    this.npcLife?.unhover(o);
+    for (const x of [o.spr, o._box, o._svc, o._qmark, o._shadow?.img]) x?.destroy?.();
+    this.shadows = this.shadows.filter((sh) => sh.obj !== o.spr);
+    this.npcs = this.npcs.filter((n) => n !== o);
+    if (this.talkNpc === o) this.talkNpc = null;
+  }
+
+  /** พ่อค้าเร่ (server ส่งสถานะ mk:travel) → โผล่/หายในอยุธยา */
+  onTravel(t) {
+    this.travelState = t;
+    if (this.ui?.mkV) this.ui.mkV.travel = t;
+    if (!this.npcs) return;
+    const cur = this.npcs.find((n) => n.id === 'travel');
+    const want = t?.active && this.M?.id === 'ayutthaya';
+    if (cur && (!want || cur._home?.x !== t.x || cur._home?.y !== t.y)) this.removeNpc(cur);
+    if (want && !this.npcs.some((n) => n.id === 'travel')) {
+      this.npcs.push(this.makeNpc({ id: 'travel', key: t.key, x: t.x, y: t.y, nameTh: t.name, role: 'ร้านโผล่ชั่วคราว', color: '#ffb347',
+        lines: ['ของหายากจากเมืองจีน มาไม่บ่อยนะ', 'หมดแล้วหมดเลย ไม่มีเติม!', 'อีกเดี๋ยวข้าต้องไปเมืองอื่นแล้ว'] }));
+    }
+    this.ui?.mkV?.rerender();
   }
 
   /** เครื่องหมายเหนือผู้ใหญ่ชัย: ? = มีเควสส่งได้ · ! = มีเควสใหม่ให้รับ · ไม่มี = ซ่อน */
@@ -609,7 +648,7 @@ export class TopDownScene extends Phaser.Scene {
       if (this.textures.exists(tk)) put();
       else { this.load.image(tk, url); this.load.once(`filecomplete-image-${tk}`, put); if (!this.load.isLoading()) this.load.start(); }
     }
-    n._plate = { top: top - 2 - h - 1, w };                                                // ใช้ตรวจแตะโดนป้าย (npcAt)
+    n._plate = { top: top - 2 - h - 1, w }; n._box = box; n._plateH = h + 2;                                                // ใช้ตรวจแตะโดนป้าย (npcAt)
     return top - 2 - h - 1;                                                                // ขอบบนของป้าย
   }
 
@@ -623,12 +662,38 @@ export class TopDownScene extends Phaser.Scene {
     return !this.mobAt(w.x, w.y, 40);
   }
 
-  talk(n) {
+  /** ระบบชุดแต่งตัวถูกเอาออกจากเกม → แจ้งยอดเงินที่คืน (ครั้งเดียว) */
+  cosRefundNotice() {
+    const r = this.player?.char?.cosRefund;
+    if (!r || r.told || !r.n || this._cosTold) return;
+    this._cosTold = true;
+    notice({ title: 'ระบบชุดแต่งตัวถูกนำออกจากเกม', icon: '👘',
+      text: `ชุดแต่งตัว/เครื่องประดับแฟชั่นของคุณ ${r.n.toLocaleString()} ชิ้น ถูกเก็บคืนแล้ว\nคืนเงินให้ ฿${r.gold.toLocaleString()} (ของร้าน = ราคาซื้อ · ของหายาก = ฿300,000 ขึ้นไป)` })
+      .then(() => this.econ.act('cosAck'));
+  }
+
+  /** ร้านของ NPC นี้ (ไม่มี = undefined) */
+  npcShop(id) { return NPC_OPEN[id]; }
+
+  /** คุยกับ NPC · quick = ทางลัดคลิกขวา (ร้าน → แท็บขาย · ผู้ใหญ่ชัย → กระดานเควส · ฤๅษี → ประตูมิติ · สัปเหร่อ → ลงสุสาน) */
+  talk(n, quick = false) {
     const p = this.player;
-    if (dist(p, n) > 52) { this.moveTo(n.x, n.y + 14); this.pendingTalk = n; return; }
-    this.pendingTalk = null;
+    if (!n) return;
+    if (dist(p, n) > 52) { this.moveTo(n.x, n.y + 14); this.pendingTalk = n; this.pendingQuick = quick; return; }
+    this.pendingTalk = null; this.pendingQuick = false;
+    this.npcLife?.unhover();
     this.sfx.play('npc');
-    if (NPC_OPEN[n.id]) return this.ui.openShop(NPC_OPEN[n.id], n);
+    if (NPC_OPEN[n.id]) {
+      this.ui.openShop(NPC_OPEN[n.id], n);
+      const qt = n.id === 'market' ? 'claim' : 'sell';                                   // คลิกขวา: ร้าน → แท็บขาย · นายห้าง → กล่องรับของ
+      if (quick && this.ui.shopTabs?.includes(qt)) { this.ui.shopTab = qt; this.ui.renderShop(); }
+      return;
+    }
+    if (quick) {
+      if (n.id === 'quest') return this.village.openQuests();
+      if (n.id === 'warp') return this.openWarp();
+      if (n.id === 'crypt') return this.openCrypt();
+    }
     // NPC อื่น: กล่องคุยด้านล่าง (ปุ่มหลักพาไปหน้าต่างของ NPC นั้น)
     const dlg = (this.npcDlg ||= new NpcDialog(this));
     const act = n.id === 'quest' ? { label: '📋 ดูกระดานเควส', run: () => this.village.openQuests() }
@@ -1142,6 +1207,10 @@ export class TopDownScene extends Phaser.Scene {
     if (this.settings?.chatBubble === false) return;
     const spr = id === this.net?.selfId ? this.player : this.remotes.get(id)?.spr;
     if (!spr || spr.visible === false) return;
+    this.bubbleOn(spr, text);
+  }
+  /** ฟองคำพูดเหนือตัว spr ใดๆ (ผู้เล่น/NPC) */
+  bubbleOn(spr, text) {
     this.bubbles ||= new Map();
     this.bubbles.get(spr)?.destroy();
     const big = emojiOnly(text);
@@ -1168,7 +1237,7 @@ export class TopDownScene extends Phaser.Scene {
       if (!b.spr.active || time > b.until) { b.fading = true; this.tweens.add({ targets: b.c, alpha: 0, duration: 250, onComplete: () => b.destroy() }); continue; }
       // ลอยเหนือป้ายชื่อ/ฉายาจริง (ความสูงตัวอักษรไทยไม่คงที่ → วัดจากป้ายที่แสดงอยู่)
       const tags = b.spr === this.player ? [this.nameTag, this.titleTag] : b.spr._tags || [];
-      let top = b.spr.y - b.spr.displayHeight - 4;
+      let top = b.spr._bubbleTop ? b.spr._bubbleTop() : b.spr.y - b.spr.displayHeight - 4;
       for (const t of tags) if (t?.visible && t.active) top = Math.min(top, t.y - t.displayHeight * t.originY - 2);
       b.c.setPosition(b.spr.x, top);
     }
@@ -1192,7 +1261,9 @@ export class TopDownScene extends Phaser.Scene {
     net.on('online:count', (n) => this.ui.setOnlineTotal(n));
     net.on('status', (on) => { this.ui.setOnline(on, this.remotes.size); if (!on) { this.remotes.forEach((r) => r.destroy()); this.remotes.clear(); } })
       .on('init', ({ admin, serverTime, dayMs }) => { if (account.account) account.account.admin = !!admin; this.atmo?.sync(serverTime, dayMs); net.send('td:enter'); })
-      .on('char:load', (s) => this.econ.apply(s))
+      .on('char:load', (s) => { this.econ.apply(s); this.cosRefundNotice(); })
+      .on('mk:travel', (t) => this.onTravel(t))
+      .on('mk:note', (d) => { this.ui.toast(d?.text || '', 'ok', 6000); this.ui.mkV?.fetch(true); })
       .on('char:sync', (s) => this.econ.apply(s))
       .on('rejected', ({ msg }) => this.ui.toast(msg || 'เข้าเกมไม่สำเร็จ', 'warn', 6000))
       .on('kicked', ({ msg }) => { this.ui.banner(msg || 'บัญชีนี้เข้าเกมจากเครื่องอื่น'); net.socket?.disconnect(); })
@@ -1279,7 +1350,6 @@ export class TopDownScene extends Phaser.Scene {
     const s = this.add.sprite(q.x, q.y, key, 'idle_0').setOrigin(0.5, 1).setDepth(q.y);
     s.legacyKey = key; this.applyHero(s, q.appearance); s.holdAttack = () => q.appearance?.job !== 'boxer'; s.actionAnim = () => ACTION_ANIM[q.appearance?.job];
     this.weapons?.attach(s, () => q.appearance, () => ({ anim: r.anim }));
-    this.costumes?.attach(s, () => q.appearance);
     const tag = makeText(this, q.x, q.y, `${q.name} Lv.${q.level}`, { fontSize: '7px', color: '#aed6f1', align: 'center' }).setOrigin(0.5, 1);
     if (q.gm) gmStyle(tag);                                                          // GM: ชื่อแดงขอบขาวเรืองแสง
     const ttl = makeText(this, q.x, q.y, '', { fontSize: '7px', color: '#ffffff', align: 'center' }).setOrigin(0.5, 1);   // ฉายา (สีตามฉายา) เหนือชื่อ
@@ -1307,7 +1377,7 @@ export class TopDownScene extends Phaser.Scene {
         s.setDepth(s.y); tag.setPosition(s.x, Math.min(s.y - s.displayHeight - 3, s._cosTop ?? Infinity)).setDepth(s.y + 1); if (ttl.visible) ttl.setPosition(s.x, tag.y - tag.displayHeight).setDepth(s.y + 1);
         playDir(s, this.anim, this.dir);
       },
-      destroy: () => { this.weapons?.detach(s); this.costumes?.detach(s); s.destroy(); tag.destroy(); ttl.destroy(); sh.destroy(); this.shadows = this.shadows.filter((x) => x.obj !== s); },
+      destroy: () => { this.weapons?.detach(s); s.destroy(); tag.destroy(); ttl.destroy(); sh.destroy(); this.shadows = this.shadows.filter((x) => x.obj !== s); },
       get x() { return s.x; }, get y() { return s.y; }, get appearance() { return q.appearance; },
       setTitle(t) { paintTitle(t); },
       rename(n, gm) { q.name = n; r.name = n; tag.setText(`${n} Lv.${r.level}`); gmStyle(tag, !!gm, '#aed6f1'); },
@@ -1543,7 +1613,7 @@ export class TopDownScene extends Phaser.Scene {
         while (time > (p.noShortcut || 0) && p.path.length > 1 && this.lineClear(p.x, p.y - 2, p.path[1].x, p.path[1].y)) p.path.shift();
         const n = p.path[0], dx = n.x - p.x, dy = n.y - (p.y - 2), d = Math.hypot(dx, dy);
         if (d < 5) p.path.shift(); else { vx = dx / d; vy = dy / d; }
-        if (!p.path.length && this.pendingTalk) { const n2 = this.pendingTalk; this.pendingTalk = null; this.talk(n2); }
+        if (!p.path.length && this.pendingTalk) { const n2 = this.pendingTalk, q2 = this.pendingQuick; this.pendingTalk = null; this.talk(n2, q2); }
       }
       if (p.st === 'attack') p.setVelocity(0, 0);
       else if (vx || vy) {
@@ -1569,18 +1639,18 @@ export class TopDownScene extends Phaser.Scene {
     this.remotes.forEach((r) => r.update(dt));
     this.wb?.update();
     this.weapons?.update(time);
-    this.costumes?.update();
     this.skills?.autoTick(time);
     this.social?.update(time);
     if (time > (this.tagAt || 0)) { this.tagAt = time + 500; this.refreshNameTag(); }
     this.updateBubbles(time);
     this.life?.update(time, dt);
+    this.npcLife?.update(time, delta);
     this.autoPotion(time);
     // NPC หันมามองเมื่อเราเดินเข้าใกล้ (มีภาพ 8 ทิศ) · ห่างออกไปแล้วหันกลับหน้าตรง
     if (time > (this.npcLookAt || 0)) {
       this.npcLookAt = time + 250;
       for (const n of this.npcs || []) {
-        const sp = n.spr; if (!sp?.d8id) continue;
+        const sp = n.spr; if (!sp?.d8id || n._walking) continue;
         const dx = p.x - sp.x, dy = p.y - sp.y, near = dx * dx + dy * dy < 95 * 95;
         const want = near ? dirFromVector(dx, dy, sp.dir || 'south') : 'south';
         if (want !== sp.dir) playDir(sp, 'idle', want);

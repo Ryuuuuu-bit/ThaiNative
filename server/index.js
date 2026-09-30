@@ -23,6 +23,8 @@ import { setupDungeon } from './dungeon.js';
 import { setupTD } from './td.js';
 import { setupHealer } from './healer.js';
 import { setupWorldBoss } from './worldboss.js';
+import { setupMarket } from './market.js';
+import { nearNpc as nearNpcLegacy } from '../shared/data/npcs.js';
 import { setupAuth, isAdmin } from './auth.js';
 import { setupRanking } from './ranking.js';
 import { MAX_SLOTS } from './store.js';
@@ -162,6 +164,7 @@ healer = setupHealer(io, players, { ...helpers, social, tdSys, onHeal: (c, n) =>
 setInterval(() => healer.tick(), 250);
 /** บอสโลกพระราหู (ลานสุริยคราส) */
 const worldBoss = setupWorldBoss(io, players, { td, hurtPlayer, queueSync, social, refresh, storeReady });
+const market = setupMarket(io, players, { td, refresh, persist, storeReady, isNearLegacy: (p, id) => nearNpcLegacy(p.x, id) });
 
 function publicPlayer(p) {
   return {
@@ -214,6 +217,7 @@ io.on('connection', (socket) => {
   dungeon.onConnection(socket);
   td.onConnection(socket);
   worldBoss.onConnection(socket);
+  market.onConnection(socket);
   socket.on('td:enter', () => { const p = players.get(socket.id); if (p && p.world !== 'td') socket.broadcast.emit('player:left', p.id); });   // ออกจากสายตาผู้เล่นโลกเดิม (ครั้งแรกเท่านั้น · ส่งซ้ำ = สแปม)
   const me = () => players.get(socket.id);
 
@@ -328,7 +332,7 @@ io.on('connection', (socket) => {
     if (now - (p.econT || 0) > 1000) { p.econT = now; p.econN = 0; }
     if (++p.econN > 25) return done({ r: { ok: false, msg: 'ทำรายการถี่เกินไป' } });
     const a = String(d.a || '');
-    if (p.dead && !['lock', 'hotbar', 'title', 'qDrop', 'friendDel'].includes(a)) return done({ r: { ok: false, msg: 'ตายอยู่ – รอฟื้นก่อน' } });
+    if (p.dead && !['lock', 'hotbar', 'title', 'qDrop', 'friendDel', 'cosAck'].includes(a)) return done({ r: { ok: false, msg: 'ตายอยู่ – รอฟื้นก่อน' } });
     // โลก top-down: ร้าน/NPC ตรวจจากตำแหน่ง NPC ในอยุธยา (แปลงเป็นพิกัดหมู่บ้านเดิม) · ไม่ใกล้ใคร = นอกหมู่บ้าน
     const ex = p.world === 'td' ? (td.econX(p) ?? MAPS.m1.minX + 700) : p.x;
     if (p.world === 'td' && a === 'recall' && d.to === 'hunt') return done({ r: { ok: false, msg: 'ในโลกใหม่ใช้ได้เฉพาะวาร์ปกลับเมือง' } });
@@ -350,6 +354,7 @@ io.on('connection', (socket) => {
     refresh(p);
     if (r.ok && r.gmWarp && p.admin && p.world === 'td') td.gmWarp(p, socket, r.gmWarp);
     if (r.ok && r.gmRahu && p.admin) r.msg = worldBoss.gm(r.gmRahu);
+    if (r.ok && r.gmMerchant && p.admin) r.msg = market.gm(r.gmMerchant);
     if (r.ok && r.gmNotice && p.admin) gmNotice(r.gmNotice, p);
     if (r.ok && r.hpPct != null && p.admin) {                                   // GM: ตั้ง HP / สลบ (ทดสอบหมอยา)
       p.invulnUntil = 0;
@@ -590,6 +595,7 @@ async function shutdown() {
   console.log('[server] shutting down – saving players');
   io.emit('server:update', { msg: 'เซิร์ฟเวอร์กำลังอัปเดตแพตช์ใหม่ · ตัวละครเซฟแล้ว · อีกสักครู่จะเชื่อมต่อใหม่เอง' });
   await Promise.all([...players.values()].map((p) => { p.dirty = true; return persist(p); }));
+  await market.flush();
   process.exit(0);
 }
 process.on('SIGTERM', shutdown);

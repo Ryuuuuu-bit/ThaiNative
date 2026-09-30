@@ -10,19 +10,20 @@ export const NPCS = [
   { id: 'shop',  key: 'npc_yai_tim',   x: 720,  nameTh: 'ยายติ๋ม', role: 'ร้านยา·ของใช้', color: '#82e0aa', tint: 0xd7bde2, flip: true, icon: '🧪' },
   { id: 'quest', key: 'npc_lung_chai', x: 520,  nameTh: 'ผู้ใหญ่ชัย', role: 'เควส', color: '#f7dc6f', tint: 0xf0b27a, icon: '❗' },
   { id: 'smith', key: 'npc_lung_dam',  x: 846,  nameTh: 'ลุงดำ', role: 'ตีเหล็ก·สร้างอุปกรณ์', color: '#f5b041', tint: 0x7f8c8d, flip: true, icon: '🔨' },
-  { id: 'tailor', key: 'npc_mae_choy', x: 380,  nameTh: 'แม่ช้อย', role: 'ชุดแต่งตัว·เครื่องประดับ', color: '#f5b7b1', tint: 0xf5b7b1, flip: true, icon: '👘' },
+  { id: 'tailor', key: 'npc_mae_choy', x: 380,  nameTh: 'แม่ช้อย', role: 'ร้านผ้า·รับซื้อของ', color: '#f5b7b1', tint: 0xf5b7b1, flip: true, icon: '👘' },
   { id: 'cook',  key: 'npc_pa_sa',     x: -300, nameTh: 'ป้าสา', role: 'ครัว·รับซื้อปลา', color: '#85c1e9', tint: 0xf5cba7, flip: true, icon: '🍲' },
   { id: 'kru_sword',  key: 'npc_kru_sword',  x: -200, nameTh: 'ครูเหม',     role: 'สำนักดาบ',      color: '#f1948a', tint: 0xe6b0aa, flip: true, icon: '⚔️' },
   { id: 'kru_mage',   key: 'npc_kru_mage',   x: -125, nameTh: 'หลวงตาเผือก', role: 'หมอธรรม·อาคม', color: '#bb8fce', tint: 0xd2b4de, flip: true, icon: '🔮' },
   { id: 'kru_archer', key: 'npc_kru_archer', x: -50,  nameTh: 'พรานแก้ว',   role: 'ค่ายพรานไพร',  color: '#82e0aa', tint: 0xa9dfbf, flip: true, icon: '🏹' },
   { id: 'kru_boxer',  key: 'npc_kru_boxer',  x: 25,   nameTh: 'ครูแดง',     role: 'ค่ายมวย',      color: '#f5b041', tint: 0xf5cba7, flip: true, icon: '🥊' },
   { id: 'kru_healer', key: 'npc_pa_sa',      x: 100,  nameTh: 'หมอพร',      role: 'ศาลาโอสถ·หมอยา', color: '#48c9b0', tint: 0xa3e4d7, flip: true, icon: '🌿' },
+  { id: 'market', key: 'npc_nai_hang', x: 960, nameTh: 'นายห้างสำเภา', role: 'ตลาดฝากขาย·แลกของ', color: '#f0c04a', tint: 0xf8e0a0, flip: true, icon: '⚓' },
   { id: 'dungeon', key: 'npc_kru_mage', x: 610, nameTh: 'หลวงพ่อทอง', role: 'ประตูสุสานใต้ดิน', color: '#d2b4de', tint: 0xf8e0a0, forceTint: true, flip: true, icon: '🕯️' },
 ];
 export const NPC_BY_ID = Object.fromEntries(NPCS.map((n) => [n.id, n]));
 
 /** ร้าน → NPC ที่ยืนขาย */
-export const SHOP_NPC = { mae_kha: 'shop', lung_dam: 'smith', tailor: 'tailor', pa_sa: 'cook', kru_sword: 'kru_sword', kru_mage: 'kru_mage', kru_archer: 'kru_archer', kru_boxer: 'kru_boxer', kru_healer: 'kru_healer' };
+export const SHOP_NPC = { mae_kha: 'shop', lung_dam: 'smith', tailor: 'tailor', pa_sa: 'cook', kru_sword: 'kru_sword', kru_mage: 'kru_mage', kru_archer: 'kru_archer', kru_boxer: 'kru_boxer', kru_healer: 'kru_healer', market: 'market' };
 
 /** จุดโต้ตอบอื่น ๆ ในหมู่บ้าน */
 export const SPOTS = {

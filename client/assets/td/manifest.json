@@ -1493,6 +1493,386 @@
    },
    "frame": 72,
    "scale": 0.6
+  },
+  "npc_nai_hang": {
+   "anims": [
+    "idle",
+    "walk"
+   ],
+   "frames": {
+    "idle": 4,
+    "walk": 6
+   },
+   "frame": 72,
+   "scale": 0.6
+  },
+  "npc_peddler": {
+   "anims": [
+    "idle",
+    "walk"
+   ],
+   "frames": {
+    "idle": 4,
+    "walk": 6
+   },
+   "frame": 72,
+   "scale": 0.6
+  },
+  "hero2_male_swordman_t1": {
+   "anims": [
+    "walk",
+    "slash",
+    "idle",
+    "die"
+   ],
+   "frames": {
+    "walk": 6,
+    "slash": 8,
+    "idle": 4,
+    "die": 7
+   },
+   "frame": 104,
+   "scale": 0.54,
+   "lazy": true
+  },
+  "hero2_male_swordman_t2": {
+   "anims": [
+    "walk",
+    "slash",
+    "idle",
+    "die"
+   ],
+   "frames": {
+    "walk": 6,
+    "slash": 8,
+    "idle": 4,
+    "die": 7
+   },
+   "frame": 104,
+   "scale": 0.54,
+   "lazy": true
+  },
+  "hero2_male_swordman_t3": {
+   "anims": [
+    "walk",
+    "slash",
+    "idle",
+    "die"
+   ],
+   "frames": {
+    "walk": 6,
+    "slash": 8,
+    "idle": 4,
+    "die": 7
+   },
+   "frame": 104,
+   "scale": 0.54,
+   "lazy": true
+  },
+  "hero2_male_swordman_t4": {
+   "anims": [
+    "walk",
+    "slash",
+    "idle",
+    "die"
+   ],
+   "frames": {
+    "walk": 6,
+    "slash": 8,
+    "idle": 4,
+    "die": 7
+   },
+   "frame": 104,
+   "scale": 0.54,
+   "lazy": true
+  },
+  "hero2_male_mage_t1": {
+   "anims": [
+    "walk",
+    "cast",
+    "spell",
+    "idle",
+    "die"
+   ],
+   "frames": {
+    "walk": 6,
+    "cast": 8,
+    "spell": 8,
+    "idle": 4,
+    "die": 7
+   },
+   "frame": 104,
+   "scale": 0.54,
+   "lazy": true
+  },
+  "hero2_male_mage_t2": {
+   "anims": [
+    "walk",
+    "cast",
+    "spell",
+    "idle",
+    "die"
+   ],
+   "frames": {
+    "walk": 6,
+    "cast": 8,
+    "spell": 8,
+    "idle": 4,
+    "die": 7
+   },
+   "frame": 104,
+   "scale": 0.54,
+   "lazy": true
+  },
+  "hero2_male_mage_t3": {
+   "anims": [
+    "walk",
+    "cast",
+    "spell",
+    "idle",
+    "die"
+   ],
+   "frames": {
+    "walk": 6,
+    "cast": 8,
+    "spell": 8,
+    "idle": 4,
+    "die": 7
+   },
+   "frame": 104,
+   "scale": 0.54,
+   "lazy": true
+  },
+  "hero2_male_mage_t4": {
+   "anims": [
+    "walk",
+    "cast",
+    "spell",
+    "idle",
+    "die"
+   ],
+   "frames": {
+    "walk": 6,
+    "cast": 8,
+    "spell": 8,
+    "idle": 4,
+    "die": 7
+   },
+   "frame": 104,
+   "scale": 0.54,
+   "lazy": true
+  },
+  "hero2_male_archer_t1": {
+   "anims": [
+    "walk",
+    "shoot",
+    "idle",
+    "die"
+   ],
+   "frames": {
+    "walk": 6,
+    "shoot": 8,
+    "idle": 4,
+    "die": 7
+   },
+   "frame": 104,
+   "scale": 0.54,
+   "lazy": true
+  },
+  "hero2_male_archer_t2": {
+   "anims": [
+    "walk",
+    "shoot",
+    "idle",
+    "die"
+   ],
+   "frames": {
+    "walk": 6,
+    "shoot": 8,
+    "idle": 4,
+    "die": 7
+   },
+   "frame": 104,
+   "scale": 0.54,
+   "lazy": true
+  },
+  "hero2_male_archer_t3": {
+   "anims": [
+    "walk",
+    "shoot",
+    "idle",
+    "die"
+   ],
+   "frames": {
+    "walk": 6,
+    "shoot": 8,
+    "idle": 4,
+    "die": 7
+   },
+   "frame": 104,
+   "scale": 0.54,
+   "lazy": true
+  },
+  "hero2_male_archer_t4": {
+   "anims": [
+    "walk",
+    "shoot",
+    "idle",
+    "die"
+   ],
+   "frames": {
+    "walk": 6,
+    "shoot": 8,
+    "idle": 4,
+    "die": 7
+   },
+   "frame": 104,
+   "scale": 0.54,
+   "lazy": true
+  },
+  "hero2_male_boxer_t1": {
+   "anims": [
+    "walk",
+    "attack",
+    "idle",
+    "die"
+   ],
+   "frames": {
+    "walk": 6,
+    "attack": 8,
+    "idle": 4,
+    "die": 7
+   },
+   "frame": 104,
+   "scale": 0.54,
+   "lazy": true
+  },
+  "hero2_male_boxer_t2": {
+   "anims": [
+    "walk",
+    "attack",
+    "idle",
+    "die"
+   ],
+   "frames": {
+    "walk": 6,
+    "attack": 8,
+    "idle": 4,
+    "die": 7
+   },
+   "frame": 104,
+   "scale": 0.54,
+   "lazy": true
+  },
+  "hero2_male_boxer_t3": {
+   "anims": [
+    "walk",
+    "attack",
+    "idle",
+    "die"
+   ],
+   "frames": {
+    "walk": 6,
+    "attack": 8,
+    "idle": 4,
+    "die": 7
+   },
+   "frame": 104,
+   "scale": 0.54,
+   "lazy": true
+  },
+  "hero2_male_boxer_t4": {
+   "anims": [
+    "walk",
+    "attack",
+    "idle",
+    "die"
+   ],
+   "frames": {
+    "walk": 6,
+    "attack": 8,
+    "idle": 4,
+    "die": 7
+   },
+   "frame": 104,
+   "scale": 0.54,
+   "lazy": true
+  },
+  "hero2_male_healer_t1": {
+   "anims": [
+    "walk",
+    "heal",
+    "cast",
+    "idle",
+    "die"
+   ],
+   "frames": {
+    "walk": 6,
+    "heal": 8,
+    "cast": 8,
+    "idle": 4,
+    "die": 7
+   },
+   "frame": 104,
+   "scale": 0.54,
+   "lazy": true
+  },
+  "hero2_male_healer_t2": {
+   "anims": [
+    "walk",
+    "heal",
+    "cast",
+    "idle",
+    "die"
+   ],
+   "frames": {
+    "walk": 6,
+    "heal": 8,
+    "cast": 8,
+    "idle": 4,
+    "die": 7
+   },
+   "frame": 104,
+   "scale": 0.54,
+   "lazy": true
+  },
+  "hero2_male_healer_t3": {
+   "anims": [
+    "walk",
+    "heal",
+    "cast",
+    "idle",
+    "die"
+   ],
+   "frames": {
+    "walk": 6,
+    "heal": 8,
+    "cast": 8,
+    "idle": 4,
+    "die": 7
+   },
+   "frame": 104,
+   "scale": 0.54,
+   "lazy": true
+  },
+  "hero2_male_healer_t4": {
+   "anims": [
+    "walk",
+    "heal",
+    "cast",
+    "idle",
+    "die"
+   ],
+   "frames": {
+    "walk": 6,
+    "heal": 8,
+    "cast": 8,
+    "idle": 4,
+    "die": 7
+   },
+   "frame": 104,
+   "scale": 0.54,
+   "lazy": true
   }
  },
  "images": [

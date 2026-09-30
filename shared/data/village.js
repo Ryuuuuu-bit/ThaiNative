@@ -54,7 +54,6 @@ export const CHEST = { everyMs: 150000, lifeMs: 100000 };
 /** ชุดแต่งตัวที่ดรอปจากหีบสมบัติ (ร้านไม่ขาย) */
 import { rollGearDrop } from './gear.js';
 
-export const CHEST_COSTUMES = ['cs_head_peacock', 'cs_head_jade', 'cs_head_asura', 'cs_face_skull', 'cs_back_bat'];
 export function rollChest(level, rnd = Math.random) {
   const items = [];
   const gold = Math.round((40 + rnd() * 120) * (1 + level / 6));
@@ -62,7 +61,7 @@ export function rollChest(level, rnd = Math.random) {
   if (rnd() < 0.45) items.push({ id: ['herb_honey', 'herb_mushroom', 'herb_turmeric', 'herb_anchan'][Math.floor(rnd() * 4)], qty: 2 });
   if (rnd() < 0.08) items.push({ id: ['amulet_coin', 'amulet_ganesh', 'amulet_somdej', 'amulet_pidta'][Math.floor(rnd() * 4)], qty: 1 });
   if (rnd() < 0.04) items.push({ id: 'yant_guard', qty: 1 });                       // ยันต์กันลดขั้น (หายาก)
-  if (rnd() < 0.03) items.push({ id: CHEST_COSTUMES[Math.floor(rnd() * CHEST_COSTUMES.length)], qty: 1 }); // ชุดแต่งตัวหายาก
+  if (rnd() < 0.03) items.push({ id: 'junk_coin', qty: 1 }); // เบี้ยสำเภา (เดิม: ชุดแต่งตัวหายาก – เอาออกจากเกมแล้ว)
   if (rnd() < 0.08) { const g = rollGearDrop(level + 2, 1 / 0.012, rnd); if (g) items.push({ id: g, qty: 1 }); }  // อุปกรณ์ตามเลเวล (8%)
   return { gold, items };
 }

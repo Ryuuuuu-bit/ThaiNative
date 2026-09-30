@@ -32,7 +32,7 @@ export class BootScene extends Phaser.Scene {
     // ภาพต้นฉบับตัวละครผู้เล่น (ย้อมสี + สร้างท่าทางตอนสร้างตัวละคร)
     // ฉากเมือง: บ้านเรือนไทย วัด ศาลา แผงตลาด ฉากหลัง
     Object.entries(manifest.env || {}).forEach(([k, file]) => this.load.image(k, file));
-    Object.entries(manifest.icons || {}).filter(([k]) => /^it_(pla_|kung|junk|herb_|rice_)/.test(k) || ['weapon', 'costume'].includes(ITEMS[k.slice(3)]?.type)).forEach(([k, file]) => this.load.image(`ico_${k}`, file));
+    Object.entries(manifest.icons || {}).filter(([k]) => /^it_(pla_|kung|junk|herb_|rice_)/.test(k) || ITEMS[k.slice(3)]?.type === 'weapon').forEach(([k, file]) => this.load.image(`ico_${k}`, file));
     // อาวุธที่ไม่มีไอคอนของตัวเองแต่ยืมภาพ (art) เช่น ไม้เท้าเถาบอระเพ็ด · ชุดสุริยคราส → โหลดเป็น ico_it_<id> ให้ถือในมือได้
     for (const [id, it] of Object.entries(ITEMS)) {
       if (it.type !== 'weapon' || manifest.icons?.[`it_${id}`] || !it.art) continue;

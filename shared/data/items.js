@@ -47,38 +47,6 @@ const ITEMS_BASE = {
   yak_statue:    { nameTh: 'ท้าวเวสสุวรรณ',      type: 'accessory', icon: '👹', price: 750, bonus: { STR: 4, def: 2 } },
   acc_yant_gold: { nameTh: 'ยันต์ทองพญายักษ์',  type: 'accessory', icon: '🏵️', sell: 400, bonus: { STR: 4, INT: 4, DEX: 3, hp: 80, def: 4 } },
 
-  // ---------- ชุดแต่งตัว (Costume) – แสดงบนตัวละคร 8 ทิศ ไม่มีค่าพลัง · slot: head / face / back / outfit ----------
-  // ชุดเต็มตัว: เปลี่ยนโมเดลตัวละครทั้งตัว (hero_<เพศ>_<model>) · ใส่ได้ทั้งชายและหญิง
-  cs_outfit_ruenton:   { nameTh: 'ชุดไทยเรือนต้น',       type: 'costume', slot: 'outfit', icon: '👘', price: 1400, model: 'ruenton',    desc: 'เสื้อเรือนต้นสีเหลือง นุ่งผ้าซิ่นสีชมพู ชุดไทยพื้นบ้านสดใส' },
-  cs_outfit_mohom:     { nameTh: 'ชุดม่อฮ่อม',           type: 'costume', slot: 'outfit', icon: '👘', price: 1200, model: 'mohom',      desc: 'เสื้อม่อฮ่อมย้อมคราม คาดผ้าขาวม้าแดง ชุดชาวบ้านทางเหนือ' },
-  cs_outfit_isan:      { nameTh: 'ชุดลายขิดอีสาน',        type: 'costume', slot: 'outfit', icon: '👘', price: 1400, model: 'isan',       desc: 'ผ้าทอลายขิดสีส้มแบบชาวอีสาน คล่องตัวเหมาะเดินทางไกล' },
-  cs_outfit_jongkraben:{ nameTh: 'ชุดโจงกระเบนคาดผ้า',    type: 'costume', slot: 'outfit', icon: '👘', price: 1800, model: 'jongkraben', desc: 'เสื้อขาวนุ่งโจงกระเบนสีน้ำตาล คาดผ้าทองที่เอว' },
-  cs_outfit_rajpatan:  { nameTh: 'ชุดราชปะแตน',          type: 'costume', slot: 'outfit', icon: '👘', price: 2000, model: 'rajpatan',   desc: 'เสื้อราชปะแตนสีขาวกระดุมทอง นุ่งโจงกระเบนดำ ชุดขุนนางกรุงศรี' },
-  cs_outfit_chaona:    { nameTh: 'ชุดชาวนา',              type: 'costume', slot: 'outfit', icon: '👘', price: 1200, model: 'chaona',     desc: 'เสื้อผ้าฝ้ายสีดินกับย่ามสาน ชุดชาวนาทุ่งกรุงเก่า' },
-  cs_outfit_silk:      { nameTh: 'ชุดผ้าไหมไทย',          type: 'costume', slot: 'outfit', icon: '👘', price: 2400, model: 'silk',       desc: 'ผ้าไหมสีม่วงลายจุดเงางาม ชุดแต่งออกงานมงคล' },
-  cs_outfit_hunter:    { nameTh: 'ชุดพรานไพร',            type: 'costume', slot: 'outfit', icon: '👘', price: 1600, model: 'hunter',     desc: 'ชุดสีเขียวป่ากับสายหนัง ชุดพรานเดินไพร' },
-  cs_outfit_warrior:   { nameTh: 'ชุดนักรบโบราณ',          type: 'costume', slot: 'outfit', icon: '👘', price: 2600, model: 'warrior',    desc: 'เสื้อศึกสีแดงคาดผ้าทอง รัดแขนทองเหลือง ชุดนักรบสยาม' },
-  cs_outfit_mahadlek:  { nameTh: 'ชุดมหาดเล็ก',           type: 'costume', slot: 'outfit', icon: '👘', price: 3000, model: 'mahadlek',   desc: 'เครื่องแบบมหาดเล็กสีกรมท่าขลิบทอง' },
-  // เครื่องประดับหัว
-  cs_head_chada:    { nameTh: 'ชฎาทองคำ',            type: 'costume', slot: 'head', icon: '👑', price: 2200 },
-  cs_head_ngob:     { nameTh: 'งอบใบลาน',             type: 'costume', slot: 'head', icon: '👒', price: 700, fit: { w: 1.9, y: 0.95 } },
-  cs_head_naga:     { nameTh: 'มงกุฎนาคหยก',          type: 'costume', slot: 'head', icon: '🐉', price: 3200, fit: { w: 1.45 } },
-  cs_head_mongkol:  { nameTh: 'มงคลนักมวย',           type: 'costume', slot: 'head', icon: '⭕', price: 600, fit: { w: 1.2, y: 0.3, ay: 0.5, sy: 0.5 } },
-  cs_head_flower:   { nameTh: 'มาลัยดอกมะลิทัดผม',     type: 'costume', slot: 'head', icon: '🌼', price: 900, fit: { w: 1.25, y: 0.26, ay: 0.5, sy: 0.5 } },
-  cs_head_peacock:  { nameTh: 'มงกุฎขนนกยูง',          type: 'costume', slot: 'head', icon: '🦚', sell: 500, rare: true, fit: { w: 1.6 } },
-  cs_head_jade:     { nameTh: 'มงกุฎหยกทิพย์',         type: 'costume', slot: 'head', icon: '💚', sell: 500, rare: true },
-  cs_head_asura:    { nameTh: 'มงกุฎอสูรเงินเลือด',     type: 'costume', slot: 'head', icon: '👹', sell: 500, rare: true },
-  cs_head_emperor:  { nameTh: 'มงกุฎจักรพรรดิพญายักษ์', type: 'costume', slot: 'head', icon: '👑', sell: 1500, rare: true },
-  // หน้ากาก
-  cs_face_takhon:   { nameTh: 'หน้ากากผีตาโขน',        type: 'costume', slot: 'face', icon: '🎭', price: 1100 },
-  cs_face_khon:     { nameTh: 'หัวโขนยักษ์เขียว',       type: 'costume', slot: 'face', icon: '👺', price: 1600, fit: { w: 1.5, y: 0.45 } },
-  cs_face_skull:    { nameTh: 'หน้ากากกะโหลกผี',       type: 'costume', slot: 'face', icon: '💀', sell: 400, rare: true },
-  // ของสะพายหลัง
-  cs_back_kinnari:  { nameTh: 'ปีกกินรีขาวทอง',        type: 'costume', slot: 'back', icon: '🪽', price: 2800, fit: { w: 3.4, y: 1.8 } },
-  cs_back_umbrella: { nameTh: 'ร่มบ่อสร้าง',            type: 'costume', slot: 'back', icon: '🌂', price: 1200, fit: { w: 3.2, y: -0.15, ay: 0.85 } },
-  cs_back_flag:     { nameTh: 'ธงยันต์ออกศึก',          type: 'costume', slot: 'back', icon: '🚩', price: 1800, fit: { w: 2.3, y: 1.9, ay: 0.92 } },
-  cs_back_bat:      { nameTh: 'ค้างคาวผีเกาะหลัง',      type: 'costume', slot: 'back', icon: '🦇', sell: 500, rare: true, fit: { w: 2.6, y: 1.05 } },
-
   // ---------- ล้างแต้ม / เปลี่ยนสายหลัก ----------
   rename_ticket: { nameTh: 'ใบเปลี่ยนชื่อ', type: 'rename', icon: '📝', price: 5000, desc: 'เปลี่ยนชื่อตัวละคร (ชื่อใหม่ต้องไม่ซ้ำใคร · ชื่อเดิมถูกกันไว้ให้ 7 วัน)' },
   reskill_weapon: { nameTh: 'รีแต้มสกิลอาชีพ', type: 'reskill', icon: '📘', price: 200, desc: 'คืนแต้มสกิล (SP) ของอาวุธที่ถืออยู่ให้ลงใหม่ · สกิลอาวุธอื่นไม่หาย · ความชำนาญสกิลยังอยู่' },
@@ -166,6 +134,7 @@ const ITEMS_BASE = {
   // ---------- วัตถุดิบตีบวก (ลุงดำ) ----------
   black_iron:  { nameTh: 'แร่เหล็กไหล',       type: 'material', icon: '🪨', price: 60 },
   crypt_dust:  { nameTh: 'ผงวิญญาณสุสาน',     type: 'material', icon: '💀', price: 25, desc: 'ผงเถ้าวิญญาณจากสุสานใต้ดิน · ดรอปในสุสาน/หีบรางวัล · ใช้แลกของกับสัปเหร่อเฒ่า (เร็ว ๆ นี้)' },
+  junk_coin:   { nameTh: 'เบี้ยสำเภา',          type: 'material', icon: '🪙', sell: 0, desc: 'เงินตราของนายห้างสำเภา · ได้จากรับซื้อพิเศษประจำวัน (ทุก 10 ชิ้น) และแลกจากของดรอป · ใช้แลกของดีที่ร้านแลกของ' },
   yant_guard:  { nameTh: 'ยันต์กันลดขั้น',      type: 'material', icon: '🧧', price: 1500, desc: 'ติ๊กใช้ตอนตีบวก +10 ขึ้นไป · ตีพลาดขั้นไม่ลด (ใช้ครั้งละ 1)' },
 
   // ---------- ของถวายศาลพระภูมิ (กด F ที่ศาล) ----------
@@ -227,7 +196,7 @@ export const SHOPS = {
     greeting: 'มาจ้ะหลาน ยาดีของยาย ผีหลอกก็ไม่กลัว!',
     stock: ['flask_hp1', 'flask_mp1', 'flask_hp2', 'flask_mp2', 'flask_hp3', 'flask_mp3', 'flask_hp4', 'flask_mp4', 'hp_s', 'hp_m', 'mp_s', 'mp_m', 'yant_home', 'rename_ticket',
       'reset_water', 'reskill_weapon'],
-    tabs: ['buy', 'sell', 'cards', 'brew'],
+    tabs: ['buy', 'sell', 'demand', 'cards', 'brew'],
   },
   lung_dam: {
     nameTh: 'ลุงดำ โรงตีเหล็ก',
@@ -235,16 +204,13 @@ export const SHOPS = {
     stock: ['wood_sword', 'iron_dab', 'oak_staff', 'yant_staff', 'bamboo_bow', 'horn_bow', 'hand_wrap', 'mongkol',
       'yant_shirt', 'takrut', 'prajiad', 'amulet_coin', 'amulet_ganesh', 'amulet_somdej', 'amulet_pidta',
       'kuman_statue', 'naga_statue', 'yak_statue', 'black_iron', 'yant_guard'],
-    tabs: ['buy', 'sell', 'enhance', 'forge'],
+    tabs: ['buy', 'sell', 'demand', 'enhance', 'forge'],
   },
   tailor: {
-    nameTh: 'แม่ช้อย ร้านชุดไทยและเครื่องประดับ',
-    greeting: 'แต่งตัวให้สมศักดิ์ศรีนักปราบผีหน่อยลูก ผีเห็นยังต้องเกรงใจ!',
-    stock: ['cs_outfit_ruenton', 'cs_outfit_mohom', 'cs_outfit_isan', 'cs_outfit_hunter', 'cs_outfit_jongkraben', 'cs_outfit_rajpatan', 'cs_outfit_chaona',
-      'cs_outfit_silk', 'cs_outfit_warrior', 'cs_outfit_mahadlek',
-      'cs_head_ngob', 'cs_head_mongkol', 'cs_head_flower', 'cs_head_chada', 'cs_head_naga', 'cs_face_takhon', 'cs_face_khon',
-      'cs_back_umbrella', 'cs_back_flag', 'cs_back_kinnari'],
-    tabs: ['buy', 'sell'],
+    nameTh: 'แม่ช้อย ร้านผ้าและรับซื้อของ',
+    greeting: 'ช่วงนี้แม่รับซื้อผ้ากับของแปลก ๆ มีอะไรเอามาให้แม่ดูได้นะจ๊ะ',
+    stock: [],
+    tabs: ['demand', 'sell'],
   },
   // ---------- ครูประจำอาชีพ (ขายอุปกรณ์สายตัวเอง Lv.1–20) ----------
   kru_sword: {
@@ -276,7 +242,20 @@ export const SHOPS = {
     nameTh: 'ป้าสา ครัวริมน้ำ',
     greeting: 'ได้ปลามาเหรอลูก เอามาให้ป้าทำกับข้าวให้ อร่อยจนผีต้องร้องขอ!',
     stock: ['food_khao_tom', 'food_pla_pao', 'food_tom_yum', 'food_kung_ob'],
-    tabs: ['buy', 'sell', 'cook'],
+    tabs: ['buy', 'sell', 'demand', 'cook'],
+  },
+  // ---------- ท่าเรือค้าขาย (ตลาดผู้เล่น) ----------
+  market: {
+    nameTh: 'นายห้างสำเภา ท่าค้าขาย',
+    greeting: 'ของดีจากทุกสารทิศมาอยู่ที่นี่ จะฝากขายหรือหาซื้อ ว่ามาได้เลย!',
+    stock: [],
+    tabs: ['market', 'mylist', 'orders', 'claim', 'barter'],
+  },
+  travel: {
+    nameTh: 'พ่อค้าเร่สำเภาจีน ร้านของหายาก',
+    greeting: 'ของหายากจากเมืองจีน มาไม่บ่อย หมดแล้วหมดเลยนะ!',
+    stock: [],
+    tabs: ['travel'],
   },
 };
 

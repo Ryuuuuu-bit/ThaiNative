@@ -68,8 +68,9 @@ const BORROW = { attack: 'walk', cast: 'idle', hit: 'idle', run: 'walk' };
 
 /** ปรับขนาด/กล่องชนเมื่อสลับระหว่างภาพ 8 ทิศ ↔ สไปรต์เดิม */
 function setLook(sprite, d8) {
-  if (sprite._d8 === d8) return;
-  sprite._d8 = d8;
+  const look = d8 ? sprite.d8id : false;                                     // เปลี่ยนโมเดล (เช่น สลับอาชีพ/ขั้นอาวุธ) ขนาดเฟรมต่างกัน → คิดสเกล/กล่องชนใหม่ด้วย
+  if (sprite._d8 === d8 && sprite._look === look) return;
+  sprite._d8 = d8; sprite._look = look;
   if (sprite.baseScale == null) sprite.baseScale = sprite.scaleX || 1;
   const meta = d8 ? sprite.scene.d8meta?.[sprite.d8id] : null;
   const sc = d8 ? (meta?.scale || 2 / 3) * (sprite.scaleMul || 1) : sprite.baseScale;

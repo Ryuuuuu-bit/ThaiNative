@@ -17,7 +17,7 @@ const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&
 /** 1 ธรรมดา · 2 ดี · 3 หายาก · 4 มหากาพย์ · 5 ตำนาน · 6 ขอบแดง (ไล่ตามเลเวลของ: <20 · 20–49 · 50–89 · 90+) */
 export const baseRarity = (it) => (!it ? 0 : it.red ? 6 : it.legend ? 5 : GEAR_TYPES.includes(it.type)
   ? ((it.lv || 1) >= 90 ? 4 : (it.lv || 1) >= 50 ? 3 : (it.lv || 1) >= 20 ? 2 : 1)
-  : it.type === 'costume' && it.rare ? 4 : it.type === 'card' ? 3 : 0);
+  : it.type === 'card' ? 3 : 0);
 /** ของมีค่าสุ่ม 1 บรรทัด = หายาก (3) · 2+ = มหากาพย์ (4) */
 export const rarityOf = (it) => Math.max(baseRarity(it), it?.affixN ? (it.affixN >= 2 ? 4 : 3) : 0);
 export const RARITY_TH = ['—', 'ธรรมดา', 'ดี', 'หายาก', 'มหากาพย์', 'ตำนาน', 'ขอบแดง'];
@@ -26,15 +26,15 @@ export const RARITY_TH = ['—', 'ธรรมดา', 'ดี', 'หายา�
 const USE_T = ['consumable', 'home', 'food', 'reset', 'reskill', 'rename', 'offering', 'skin'];
 export const KINDS = {
   all: ['ทั้งหมด', () => true],
-  gear: ['สวมใส่', (it) => GEAR_TYPES.includes(it.type) || it.type === 'flask' || it.type === 'costume'],
+  gear: ['สวมใส่', (it) => GEAR_TYPES.includes(it.type) || it.type === 'flask'],
   use: ['ใช้ได้', (it) => USE_T.includes(it.type)],
   card: ['การ์ด', (it) => it.type === 'card'],
   etc: ['วัตถุดิบ', (it) => ['material', 'herb', 'fish'].includes(it.type)],
 };
 /** ช่องสวมใส่ (ตัวกรองละเอียด) */
-export const SLOT_F = { any: 'ทุกช่อง', weapon: 'อาวุธ', helm: 'หมวก', armor: 'ชุดเกราะ', gloves: 'ถุงมือ', boots: 'รองเท้า', belt: 'เข็มขัด', accessory: 'เครื่องประดับ', flask: 'ขวดยา', costume: 'ชุดแต่งตัว' };
+export const SLOT_F = { any: 'ทุกช่อง', weapon: 'อาวุธ', helm: 'หมวก', armor: 'ชุดเกราะ', gloves: 'ถุงมือ', boots: 'รองเท้า', belt: 'เข็มขัด', accessory: 'เครื่องประดับ', flask: 'ขวดยา' };
 export const SORTS = { type: 'ประเภท', cp: 'ค่าพลัง ▲', rar: 'ความหายาก', lv: 'เลเวลของ', price: 'มูลค่า', name: 'ชื่อ' };
-const ORDER = ['weapon', 'helm', 'armor', 'gloves', 'boots', 'belt', 'accessory', 'flask', 'costume', 'card', 'home', 'consumable', 'food', 'reset', 'reskill', 'rename', 'offering', 'herb', 'fish', 'material', 'skin'];
+const ORDER = ['weapon', 'helm', 'armor', 'gloves', 'boots', 'belt', 'accessory', 'flask', 'card', 'home', 'consumable', 'food', 'reset', 'reskill', 'rename', 'offering', 'herb', 'fish', 'material', 'skin'];
 
 export const newFilter = (o = {}) => ({ kind: 'all', slot: 'any', job: '', wear: false, better: false, rar: 0, sort: 'type', q: '', notMine: false, worse: false, rarMax: 0, lvBelow: 0, ...o });
 

@@ -556,8 +556,6 @@ kbd { display: inline-block; min-width: 1.6em; text-align: center; padding: 0 .3
 .enh.t3 { color: #f4d03f; text-shadow: 0 0 6px #f4d03f; } .enh.t4 { color: #ff6f59; text-shadow: 0 0 8px #e74c3c; }
 .enh.t5 { background: linear-gradient(90deg, #e74c3c, #f39c12, #f4d03f, #58d68d, #5dade2, #af7ac5); -webkit-background-clip: text; background-clip: text; color: transparent; }
 .guard-row { display: flex; align-items: center; gap: .4em; font-size: .85em; margin: .4em 0 0; color: var(--gold-soft); }
-.eq-cos { grid-column: 1 / -1; display: grid; grid-template-columns: repeat(4, 1fr); gap: .4em; }
-.equip .eq.cos { border-color: rgba(175,122,197,.5); }
 
 /* ---------- เตือนสกิลบอส ---------- */
 .boss-warn { position: absolute; top: 19%; left: 50%; transform: translateX(-50%); min-width: 16em; text-align: center; pointer-events: none !important;
@@ -2099,24 +2097,6 @@ body.win-open #buff-notes { top: 1%; left: auto; right: 1%; transform: none; ali
 .tm-note .up { color: #8ff0a4; font-weight: 700; } .tm-adv { color: #ffd966; }
 
 /* แม่ช้อย: ห้องลองชุด */
-.tl-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(7.2em, 1fr)); gap: .35em; }
-.tl-card { position: relative; display: flex; flex-direction: column; align-items: center; gap: .15em; padding: .5em .2em .35em; border-radius: .6em; border: 1px solid rgba(255,255,255,.08); background: rgba(40,26,58,.65); color: inherit; font: inherit; cursor: pointer; text-align: center; }
-.tl-card:hover { border-color: rgba(212,175,55,.5); }
-.tl-card.try { border-color: #e5bf4e; background: rgba(212,175,55,.16); box-shadow: 0 0 .6em rgba(229,191,78,.35); }
-.tl-ic { font-size: 1.8em; line-height: 1; } .tl-ic .px-ico, .tl-ic img { width: 1.9em; height: 1.9em; }
-.tl-card b { font-size: .75em; color: #fff4d6; line-height: 1.2; } .tl-card small { font-size: .74em; color: #ffd966; } .tl-card small.own { color: #8ff0a4; }
-.tl-tag { position: absolute; top: .2em; left: .25em; font-style: normal; font-size: .6em; padding: 0 .35em; border-radius: .4em; background: linear-gradient(180deg, #f3d06a, #c99a2e); color: #2a1b0c; font-weight: 700; }
-.tl-tag.on { background: rgba(95,217,138,.35); color: #c6f7d3; }
-.tl-room-h { display: flex; justify-content: space-between; align-items: center; color: #ffe7a8; }
-.tl-stage { position: relative; display: grid; place-items: center; border-radius: .6em; background: radial-gradient(ellipse at 50% 80%, rgba(166,107,255,.35), rgba(20,12,30,.9) 70%); border: 1px solid rgba(166,107,255,.35); min-height: 10em; }
-.tl-hero { width: 11em; height: 11em; image-rendering: pixelated; }
-.tl-trying { position: absolute; top: .35em; right: .35em; display: flex; flex-direction: column; gap: .2em; align-items: flex-end; }
-.tl-trying span { display: inline-flex; align-items: center; gap: .2em; font-size: .68em; padding: .05em .4em; border-radius: .5em; background: rgba(243,208,106,.9); color: #2a1b0c; font-weight: 700; }
-.tl-trying .px-ico { width: 1.3em; height: 1.3em; }
-.tl-hint { font-size: .7em; color: var(--muted); line-height: 1.35; }
-.tl-slots { display: flex; flex-direction: column; gap: .15em; }
-.tl-srow { display: grid; grid-template-columns: 3.5em 1fr auto; gap: .4em; font-size: .78em; padding: .2em .4em; border-radius: .4em; background: rgba(0,0,0,.2); }
-.tl-srow span { color: var(--muted); } .tl-srow b { color: #f5e6c8; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; } .tl-srow small { color: #ffd966; }
 
 /* ลุงดำ: ตีบวก */
 .eh-main { gap: .55em; }
@@ -2291,3 +2271,75 @@ body.td-mode.m-hud .npc-dlg { font-size: 3.1cqh; bottom: 24cqh; }
 .sell-v3.sell-narrow .sell-bar .sb-sum { display: none; }
 .sell-v3.sell-narrow .sell-bar { flex-wrap: nowrap; }
 .sell-v3.sell-narrow .sell-bar .sb-get { margin-left: auto; }
+
+/* ป้ายชี้เมาส์ที่ NPC (NpcLife.js · PC) */
+.npc-tip { position: absolute; z-index: 60; pointer-events: none; min-width: 9em; max-width: 18em; padding: .45em .65em; border-radius: .55em;
+  background: rgba(20, 10, 28, .94); border: 1px solid #d4af37; box-shadow: 0 .3em .9em rgba(0,0,0,.5); color: #efe3cc; font-size: 13px; line-height: 1.35; }
+.npc-tip.hidden { display: none; }
+.npc-tip b { display: block; color: #ffe38a; font-size: 1.05em; }
+.npc-tip small { display: block; color: #a894b8; font-size: .85em; }
+.npc-tip .nt-keys { margin-top: .35em; padding-top: .3em; border-top: 1px solid rgba(212,175,55,.3); display: flex; flex-direction: column; gap: .15em; font-size: .88em; }
+.npc-tip kbd { display: inline-block; padding: 0 .35em; margin-right: .2em; border-radius: .3em; background: #3a2b47; border: 1px solid #6b5230; color: #ffe38a; font: inherit; font-size: .85em; }
+
+/* ============ การค้า (MarketUI.js): ตลาด · ฝากขาย · ป้ายรับซื้อ · กล่องรับของ · รับซื้อพิเศษ · พ่อค้าเร่ ============ */
+.shop-v3 .sh-tab.has { position: relative; }
+.shop-v3 .sh-tab.has::after { content: ''; position: absolute; top: .35em; right: .4em; width: .55em; height: .55em; border-radius: 50%; background: #ff5a4a; box-shadow: 0 0 .4em #ff5a4a; }
+.mk .sv-left { gap: .4em; }
+.mk-rows { display: flex; flex-direction: column; gap: .3em; overflow-y: auto; min-height: 0; flex: 1 1 auto; }
+.mk-row { display: grid; grid-template-columns: auto minmax(0, 1fr) auto auto; align-items: center; gap: .55em; text-align: left; }
+.mk-row.mk-ord { grid-template-columns: auto minmax(0, 1fr) auto auto; }
+.mk-row.mk-ord.can { border-color: rgba(155, 225, 93, .6) !important; }
+.mk-row .sv-tx small em { color: #9be15d; font-style: normal; }
+.mk-q { color: #cdb8ff; font-weight: 700; font-size: .9em; }
+.mk-ref { display: flex; flex-direction: column; gap: .15em; padding: .4em .55em; border-radius: .5em; background: rgba(0,0,0,.25); font-size: .85em; color: #cdbfe0; }
+.mk-ref b { color: #ffe38a; }
+.mk-price { display: flex; align-items: center; justify-content: space-between; gap: .5em; }
+.mk-pin { display: flex; align-items: center; gap: .2em; color: #ffe38a; font-weight: 700; }
+.mk-pin input { width: 8.5em; font: inherit; padding: .35em .5em; border-radius: .45em; border: 1px solid #6b5230; background: #1a1024; color: #ffe38a; text-align: right; }
+.mk-sug button { display: flex; flex-direction: column; align-items: center; line-height: 1.15; }
+.mk-sug button small { font-size: .75em; color: #cdbfe0; }
+.mk-mylist { display: flex; flex-direction: column; gap: .3em; max-height: 13em; overflow-y: auto; }
+.mk-mine { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: .5em; padding: .3em .45em; border-radius: .5em; background: rgba(40,26,58,.7); border: 1px solid rgba(212,175,55,.25); }
+.mk-mine .sv-tx small { display: block; font-size: .8em; color: #a894b8; }
+.mk-pick { padding: 1.4em .5em; }
+.mk-bag { flex: 1 1 auto; min-height: 0; overflow-y: auto; }
+.mk-search input { width: 100%; font: inherit; padding: .45em .6em; border-radius: .5em; border: 1px solid #6b5230; background: #1a1024; color: #efe3cc; }
+.mk-hits { display: grid; grid-template-columns: repeat(auto-fill, minmax(9.5em, 1fr)); gap: .3em; max-height: 9.5em; overflow-y: auto; }
+.mk-hit { display: flex; align-items: center; gap: .35em; padding: .25em .4em !important; font-size: .85em; text-align: left; }
+.mk-hit.on { border-color: #f0c04a !important; background: rgba(240,192,74,.18) !important; }
+.mk-hit .px-ico, .mk-hit img { width: 1.6em; height: 1.6em; }
+.mk-box { display: flex; flex-direction: column; gap: .8em; }
+.mk-boxin { display: flex; flex-direction: column; gap: .8em; align-items: flex-start; padding: 1em; border-radius: .8em; background: rgba(20,12,30,.6); border: 1px solid rgba(212,175,55,.3); }
+.mk-bgold { font-size: 1.2em; } .mk-bgold b { color: #ffe38a; }
+.mk-bitems { display: flex; flex-wrap: wrap; gap: .5em; }
+.mk-bi { display: flex; flex-direction: column; align-items: center; width: 6.5em; padding: .45em; border-radius: .6em; background: rgba(40,26,58,.8); border: 1px solid rgba(212,175,55,.3); text-align: center; }
+.mk-bi .px-ico, .mk-bi img { width: 2.6em; height: 2.6em; } .mk-bi small { font-size: .78em; color: #cdbfe0; }
+.mk-boxin .sv-go { width: auto; min-width: 12em; }
+/* รับซื้อพิเศษ */
+.dm-card { display: flex; flex-direction: column; gap: .8em; padding: 1em; border-radius: .8em; background: linear-gradient(180deg, rgba(60,40,20,.55), rgba(30,18,40,.6)); border: 1px solid rgba(240,192,74,.45); }
+.dm-line { margin: 0; font-size: 1.05em; color: #efe3cc; } .dm-line b { color: #ffe38a; }
+.dm-item { display: flex; align-items: center; gap: .7em; } .dm-item > .ico-wrap, .dm-item > .px-ico, .dm-item > img { width: 3.4em; height: 3.4em; }
+.dm-item b { display: block; font-size: 1.15em; color: #ffe38a; } .dm-item small { color: #a894b8; }
+.dm-price { display: flex; flex-direction: column; } .dm-price b { font-size: 1.4em; color: #9be15d; } .dm-price small { color: #a894b8; }
+.dm-bar { position: relative; height: 1.5em; border-radius: .75em; background: rgba(0,0,0,.35); overflow: hidden; border: 1px solid rgba(212,175,55,.35); }
+.dm-bar i { position: absolute; inset: 0 auto 0 0; background: linear-gradient(90deg, #d9a52e, #ffe38a); }
+.dm-bar span { position: relative; display: block; text-align: center; font-size: .85em; line-height: 1.5em; color: #fff; text-shadow: 0 1px 2px #000; }
+/* พ่อค้าเร่ */
+.tv-wrap { display: flex; flex-direction: column; gap: .7em; }
+.tv-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: .4em 1.2em; } .tv-head b { color: #ffe38a; } .tv-head small { flex-basis: 100%; color: #a894b8; }
+.tv-timer { color: #ffb347; font-weight: 700; }
+.tv-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(12em, 1fr)); gap: .6em; }
+.tv-card { display: flex; flex-direction: column; align-items: center; gap: .25em; padding: .7em; border-radius: .8em; background: rgba(40,26,58,.85); border: 1px solid rgba(212,175,55,.4); text-align: center; }
+.tv-card.out { opacity: .5; filter: grayscale(.6); }
+.tv-card .tv-ic .ico-wrap, .tv-card .tv-ic .px-ico, .tv-card .tv-ic img { width: 3.6em; height: 3.6em; }
+.tv-card small { color: #a894b8; font-size: .8em; min-height: 2.4em; } .tv-left { font-size: .8em; color: #ffb347; }
+.tv-card .btn { width: 100%; }
+.mk .mk-mylist { flex: none; max-height: 9.5em; }
+.mk .mk-bag { flex: 1 1 auto; }
+.mk-price { padding: .35em .55em; border-radius: .5em; background: rgba(0,0,0,.2); }
+.mk-sug { flex-wrap: wrap; } .mk-sug button { font-size: .82em; padding: .25em .5em !important; flex: 1 1 auto; }
+.mk-sug { display: flex; align-items: center; gap: .3em; font-size: .82em; color: #a894b8; }
+.mk-sug button { flex: 0 1 auto; display: inline-flex; flex-direction: row; gap: .25em; align-items: center; padding: .2em .45em !important; white-space: nowrap; font-size: 1em !important; }
+.mk-sug button b { color: #ffe38a; font-weight: 600; }
+.mk .sv-right .sv-dhead .sv-dic { width: 3.4em; height: 3.4em; }
+#shop-panel.shop-v3 .tv-card .btn.primary, #shop-panel.shop-v3 .mk-row .btn.primary { background: linear-gradient(180deg, #ffe38a, #d9a52e) !important; color: #2a1b0c !important; border-color: #fff0b8 !important; }

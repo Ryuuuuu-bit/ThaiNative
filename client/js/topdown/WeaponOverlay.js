@@ -53,7 +53,7 @@ export class WeaponOverlay {
     this.aura(it, a, time);
     // แสดงเฉพาะบนภาพ 8 ทิศ (สไปรต์เดิมวาดอาวุธในตัวอยู่แล้ว) และอาวุธที่มีภาพ
     it.fx.clear().setVisible(false);
-    if (!spr._d8 || !spr.visible || !key || !this.s.textures.exists(key) || spr._action) { img.setVisible(false); return; }
+    if (!spr._d8 || !spr.visible || !key || !this.s.textures.exists(key) || spr._action || spr.d8id?.startsWith('hero2_')) { img.setVisible(false); return; }   // ชุดใหม่ถืออาวุธในภาพอยู่แล้ว
     if (it.key !== key) {
       it.key = key; it.info = heldInfo(a, true);
       if (!it.info) { img.setVisible(false); return; }

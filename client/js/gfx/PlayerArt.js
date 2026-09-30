@@ -36,14 +36,7 @@ const WEAR = {
 /** ชุดแต่งตัวที่ต้องวาดทับตัว → { headwear: [...], back } (ใช้ภาพไอคอนไอเทม) */
 export function wearInfo(a, getImg) {
   const out = { headwear: [], back: null };
-  for (const slot of ['back', 'head', 'face']) {
-    const id = a.costume?.[slot], img = id && getImg(`ico_it_${id}`);
-    if (!img) continue;
-    const w = { ...WEAR[slot], ...(ITEMS[id].wear || {}) };
-    const part = { img, gx: w.g[0], gy: w.g[1], scale: w.s, at: w.at, rot0: w.r || 0 };
-    if (slot === 'back') out.back = part; else out.headwear.push(part);
-  }
-  return out;
+  return out;                                                        // ระบบชุดแต่งตัวเอาออกจากเกมแล้ว → ไม่มีของวาดทับ
 }
 
 /** แสงเรืองของอุปกรณ์ตีบวก: สีเปลี่ยนตามช่วงขั้น ความแรงเพิ่มทุกขั้น (lv 1–20) */
@@ -97,7 +90,7 @@ export function recolorBase(img, a, legacy = false) {
     hsl[i] = v;
     if (isCloth(...v)) cloth.push(i); else if (isHair(...v)) hair.push(i);
   }
-  const outfit = ITEMS[a.costume?.outfit]?.look || ITEMS[a.armor]?.look || OUTFITS[a.outfit], hairCol = HAIRSTYLES[a.hair].color;
+  const outfit = ITEMS[a.armor]?.look || OUTFITS[a.outfit], hairCol = HAIRSTYLES[a.hair].color;
   const paint = (list, pickHex) => {
     if (!list.length) return;
     const meanL = list.reduce((s, i) => s + hsl[i][2], 0) / list.length;

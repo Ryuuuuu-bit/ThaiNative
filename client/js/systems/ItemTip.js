@@ -120,7 +120,7 @@ export function itemCard(c, id, { slot = null, rarityOf = () => 0, title = '' } 
   const it = ITEMS[id]; if (!it) return '';
   const base = ITEMS[baseItemId(id)] || it;
   const lvBad = it.lv && c.level < it.lv;
-  const kind = TYPE_TH[it.type] || { consumable: 'ของใช้', food: 'อาหาร', material: 'วัตถุดิบ', costume: 'ชุดแต่งตัว', card: 'การ์ดผี', home: 'ยันต์', offering: 'ของถวาย', herb: 'สมุนไพร', fish: 'ปลา', skin: 'คัมภีร์' }[it.type] || '';
+  const kind = TYPE_TH[it.type] || { consumable: 'ของใช้', food: 'อาหาร', material: 'วัตถุดิบ', card: 'การ์ดผี', home: 'ยันต์', offering: 'ของถวาย', herb: 'สมุนไพร', fish: 'ปลา', skin: 'คัมภีร์' }[it.type] || '';
   const meta = [kind, it.wtype ? `แนว${JOBS[WTYPE_JOB[it.wtype]]?.nameTh || ''}` : '', it.job ? `สาย${JOBS[it.job]?.nameTh || ''}` : '',
     it.lv ? `<span class="${lvBad ? 'bad' : ''}">ต้อง Lv.${it.lv}</span>` : ''].filter(Boolean).join(' · ');
   const enh = slot ? c.enhance?.[slot] || 0 : 0;

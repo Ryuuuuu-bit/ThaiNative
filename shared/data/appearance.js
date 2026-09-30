@@ -59,6 +59,15 @@ export const GENDER_OUTFIT = { male: 0, female: 1 };
 export const startOutfit = (gender) => GENDER_OUTFIT[gender === 'female' ? 'female' : 'male'];
 export const DEFAULT_APPEARANCE = { gender: 'male', outfit: 0, hair: 1, face: 0, job: 'boxer', weapon: null, armor: null, path: null };
 
+/** ขั้นหน้าตาอาวุธของตัวละครชุดใหม่: 1 = Lv.1–39 · 2 = Lv.40–79 · 3 = Lv.80+ · 4 = ของบอส (ตำนาน/อาวุธแดง) — คิดจากอาวุธจริง (ไม่ใช่ lookAs) */
+export function weaponTier(weaponId) {
+  const it = weaponId ? ITEMS[weaponId] : null;
+  if (!it) return 1;
+  if (it.legend || it.red) return 4;
+  const lv = it.lv || 1;
+  return lv >= 80 ? 3 : lv >= 40 ? 2 : 1;
+}
+
 const idx = (v, n) => (Number.isInteger(v) && v >= 0 && v < n ? v : 0);
 const itemOf = (id, type) => (typeof id === 'string' && ITEMS[id]?.type === type ? id : null);
 
@@ -78,27 +87,15 @@ export function sanitizeAppearance(a = {}) {
     weapon,
     armor: itemOf(a.armor, 'armor'),
     path: JOB_IDS.includes(a.path) ? a.path : null,
-    costume: sanitizeCostume(a.costume),
     aura: Number.isInteger(a.aura) && a.aura >= 0 && a.aura <= 5 ? a.aura : 0,      // ออร่าตีบวก (0–5)
     wenh: enhLv(a.wenh), aenh: enhLv(a.aenh),                                         // ขั้นตีบวกอาวุธ/เสื้อ (0–20) → แสงเรืองที่อุปกรณ์
+    wtier: [1, 2, 3, 4].includes(a.wtier) ? a.wtier : weaponTier(weapon),               // ขั้นหน้าตาอาวุธ (โมเดลชุดใหม่)
     title: typeof a.title === 'string' && TITLE_BY_ID[a.title] ? a.title : null,      // ฉายาเหนือชื่อ
   };
 }
 
 const enhLv = (v) => (Number.isInteger(v) && v > 0 ? Math.min(20, v) : 0);
 
-export const COSTUME_SLOTS = ['head', 'face', 'back', 'outfit'];
-/** ชุดแต่งตัวที่ใส่ { head, face, back, outfit } – รับเฉพาะไอเทม costume ที่ช่องตรงกัน */
-export function sanitizeCostume(c = {}) {
-  const out = {};
-  for (const slot of COSTUME_SLOTS) {
-    const id = c?.[slot];
-    out[slot] = typeof id === 'string' && ITEMS[id]?.type === 'costume' && ITEMS[id].slot === slot ? id : null;
-  }
-  return out;
-}
-
 export function appearanceKey(a) {
-  const cs = a.costume ? COSTUME_SLOTS.map((k) => a.costume[k] || '').join('.') : '';
-  return `chr_${a.gender[0]}${a.outfit}_${a.hair}_${a.face}_${a.weapon || a.job}_${a.armor || 'x'}_${cs}_e${a.wenh || 0}.${a.aenh || 0}`;
+  return `chr_${a.gender[0]}${a.outfit}_${a.hair}_${a.face}_${a.weapon || a.job}_${a.armor || 'x'}_e${a.wenh || 0}.${a.aenh || 0}`;
 }

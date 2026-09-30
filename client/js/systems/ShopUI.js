@@ -9,19 +9,18 @@
 import { ITEMS, SHOPS } from '/shared/data/items.js';
 import { JOBS } from '/shared/data/classes.js';
 import { ENHANCE } from '/shared/data/village.js';
-import { craftList, canCraft } from '/shared/economy.js';
+import { craftList, canCraft, demandLeft } from '/shared/economy.js';
+import { demandOf, COIN } from '/shared/data/trade.js';
 import { SLOT_TH, ENH_SLOTS, FLASK_SLOTS, GEAR_TYPES, TYPE_TH } from '/shared/data/slots.js';
 import { itemIcon, uiIcon } from './util.js';
 import { inlineStats, impactLine, STAT } from './ItemTip.js';
 import { cpGain, canWear, isMine, gainText } from './ItemFilter.js';
-import { HeroView } from './HeroPreview.js';
 import { AURA_TH } from '../gfx/Aura.js';
 import * as Inv from './Inventory.js';
 
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const fmt = (n) => Math.round(n || 0).toLocaleString('en-US');
 const FKEY = { flask: 'Q', flask2: 'E' };
-const COS_TH = { outfit: 'ชุด', head: 'ศีรษะ', face: 'ใบหน้า', back: 'หลัง' };
 const MATRIX_SLOTS = ['weapon', 'armor', 'accessory', 'helm', 'gloves', 'boots', 'belt'];
 
 /** หมวดรายการในร้านทั่วไป */
@@ -35,10 +34,10 @@ const GROUPS = [
   ['util', 'ของใช้', 'วาร์ป · เปลี่ยนชื่อ · รีแต้ม'],
 ];
 const groupOf = (it) => it.type === 'flask' ? 'flask' : it.type === 'consumable' ? 'use' : it.type === 'food' ? 'food' : it.type === 'weapon' ? 'weapon'
-  : GEAR_TYPES.includes(it.type) || it.type === 'costume' ? 'gear' : it.type === 'material' || it.type === 'yant' ? 'mat' : 'util';
+  : GEAR_TYPES.includes(it.type) ? 'gear' : it.type === 'material' || it.type === 'yant' ? 'mat' : 'util';
 
 /** บรรทัดผลของไอเทม (สั้น) */
-function effLine(it) {
+export function effLine(it) {
   if (it.flask) return `${it.flask.kind.toUpperCase()} +${fmt(it.flask.heal)} · ${it.flask.max} ครั้ง`;
   if (it.buff) return `${it.buff.textTh} · ${it.buff.minutes} นาที${it.effect?.hp ? ` · HP +${it.effect.hp}` : ''}`;
   if (it.effect) return Object.entries(it.effect).map(([k, v]) => `${k.toUpperCase()} +${v}`).join(' · ');
@@ -47,7 +46,7 @@ function effLine(it) {
 }
 
 export class ShopViews {
-  constructor(ui) { this.ui = ui; this.tryOn = {}; this.craftSel = {}; }
+  constructor(ui) { this.ui = ui; this.craftSel = {}; }
   get c() { return this.ui.char; }
   get scene() { return this.ui.scene; }
   get E() { return this.scene.econ; }
@@ -77,7 +76,7 @@ export class ShopViews {
     const c = this.c, shop = SHOPS[shopId];
     const craftN = (list) => craftList(list).filter((r) => canCraft(c, r)).length;
     switch (tab) {
-      case 'buy': return shopId === 'tailor' ? `${shop.stock.length} แบบ` : shop.job ? `อุปกรณ์ Lv.${Math.min(...shop.stock.map((id) => ITEMS[id]?.lv || 1))}–${Math.max(...shop.stock.map((id) => ITEMS[id]?.lv || 1))}` : `${shop.stock.length} รายการ`;
+      case 'buy': return shop.job ? `อุปกรณ์ Lv.${Math.min(...shop.stock.map((id) => ITEMS[id]?.lv || 1))}–${Math.max(...shop.stock.map((id) => ITEMS[id]?.lv || 1))}` : `${shop.stock.length} รายการ`;
       case 'sell': return 'ของในกระเป๋า';
       case 'buyback': return `${(c.buyback || []).length} รายการ`;
       case 'enhance': return `ตีได้ ${ENH_SLOTS.filter((s) => c.equipment[s] && (c.enhance[s] || 0) < ENHANCE.max).length} ช่อง`;
@@ -87,15 +86,24 @@ export class ShopViews {
       case 'cards': return '3 ใบ → 1 ใบ';
       case 'dye': return '10 สี · ฿500';
       case 'quests': return 'เควสประจำสาย';
+      case 'demand': { const npc = { pa_sa: 'cook', mae_kha: 'shop', lung_dam: 'smith', tailor: 'tailor' }[shopId], d = demandOf(npc); return d ? `${ITEMS[d.item]?.nameTh} · เหลือ ${demandLeft(c, npc)}` : ''; }
+      case 'market': { const n = this.ui.mkV?.st?.listings?.length; return n != null ? `${fmt(n)} แผง` : 'ของจากผู้เล่น'; }
+      case 'mylist': { const n = this.ui.mkV?.st?.mine?.length; return n != null ? `วางอยู่ ${n} แผง` : 'ตั้งราคาเอง'; }
+      case 'orders': { const n = this.ui.mkV?.st?.orders?.length; return n != null ? `${fmt(n)} ป้าย` : 'คนอยากได้ของ'; }
+      case 'claim': { const b = this.ui.mkV?.st?.box; return b ? `มีของรอรับ${b.gold ? ` ฿${fmt(b.gold)}` : ''}` : 'ว่าง'; }
+      case 'barter': return `เบี้ย ${fmt(Inv.count(c, COIN))} อัน`;
+      case 'travel': { const t = this.ui.mkV?.travel; return t?.active ? `เก็บร้านใน ${Math.max(0, Math.ceil((t.until - Date.now()) / 60000))} นาที` : 'ปิดร้านแล้ว'; }
       default: return '';
     }
   }
 
   rail(tabs, shopId, active) {
-    const TAB = { buy: [uiIcon('shop', '🛒'), shopId === 'tailor' ? 'ซื้อชุด' : 'ซื้อ'], sell: [uiIcon('gold', '💰'), 'ขาย'], buyback: [uiIcon('return', '↩'), 'ซื้อคืน'],
+    const TAB = { buy: [uiIcon('shop', '🛒'), 'ซื้อ'], sell: [uiIcon('gold', '💰'), 'ขาย'], buyback: [uiIcon('return', '↩'), 'ซื้อคืน'],
       enhance: [uiIcon('anvil', '🔨'), 'ตีบวก'], forge: [uiIcon('tools', '⚒️'), 'สร้างอุปกรณ์'], cook: [uiIcon('soup', '🍳'), 'ทำอาหาร'], brew: [uiIcon('herb', '🌿'), 'ปรุงยา'],
-      cards: [uiIcon('exchange', '🃏'), 'แลกการ์ด'], dye: [uiIcon('palette', '🎨'), 'ย้อมสีผม'], quests: [uiIcon('scroll', '📜'), 'เลื่อนอาชีพ'] };
-    return tabs.map((t) => `<button data-tab="${t}" class="sh-tab${t === active ? ' active' : ''}"><span class="st-ic">${TAB[t]?.[0] || '•'}</span><span class="st-tx"><b>${TAB[t]?.[1] || t}</b><small>${this.railSub(t, shopId)}</small></span></button>`).join('');
+      cards: [uiIcon('exchange', '🃏'), 'แลกการ์ด'], dye: [uiIcon('palette', '🎨'), 'ย้อมสีผม'], quests: [uiIcon('scroll', '📜'), 'เลื่อนอาชีพ'],
+      demand: [uiIcon('exclaim', '❗'), 'รับซื้อพิเศษ'], market: [uiIcon('shop', '🛒'), 'ตลาด'], mylist: [uiIcon('gold', '💰'), 'ฝากขาย'], orders: [uiIcon('memo', '📋'), 'ป้ายรับซื้อ'],
+      claim: [uiIcon('inbox', '📥'), 'กล่องรับของ'], barter: [uiIcon('exchange', '🔄'), 'แลกของ'], travel: [uiIcon('gift', '🎁'), 'ของหายาก'] };
+    return tabs.map((t) => `<button data-tab="${t}" class="sh-tab${t === active ? ' active' : ''}${t === 'claim' && this.ui.mkV?.st?.box ? ' has' : ''}${t === 'demand' && demandLeft(this.c, { pa_sa: 'cook', mae_kha: 'shop', lung_dam: 'smith', tailor: 'tailor' }[shopId]) > 0 && Inv.count(this.c, demandOf({ pa_sa: 'cook', mae_kha: 'shop', lung_dam: 'smith', tailor: 'tailor' }[shopId])?.item) ? ' has' : ''}"><span class="st-ic">${TAB[t]?.[0] || '•'}</span><span class="st-tx"><b>${TAB[t]?.[1] || t}</b><small>${this.railSub(t, shopId)}</small></span></button>`).join('');
   }
 
   // ============================================================
@@ -123,7 +131,7 @@ export class ShopViews {
   buyDetail(id, shopId, { equip = false } = {}) {
     const c = this.c, it = ITEMS[id], ui = this.ui;
     if (!it) return '<p class="empty">เลือกสินค้าทางซ้าย</p>';
-    const gear = GEAR_TYPES.includes(it.type), single = gear || it.type === 'skin' || it.type === 'costume';
+    const gear = GEAR_TYPES.includes(it.type), single = gear || it.type === 'skin';
     const maxAfford = Math.max(1, Math.floor(c.gold / Math.max(1, it.price)));
     const n = single ? 1 : Math.max(1, Math.min(ui.shopQty || 1, 9999));
     const cost = it.price * n, ok = c.gold >= cost, under = it.lv && c.level < it.lv, have = Inv.count(c, id);
@@ -138,7 +146,7 @@ export class ShopViews {
       <div class="sv-have"><span>มีอยู่ในกระเป๋า</span><b>${fmt(have)} ชิ้น</b></div>
       <div class="sv-fill"></div>${stepper}
       <div class="sv-total"><span>รวม</span><b class="${ok ? '' : 'bad'}">฿${fmt(cost)}</b></div>
-      ${['armor', 'weapon', 'costume'].includes(it.type) ? `<button class="btn ghost sm sv-prev" data-prev="${id}">👁 ลองใส่ดูก่อน</button>` : ''}
+      ${['armor', 'weapon'].includes(it.type) ? `<button class="btn ghost sm sv-prev" data-prev="${id}">👁 ลองใส่ดูก่อน</button>` : ''}
       <button class="btn primary sv-go" data-buy="${id}" data-n="${n}" ${equip ? 'data-equip="1"' : ''} ${ok && !under ? '' : 'disabled'}>${label}</button>`;
   }
 
@@ -204,53 +212,6 @@ export class ShopViews {
   }
 
   // ============================================================
-  //  ซื้อ: แม่ช้อย (ห้องลองชุด)
-  // ============================================================
-  buyTailor(el, shopId) {
-    const c = this.c, shop = SHOPS[shopId], ui = this.ui;
-    const worn = { ...(c.costume || c.appearance?.costume || {}) };
-    const owned = (id) => Inv.count(c, id) > 0 || Object.values(worn).includes(id);
-    const f = ui.tailorF || 'all';
-    const slots = ['outfit', 'head', 'face', 'back'].filter((s) => shop.stock.some((id) => ITEMS[id]?.slot === s));
-    const list = shop.stock.filter((id) => ITEMS[id] && (f === 'all' || ITEMS[id].slot === f));
-    const chips = `<div class="sv-chips">${[['all', 'ทั้งหมด', shop.stock.length], ...slots.map((s) => [s, COS_TH[s], shop.stock.filter((id) => ITEMS[id]?.slot === s).length])]
-      .map(([k, th, n]) => `<button data-tf="${k}" class="${k === f ? 'active' : ''}">${th} <small>${n}</small></button>`).join('')}<span class="sv-chip-note">ชุดแต่งตัวเปลี่ยนแค่หน้าตา ไม่มีค่าพลัง</span></div>`;
-    const grid = list.map((id) => { const it = ITEMS[id], trying = this.tryOn[it.slot] === id, wearing = worn[it.slot] === id;
-      return `<button class="tl-card${trying ? ' try' : ''}" data-try="${id}">${trying ? '<i class="tl-tag">กำลังลอง</i>' : wearing ? '<i class="tl-tag on">ใส่อยู่</i>' : ''}
-        <span class="tl-ic">${itemIcon(id, it.icon)}</span><b>${esc(it.nameTh)}</b><small class="${owned(id) ? 'own' : ''}">${owned(id) ? 'มีแล้ว' : `฿${fmt(it.price)}`}</small></button>`; }).join('');
-    const tried = Object.entries(this.tryOn).filter(([, id]) => id);
-    const toBuy = tried.filter(([, id]) => !owned(id)), cost = toBuy.reduce((a, [, id]) => a + ITEMS[id].price, 0), ok = c.gold >= cost;
-    const rows = slots.map((s) => { const id = this.tryOn[s] || worn[s], it = ITEMS[id];
-      return `<div class="tl-srow"><span>${COS_TH[s]}</span><b>${it ? esc(it.nameTh) : '— ไม่ใส่ —'}</b><small>${this.tryOn[s] ? (owned(id) ? 'มีแล้ว' : `฿${fmt(it.price)}`) : it ? 'ใส่อยู่' : ''}</small></div>`; }).join('');
-    el.innerHTML = `<div class="sv-split tl"><div class="sv-left">${chips}<div class="tl-grid">${grid}</div></div>
-      <div class="sv-right"><div class="tl-room-h"><b>ห้องลองชุด</b><button class="btn ghost sm" data-tclear ${tried.length ? '' : 'disabled'}>ถอดที่ลองทั้งหมด</button></div>
-        <div class="tl-stage"><canvas class="tl-hero"></canvas>${tried.length ? `<div class="tl-trying">${tried.map(([, id]) => `<span>${itemIcon(id, ITEMS[id].icon)}${esc(ITEMS[id].nameTh)}</span>`).join('')}</div>` : ''}</div>
-        <small class="tl-hint">คลิกชุดทางซ้ายเพื่อลอง · ลองหลายชิ้นพร้อมกันได้ (ชุด+ศีรษะ+ใบหน้า+หลัง) · ตัวละครในเกมจะแสดงชุดที่ลองด้วย</small>
-        <div class="tl-slots">${rows}</div><div class="sv-fill"></div>
-        <div class="sv-total"><span>${toBuy.length ? `ต้องซื้อ ${toBuy.length} ชิ้น` : tried.length ? 'มีครบแล้ว' : 'ยังไม่ได้ลอง'}</span><b class="${ok ? '' : 'bad'}">฿${fmt(cost)}</b></div>
-        <button class="btn primary sv-go" data-tbuy ${tried.length && ok ? '' : 'disabled'}>${!ok ? 'เงินไม่พอ' : toBuy.length ? 'ซื้อแล้วใส่เลย' : 'ใส่เลย'}</button></div></div>`;
-    // ตัวละครในห้องลองชุด (ชุดหลัก) + ตัวละครในเกม (ครบทุกช่อง)
-    const app = { ...c.appearance, costume: { ...worn, ...Object.fromEntries(tried) } };
-    try { (this.tlView ||= null)?.destroy?.(); this.tlView = new HeroView(el.querySelector('.tl-hero'), this.scene, { scale: 3, autoDrop: true }).set(app, 'idle', 'south'); } catch { /* */ }
-    const redraw = () => { const L = el.querySelector('.sv-left'), top = L?.scrollTop || 0; this.buyTailor(el, shopId); el.querySelector('.sv-left').scrollTop = top; };
-    el.querySelectorAll('[data-tf]').forEach((b) => (b.onclick = () => { ui.tailorF = b.dataset.tf; this.click(); redraw(); }));
-    el.querySelectorAll('[data-try]').forEach((b) => (b.onclick = () => {
-      const id = b.dataset.try, s = ITEMS[id].slot;
-      this.tryOn[s] = this.tryOn[s] === id ? null : id; this.click();
-      this.scene.player?.previewAppearance?.({ ...c.appearance, costume: { ...worn, ...Object.fromEntries(Object.entries(this.tryOn).filter(([, v]) => v)) } }, 8000);
-      redraw();
-    }));
-    el.querySelector('[data-tclear]')?.addEventListener('click', () => { this.tryOn = {}; this.click(); redraw(); });
-    el.querySelector('[data-tbuy]')?.addEventListener('click', async () => {
-      for (const [, id] of toBuy) { const r = await this.E.act('buy', { shop: shopId, id, qty: 1 }); if (!r.ok) return this.done(r); }
-      let last = { ok: true };
-      for (const [, id] of tried) if (worn[ITEMS[id].slot] !== id) last = await this.E.act('use', { id });
-      this.tryOn = {};
-      this.done(last.ok ? { ...last, msg: `👘 แต่งตัวเรียบร้อย${toBuy.length ? ` (ซื้อ ${toBuy.length} ชิ้น ฿${fmt(cost)})` : ''}` } : last);
-    });
-  }
-
-  // ============================================================
   //  ตีบวก (ลุงดำ)
   // ============================================================
   enhance(el, shopId) {
@@ -297,15 +258,17 @@ export class ShopViews {
   // ============================================================
   craft(el, list, hint) {
     const c = this.c, all = craftList(list).map((r, i) => ({ r, i }));
-    const UNIT = { cook: 'จาน', brew: 'ขวด', forge: 'ชิ้น' }[list], VERB = { cook: 'ทำ', brew: 'ปรุง', forge: 'สร้าง' }[list];
+    const UNIT = { cook: 'จาน', brew: 'ขวด', forge: 'ชิ้น', barter: 'ครั้ง' }[list], VERB = { cook: 'ทำ', brew: 'ปรุง', forge: 'สร้าง', barter: 'แลก' }[list];
     // ตัวกรอง
     let F, key = `craftF_${list}`, f;
     if (list === 'forge') { const mj = c.appearance?.job || c.path; F = { mine: `สาย${JOBS[mj]?.nameTh || 'ตัวเอง'}`, all: 'ทุกสาย', util: 'ของใช้' }; f = this[key] || (mj ? 'mine' : 'all'); }
     else if (list === 'cook') { F = { all: 'ทั้งหมด', exp: 'EXP', atk: 'โจมตี', def: 'ป้องกัน', drop: 'ของดรอป' }; f = this[key] || 'all'; }
+    else if (list === 'barter') { F = { all: 'ทั้งหมด', coin: 'ของดรอป → เบี้ย', goods: 'เบี้ย → ของดี' }; f = this[key] || 'all'; }
     else { F = { all: 'ทั้งหมด', hp: 'ฟื้น HP', mp: 'ฟื้น MP', buff: 'บัฟ' }; f = this[key] || 'all'; }
     const mj = c.appearance?.job || c.path;
     const pass = ({ r }) => { const it = ITEMS[r.out], m = it.buff?.mods || {};
       if (list === 'forge') return f === 'all' ? !r.util : f === 'util' ? r.util : r.job === mj;
+      if (list === 'barter') return f === 'all' || (f === 'coin') === (r.out === COIN);
       if (f === 'all') return true;
       if (f === 'exp') return m.expMul; if (f === 'atk') return m.atkMul || m.critAdd; if (f === 'def') return m.def || m.defMul; if (f === 'drop') return m.dropMul;
       if (f === 'hp') return it.effect?.hp; if (f === 'mp') return it.effect?.mp; if (f === 'buff') return it.buff; return true; };
@@ -317,7 +280,7 @@ export class ShopViews {
       const needs = Object.entries(r.need).map(([id, n]) => { const h = Inv.count(c, id); return `<span class="cf-need${h >= n ? '' : ' miss'}" title="${esc(ITEMS[id]?.nameTh)}">${itemIcon(id, ITEMS[id]?.icon, { badge: false })}${fmt(h)}/${n}</span>`; }).join('');
       return `<button class="cf-card${sel && i === sel.i ? ' on' : ''}${under ? ' under' : ''}" data-csel="${i}"><span class="sv-ic">${itemIcon(r.out, it.icon)}</span>
         <span class="sv-tx"><b>${esc(it.nameTh)}</b><small>${esc(effLine(it))}</small></span><i class="cf-badge${mx ? ' ok' : ''}">${under ? `🔒 Lv.${it.lv}` : mx ? `${VERB}ได้ ${mx} ${UNIT}` : 'วัตถุดิบไม่พอ'}</i>
-        <span class="cf-needs">${needs}</span><span class="sv-pr">฿${fmt(r.fee)}</span></button>`; };
+        <span class="cf-needs">${needs}</span><span class="sv-pr">${list === 'barter' ? `ได้ x${r.qty || 1}` : `฿${fmt(r.fee)}`}</span></button>`; };
     let detail = '<p class="empty">ไม่มีสูตรในหมวดนี้</p>';
     if (sel) {
       const { r } = sel, it = ITEMS[r.out], mx = maxOf(r), single = list === 'forge';
@@ -332,10 +295,10 @@ export class ShopViews {
         <div class="sv-fill"></div>
         ${single ? '' : `<div class="sv-have"><span>${VERB}ได้สูงสุด</span><b>${fmt(mx)} ${UNIT}</b></div>
         <div class="sv-qty"><button data-cd="-1">−</button><input id="craft-n" type="number" min="1" value="${n}" inputmode="numeric"><button data-cd="1">+</button><button class="sv-max" data-cmax="${mx}">สูงสุด</button></div>`}
-        <div class="sv-total"><span>ค่าแรงรวม</span><b class="${c.gold >= r.fee * n ? '' : 'bad'}">฿${fmt(r.fee * n)}</b></div>
+        ${list === 'barter' ? `<div class="sv-total"><span>ได้รับ</span><b>${esc(it.nameTh)} x${fmt((r.qty || 1) * n)}</b></div>` : `<div class="sv-total"><span>ค่าแรงรวม</span><b class="${c.gold >= r.fee * n ? '' : 'bad'}">฿${fmt(r.fee * n)}</b></div>`}
         <button class="btn primary sv-go" data-craft="${sel.i}" data-n="${n}" ${can ? '' : 'disabled'}>${VERB} ${single ? '' : `${fmt(n)} ${UNIT}`}</button>`;
     }
-    el.innerHTML = `<div class="sv-split cf"><div class="sv-left"><div class="sv-chips"><span class="sv-chip-note l">${list === 'forge' ? 'แสดง:' : list === 'cook' ? 'อยากได้บัฟ:' : 'ประเภท:'}</span>${Object.entries(F).map(([k, l]) => `<button data-cf="${k}" class="${k === f ? 'active' : ''}">${l}</button>`).join('')}</div>
+    el.innerHTML = `<div class="sv-split cf"><div class="sv-left"><div class="sv-chips"><span class="sv-chip-note l">${list === 'forge' || list === 'barter' ? 'แสดง:' : list === 'cook' ? 'อยากได้บัฟ:' : 'ประเภท:'}</span>${Object.entries(F).map(([k, l]) => `<button data-cf="${k}" class="${k === f ? 'active' : ''}">${l}</button>`).join('')}</div>
       <div class="cf-grid">${rows.map(card).join('') || '<p class="empty">ไม่มีสูตรในหมวดนี้</p>'}</div><p class="hint">${hint}</p></div>
       <div class="sv-right">${detail}</div></div>`;
     const redraw = () => { const L = el.querySelector('.sv-left'), top = L?.scrollTop || 0; this.craft(el, list, hint); el.querySelector('.sv-left').scrollTop = top; };

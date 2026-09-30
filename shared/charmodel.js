@@ -8,7 +8,7 @@ const lookOf = (id) => { const b = baseItemId(id); return (b && ITEMS[b]?.lookAs
 import { ENHANCE } from './data/village.js';
 import { JOBS, VILLAGER, PATH_LV, SUB_CAP } from './data/classes.js';
 import { ITEMS, STARTING_GOLD, STARTING_ITEMS, STARTER_WEAPON, WTYPE_JOB } from './data/items.js';
-import { sanitizeAppearance } from './data/appearance.js';
+import { sanitizeAppearance, weaponTier } from './data/appearance.js';
 import { expToNext, POINTS_PER_LEVEL, STAT_KEYS, MAX_LEVEL } from './stats.js';
 import { getDerived } from './character.js';
 import { SKILL_SLOTS, OLD_SKILL_SLOTS, SP_PER_LEVEL, START_SP, SKILL_BY_ID, canLearn, isItemSlot, slotItemId, skillCap, skillUsable } from './data/skills.js';
@@ -16,6 +16,9 @@ import { PASSIVES, KEYSTONE, canAllocate, branchPoints, totalPassivePoints, PASS
 import { LIFE, LIFE_IDS, lifeLevel, masteryLevel } from './data/life.js';
 import { fixCards } from './data/cards.js';
 import { EQUIP_SLOTS, FLASK_SLOTS, SLOT_TYPE, emptyEquipment } from './data/slots.js';
+
+/** ราคาคืนเงินชุดแต่งตัว (ระบบถูกเอาออกจากเกม) · ของร้าน = ราคาซื้อ · ของหายาก ฿300,000 · มงกุฎจักรพรรดิ ฿500,000 */
+const COSTUME_REFUND = { cs_outfit_ruenton: 1400, cs_outfit_mohom: 1200, cs_outfit_isan: 1400, cs_outfit_jongkraben: 1800, cs_outfit_rajpatan: 2000, cs_outfit_chaona: 1200, cs_outfit_silk: 2400, cs_outfit_hunter: 1600, cs_outfit_warrior: 2600, cs_outfit_mahadlek: 3000, cs_head_chada: 2200, cs_head_ngob: 700, cs_head_naga: 3200, cs_head_mongkol: 600, cs_head_flower: 900, cs_head_peacock: 300000, cs_head_jade: 300000, cs_head_asura: 300000, cs_head_emperor: 500000, cs_face_takhon: 1100, cs_face_khon: 1600, cs_face_skull: 300000, cs_back_kinnari: 2800, cs_back_umbrella: 1200, cs_back_flag: 1800, cs_back_bat: 300000 };
 
 export const SAVE_VERSION = 2;          // v2 = ตัวละครแบบเดียว + สายหลัก + แนวต่อสู้ตามอาวุธ
 
@@ -55,7 +58,7 @@ export function newCharacter(name, appearance = {}) {
     inventory: STARTING_ITEMS.map((i) => ({ ...i })),
     equipment: { ...emptyEquipment(), flask: 'flask_hp1', flask2: 'flask_mp1' }, flaskCh: { flask: 3, flask2: 3 }, starterFlask: true,
     sp: START_SP, skills: {}, hotbar: emptyHotbar(),
-    quests: { active: {}, done: [] }, enhance: {}, costume: {},
+    quests: { active: {}, done: [] }, enhance: {},
     rec: {}, titles: [], friends: [],
     passives: ['root'], life: {}, wm: {}, cards: {}, cardBook: {},
   };
@@ -69,8 +72,8 @@ export function syncAppearance(c) {
   const before = JSON.stringify(c.appearance), oldStyle = c.appearance?.job;
   const e = c.enhance || {};
   const top = Math.max(0, ...Object.entries(e).filter(([slot]) => c.equipment[slot]).map(([, v]) => v || 0));
-  c.appearance = sanitizeAppearance({ ...c.appearance, weapon: lookOf(c.equipment.weapon), armor: lookOf(c.equipment.armor), path: c.path, aura: ENHANCE.auraTier(top), costume: c.costume,
-    wenh: c.equipment.weapon ? e.weapon || 0 : 0, aenh: c.equipment.armor ? e.armor || 0 : 0, title: c.title || null });
+  c.appearance = sanitizeAppearance({ ...c.appearance, weapon: lookOf(c.equipment.weapon), armor: lookOf(c.equipment.armor), path: c.path, aura: ENHANCE.auraTier(top),
+    wtier: weaponTier(baseItemId(c.equipment.weapon)), wenh: c.equipment.weapon ? e.weapon || 0 : 0, aenh: c.equipment.armor ? e.armor || 0 : 0, title: c.title || null });
   if (oldStyle && oldStyle !== c.appearance.job) swapHotbar(c, oldStyle, c.appearance.job);
   if (oldStyle !== c.appearance.job) { recomputePath(c); c.appearance.path = c.path; }   // สลับแนวอาวุธ → อาชีพตามอาวุธที่ถือ (ถ้าชำนาญถึงเกณฑ์)
   return before !== JSON.stringify(c.appearance);
@@ -391,9 +394,18 @@ export function migrate(c) {
   if (!c.flaskCh || typeof c.flaskCh !== 'object') c.flaskCh = {};
   for (const s of FLASK_SLOTS) { const f = ITEMS[c.equipment[s]]?.flask; c.flaskCh[s] = f ? Math.max(0, Math.min(f.max, Number.isFinite(+c.flaskCh[s]) ? +c.flaskCh[s] : f.max)) : 0; }
   if (!Array.isArray(c.inventory)) c.inventory = [];
+  // ระบบชุดแต่งตัวเอาออกจากเกมแล้ว → คืนเงินครั้งเดียว (ชุดในกระเป๋า + ที่สวมอยู่) · ต้องทำก่อนกรองไอเทมที่ไม่มีในเกม
+  if (!c.cosRefund) {
+    let gold = 0, n = 0;
+    const take = (id, q = 1) => { const v = COSTUME_REFUND[id]; if (!v || !(q > 0)) return false; gold += v * q; n += q; return true; };
+    c.inventory = c.inventory.filter((s) => !(s && take(s.id, Math.floor(+s.qty || 0))));
+    for (const id of Object.values(c.costume && typeof c.costume === 'object' ? c.costume : {})) if (typeof id === 'string') take(id);
+    if (Array.isArray(c.buyback)) c.buyback = c.buyback.filter((b) => !COSTUME_REFUND[b?.id]);
+    c.gold = (Number.isFinite(+c.gold) ? +c.gold : 0) + gold;
+    c.cosRefund = { gold, n, told: !n };
+  }
+  delete c.costume;
   c.inventory = c.inventory.filter((s) => s && ITEMS[s.id] && s.qty > 0).map((s) => ({ id: s.id, qty: Math.floor(s.qty) }));
-  if (!c.costume || typeof c.costume !== 'object') c.costume = {};
-  for (const k of Object.keys(c.costume)) if (c.costume[k] && ITEMS[c.costume[k]]?.type !== 'costume') c.costume[k] = null;   // ชุดรุ่นเก่าที่ถูกถอดออกจากเกม
   if (!c.enhance || typeof c.enhance !== 'object') c.enhance = {};
   fixCards(c);                                                   // การ์ดในช่องสวมใส่ + สมุดสะสม
   for (const k of Object.keys(c.equipment)) if (c.equipment[k] && (!ITEMS[c.equipment[k]] || ITEMS[c.equipment[k]].type !== SLOT_TYPE[k])) c.equipment[k] = null;

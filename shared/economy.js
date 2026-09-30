@@ -14,6 +14,7 @@ import { WORLD } from './constants.js';
 import { MAPS, mapAt } from './data/maps.js';
 import { rollFish, RECIPES, BREWS, ENHANCE, QUESTS, QUEST_BY_ID, questGiver, GIVER_TH, HERB_RESPAWN_MS, rollChest, dailyBounties } from './data/village.js';
 import { FORGE } from './data/crafting.js';
+import { BARTER, COIN, DEMAND, demandOf, dayKey } from './data/trade.js';
 import { NPCS, SHOP_NPC, FISH_SPOT, CAMP, HERB_NODES, nearNpc, nearSpot } from './data/npcs.js';
 import { TITLE_BY_ID, checkTitles } from './data/titles.js';
 import { getDerived, EQUIP_SLOTS, SLOT_TYPE } from './character.js';
@@ -160,23 +161,8 @@ function unequip(c, { slot }) {
   clampHp(c);
   return OK(`ถอด ${ITEMS[id].nameTh}${slot === 'weapon' ? ' · มือเปล่า (แนวมวย)' : ''}`, { jobChanged: changed });
 }
-function wearCostume(c, id) {
-  const it = ITEMS[id];
-  c.costume ||= {};
-  removeItem(c, id);
-  if (c.costume[it.slot]) addItem(c, c.costume[it.slot]);
-  c.costume[it.slot] = id;
-  syncAppearance(c);
-  return OK(`แต่งตัว: ${it.nameTh}`, { jobChanged: true });
-}
-function cosOff(c, { slot }) {
-  const id = c.costume?.[slot];
-  if (!id) return NO('');
-  c.costume[slot] = null;
-  addItem(c, id);
-  syncAppearance(c);
-  return OK(`ถอด ${ITEMS[id].nameTh}`, { jobChanged: true });
-}
+/** รับทราบการคืนเงินชุดแต่งตัว (ระบบถูกเอาออกจากเกม) */
+function cosAck(c) { if (c.cosRefund) c.cosRefund.told = true; return OK(''); }
 
 function use(c, { id }) {
   const it = ITEMS[id];
@@ -223,7 +209,6 @@ function use(c, { id }) {
     c.blessings.push({ id: bid, nameTh: it.nameTh, icon: it.icon, until: now + it.buff.minutes * 60000, mods: it.buff.mods });
     return OK(`กิน${it.nameTh} อร่อย! ${it.buff.textTh} (${it.buff.minutes} นาที)`, { ate: true, kind: 'food', amt: it.effect.hp || 0 });
   }
-  if (it.type === 'costume') return wearCostume(c, id);
   if (it.type === 'home') return { ok: true, home: true };
   if (it.type === 'rename') return { ok: true, rename: true };           // ใบเปลี่ยนชื่อ: เปิดช่องพิมพ์ชื่อ (server ตรวจ/ใช้ใบผ่าน char:rename)
   if (it.type === 'herb') return NO(`${it.nameTh}: ให้ยายติ๋มปรุงยา หรือป้าสาทำอาหาร`);
@@ -351,7 +336,7 @@ function siamsi(c, a, ctx) {
 // ------------------------------------------------------------
 //  ทำอาหาร / ปรุงยา / หลอมอุปกรณ์
 // ------------------------------------------------------------
-const CRAFT = { cook: { list: RECIPES, npc: 'cook', who: 'ป้าสา' }, brew: { list: BREWS, npc: 'shop', who: 'ยายติ๋ม' }, forge: { list: FORGE, npc: 'smith', who: 'ลุงดำ' } };
+const CRAFT = { cook: { list: RECIPES, npc: 'cook', who: 'ป้าสา' }, brew: { list: BREWS, npc: 'shop', who: 'ยายติ๋ม' }, forge: { list: FORGE, npc: 'smith', who: 'ลุงดำ' }, barter: { list: BARTER, npc: 'market', who: 'นายห้างสำเภา' } };
 export const craftList = (k) => CRAFT[k]?.list || [];
 export const canCraft = (c, r) => Object.entries(r.need).every(([id, n]) => count(c, id) >= n) && c.gold >= r.fee;
 function craft(c, { list, idx, n = 1 }, ctx) {
@@ -365,15 +350,41 @@ function craft(c, { list, idx, n = 1 }, ctx) {
   while (done < n && canCraft(c, r)) {
     Object.entries(r.need).forEach(([id, k]) => removeItem(c, id, k));
     c.gold -= r.fee;
-    addItem(c, r.out);
-    if (list !== 'forge' && ctx.rnd && ctx.rnd() < lifeLv(c, lk) * 0.02) { addItem(c, r.out); extra++; }
+    addItem(c, r.out, r.qty || 1);
+    if (list !== 'forge' && list !== 'barter' && ctx.rnd && ctx.rnd() < lifeLv(c, lk) * 0.02) { addItem(c, r.out); extra++; }
     done++;
   }
-  const life = done ? addLifeXp(c, lk, done * (list === 'forge' ? 6 : 3)) : null;
+  const life = done && list !== 'barter' ? addLifeXp(c, lk, done * (list === 'forge' ? 6 : 3)) : null;
   if (!done) return NO(Object.entries(r.need).every(([id, k]) => count(c, id) >= k) ? 'เงินไม่พอจ่ายค่าแรง' : 'วัตถุดิบไม่พอ');
   rec(c, 'craft', done);
   const it = ITEMS[r.out];
+  if (list === 'barter') return OK(`แลกได้ ${it.icon} ${it.nameTh} x${(r.qty || 1) * done}`, { done, out: r.out });
   return OK(`${L.who}${list === 'forge' ? 'สร้าง' : 'ทำ'} ${it.icon} ${it.nameTh}${done > 1 ? ` x${done}` : ''} ให้แล้ว!${extra ? ` (ฝีมือดี ได้เพิ่ม ${extra})` : ''}`, { done, out: r.out, forged: list === 'forge' && !r.util, life });
+}
+
+// ------------------------------------------------------------
+//  รับซื้อพิเศษประจำวัน (ป้าสา · ยายติ๋ม · ลุงดำ · แม่ช้อย) – ราคา x3 · วันละ 30 ชิ้น · ทุก 10 ชิ้นได้เบี้ยสำเภา 1
+// ------------------------------------------------------------
+export function demandLeft(c, npc, now = Date.now()) {
+  const day = dayKey(now), d = c.demand?.day === day ? c.demand : null;
+  return DEMAND.cap - (d?.n?.[npc] || 0);
+}
+function demandSell(c, { npc, n = 1 }, ctx) {
+  const d = demandOf(String(npc), dayKey(ctx.now));
+  if (!d) return NO('ไม่มีคำขอรับซื้อ');
+  if (ctx.x != null && !atNpc(ctx, d.npc)) return NO(`ต้องยืนคุยกับ${d.who}ก่อน`);
+  const day = dayKey(ctx.now);
+  if (c.demand?.day !== day) c.demand = { day, n: {} };
+  const sold = c.demand.n[d.npc] || 0, left = DEMAND.cap - sold;
+  if (left <= 0) return NO(`วันนี้${d.who}รับครบแล้ว พรุ่งนี้มาใหม่นะ`);
+  const q = Math.min(int(n, 1, 9999, 1), left, freeQty(c, d.item));
+  if (q <= 0) return NO(`ไม่มี ${ITEMS[d.item].nameTh} ที่ขายได้`);
+  removeItem(c, d.item, q);
+  const gold = d.price * q, coins = Math.floor((sold + q) / DEMAND.perCoin) - Math.floor(sold / DEMAND.perCoin);
+  c.gold += gold; c.demand.n[d.npc] = sold + q;
+  if (coins) addItem(c, COIN, coins);
+  rec(c, 'demand', q);
+  return OK(`${d.who}รับซื้อ ${ITEMS[d.item].nameTh} x${q} (+฿${gold.toLocaleString()})${coins ? ` · ได้เบี้ยสำเภา ${coins}` : ''}`, { gold, coins });
 }
 
 // ------------------------------------------------------------
@@ -600,10 +611,11 @@ function gm(c, { cmd = 'help', a1, a2, rest = '' }, ctx) {
     case 'exp': { const ups = gainExp(c, n(a1, 1000)); return OK(`+EXP ${n(a1, 1000)}`, { gm: true, ups }); }
     case 'item': {
       const id = a1 && ITEMS[a1] ? a1 : Object.keys(ITEMS).find((k) => ITEMS[k].nameTh === a1);
-      if (!id) return NO(`ไม่พบไอเทม "${a1}" (ใช้ id เช่น yant_guard, cs_head_naga)`);
+      if (!id) return NO(`ไม่พบไอเทม "${a1}" (ใช้ id เช่น yant_guard, black_iron)`);
       addItem(c, id, Math.min(9999, n(a2, 1))); return OK(`ได้รับ ${ITEMS[id].nameTh} x${Math.min(9999, n(a2, 1))}`, { gm: true });
     }
     case 'rahu': return OK('', { gm: true, gmRahu: String(a1 || 'open') });   // บอสโลก (server จัดการ)
+    case 'merchant': return OK('', { gm: true, gmMerchant: String(a1 || 'open') });   // พ่อค้าเร่ (server จัดการ)   // บอสโลก (server จัดการ)
     case 'sp': c.sp = (c.sp || 0) + n(a1, 10); return OK(`SP → ${c.sp}`, { gm: true });
     case 'stat': c.statPoints = (c.statPoints || 0) + n(a1, 10); return OK(`แต้มสถานะ → ${c.statPoints}`, { gm: true });
     case 'enh': {
@@ -742,12 +754,12 @@ function preset(c, { i }, ctx) {
 
 // ------------------------------------------------------------
 export const ACTIONS = {
-  use, equip, unequip, cosOff, buy, sell, sellMany, sellCart, buyback, lock, offer, siamsi, craft, enhance,
+  use, equip, unequip, cosAck, buy, sell, sellMany, sellCart, buyback, lock, offer, siamsi, craft, enhance,
   qAccept, qDrop, qClaim, path, passive, passiveReset, bounty, fishBite, fishLand, fishLose, gather, chest,
-  alloc, learn, hotbar, recall, dye, title, friendDel, gm, cardIn, cardOut, cardTrade, flask, preset,
+  alloc, learn, hotbar, recall, dye, title, friendDel, gm, cardIn, cardOut, cardTrade, flask, preset, demandSell,
 };
 /** ระหว่างเทรด ห้ามทำสิ่งที่แตะกระเป๋า/เงิน (กันของซ้ำ) */
-const TRADE_SAFE = new Set(['flask', 'lock', 'qAccept', 'qDrop', 'hotbar', 'title', 'friendDel', 'fishBite', 'fishLand', 'fishLose', 'gather', 'chest', 'learn', 'alloc', 'passive']);
+const TRADE_SAFE = new Set(['flask', 'cosAck', 'lock', 'qAccept', 'qDrop', 'hotbar', 'title', 'friendDel', 'fishBite', 'fishLand', 'fishLose', 'gather', 'chest', 'learn', 'alloc', 'passive']);
 
 /**
  * รันคำสั่ง: ctx = { rnd, now, x (ตำแหน่งผู้เล่น · null = ไม่ตรวจ), night, admin, trade, sess }

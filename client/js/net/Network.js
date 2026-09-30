@@ -75,6 +75,7 @@ export class Network {
       // โลก New Version (top-down)
       'td:init', 'td:state', 'td:joined', 'td:left', 'td:dmg', 'td:die', 'td:matk', 'td:reward', 'td:respawn', 'td:correct', 'td:aoe', 'td:title', 'td:fx', 'td:pbuff', 'td:warp', 'td:warpFail', 'crypt:info', 'crypt:fail', 'crypt:left', 'crypt:open', 'crypt:chest', 'td:heal', 'td:tether', 'td:seed', 'td:revive',
       // บอสโลกพระราหู
+      'mk:travel', 'mk:note',
       'wb:status', 'wb:phase', 'wb:tele', 'wb:land', 'wb:cast', 'wb:crystal', 'wb:crack', 'wb:heal', 'wb:pull', 'wb:fire', 'wb:hp', 'wb:clear', 'wb:mvp', 'wb:reward', 'wb:board']) {
       s.on(ev, (d) => this.emitLocal(ev, d));
     }

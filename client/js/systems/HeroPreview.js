@@ -3,15 +3,18 @@
 //  ▸ มีภาพ PixelLab ของชุดนั้น (assets/td/hero_<เพศ>_<ชุด>/<ท่า>.png · แถวละ 1 ทิศ) → ใช้ภาพนั้น
 //  ▸ ยังไม่มี → ใช้สไปรต์ด้านข้างเดิม (bakeCharacter) เหมือนที่เกมใช้แทนอยู่
 // ============================================================
-import { sanitizeAppearance } from '/shared/data/appearance.js';
+import { sanitizeAppearance, weaponTier } from '/shared/data/appearance.js';
 import { bakeCharacter } from '../gfx/SpriteFactory.js';
 import { ITEMS } from '/shared/data/items.js';
 
 export const OUTFIT_IDS = ['mohom', 'ruenton', 'jongkraben', 'rajpatan', 'chaona', 'silk', 'warrior', 'hunter', 'isan', 'mahadlek'];
 /** โมเดลพื้นฐานตามเพศ/ชุดเริ่มต้น */
 export const baseHeroId = (a) => `hero_${a.gender}_${OUTFIT_IDS[a.outfit] || 'mohom'}`;
-/** โมเดลที่ควรแสดง: ถ้าสวมชุดเต็มตัว (costume.outfit มี model) → hero_<เพศ>_<model> */
-export const heroId = (a) => { const m = ITEMS[a?.costume?.outfit]?.model; return m ? `hero_${a.gender}_${m}` : baseHeroId(a); };
+/** ตัวละครชุดใหม่ (PixelLab v2): โมเดลตามอาชีพ × ขั้นอาวุธ — ถือดาบ/ไม้เท้า/ธนูในตัวเลย */
+export const HERO_V2 = { male: ['swordman', 'mage', 'archer', 'boxer', 'healer'] };
+export const isHeroV2 = (id) => typeof id === 'string' && id.startsWith('hero2_');
+/** โมเดลที่แสดง: มีชุดใหม่ของเพศ/อาชีพนี้ → hero2_<เพศ>_<อาชีพ>_t<ขั้น> · ไม่งั้นโมเดลพื้นฐานเดิม */
+export const heroId = (a) => (HERO_V2[a.gender]?.includes(a.job) ? `hero2_${a.gender}_${a.job}_t${a.wtier || weaponTier(a.weapon)}` : baseHeroId(a));
 /** ลำดับแถวในภาพ PixelLab */
 export const DIRS = ['south', 'south-east', 'east', 'north-east', 'north', 'north-west', 'west', 'south-west'];
 /** ลำดับหมุนตัวตามเข็มนาฬิกา (มองจากบน) */
@@ -93,7 +96,7 @@ export class HeroView {
       const ms = ms0, el = now - this.t0;
       let i = Math.floor(el / ms);
       i = loopable ? i % n : (i % (n + 6) >= n ? n - 1 : i % (n + 6));      // ท่าไม่วน: เล่นจบแล้วค้างครู่หนึ่งก่อนเล่นซ้ำ
-      return { src: im, sx: i * fw, sy: DIRS.indexOf(this.dir) * fh, sw: fw, sh: fh, hero: true, glow };
+      return { src: im, sx: i * fw, sy: DIRS.indexOf(this.dir) * fh, sw: fw, sh: fh, hero: true, glow, v2: isHeroV2(id) };
     }
     // สำรอง: สไปรต์ด้านข้าง (พลิกซ้าย/ขวาตามทิศ)
     if (!this.scene) return null;
@@ -131,7 +134,7 @@ export class HeroView {
       ctx.beginPath(); ctx.ellipse(W / 2, H * 0.9, W * 0.2, H * 0.05, 0, 0, Math.PI * 2); ctx.fill();
     }
     if (f.hero) {
-      const s = this.scale * 72 / f.sw, el = (now - this.t0) / 1000;
+      const s = this.scale * 72 / (f.v2 ? 96 : f.sw), el = (now - this.t0) / 1000;
       if (f.glow) (f.glow === 'heal' ? healFx : spellFx)(ctx, W, H, el, false);
       ctx.drawImage(f.src, f.sx, f.sy, f.sw, f.sh, (W - f.sw * s) / 2, H * 0.97 - f.sh * s, f.sw * s, f.sh * s);
       if (f.glow) (f.glow === 'heal' ? healFx : spellFx)(ctx, W, H, el, true);
@@ -229,8 +232,8 @@ export function heroFace(app) {
   const n = m.frames?.idle || 4, fw = im.naturalWidth / n, fh = im.naturalHeight / DIRS.length;
   const cv = document.createElement('canvas'); cv.width = cv.height = 40;
   const g = cv.getContext('2d'); g.imageSmoothingEnabled = false;
-  const sz = fw * 0.44;
-  g.drawImage(im, (fw - sz) / 2, fh * 0.06, sz, sz, 0, 0, 40, 40);
+  const v2 = isHeroV2(id), sz = v2 ? 34 : fw * 0.44;
+  g.drawImage(im, (fw - sz) / 2, v2 ? 14 : fh * 0.06, sz, sz, 0, 0, 40, 40);
   let url = null; try { url = cv.toDataURL(); } catch { url = null; }
   faces.set(id, url);
   return url;

@@ -18,7 +18,7 @@ import { PartyWindow } from './PartyWindow.js';
 
 const $ = (s) => document.querySelector(s);
 const TRADE_SLOTS = 10;
-const GEAR_TYPES = new Set(['weapon', 'armor', 'helm', 'gloves', 'boots', 'belt', 'accessory', 'costume', 'card', 'flask']);
+const GEAR_TYPES = new Set(['weapon', 'armor', 'helm', 'gloves', 'boots', 'belt', 'accessory', 'card', 'flask']);
 const USE_TYPES = new Set(['consumable', 'food', 'home', 'reset', 'reskill', 'rename', 'offering']);
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
