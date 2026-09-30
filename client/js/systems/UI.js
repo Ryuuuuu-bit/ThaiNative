@@ -1185,15 +1185,20 @@ export class UI {
         <button class="sc-q" data-sq="${id}" title="เปลี่ยนจำนวน" ${have > 1 ? '' : 'disabled'}>x${n.toLocaleString()}${have > 1 ? ' ✎' : ''}</button>
         <b class="sc-p">฿${(unit * n).toLocaleString()}</b><button class="sc-x" data-sx="${id}" title="เอาออก">✕</button></div>`;
     }).join('');
-    // "ทุกชิ้นที่แสดง" = ตามหมวด/ตัวกรอง/คำค้น · ข้ามของล็อก ชุด A/B ของดีกว่าที่ใส่ และของหายาก (ตั้ง "หายากไม่เกิน" เอง = ยอมรวมของหายากตามนั้น)
-    const safeShown = [], skipShown = [];
-    for (const st of list) {
-      const q = Inv.freeQty(c, st.id);
-      if (!q || Inv.isLocked(c, st.id)) { skipShown.push(st.id); continue; }
-      if (warnOf(st.id).some((w) => !(sf.rarMax && w.includes('หายาก')))) { skipShown.push(st.id); continue; }
-      safeShown.push([st.id, q]);
+    // ขายตามประเภท: เลือกได้หลายประเภท → ขายทุกชิ้นของประเภทนั้นทีเดียว · ผู้เล่นเลือกเองจึงรวมของหายาก · ยังข้ามของล็อก/ชุด A-B/ดีกว่าที่ใส่ (▲)
+    const STYPE = [['weapon', 'อาวุธ'], ['armor', 'ชุดเกราะ'], ['helm', 'หมวก'], ['gloves', 'ถุงมือ'], ['boots', 'รองเท้า'], ['belt', 'เข็มขัด'], ['accessory', 'เครื่องประดับ'],
+      ['flask', 'ขวดยา'], ['card', 'การ์ด'], ['mat', 'วัตถุดิบ'], ['fish', 'ปลา'], ['use', 'ของใช้']];
+    const typeOf = (it) => (['material', 'herb'].includes(it.type) ? 'mat' : KINDS.use[1](it) ? 'use' : it.type);
+    const types = (this.sellTypes ||= new Set()), byType = {}, typeSkip = [];
+    for (const st of sellable) {
+      const t = typeOf(ITEMS[st.id]), q = Inv.freeQty(c, st.id);
+      if (!q || Inv.isLocked(c, st.id) || warnOf(st.id).some((w) => w.startsWith('▲'))) { if (types.has(t)) typeSkip.push(st.id); continue; }
+      (byType[t] ||= []).push([st.id, q]);
     }
-    const allGold = safeShown.reduce((a, [id, q]) => a + sellPrice(id) * q, 0);
+    for (const t of [...types]) if (!byType[t]) types.delete(t);          // ประเภทที่ขายหมดแล้ว → เลิกเลือก
+    const typeSel = [...types].flatMap((t) => byType[t]);
+    const typeGold = typeSel.reduce((a, [id, q]) => a + sellPrice(id) * q, 0);
+    const typeNames = STYPE.filter(([k]) => types.has(k)).map(([, l]) => l).join(' + ');
     el.innerHTML = `<div class="sell-ui sell-v3${this.sellSheet ? ' sheet-open' : ''}">
       ${filterBarHtml(c, sf, sellable, { sell: pc, pop: true })}
       <div class="sell-cols">
@@ -1201,17 +1206,15 @@ export class UI {
           <div class="ro-grid sell-grid">${list.length ? slots : '<div class="empty" style="grid-column:1/-1">ไม่มีของให้ขายในหมวดนี้</div>'}</div></div>
         <div class="sell-cart"><div class="sell-cap">🧺 ตะกร้าขาย <small>${cnt ? `${cnt} ชนิด · ${pcs.toLocaleString()} ชิ้น` : 'ว่าง'}</small>
             <button type="button" class="sc-clear" data-pick="clear" ${cnt ? '' : 'disabled'}>ล้าง</button><button type="button" class="sc-close" data-sheet title="ย่อตะกร้า">▼</button></div>
-          <div class="sc-quick">
-            <button type="button" data-pick="drop" title="วัตถุดิบที่ได้จากผี (ไม่รวมของที่ซื้อจากร้าน)">+ ของดรอป/วัตถุดิบ</button><button type="button" data-pick="fish">+ ปลา</button>
-            <button type="button" data-pick="gear1" title="อุปกรณ์ขอบธรรมดาที่ไม่ใช่ของดี">+ อุปกรณ์ธรรมดาที่ไม่ใช้</button>
-            <button type="button" data-pick="shown" ${safeShown.length ? '' : 'disabled'} title="ใส่ทุกชิ้นที่แสดงอยู่ · ข้ามของล็อก ของชุด A/B ของดีกว่าที่ใส่ และของหายาก">+ ทุกชิ้นที่แสดง (${safeShown.length.toLocaleString()})</button></div>
-          <div class="sc-list">${rows || '<p class="empty">ยังไม่ได้เลือกของ<br><small>คลิกของในกระเป๋า หรือกดปุ่ม + ด้านบน · ของล็อก 🔒 และของชุด A/B ขายไม่ได้</small></p>'}</div>
+          <div class="sc-types"><div class="sct-h">ขายตามประเภท <small>เลือกได้หลายอย่าง · รวมของหายาก</small></div>
+            <div class="sct-chips">${STYPE.filter(([k]) => byType[k]).map(([k, l]) => `<button type="button" class="sct${types.has(k) ? ' on' : ''}" data-stype="${k}" aria-pressed="${types.has(k)}">${l} <small>${byType[k].length}</small></button>`).join('') || '<small class="sct-none">ไม่มีของที่ขายได้</small>'}</div>
+            <button type="button" class="btn sct-go${typeSel.length ? ' primary' : ''}" ${typeSel.length ? '' : 'disabled'}>${typeSel.length ? `ขายที่เลือก ${typeSel.length} ชนิด · ฿${typeGold.toLocaleString()}` : 'แตะประเภทด้านบนเพื่อเลือก'}</button></div>
+          <div class="sc-list">${rows || '<p class="empty">ยังไม่ได้เลือกของ<br><small>คลิกของในกระเป๋าเพื่อใส่ตะกร้า · ของล็อก 🔒 และของชุด A/B ขายไม่ได้</small></p>'}</div>
           ${warnN ? `<div class="sc-warn">⚠ ของดี/หายาก ${warnN} ชนิดในตะกร้า · ตอนขายจะถามอีกครั้ง</div>` : ''}</div>
       </div>
       <div class="sell-bar">
         <button type="button" class="sb-cart" data-sheet>🧺 ตะกร้า ${cnt} ชนิด ${this.sellSheet ? '▼' : '▲'}</button>
         <span class="sb-sum">${cnt ? `🧺 ${cnt} ชนิด · ${pcs.toLocaleString()} ชิ้น` : '🧺 ตะกร้าว่าง'}<small>ขายพลาดซื้อคืนได้ที่แท็บ "ซื้อคืน"</small></span>
-        <button type="button" class="btn sell-all" ${safeShown.length ? '' : 'disabled'} title="ขายทุกชิ้นที่แสดงอยู่ตอนนี้ (ไม่ต้องใส่ตะกร้า) · ข้ามของล็อก/ชุด A-B/ดีกว่าที่ใส่/หายาก">ขายทั้งหมดที่แสดง (${safeShown.length.toLocaleString()})</button>
         <span class="sb-get">ได้เงิน <b class="price">฿${total.toLocaleString()}</b></span>
         <button class="btn primary sell-go" ${cnt ? '' : 'disabled'}>💰 ขายตะกร้า</button></div></div>`;
     // หน้าต่างเตี้ย/มือถือ: ตะกร้าพับเป็นแผ่นเลื่อนขึ้นจากแถบล่าง (ตารางกระเป๋าได้ความสูงเต็ม)
@@ -1285,13 +1288,17 @@ export class UI {
         text: `ได้เงิน ฿${total.toLocaleString()}${warnN ? `\n⚠ มีของดีกว่าที่ใส่/ของหายาก ${warnN} ชนิดในตะกร้า` : ''}\nขายพลาดซื้อคืนได้ที่แท็บ "ซื้อคืน"` }))) return;
       sellItems([...cart], cnt, pcs, total);
     };
-    el.querySelector('.sell-all').onclick = async () => {
-      if (!safeShown.length) return;
-      const pieces = safeShown.reduce((a, [, q]) => a + q, 0);
-      const names = skipShown.slice(0, 8).map((id) => ITEMS[id].nameTh).join(', ') + (skipShown.length > 8 ? ` และอีก ${skipShown.length - 8} ชนิด` : '');
-      if (!(await ask({ title: `ขาย ${safeShown.length} ชนิดที่แสดงอยู่?`, icon: '💰', ok: `ขาย ฿${allGold.toLocaleString()}`,
-        text: `${pieces.toLocaleString()} ชิ้น · ได้เงิน ฿${allGold.toLocaleString()}${skipShown.length ? `\nไม่รวม ${skipShown.length} ชนิด (ล็อก/ชุด A-B/ดีกว่าที่ใส่/หายาก): ${names}\nอยากขายด้วย ให้คลิกใส่ตะกร้าเอง` : ''}\nขายพลาดซื้อคืนได้ที่แท็บ "ซื้อคืน"` }))) return;
-      sellItems(safeShown, safeShown.length, pieces, allGold);
+    const typeIds = new Set(typeSel.map(([id]) => id));                    // ไฮไลต์ของในกระเป๋าที่จะถูกขายตามประเภท
+    el.querySelectorAll('[data-sslot]').forEach((d) => d.classList.toggle('sell-type', typeIds.has(d.dataset.sslot)));
+    el.querySelectorAll('[data-stype]').forEach((b) => (b.onclick = () => { const t = b.dataset.stype; if (types.has(t)) types.delete(t); else types.add(t); click(); redraw(); }));
+    el.querySelector('.sct-go').onclick = async () => {
+      if (!typeSel.length) return;
+      const pieces = typeSel.reduce((a, [, q]) => a + q, 0), rare = typeSel.filter(([id]) => rarityOf(ITEMS[id]) >= 3).length;
+      const names = typeSkip.slice(0, 6).map((id) => ITEMS[id].nameTh).join(', ') + (typeSkip.length > 6 ? ` และอีก ${typeSkip.length - 6} ชนิด` : '');
+      if (!(await ask({ title: `ขาย${typeNames}ทั้งหมด?`, icon: '💰', ok: `ขาย ฿${typeGold.toLocaleString()}`, danger: rare > 0,
+        text: `${typeSel.length} ชนิด · ${pieces.toLocaleString()} ชิ้น · ได้เงิน ฿${typeGold.toLocaleString()}${rare ? `\n💎 รวมของหายาก ${rare} ชนิด` : ''}${typeSkip.length ? `\nไม่รวม ${typeSkip.length} ชนิด (ล็อก/ชุด A-B/ดีกว่าที่ใส่): ${names}` : ''}\nขายพลาดซื้อคืนได้ที่แท็บ "ซื้อคืน" (10 รายการล่าสุด)` }))) return;
+      types.clear();
+      sellItems(typeSel, typeSel.length, pieces, typeGold);
     };
     el.querySelectorAll('[data-sheet]').forEach((b) => (b.onclick = () => { this.sellSheet = !this.sellSheet; click(); ui.classList.toggle('sheet-open', this.sellSheet); b.closest('.sell-ui').querySelector('.sb-cart').textContent = `🧺 ตะกร้า ${cnt} ชนิด ${this.sellSheet ? '▼' : '▲'}`; }));
   }
