@@ -1184,21 +1184,44 @@ export class UI {
         <button class="sc-q" data-sq="${id}" title="เปลี่ยนจำนวน" ${have > 1 ? '' : 'disabled'}>x${n.toLocaleString()}${have > 1 ? ' ✎' : ''}</button>
         <b class="sc-p">฿${(unit * n).toLocaleString()}</b><button class="sc-x" data-sx="${id}" title="เอาออก">✕</button></div>`;
     }).join('');
-    el.innerHTML = `<div class="sell-ui sell-v2">
-      ${filterBarHtml(c, sf, sellable, pc ? { sell: true } : { gear: false, sortRow: false })}
-      <div class="sell-quick"><span>เลือกด่วน:</span>
-        <button data-pick="shown" class="sq-all" ${list.length ? '' : 'disabled'} title="ใส่ทุกชิ้นที่แสดงอยู่ (ตามหมวด/คำค้น) · ข้ามของล็อก ของชุด A/B ของดีกว่าที่ใส่ และของหายาก">✅ เลือกทั้งหมดที่แสดง (${list.length.toLocaleString()})</button>
-        <button data-pick="drop">💰 ของดรอป/วัตถุดิบ</button><button data-pick="fish">🐟 ปลา</button><button data-pick="gear1">⚔️ อุปกรณ์ธรรมดาที่ไม่ได้ใช้</button><button data-pick="clear" ${cnt ? '' : 'disabled'}>✖ ล้างตะกร้า</button></div>
+    // "ทุกชิ้นที่แสดง" = ตามหมวด/ตัวกรอง/คำค้น · ข้ามของล็อก ชุด A/B ของดีกว่าที่ใส่ และของหายาก (ตั้ง "หายากไม่เกิน" เอง = ยอมรวมของหายากตามนั้น)
+    const safeShown = [], skipShown = [];
+    for (const st of list) {
+      const q = Inv.freeQty(c, st.id);
+      if (!q || Inv.isLocked(c, st.id)) { skipShown.push(st.id); continue; }
+      if (warnOf(st.id).some((w) => !(sf.rarMax && w.includes('หายาก')))) { skipShown.push(st.id); continue; }
+      safeShown.push([st.id, q]);
+    }
+    const allGold = safeShown.reduce((a, [id, q]) => a + sellPrice(id) * q, 0);
+    el.innerHTML = `<div class="sell-ui sell-v3${this.sellSheet ? ' sheet-open' : ''}">
+      ${filterBarHtml(c, sf, sellable, { sell: pc, pop: true })}
       <div class="sell-cols">
-        <div class="sell-left"><div class="sell-cap">① 🎒 เลือกของ <small>คลิก = ใส่ตะกร้า · ของกองเลือกจำนวนได้ · คลิกขวา = เอาออก</small></div>
+        <div class="sell-left"><div class="sell-cap">🎒 กระเป๋า ${list.length.toLocaleString()} ชนิด <small>คลิก = ใส่ตะกร้า · ของกองเลือกจำนวนได้ · คลิกขวา = เอาออก</small></div>
           <div class="ro-grid sell-grid">${list.length ? slots : '<div class="empty" style="grid-column:1/-1">ไม่มีของให้ขายในหมวดนี้</div>'}</div></div>
-        <div class="sell-cart"><div class="sell-cap">② 🧺 ตะกร้าขาย <small>${cnt ? `${cnt} ชนิด · ${pcs.toLocaleString()} ชิ้น` : 'ว่าง'}</small></div>
-          <div class="sc-list">${rows || '<p class="empty">ยังไม่ได้เลือกของ<br><small>ของล็อก 🔒 และของชุด A/B ขายไม่ได้</small></p>'}</div>
-          ${warnN ? `<div class="sc-warn">⚠ ของดี/หายาก ${warnN} ชนิด · ตรวจก่อนขาย</div>` : ''}</div>
+        <div class="sell-cart"><div class="sell-cap">🧺 ตะกร้าขาย <small>${cnt ? `${cnt} ชนิด · ${pcs.toLocaleString()} ชิ้น` : 'ว่าง'}</small>
+            <button type="button" class="sc-clear" data-pick="clear" ${cnt ? '' : 'disabled'}>ล้าง</button><button type="button" class="sc-close" data-sheet title="ย่อตะกร้า">▼</button></div>
+          <div class="sc-quick">
+            <button type="button" data-pick="drop" title="วัตถุดิบที่ได้จากผี (ไม่รวมของที่ซื้อจากร้าน)">+ ของดรอป/วัตถุดิบ</button><button type="button" data-pick="fish">+ ปลา</button>
+            <button type="button" data-pick="gear1" title="อุปกรณ์ขอบธรรมดาที่ไม่ใช่ของดี">+ อุปกรณ์ธรรมดาที่ไม่ใช้</button>
+            <button type="button" data-pick="shown" ${safeShown.length ? '' : 'disabled'} title="ใส่ทุกชิ้นที่แสดงอยู่ · ข้ามของล็อก ของชุด A/B ของดีกว่าที่ใส่ และของหายาก">+ ทุกชิ้นที่แสดง (${safeShown.length.toLocaleString()})</button></div>
+          <div class="sc-list">${rows || '<p class="empty">ยังไม่ได้เลือกของ<br><small>คลิกของในกระเป๋า หรือกดปุ่ม + ด้านบน · ของล็อก 🔒 และของชุด A/B ขายไม่ได้</small></p>'}</div>
+          ${warnN ? `<div class="sc-warn">⚠ ของดี/หายาก ${warnN} ชนิดในตะกร้า · ตอนขายจะถามอีกครั้ง</div>` : ''}</div>
       </div>
-      <div class="sell-bar"><span class="sb-sum">${cnt ? `🧺 ${cnt} ชนิด · ${pcs.toLocaleString()} ชิ้น` : '🧺 ตะกร้าว่าง'}<small>ขายพลาดซื้อคืนได้ที่แท็บ "ซื้อคืน"</small></span>
+      <div class="sell-bar">
+        <button type="button" class="sb-cart" data-sheet>🧺 ตะกร้า ${cnt} ชนิด ${this.sellSheet ? '▼' : '▲'}</button>
+        <span class="sb-sum">${cnt ? `🧺 ${cnt} ชนิด · ${pcs.toLocaleString()} ชิ้น` : '🧺 ตะกร้าว่าง'}<small>ขายพลาดซื้อคืนได้ที่แท็บ "ซื้อคืน"</small></span>
+        <button type="button" class="btn sell-all" ${safeShown.length ? '' : 'disabled'} title="ขายทุกชิ้นที่แสดงอยู่ตอนนี้ (ไม่ต้องใส่ตะกร้า) · ข้ามของล็อก/ชุด A-B/ดีกว่าที่ใส่/หายาก">ขายทั้งหมดที่แสดง (${safeShown.length.toLocaleString()})</button>
         <span class="sb-get">ได้เงิน <b class="price">฿${total.toLocaleString()}</b></span>
-        <button class="btn primary sell-go" ${cnt ? '' : 'disabled'}>③ 💰 ขาย</button></div></div>`;
+        <button class="btn primary sell-go" ${cnt ? '' : 'disabled'}>💰 ขายตะกร้า</button></div></div>`;
+    // หน้าต่างเตี้ย/มือถือ: ตะกร้าพับเป็นแผ่นเลื่อนขึ้นจากแถบล่าง (ตารางกระเป๋าได้ความสูงเต็ม)
+    const ui = el.querySelector('.sell-ui');
+    if (!this._sellFit) {                                                    // ตรวจใหม่ทุกครั้งที่หน้าต่างร้านเปลี่ยนขนาด (ขนาดตั้งตามจอเกม ซึ่งปรับหลัง resize)
+      this._sellFit = () => { const u = $('#shop-list .sell-v3'), h = $('#shop-panel')?.clientHeight || 0;
+        if (u) u.classList.toggle('sell-narrow', document.body.classList.contains('m-hud') || (h > 0 && h < 500)); };
+      if (window.ResizeObserver) new ResizeObserver(() => this._sellFit()).observe($('#shop-panel'));
+      else window.addEventListener('resize', this._sellFit);
+    }
+    this._sellFit(); requestAnimationFrame(this._sellFit);
     const redraw = () => { const g = el.querySelector('.sell-grid'), top = g?.scrollTop || 0; this.renderSell(); const g2 = el.querySelector('.sell-grid'); if (g2) g2.scrollTop = top; };
     const click = () => this.scene.sfx.play('click');
     bindFilterBar(el, sf, redraw, this.scene);
@@ -1236,24 +1259,40 @@ export class UI {
       }
       click(); redraw();
     }));
+    // ขายรายการ [[id, qty]] · เซิร์ฟเวอร์รับครั้งละ 200 ชนิด → แบ่งส่งเป็นชุด แล้วรวมผล
+    const sellItems = async (all, kinds, pieces, gold) => {
+      if (this._selling) return;                                              // กันกดขายซ้ำระหว่างรอเซิร์ฟเวอร์
+      this._selling = true;
+      const parts = [];
+      for (let i = 0; i < all.length; i += 200) parts.push(all.slice(i, i + 200));
+      let got = 0, okAny = false, last = null;
+      try {
+        for (const items of parts) {
+          const r = await E.act('sellCart', { items }); last = r;
+          if (!r.ok) break;
+          okAny = true; got += r.gold || 0; for (const [id] of items) cart.delete(id);
+        }
+      } finally { this._selling = false; }
+      this.scene.sfx.play(okAny ? 'buy' : 'error');
+      this.result(parts.length > 1 && okAny && last?.ok ? { ...last, msg: `💰 ขาย ${kinds} ชนิด (${pieces.toLocaleString()} ชิ้น) ได้ ฿${(got || gold).toLocaleString()}` } : last);
+      if (okAny) this.sellFocus = null;
+      this.renderSell();
+    };
     el.querySelector('.sell-go').onclick = async () => {
       if (!cnt) return;
       if ((warnN || total >= 50000) && !(await ask({ title: `ขาย ${cnt} ชนิด (${pcs.toLocaleString()} ชิ้น)?`, icon: '💰', ok: `ขาย ฿${total.toLocaleString()}`,
         text: `ได้เงิน ฿${total.toLocaleString()}${warnN ? `\n⚠ มีของดีกว่าที่ใส่/ของหายาก ${warnN} ชนิดในตะกร้า` : ''}\nขายพลาดซื้อคืนได้ที่แท็บ "ซื้อคืน"` }))) return;
-      // เซิร์ฟเวอร์รับครั้งละ 200 ชนิด → แบ่งส่งเป็นชุด แล้วรวมผล
-      const all = [...cart], parts = [];
-      for (let i = 0; i < all.length; i += 200) parts.push(all.slice(i, i + 200));
-      let got = 0, okAny = false, last = null;
-      for (const items of parts) {
-        const r = await E.act('sellCart', { items }); last = r;
-        if (!r.ok) break;
-        okAny = true; got += r.gold || 0; for (const [id] of items) cart.delete(id);
-      }
-      this.scene.sfx.play(okAny ? 'buy' : 'error');
-      this.result(parts.length > 1 && okAny && last?.ok ? { ...last, msg: `💰 ขาย ${cnt} ชนิด (${pcs.toLocaleString()} ชิ้น) ได้ ฿${(got || total).toLocaleString()}` } : last);
-      if (okAny) this.sellFocus = null;
-      this.renderSell();
+      sellItems([...cart], cnt, pcs, total);
     };
+    el.querySelector('.sell-all').onclick = async () => {
+      if (!safeShown.length) return;
+      const pieces = safeShown.reduce((a, [, q]) => a + q, 0);
+      const names = skipShown.slice(0, 8).map((id) => ITEMS[id].nameTh).join(', ') + (skipShown.length > 8 ? ` และอีก ${skipShown.length - 8} ชนิด` : '');
+      if (!(await ask({ title: `ขาย ${safeShown.length} ชนิดที่แสดงอยู่?`, icon: '💰', ok: `ขาย ฿${allGold.toLocaleString()}`,
+        text: `${pieces.toLocaleString()} ชิ้น · ได้เงิน ฿${allGold.toLocaleString()}${skipShown.length ? `\nไม่รวม ${skipShown.length} ชนิด (ล็อก/ชุด A-B/ดีกว่าที่ใส่/หายาก): ${names}\nอยากขายด้วย ให้คลิกใส่ตะกร้าเอง` : ''}\nขายพลาดซื้อคืนได้ที่แท็บ "ซื้อคืน"` }))) return;
+      sellItems(safeShown, safeShown.length, pieces, allGold);
+    };
+    el.querySelectorAll('[data-sheet]').forEach((b) => (b.onclick = () => { this.sellSheet = !this.sellSheet; click(); ui.classList.toggle('sheet-open', this.sellSheet); b.closest('.sell-ui').querySelector('.sb-cart').textContent = `🧺 ตะกร้า ${cnt} ชนิด ${this.sellSheet ? '▼' : '▲'}`; }));
   }
 
   /** ลองชุด/อาวุธก่อนซื้อ: สวมทับตัวละคร 6 วิ (แค่ภาพ ไม่มีผลค่าพลัง) */

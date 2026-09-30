@@ -177,11 +177,23 @@ export function filterBarHtml(c, f, list = [], o = {}) {
   const idOf = (x) => (typeof x === 'string' ? x : x.id);
   const n = (k) => list.filter((x) => ITEMS[idOf(x)] && KINDS[k][1](ITEMS[idOf(x)])).length;
   const chip = (k, on, label, title = '') => `<button type="button" class="if-chip${on ? ' on' : ''}" data-if="${k}"${title ? ` title="${title}"` : ''}>${label}</button>`;
-  const showGear = o.gear !== false && (f.kind === 'all' || f.kind === 'gear');
+  const showGear = o.gear !== false && (o.pop || f.kind === 'all' || f.kind === 'gear');
   const cj = curJob(c), job = JOBS[cj], fj = f.job ?? (f.mine ? 'mine' : '');
+  const kindRow = `${kinds.map((k) => `<button type="button" class="if-kind${f.kind === k ? ' on' : ''}" data-ifk="${k}">${KINDS[k][0]}<small>${n(k)}</small></button>`).join('')}
+      <input type="search" class="if-q" placeholder="🔍 ค้นหาชื่อ/ค่าสุ่ม" value="${esc(f.q || '')}">`;
+  // แบบกะทัดรัด (แท็บขาย): แถวเดียว หมวด + ค้นหา + ปุ่มตัวกรอง · ตัวกรองละเอียดอยู่ในแผงป๊อปอัป · ตัวกรองที่เปิดอยู่เป็นชิปกดปิดได้
+  if (o.pop) {
+    const on = activeFilters(c, f);
+    return `<div class="if-bar if-compact">
+    <div class="if-row if-kinds">${kindRow}
+      <button type="button" class="if-popbtn${f._pop || on.length ? ' on' : ''}" data-ifpop aria-expanded="${f._pop ? 'true' : 'false'}">⚙ ตัวกรอง${on.length ? `<b>${on.length}</b>` : ''}</button></div>
+    ${on.length ? `<div class="if-row if-on"><span class="if-lbl">กรองอยู่:</span>${on.map((a) => `<button type="button" class="if-onchip" data-ifoff="${a.k}" title="เอาตัวกรองนี้ออก">${a.label} ✕</button>`).join('')}<button type="button" class="if-onclear" data-ifclear>ล้างทั้งหมด</button></div>` : ''}
+    <div class="if-pop"${f._pop ? '' : ' hidden'}>${gearRowHtml(c, f, job, fj, chip)}${o.sell ? sellRowHtml(f) : ''}
+      <div class="if-popfoot"><button type="button" class="btn sm primary" data-ifpop>เสร็จ</button></div></div>
+  </div>`;
+  }
   return `<div class="if-bar">
-    <div class="if-row if-kinds">${kinds.map((k) => `<button type="button" class="if-kind${f.kind === k ? ' on' : ''}" data-ifk="${k}">${KINDS[k][0]}<small>${n(k)}</small></button>`).join('')}
-      <input type="search" class="if-q" placeholder="🔍 ค้นหาชื่อ/ค่าสุ่ม" value="${esc(f.q || '')}"></div>
+    <div class="if-row if-kinds">${kindRow}</div>
     ${showGear ? `<div class="if-row if-gear">
       <select class="if-slot" title="ช่องสวมใส่">${Object.entries(SLOT_F).map(([k, l]) => `<option value="${k}"${f.slot === k ? ' selected' : ''}>${l}</option>`).join('')}</select>
       <select class="if-job${fj ? ' on' : ''}" title="ของสายอาชีพ (ของที่ไม่ระบุสายแสดงทุกสาย)"><option value="">ทุกอาชีพ</option><option value="mine"${fj === 'mine' ? ' selected' : ''}>${job?.icon || '👤'} สายที่ถืออยู่ (${job?.nameTh || ''})</option>${JOB_IDS.map((j) => `<option value="${j}"${fj === j ? ' selected' : ''}>${JOBS[j].icon} ${JOBS[j].nameTh}</option>`).join('')}</select>
@@ -193,6 +205,33 @@ export function filterBarHtml(c, f, list = [], o = {}) {
     ${o.sell ? sellRowHtml(f) : ''}
   </div>`;
 }
+/** แถวตัวกรองละเอียด (ช่อง · อาชีพ · ใส่ได้ · ดีกว่า · หายาก · เรียง) สำหรับแผงป๊อปอัป */
+function gearRowHtml(c, f, job, fj, chip) {
+  return `<div class="if-row if-gear">
+      <select class="if-slot" title="ช่องสวมใส่">${Object.entries(SLOT_F).map(([k, l]) => `<option value="${k}"${f.slot === k ? ' selected' : ''}>${l}</option>`).join('')}</select>
+      <select class="if-job${fj ? ' on' : ''}" title="ของสายอาชีพ (ของที่ไม่ระบุสายแสดงทุกสาย)"><option value="">ทุกอาชีพ</option><option value="mine"${fj === 'mine' ? ' selected' : ''}>${job?.icon || '👤'} สายที่ถืออยู่ (${job?.nameTh || ''})</option>${JOB_IDS.map((j) => `<option value="${j}"${fj === j ? ' selected' : ''}>${JOBS[j].icon} ${JOBS[j].nameTh}</option>`).join('')}</select>
+      ${chip('wear', f.wear, '✔ ใส่ได้ตอนนี้', 'เลเวลถึงแล้ว')}
+      ${chip('better', f.better, '<b class="up">▲</b> ดีกว่าที่ใส่', `ของสาย${job?.nameTh || 'ที่เล่นอยู่'}ที่ใส่แล้วค่าพลังรวมเพิ่ม`)}
+      <select class="if-rar" title="ความหายากขั้นต่ำ">${RARITY_TH.map((l, i) => (i === 0 ? `<option value="0">ทุกระดับ</option>` : `<option value="${i}"${f.rar === i ? ' selected' : ''}>${l}+</option>`)).join('')}</select>
+      <select class="if-sort" title="เรียงตาม">${Object.entries(SORTS).map(([k, l]) => `<option value="${k}"${f.sort === k ? ' selected' : ''}>${l}</option>`).join('')}</select>
+    </div>`;
+}
+/** ตัวกรองละเอียดที่เปิดอยู่ → [{ k, label }] (ไว้โชว์เป็นชิป · ไม่นับหมวด/คำค้น/การเรียง) */
+export function activeFilters(c, f) {
+  const fj = f.job ?? (f.mine ? 'mine' : '');
+  return [
+    f.slot && f.slot !== 'any' && { k: 'slot', label: `ช่อง${SLOT_F[f.slot] || ''}` },
+    fj && { k: 'job', label: fj === 'mine' ? `สาย${JOBS[curJob(c)]?.nameTh || 'ฉัน'}` : `สาย${JOBS[fj]?.nameTh || fj}` },
+    f.wear && { k: 'wear', label: '✔ ใส่ได้ตอนนี้' },
+    f.better && { k: 'better', label: '▲ ดีกว่าที่ใส่' },
+    f.rar && { k: 'rar', label: `${RARITY_TH[f.rar]}ขึ้นไป` },
+    f.notMine && { k: 'notMine', label: '↔ ไม่ใช่สายฉัน' },
+    f.worse && { k: 'worse', label: '▼ ไม่ดีกว่าที่ใส่' },
+    f.rarMax && { k: 'rarMax', label: `ไม่เกิน${RARITY_TH[f.rarMax]}` },
+    f.lvBelow && { k: 'lvBelow', label: `เลเวลต่ำกว่า ${f.lvBelow}` },
+  ].filter(Boolean);
+}
+const OFF = { slot: 'any', job: '', wear: false, better: false, rar: 0, notMine: false, worse: false, rarMax: 0, lvBelow: 0 };
 /** แถวตัวกรองสำหรับขาย (PC): สายอื่น · แย่กว่าที่ใส่ · หายากไม่เกิน · เลเวลต่ำกว่า · ชุดตัวกรองที่บันทึก */
 function sellRowHtml(f) {
   const chip = (k, on, label, title) => `<button type="button" class="if-chip${on ? ' on' : ''}" data-if="${k}" title="${title}">${label}</button>`;
@@ -226,7 +265,9 @@ export function bindFilterBar(root, f, redraw, scene) {
     if (!name) return; savePreset(name.slice(0, 24), f); f.preset = name.slice(0, 24); click(); redraw();
   });
   bar.querySelector('[data-ifdel]')?.addEventListener('click', () => { const n = ps?.value || f.preset; if (!n) return; deletePreset(n); f.preset = ''; click(); redraw(); });
-  bar.querySelector('[data-ifclear]')?.addEventListener('click', () => { Object.assign(f, newFilter({ sort: f.sort }), { preset: '' }); click(); redraw(); });
+  bar.querySelectorAll('[data-ifclear]').forEach((b) => b.addEventListener('click', () => { Object.assign(f, newFilter({ sort: f.sort, kind: f.kind, q: f.q }), { preset: '' }); click(); redraw(); }));
+  bar.querySelectorAll('[data-ifpop]').forEach((b) => (b.onclick = () => { f._pop = !f._pop; click(); redraw(); }));
+  bar.querySelectorAll('[data-ifoff]').forEach((b) => (b.onclick = () => { const k = b.dataset.ifoff; f[k] = OFF[k]; if (k === 'job') f.mine = false; f.preset = ''; click(); redraw(); }));
   const q = bar.querySelector('.if-q');
   if (q) {
     q.addEventListener('keydown', (e) => e.stopPropagation());
