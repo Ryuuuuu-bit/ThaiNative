@@ -490,7 +490,7 @@ export class TopDownScene extends Phaser.Scene {
     this.applyHero(p, char.appearance, () => this.playerAnim('idle', true));
     this.blockCollider = this.physics.add.collider(p, this.blocks);
     this.nameTag = makeText(this, 0, 0, char.name, { fontSize: '7px', color: '#fff3c4', align: 'center' }).setOrigin(0.5, 1).setDepth(99999);
-    this.selfGm = () => !!account.account?.admin && /^gm/i.test(this.player?.char?.name || char.name);
+    this.selfGm = () => !!account.account?.admin;                                      // ทุกตัวละครของบัญชีแอดมิน = GM
     gmStyle(this.nameTag, this.selfGm());
     this.titleTag = makeText(this, 0, 0, '', { fontSize: '7px', color: '#ffffff', align: 'center' }).setOrigin(0.5, 1).setDepth(99999).setVisible(false);
     this.refreshNameTag();
@@ -1247,7 +1247,8 @@ export class TopDownScene extends Phaser.Scene {
   refreshNameTag() {
     const c = this.player?.char; if (!c || !this.nameTag) return;
     const t = TITLE_BY_ID[c.title];
-    if (this.nameTag.text !== c.name) { this.nameTag.setText(c.name); gmStyle(this.nameTag, this.selfGm?.()); }
+    const nm = `${this.selfGm?.() ? '[GM] ' : ''}${c.name}`;
+    if (this.nameTag.text !== nm) { this.nameTag.setText(nm); gmStyle(this.nameTag, this.selfGm?.()); }
     const tt = t ? `«${t.nameTh}»` : '';
     if (this.titleTag && this.titleTag.text !== tt) this.titleTag.setText(tt).setColor(t?.color || '#ffffff').setVisible(!!t);
   }
@@ -1350,7 +1351,8 @@ export class TopDownScene extends Phaser.Scene {
     const s = this.add.sprite(q.x, q.y, key, 'idle_0').setOrigin(0.5, 1).setDepth(q.y);
     s.legacyKey = key; this.applyHero(s, q.appearance); s.holdAttack = () => q.appearance?.job !== 'boxer'; s.actionAnim = () => ACTION_ANIM[q.appearance?.job];
     this.weapons?.attach(s, () => q.appearance, () => ({ anim: r.anim }));
-    const tag = makeText(this, q.x, q.y, `${q.name} Lv.${q.level}`, { fontSize: '7px', color: '#aed6f1', align: 'center' }).setOrigin(0.5, 1);
+    const label = (lv) => `${q.gm ? '[GM] ' : ''}${q.name} Lv.${lv}`;
+    const tag = makeText(this, q.x, q.y, label(q.level), { fontSize: '7px', color: '#aed6f1', align: 'center' }).setOrigin(0.5, 1);
     if (q.gm) gmStyle(tag);                                                          // GM: ชื่อแดงขอบขาวเรืองแสง
     const ttl = makeText(this, q.x, q.y, '', { fontSize: '7px', color: '#ffffff', align: 'center' }).setOrigin(0.5, 1);   // ฉายา (สีตามฉายา) เหนือชื่อ
     const paintTitle = (t) => { const T = TITLE_BY_ID[t]; ttl.setText(T ? `«${T.nameTh}»` : '').setColor(T?.color || '#ffffff').setVisible(!!T); };
@@ -1373,14 +1375,14 @@ export class TopDownScene extends Phaser.Scene {
       update(dt) {
         const dx = this.tx - s.x, dy = this.ty - s.y;
         if (Math.hypot(dx, dy) > 120) s.setPosition(this.tx, this.ty); else { const k = Math.min(1, dt * 12); s.x += dx * k; s.y += dy * k; }
-        if (this._lv !== this.level) { this._lv = this.level; tag.setText(`${q.name} Lv.${this.level}`); }
+        if (this._lv !== this.level) { this._lv = this.level; tag.setText(label(this.level)); }
         s.setDepth(s.y); tag.setPosition(s.x, Math.min(s.y - s.displayHeight - 3, s._cosTop ?? Infinity)).setDepth(s.y + 1); if (ttl.visible) ttl.setPosition(s.x, tag.y - tag.displayHeight).setDepth(s.y + 1);
         playDir(s, this.anim, this.dir);
       },
       destroy: () => { this.weapons?.detach(s); s.destroy(); tag.destroy(); ttl.destroy(); sh.destroy(); this.shadows = this.shadows.filter((x) => x.obj !== s); },
       get x() { return s.x; }, get y() { return s.y; }, get appearance() { return q.appearance; },
       setTitle(t) { paintTitle(t); },
-      rename(n, gm) { q.name = n; r.name = n; tag.setText(`${n} Lv.${r.level}`); gmStyle(tag, !!gm, '#aed6f1'); },
+      rename(n, gm) { q.name = n; r.name = n; q.gm = !!gm; tag.setText(label(r.level)); gmStyle(tag, !!gm, '#aed6f1'); },
       setAppearance: (a) => { q.appearance = a; this.applyHero(s, a); },
     };
     this.remotes.set(q.id, r);

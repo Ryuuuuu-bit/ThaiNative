@@ -32,7 +32,7 @@ const BANNED_KEYS = BANNED.map(nameKey), NPC_KEYS = new Set(NPC_NAMES.map(nameKe
 const WHOLE_ONLY = new Set(['gm', 'mod', 'หี', 'จู๋'].map(nameKey));
 
 /** ตรวจกติกาชื่อ (ไม่รวมเช็กซ้ำ) → { ok, name, key, msg } */
-/** opt.admin = บัญชีแอดมิน (ADMIN_IDS) → ตั้งชื่อขึ้นต้น GM ได้ (ตัวละคร GM ชื่อสีแดงเรืองแสง) */
+/** opt.admin = บัญชีแอดมิน (ADMIN_IDS) → ตั้งชื่ออะไรก็ได้ (ข้ามคำต้องห้าม/ชื่อ NPC/ขึ้นต้น GM) · ยังต้องยาว 2–N ตัว ใช้ตัวอักษรที่อนุญาต และไม่ซ้ำคนอื่น */
 export function checkName(raw, opt = {}) {
   const name = cleanName(raw), key = nameKey(name);
   const bad = (msg) => ({ ok: false, name, key, msg });
@@ -43,8 +43,9 @@ export function checkName(raw, opt = {}) {
   if (/^[ัิ-ฺ็-๎]/.test(name)) return bad('ชื่อต้องไม่ขึ้นต้นด้วยสระบน/ล่างหรือวรรณยุกต์');
   if (/^[0-9_ ]+$/.test(name)) return bad('ชื่อต้องมีตัวอักษร ไม่ใช่ตัวเลขล้วน');
   if (/([ัิ-ฺ็-๎])\1/.test(name)) return bad('มีสระ/วรรณยุกต์ซ้อนกันผิดรูป');
+  if (opt.admin) return { ok: true, name, key, msg: '' };
   if (NPC_KEYS.has(key)) return bad('ชื่อนี้เป็นชื่อ NPC ในเกม ตั้งซ้ำไม่ได้');
-  if (/^admln/.test(key) || (!opt.admin && /^gm/.test(key))) return bad('ชื่อห้ามขึ้นต้นด้วย GM / Admin');
+  if (/^admln/.test(key) || /^gm/.test(key)) return bad('ชื่อห้ามขึ้นต้นด้วย GM / Admin');
   for (const b of BANNED_KEYS) if (WHOLE_ONLY.has(b) ? key === b : key.includes(b)) return bad('ชื่อนี้มีคำที่ไม่อนุญาต');
   return { ok: true, name, key, msg: '' };
 }
@@ -61,5 +62,5 @@ export function nameIdeas(raw, rnd = Math.random) {
   return list.map((s) => s.slice(0, NAME_MAX)).filter((s) => { const k = nameKey(s); if (seen.has(k) || !checkName(s).ok) return false; seen.add(k); return true; });
 }
 
-/** ตัวละคร GM = บัญชีแอดมิน + ชื่อขึ้นต้น GM → ป้ายชื่อ/แชท สีแดงเรืองแสงขอบขาว */
-export const isGmName = (name, admin) => !!admin && /^gm/i.test(String(name || '').trim());
+/** ตัวละคร GM = ทุกตัวละครของบัญชีแอดมิน → ป้ายชื่อ/แชท สีแดงเรืองแสงขอบขาว + ป้าย [GM] */
+export const isGmName = (name, admin) => !!admin;

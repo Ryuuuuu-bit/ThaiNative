@@ -446,7 +446,7 @@ export function setupSocial(io, players, H = {}) {
       if (!party || !msg || Date.now() - (p.lastChat || 0) < 500) return;
       if ((p.save?.muteUntil || 0) > Date.now()) return emitTo(p.id, 'chat', { id: null, name: '📢 ระบบ', text: 'คุณถูกห้ามแชทอยู่' });   // /gm mute
       p.lastChat = Date.now();
-      for (const id of party.members) emitTo(id, 'chat', { id: p.id, name: `[ปาร์ตี้] ${p.name}`, text: msg, party: true, nm: p.name, lv: p.save?.level, gm: !!p.admin && /^gm/i.test(p.name || '') });
+      for (const id of party.members) emitTo(id, 'chat', { id: p.id, name: `[ปาร์ตี้] ${p.name}`, text: msg, party: true, nm: p.name, lv: p.save?.level, gm: !!p.admin });
     });
 
     // ---------- เทรด ----------

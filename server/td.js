@@ -280,7 +280,7 @@ export function setupTD(io, players, opts = {}) {
 
   // ---------------- เข้า/ออก/เดิน/วาร์ป ----------------
   const SPAWN_GUARD_MS = 3000;                               // หลังเข้าเกม/วาร์ป/ฟื้น: ผีไม่เล็ง 3 วิ (ถ้าเราตีก่อนก็หมดทันที)
-  function publicTd(p) { return { id: p.id, name: p.name, gm: !!p.admin && /^gm/i.test(p.name || ''), appearance: p.appearance, x: Math.round(p.tx), y: Math.round(p.ty), level: p.level, hp: Math.round(p.hp), maxHp: p.maxHp, title: p.save?.title || null }; }
+  function publicTd(p) { return { id: p.id, name: p.name, gm: !!p.admin, appearance: p.appearance, x: Math.round(p.tx), y: Math.round(p.ty), level: p.level, hp: Math.round(p.hp), maxHp: p.maxHp, title: p.save?.title || null }; }
   const visited = (p) => (p.save.tdMaps ||= ['ayutthaya']);
 
   function place(socket, p, mapId, pos) {

@@ -454,7 +454,7 @@ io.on('connection', (socket) => {
       social.friendRenamed(p.acc, oldName, chk.name);
       store.renameFriendRefs?.(p.acc, oldName, chk.name).catch((e) => console.error('[rename] friends', e.message));
       ranking.refresh();
-      io.emit('player:rename', { id: p.id, name: chk.name, old: oldName, gm: !!p.admin && /^gm/i.test(chk.name) });
+      io.emit('player:rename', { id: p.id, name: chk.name, old: oldName, gm: !!p.admin });
       reply({ ok: true, name: chk.name });
     } finally { p.renaming = false; }
   });
@@ -472,11 +472,11 @@ io.on('connection', (socket) => {
     if (wm) {
       const t = [...players.values()].find((q) => String(q.name).toLowerCase().replace(/\s+#/, '#') === wm[1].toLowerCase());
       if (!t) return socket.emit('chat', { id: null, name: '📢 ระบบ', text: `ไม่พบผู้เล่นชื่อ "${wm[1]}" ที่ออนไลน์อยู่` });
-      io.to(t.id).emit('chat', { id: p.id, name: `[กระซิบจาก ${p.name}]`, text: wm[2], whisper: true, from: p.name, nm: p.name, lv: p.save?.level, gm: !!p.admin && /^gm/i.test(p.name || '') });
+      io.to(t.id).emit('chat', { id: p.id, name: `[กระซิบจาก ${p.name}]`, text: wm[2], whisper: true, from: p.name, nm: p.name, lv: p.save?.level, gm: !!p.admin });
       if (t.id !== p.id) socket.emit('chat', { id: p.id, name: `[กระซิบถึง ${t.name}]`, text: wm[2], whisper: true, to: t.name, toId: t.id, nm: p.name });
       return;
     }
-    io.emit('chat', { id: p.id, name: p.name, text: msg, nm: p.name, lv: p.save?.level, title: p.save?.title || null, gm: !!p.admin && /^gm/i.test(p.name || '') });
+    io.emit('chat', { id: p.id, name: p.name, text: msg, nm: p.name, lv: p.save?.level, title: p.save?.title || null, gm: !!p.admin });
   });
 
   socket.on('disconnect', () => leave(socket.id));
