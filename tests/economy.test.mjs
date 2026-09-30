@@ -79,7 +79,7 @@ assert.deepEqual(runAction(f, 'recall', { to: 'hunt' }).to, 'm1'); assert.equal(
 
 // 8) migrate: เซฟพัง/ของปลอมถูกตัดออก
 const m = migrate({ name: 'เก่า', appearance: {}, level: 3, inventory: [{ id: 'fake_item', qty: 9 }, { id: 'hp_s', qty: 2 }], gold: 'abc', v: 2, skills: null });
-assert.equal(m.inventory.length, 1); assert.equal(m.gold, 0); assert.ok(m.hp > 0);
+assert.deepEqual(m.inventory.map((s) => s.id).sort(), ['hand_wrap', 'hp_s'], 'ของปลอมถูกตัด · ได้ผ้าพันมือที่ตกหล่น'); assert.equal(m.gold, 0); assert.ok(m.hp > 0);
 
 // 9) บอสภาค 5 ตัว + สูตรหลอมครบทุกชิ้น drop
 assert.equal(REGION_BOSS_IDS.length, 5);

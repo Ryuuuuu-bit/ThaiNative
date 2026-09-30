@@ -8,6 +8,7 @@ export const DEFAULT_SETTINGS = {
   sfxOn: true, sfxVol: 0.8,     // เสียงเอฟเฟกต์
   damageNumbers: true,          // ตัวเลขดาเมจลอย
   minimap: true,                // มินิแมปมุมขวาบน
+  touchSize: 0,                 // ขนาดปุ่มสัมผัส (มือถือ/แท็บเล็ต) % · 0 = อัตโนมัติ (มือถือ 85 · แท็บเล็ต 72)
   fxShake: true,                // จอสั่นตอนสกิล/โดนตี
   fxFlash: 'full',              // แสงวาบ/ฟ้ามืดของสกิล: full | soft | off
   autoHp: 0, autoMp: 0,         // กินยาอัตโนมัติเมื่อต่ำกว่า % (0 = ปิด)

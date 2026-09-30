@@ -627,14 +627,18 @@ body.td-mode.win-open #toasts .toast { background: linear-gradient(180deg, #2a18
 body.td-mode.touch-dev.win-open #toasts { max-height: none !important; } body.td-mode.touch-dev.win-open #toasts .toast:not(:last-child) { display: none !important; }   /* มือถือ: เปิดหน้าต่างอยู่ → โชว์เฉพาะแจ้งเตือนล่าสุด 1 อัน
  */
 
-/* ===== แท็บเล็ต (body.dev-tablet · systems/Screen.js): จอใหญ่ → ปุ่มสัมผัสเล็กลง 28% หดเข้าหามุมจอ (ไม่บังฉาก) ===== */
+/* ===== ปุ่มสัมผัสย่อตาม --ts หดเข้าหามุมจอ (ไม่บังฉาก) · มือถือ 85% · แท็บเล็ต 72% (systems/Screen.js) · ผู้เล่นเลือกเองได้ในตั้งค่า (UI.js ตั้ง --ts บน body) ===== */
+body { --ts: .85; }
 body.dev-tablet { --ts: .72; }
-body.dev-tablet.td-mode.touch .t-stick { scale: var(--ts); transform-origin: calc(-1 * (var(--hud-pad) + 1cqh)) calc(100% + 6cqh); }
-body.dev-tablet.td-mode.touch #skillbar.t-arc { scale: var(--ts); transform-origin: 100% 100%; }
-body.dev-tablet.td-mode.touch .t-atk { scale: var(--ts); transform-origin: calc(100% + var(--hud-pad) + 2cqh) calc(100% + 24cqh); }
-body.dev-tablet.td-mode.touch .auto-wrap.t-auto { scale: var(--ts); transform-origin: calc(100% + var(--hud-pad) + 4.5cqh) calc(100% + 41.5cqh); }
-body.dev-tablet.td-mode.touch .t-page { scale: var(--ts); transform-origin: calc(100% + var(--hud-pad) + 27cqh) calc(100% + 26.8cqh); }
-body.dev-tablet.td-mode.touch #flask-bar.t-flasks { scale: var(--ts); transform-origin: calc(-1 * (var(--hud-pad) + 2cqh)) calc(100% + 40cqh); }
+body.td-mode.touch .t-stick { scale: var(--ts); transform-origin: calc(-1 * (var(--hud-pad) + 1cqh)) calc(100% + 6cqh); }
+body.td-mode.touch #skillbar.t-arc { scale: var(--ts); transform-origin: 100% 100%; }
+body.td-mode.touch .t-atk { scale: var(--ts); transform-origin: calc(100% + var(--hud-pad) + 2cqh) calc(100% + 24cqh); }
+body.td-mode.touch .auto-wrap.t-auto { scale: var(--ts); transform-origin: calc(100% + var(--hud-pad) + 4.5cqh) calc(100% + 41.5cqh); }
+body.td-mode.touch .t-page { scale: var(--ts); transform-origin: calc(100% + var(--hud-pad) + 27cqh) calc(100% + 26.8cqh); }
+body.td-mode.touch #flask-bar.t-flasks { scale: var(--ts); transform-origin: calc(-1 * (var(--hud-pad) + 2cqh)) calc(100% + 40cqh); }
+body.td-mode.touch .tut-card { scale: var(--ts); transform-origin: 0 0; }
+body.td-mode.touch #chat .cb-mini { scale: var(--ts); transform-origin: 0 0; }
+body:not(.touch-dev) .set-touch { display: none; }
 body.touch-dev #social-panel .btn.ghost { min-width: max(5.4cqh, 30px); min-height: max(5.4cqh, 30px); }
 
 /* ===== ชื่อ GM ในแชท: แดง ขอบขาว เรืองแสง ===== */
@@ -656,7 +660,7 @@ body.td-mode .preset-btn { width: 5.6cqh; height: 7.2cqh; font-size: 2.6cqh; mar
 /* จอสัมผัส: ปุ่มกลมซ้าย เหนือขวดยา */
 body.td-mode.touch #preset-btn.t-preset { position: absolute; left: calc(var(--hud-pad) + 2cqh + env(safe-area-inset-left, 0px)); bottom: 52cqh; width: 9cqh; height: 9cqh; border-radius: 50%; font-size: 3.6cqh; margin: 0; pointer-events: auto; }
 body.td-mode.touch #preset-btn.t-preset .k { display: none; }
-body.dev-tablet.td-mode.touch #preset-btn.t-preset { scale: var(--ts); transform-origin: calc(-1 * (var(--hud-pad) + 2cqh)) calc(100% + 52cqh); }
+body.td-mode.touch #preset-btn.t-preset { scale: var(--ts); transform-origin: calc(-1 * (var(--hud-pad) + 2cqh)) calc(100% + 52cqh); }
 body.m-hud.win-open #touch-ui > #preset-btn { visibility: hidden !important; }
 
 #party-frames .pf-bonus { font-size: .78em; padding: 2px 6px; margin-bottom: 3px; border-radius: 6px; background: rgba(20,12,30,.75); color: #b9a88a; white-space: nowrap; }
