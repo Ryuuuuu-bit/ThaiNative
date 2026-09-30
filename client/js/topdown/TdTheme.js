@@ -163,7 +163,45 @@ export function bakeGround(scene, ground, tilesets = [], style = {}) {
   // ภาพเล็กสำหรับมินิแมพ
   const mini = document.createElement('canvas'); mini.width = MAP_W * 2; mini.height = MAP_H * 2;
   mini.getContext('2d').drawImage(big, 0, 0, mini.width, mini.height);
-  return { parts, mini };
+  return { parts, mini: flatMini(mini, ground) };
+}
+
+/** มินิแมพแบบดูง่าย: สีเรียบต่อชนิดพื้น (เฉลี่ยจากภาพจริงของแมพนั้น → สีตามแดนเอง) + ขอบน้ำ/กำแพงเข้ม */
+function flatMini(mini, ground) {
+  const MW = ground[0].length, MH = ground.length;
+  const GROUP = { [T.GRASS]: 'g', [T.GRASS2]: 'g', [T.GRASS3]: 'g', [T.TALL]: 'g', [T.PADDY]: 'p', [T.ROAD]: 'r', [T.BRICK]: 'b', [T.STONE]: 'b',
+    [T.SAND]: 's', [T.WOOD]: 'd', [T.WATER]: 'w', [T.WATER2]: 'w', [T.WALL]: 'x', [T.WALLTOP]: 'x' };
+  const raw = (x, y) => (x < 0 || y < 0 || x >= MW || y >= MH ? null : GROUP[ground[y][x]] ?? 'g');
+  // ไทล์โดด ๆ (เพื่อนรอบตัวชนิดเดียวกันไม่ถึง 2 จาก 8) → ใช้ชนิดที่เจอรอบตัวมากสุด · ไม่ยุ่งกับน้ำ/กำแพง (รูปร่างต้องเป๊ะ)
+  const smooth = ground.map((row, y) => row.map((_, x) => {
+    const k = raw(x, y); if (k === 'w' || k === 'x') return k;
+    const cnt = {}; let same = 0;
+    for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) { if (!dx && !dy) continue; const n = raw(x + dx, y + dy); if (!n) continue; if (n === k) same++; cnt[n] = (cnt[n] || 0) + 1; }
+    return same >= 2 ? k : Object.entries(cnt).sort((a, b) => b[1] - a[1])[0]?.[0] || k;
+  }));
+  const grp = (x, y) => (x < 0 || y < 0 || x >= MW || y >= MH ? null : smooth[y][x]);
+  const px = mini.getContext('2d').getImageData(0, 0, mini.width, mini.height).data, sum = {};
+  for (let y = 0; y < MH; y++) for (let x = 0; x < MW; x++) {
+    const k = grp(x, y), a = (sum[k] ||= [0, 0, 0, 0]);
+    for (const [dx, dy] of [[0, 0], [1, 0], [0, 1], [1, 1]]) { const i = ((y * 2 + dy) * mini.width + x * 2 + dx) * 4; a[0] += px[i]; a[1] += px[i + 1]; a[2] += px[i + 2]; a[3]++; }
+  }
+  // สีเฉลี่ย → สดขึ้นนิด สว่างขึ้นหน่อย (พื้นจริงมืด/ลายเยอะ พอเฉลี่ยแล้วหม่น)
+  const col = {};
+  for (const [k, [r, g, b, n]] of Object.entries(sum)) {
+    const m = [r / n, g / n, b / n], avg = (m[0] + m[1] + m[2]) / 3;
+    col[k] = m.map((v) => Math.max(0, Math.min(255, Math.round((avg + (v - avg) * 1.35) * 1.12))));
+  }
+  const out = document.createElement('canvas'); out.width = mini.width; out.height = mini.height;
+  const g = out.getContext('2d'), img = g.createImageData(out.width, out.height), d = img.data;
+  const edge = (k) => k === 'w' || k === 'x';
+  for (let y = 0; y < MH; y++) for (let x = 0; x < MW; x++) {
+    const k = grp(x, y);
+    let c = col[k];
+    if (edge(k) && [[1, 0], [-1, 0], [0, 1], [0, -1]].some(([dx, dy]) => { const n = grp(x + dx, y + dy); return n && n !== k; })) c = c.map((v) => v * 0.55);   // ขอบน้ำ/กำแพงเข้ม เห็นรูปร่างชัด
+    for (const [dx, dy] of [[0, 0], [1, 0], [0, 1], [1, 1]]) { const i = ((y * 2 + dy) * out.width + x * 2 + dx) * 4; d[i] = c[0]; d[i + 1] = c[1]; d[i + 2] = c[2]; d[i + 3] = 255; }
+  }
+  g.putImageData(img, 0, 0);
+  return out;
 }
 
 /** ชั้นน้ำเคลื่อนไหว (ลายคลื่นเลื่อน) */
@@ -473,12 +511,21 @@ export class TdMinimap {
     g.clearRect(0, 0, W, H);
     g.fillStyle = '#0d0714'; g.fillRect(0, 0, W, H);
     g.save(); g.setTransform(z, 0, 0, z, -ox, -oy); g.drawImage(this.base, 0, 0); g.restore();
-    g.fillStyle = 'rgba(10,6,20,0.15)'; g.fillRect(0, 0, W, H);
-    const dot = (x, y, c, r = 2) => { g.fillStyle = c; g.fillRect(Math.round(x * scale - ox - r / 2), Math.round(y * scale - oy - r / 2), r, r); };
-    for (const n of s.npcs || []) dot(n.x, n.y, '#ffd35c', 3);
-    for (const m of s.mobs || []) if (m.alive && !m.def?.boss) dot(m.x, m.y, '#ff5a5a', 2);
-    for (const m of s.mobs || []) if (m.alive && m.def?.boss) { dot(m.x, m.y, '#000', 7); dot(m.x, m.y, time % 800 < 400 ? '#ff2d2d' : '#ffd76a', 5); }   // บอส (กะพริบ)
-    s.remotes?.forEach((r) => dot(r.x, r.y, '#6ec8ff', 3));
-    dot(p.x, p.y, '#ffffff', 4); dot(p.x, p.y, '#2ecc71', 2);
+    // จุดบนแมพ: วงกลมมีขอบเข้ม เห็นชัดบนพื้นทุกสี
+    const at = (x, y) => [x * scale - ox, y * scale - oy];
+    const dot = (x, y, c, r, ring = 'rgba(0,0,0,.75)') => {
+      const [cx, cy] = at(x, y); if (cx < -r || cy < -r || cx > W + r || cy > H + r) return;
+      g.beginPath(); g.arc(cx, cy, r, 0, Math.PI * 2); g.fillStyle = c; g.fill(); g.lineWidth = 1; g.strokeStyle = ring; g.stroke();
+    };
+    for (const m of s.mobs || []) if (m.alive && !m.def?.boss) dot(m.x, m.y, '#ff5a5a', 1.3, 'rgba(60,0,0,.6)');
+    for (const pt of s.layout?.portals || []) dot(pt.x, pt.y, '#c79bff', 3, '#ffffff');                                  // ประตูมิติ
+    for (const n of s.npcs || []) dot(n.x, n.y, '#ffd35c', 2.3);
+    s.remotes?.forEach((r) => dot(r.x, r.y, '#6ec8ff', 2.2));
+    for (const m of s.mobs || []) if (m.alive && m.def?.boss) dot(m.x, m.y, time % 800 < 400 ? '#ff2d2d' : '#ffd76a', 3.6, '#000');   // บอส (กะพริบ)
+    // ตัวเรา: ลูกศรชี้ทิศที่หันอยู่
+    const [px, py] = at(p.x, p.y), ang = { south: 90, 'south-east': 45, east: 0, 'north-east': -45, north: -90, 'north-west': -135, west: 180, 'south-west': 135 }[p.dir] ?? 90;
+    g.save(); g.translate(px, py); g.rotate(ang * Math.PI / 180);
+    g.beginPath(); g.moveTo(5, 0); g.lineTo(-4, -4); g.lineTo(-2, 0); g.lineTo(-4, 4); g.closePath();
+    g.fillStyle = '#2ecc71'; g.fill(); g.lineWidth = 1.2; g.strokeStyle = '#ffffff'; g.stroke(); g.restore();
   }
 }
