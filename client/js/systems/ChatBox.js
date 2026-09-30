@@ -166,6 +166,7 @@ export class ChatBox {
     const s = this.scene, ui = this.ui;
     if (/^\/r\s+/i.test(text) && ui.lastWhisper) return s.net.sendChat(`/w ${ui.lastWhisper} ${text.replace(/^\/r\s+/i, '')}`);
     if (/^\/gm\b/i.test(text)) return ui.gmCommand(text);
+    if (/^\/pk\b/i.test(text)) return s.social?.togglePk();                        // เปิด/ปิดโหมด PK
     if (/^\/p\s+/i.test(text)) return this.party(text.replace(/^\/p\s+/i, ''));
     const wm = text.match(/^\/w\s+(\S+)\s*(.*)$/i);
     if (wm) { this.setChan('whisper', wm[1]); if (!wm[2]) return; return s.net.sendChat(`/w ${wm[1]} ${wm[2]}`); }

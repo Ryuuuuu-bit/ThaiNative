@@ -5,6 +5,8 @@
 // ============================================================
 import { SKILL_BY_ID, skillStats, SKILL_SLOTS, isItemSlot, skillUsable, skillWeaponTh, masteryOf } from '/shared/data/skills.js';
 import { JOBS } from '/shared/data/classes.js';
+import { getDerived } from '/shared/character.js';
+import { skillCooldown } from '/shared/stats.js';
 import { popupNumber, yantCircle } from '../gfx/Fx.js';
 import { dirFromVector } from './Dir8.js';
 import { TILE, MAP_W, MAP_H } from '/shared/td/ayutthaya.js';
@@ -412,6 +414,13 @@ export class TdSkills {
     const s = this.s;
     if (!m?.alive) return;
     this.fx.sparks(m.x, m.y - m.displayHeight * 0.5, { n: 6, tint: fxTint, speed: [40, 120], life: 300, scale: 0.25 });
+    // เอฟเฟกต์สถานะใหม่ (เลือดไหล/ไฟลุก/เชื่องช้า/เกราะแตก/อ่อนแรง) → ภาพประกอบตอนโดน
+    const eff = sk.effect || {};
+    if (eff.bleed) this.fx.sparks(m.x, m.y - 12, { n: 9, tint: 0xff5a5a, speed: [30, 100], life: 520, scale: 0.3, gravity: 140 });
+    if (eff.burn) this.poison(m.x, m.y, 0xffa040);
+    if (eff.slow) this.fx.rune(m.x, m.y, { size: 42, tint: 0x7ec8ff, ms: 900, spin: 40, inner: false });
+    if (eff.armorBreak) { this.fx.shock(m.x, m.y - 10, { r: 26, tint: 0xffd35c, ms: 350 }); popupNumber(s, m.x, m.y - m.displayHeight - 4, 'เกราะแตก!', 'miss'); }
+    if (eff.weak) popupNumber(s, m.x, m.y - m.displayHeight - 4, 'อ่อนแรง', 'miss');
     if (s.econ.server) return s.net.send('td:hit', { mid: m.mid, sk: sk.id });
     const d = s.player.derived, magic = sk.kind === 'magic';
     const crit = Math.random() < (d.critRate || 0.05);
@@ -484,7 +493,7 @@ export class TdSkills {
     if (p.cooldownLeft(id, time) > 0) return;
     (c.skx ||= {})[id] = (c.skx[id] || 0) + 1;                   // ความชำนาญ (server นับจริง · ฝั่งนี้ให้ UI ขยับทันที)
     if (c.mp < sk.mp) { ui.toast('MP ไม่พอ!', 'warn'); s.sfx.play('error'); p.cooldowns[id] = time + 400; return; }
-    c.mp -= sk.mp; p.cooldowns[id] = time + sk.cd;
+    c.mp -= sk.mp; p.cooldowns[id] = time + skillCooldown(sk.cd, getDerived(c).castRed);   // DEX ลดคูลดาวน์สกิล (แบบ RO ลดเวลาร่าย)
     const reach = this.reachOf(sk);
     const aim = this.aim(reach);
     const healer = base.job === 'healer', prep = healer ? this.heal.prep(sk, aim) : null;
@@ -495,6 +504,8 @@ export class TdSkills {
     s.sfx.play(sk.sfx);
     if (s.econ.server) s.net.socket?.emit('skill:cast', { skillId: id, lv: sk.lv, x: Math.round(p.x), y: Math.round(p.y), dir: aim.ux < 0 ? -1 : 1, tx: aim.t ? Math.round(aim.t.x) : Math.round(p.x + aim.ux * 100), ty: aim.t ? Math.round(aim.t.y) : Math.round(p.y + aim.uy * 100),
       ...(prep ? { allies: prep.allies, ...(prep.tx != null ? { tx: prep.tx, ty: prep.ty, n: prep.n } : {}) } : {}) });
+    if (sk.mult && s.social?.duel && s.econ.server) s.net.send('pvp:hit', { sk: id });
+    else if (sk.mult && s.social?.pkTarget && s.econ.server) s.net.send('pk:hit', { id: s.social.pkTarget, sk: id });   // PK: สกิลโจมตีลงเป้าผู้เล่น (server ตรวจระยะเอง)   // ดวล: สกิลโจมตีลงคู่ดวลด้วย (ส่งหลัง skill:cast ให้ server เห็นการร่ายก่อน · server ตรวจระยะเอง)
     this.play(sk, { x: p.x, y: p.y, ux: aim.ux, uy: aim.uy, t: aim.t, caster: p, local: true, prep });
   }
 

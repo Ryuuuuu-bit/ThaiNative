@@ -6,13 +6,13 @@ import { GEAR, GEAR_IDS } from '../shared/data/gear.js';
 import { PASSIVES } from '../shared/data/passives.js';
 import { MONSTERS } from '../shared/data/monsters.js';
 import { SKILLS, skillStats } from '../shared/data/skills.js';
-import { POINTS_PER_LEVEL } from '../shared/stats.js';
+import { statPointsAt, planRaise } from '../shared/stats.js';
 
 function build(job, L) {
   const c = newCharacter('sim', { gender: 'male' });
   c.level = L;
-  const pts = (L - 1) * POINTS_PER_LEVEL, plan = STAT_PLAN[job];
-  for (const [k, w] of Object.entries(plan)) c.stats[k] += Math.round(pts * w);
+  c.stats = { STR: 1, AGI: 1, VIT: 1, INT: 1, DEX: 1, LUK: 1 };                        // สเตตัสแบบ RO: ลงตามแผนแนะนำด้วยแต้มทั้งหมดของเลเวลนี้
+  for (const [k, n] of Object.entries(planRaise(c.stats, statPointsAt(L), STAT_PLAN[job]).add)) c.stats[k] += n;
   const best = (type) => GEAR_IDS.filter((id) => GEAR[id].job === job && GEAR[id].type === type && GEAR[id].lv <= L && !GEAR[id].legend).sort((a, b) => GEAR[b].lv - GEAR[a].lv)[0];
   c.equipment = { ...c.equipment, weapon: best('weapon'), armor: best('armor'), accessory: best('accessory'), accessory2: best('accessory'), helm: best('helm'), gloves: best('gloves'), boots: best('boots'), belt: best('belt') };
   c.appearance.job = job;

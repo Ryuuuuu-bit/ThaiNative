@@ -50,8 +50,8 @@ export const FORGE = [
     return { out: id, need, fee: Math.round((t.fee * m) / 100) * 100, job: it.job, lv: it.lv, type: it.type };
   }).sort((a, b) => a.lv - b.lv),
   { out: 'yant_guard', need: { dark_mist: 10, pret_bone: 8, saming_fang: 4 }, fee: 800, util: true },
-  // อุปกรณ์ขอบแดง ชุดสุริยคราส (บอสโลกพระราหู)
-  ...RED_GEAR.map((id) => ({ out: id, need: { rahu_stone: GEAR[id].type === 'weapon' ? 40 : 30, yak_fang: 12 }, fee: 300000, job: GEAR[id].job, lv: 90, type: GEAR[id].type, red: true })),
+  // อุปกรณ์ขอบแดง ชุดสุริยคราส (บอสโลกพระราหู) · หลอมได้เฉพาะชิ้นเต็มขั้น Lv.140 (ขั้นต่ำดรอปจากราหูอย่างเดียว)
+  ...RED_GEAR.filter((id) => !GEAR[id].redLow).map((id) => ({ out: id, need: { rahu_stone: GEAR[id].type === 'weapon' ? 40 : 30, yak_fang: 12 }, fee: 300000, job: GEAR[id].job, lv: 90, type: GEAR[id].type, red: true })),
   { out: 'black_iron', need: { film_reel: 4, water_lily: 4 }, fee: 40, util: true },
 ];
 

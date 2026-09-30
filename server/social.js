@@ -9,8 +9,10 @@ import { PARTY, WORLD } from '../shared/constants.js';
 import { ITEMS } from '../shared/data/items.js';
 import { LEGEND_IDS, rollGearDrop } from '../shared/data/gear.js';
 import { RAID_BOSS as RB } from '../shared/data/raid.js';
-import { rollDamage, mobExp } from '../shared/stats.js';
-import { combatDerived, attackSpec, attackGate } from '../shared/character.js';
+import { rollDamage, mobExp, attackInterval, expToNext } from '../shared/stats.js';
+import { combatDerived, attackSpec, attackGate, getDerived } from '../shared/character.js';
+import { SKILL_BY_ID } from '../shared/data/skills.js';
+import { JOBS } from '../shared/data/classes.js';
 import { count, addItem, removeItem, grant, presetReserved } from '../shared/economy.js';
 import { TITLE_BY_ID, checkTitles } from '../shared/data/titles.js';
 import { mapAt } from '../shared/data/maps.js';
@@ -439,6 +441,70 @@ export function setupSocial(io, players, H = {}) {
       const c = t.save || {};
       cb({ name: t.name, level: t.level, cp: t.cp || 0, job: t.appearance?.job || null, app: t.appearance, equipment: { ...(c.equipment || {}) }, enhance: { ...(c.enhance || {}) }, cards: { ...(c.cards || {}) } });
     });
+    // ---- ดวล (PVP) ----
+    socket.on('pvp:duel', ({ id } = {}) => {
+      const p = me(), t = players.get(id);
+      if (!p || !t || t.id === p.id || p.dead || t.dead) return;
+      if (duels.has(p.id) || duels.has(t.id)) return sys(p.id, 'อีกฝ่าย (หรือคุณ) กำลังดวลอยู่');
+      if (p.tradeId || t.tradeId) return sys(p.id, 'กำลังเทรดอยู่ ดวลไม่ได้');
+      if (apart(p, t) > 400) return sys(p.id, 'ต้องอยู่ใกล้กัน (แมพเดียวกัน) ถึงจะท้าดวลได้');
+      if (!duelReqs.has(t.id)) duelReqs.set(t.id, new Map());
+      duelReqs.get(t.id).set(p.id, Date.now() + 30000);
+      emitTo(t.id, 'pvp:request', { fromId: p.id, fromName: p.name });
+      sys(p.id, `⚔️ ส่งคำท้าดวลถึง ${t.name} แล้ว`);
+    });
+    socket.on('pvp:respond', ({ fromId, accept } = {}) => {
+      const p = me(), req = duelReqs.get(socket.id), exp = req?.get(fromId);
+      req?.delete(fromId);
+      const f = players.get(fromId);
+      if (!p || !f || !exp || exp < Date.now()) return;
+      if (!accept) return sys(fromId, `${p.name} ปฏิเสธคำท้าดวล`);
+      if (duels.has(p.id) || duels.has(f.id) || apart(p, f) > 500) return sys(fromId, 'เริ่มดวลไม่ได้ (ไกลเกินไป หรือติดดวลอื่น)');
+      const until = Date.now() + DUEL_MS;
+      duels.set(p.id, { foe: f.id, until });
+      duels.set(f.id, { foe: p.id, until });
+      for (const [q, o] of [[p, f], [f, p]]) emitTo(q.id, 'pvp:state', { phase: 'start', foe: o.id, foeName: o.name, ms: DUEL_MS });
+    });
+    /** โจมตีคู่ดวล: client แจ้งทุกการเหวี่ยง/ร่าย · server ตรวจระยะ+คูลดาวน์+ว่าร่ายจริง แล้วทอยดาเมจเอง */
+    socket.on('pvp:hit', ({ sk } = {}) => {
+      const p = me(), d = p && duels.get(p.id);
+      if (!p || !d || p.dead) return;
+      const t = players.get(d.foe);
+      if (!t || t.dead) return;
+      const r = strike(p, t, sk, 'pvpAtk', Date.now());
+      if (!r) return;
+      emitTo(p.id, 'pvp:dmg', { id: t.id, dmg: r.dmg, crit: r.crit, miss: !r.hit });
+      if (!r.hit) return;
+      if (t.hp - r.dmg <= t.maxHp * DUEL_END_HP) {             // น็อก: จบดวลก่อนถึงตาย (เหลือ 10%)
+        t.hp = Math.max(1, Math.round(t.maxHp * DUEL_END_HP));
+        t.hpDirty = true;
+        return endDuel(p.id, p.id, 'น็อก');
+      }
+      hurtPlayer(t, r.dmg, { hit: true, crit: r.crit, x: Math.round(pos(t).x), force: true, td: true, iframe: 200 });
+    });
+    // ---- PK (หัวแดง) ----
+    socket.on('pk:mode', ({ on } = {}) => {
+      const p = me(); if (!p) return;
+      if (on && !pkEnabled) return emitTo(p.id, 'pk:mode', { on: false, msg: 'ระบบ PK ปิดอยู่' });
+      if (on && (p.level || 1) < PK_LV) return emitTo(p.id, 'pk:mode', { on: false, msg: `ต้อง Lv.${PK_LV} ขึ้นไปถึงเปิดโหมด PK ได้` });
+      p.pkMode = !!on;
+      emitTo(p.id, 'pk:mode', { on: p.pkMode });
+    });
+    socket.on('pk:hit', ({ id, sk } = {}) => {
+      const p = me(), t = players.get(id), now = Date.now();
+      if (!p || !t || t.id === p.id || p.dead || t.dead || !p.pkMode) return;
+      const why = pkBlock(p, t, now);
+      if (why) { if (now - (p.pkFailAt || 0) > 2000) { p.pkFailAt = now; emitTo(p.id, 'pk:fail', { msg: why }); } return; }
+      const r = strike(p, t, sk, 'pkAtk', now);
+      if (!r) return;
+      emitTo(p.id, 'pvp:dmg', { id: t.id, dmg: r.dmg, crit: r.crit, miss: !r.hit });
+      if (!r.hit) return;
+      const wasInnocent = innocent(t, now);
+      if (wasInnocent && !isRed(p)) { const had = isPurple(p, now); p.pkFlagUntil = now + PK_FLAG_MS; flagged.add(p.id); if (!had) pushPk(p); }   // ตีคนบริสุทธิ์ = ม่วง
+      else if (wasInnocent) p.pkFlagUntil = now + PK_FLAG_MS;
+      hurtPlayer(t, r.dmg, { hit: true, crit: r.crit, x: Math.round(pos(t).x), force: true, td: true, iframe: 200 });
+      if (t.dead) onPkKill(p, t, wasInnocent);
+    });
     socket.on('party:chat', (text) => {
       if (typeof text !== 'string') return;
       const p = me(), party = p && parties.get(p.partyId);
@@ -533,13 +599,136 @@ export function setupSocial(io, players, H = {}) {
 
   function onJoin(p) { pushFriends(p); notifyFriendsOf(p, true); }
 
+  // ===================== ดวล (PVP ท้าประลอง · ฉันมิตร ไม่มีของ/EXP เดิมพัน) =====================
+  //  ▸ ท้า → อีกฝ่ายตอบรับ → สู้กันได้ทั้งตีปกติและสกิล (ดาเมจ PVP ×0.4 กันน็อกเร็วเกิน)
+  //  ▸ จบเมื่อ: เลือดฝ่ายใดเหลือ 10% (น็อก · ไม่ตายจริง) · หมดเวลา 3 นาที · ห่างกัน/ออกแมพ · ออกเกม
+  //  ▸ สถานะ (มึน/พิษ ฯลฯ) ยังไม่ติดผู้เล่นในดวล (เวอร์ชันแรก)
+  const duels = new Map();                 // playerId → { foe, until }
+  const duelReqs = new Map();              // targetId → Map(fromId → expireAt)
+  const DUEL_MS = 180000, DUEL_RANGE = 700, DUEL_END_HP = 0.1, PVP_DMG = 0.4;
+  let lastDuelChk = 0;
+  function endDuel(id, winnerId = null, reason = '') {
+    const d = duels.get(id);
+    if (!d) return;
+    const A = players.get(id), B = players.get(d.foe);
+    duels.delete(id); duels.delete(d.foe);
+    const W = winnerId ? players.get(winnerId) : null;
+    for (const q of [A, B]) if (q) emitTo(q.id, 'pvp:state', { phase: 'end', winner: W?.name || null, winnerId: winnerId || null, reason });
+    if (A && B && W) io.emit('chat', { id: null, name: '⚔️ ดวล', text: `${W.name} ชนะการดวลกับ ${(W.id === A.id ? B : A).name}!` });
+  }
+  /** ผู้เล่นตีผู้เล่น (ดวล/PK ใช้ร่วมกัน): ตรวจร่ายจริง/คูลดาวน์/ระยะ แล้วทอยดาเมจ PVP → ผลทอย หรือ null
+   *  ▸ สกิล: ต้องเพิ่งร่ายจริง (skill:cast เก็บเวลาไว้) · 1 ครั้งต่อการร่าย · ตีปกติ: คูลดาวน์ของตัวเอง (AGI เร่งได้) */
+  function strike(p, t, sk, key, now) {
+    const skId = typeof sk === 'string' && SKILL_BY_ID[sk] && SKILL_BY_ID[sk].type !== 'passive' ? sk : null;
+    if (skId) {
+      const at = p.skillAt?.[skId] || 0;
+      if (!at || now - at > 1600) return null;
+      const seen = (p.pvpSkAt ||= {});
+      if (seen[skId] === at) return null;
+      seen[skId] = at;
+    } else {
+      const cdMs = attackInterval(JOBS[p.appearance.job]?.attack?.cooldown || 500, getDerived(p.char).aspd) * 0.7;
+      if (now - (p[key] || 0) < cdMs) return null;
+      p[key] = now;
+    }
+    const spec = attackSpec(p.char, p.appearance.job, skId, false);
+    if (!spec) return null;
+    const base = skId ? SKILL_BY_ID[skId] : JOBS[p.appearance.job]?.attack;
+    const reach = Math.max(base?.range || 30, (base?.distance || 0) + (base?.radius || 0) + (base?.offset ? 240 : 0)) + 60;
+    if (apart(p, t) > reach) return null;
+    const atkD = combatDerived(p.char, p.buffs, now), defD = combatDerived(t.char, t.buffs, now);
+    return rollDamage(atkD, { def: defD.def, eva: defD.eva }, spec.kind, spec.mult * (spec.hits || 1) * PVP_DMG);
+  }
+
+  // ===================== PK (หัวแดง) · เปิดได้ตั้งแต่ Lv.30 ในแดนต่าง ๆ นอกค่ายพัก =====================
+  //  ▸ ต้องเปิดโหมด PK เอง · ตีคนบริสุทธิ์ = ชื่อม่วง 30 วิ (ตีกลับได้ไม่บาป) · ฆ่าคนบริสุทธิ์ = หัวแดง (บาป +100 ลด 5/นาทีที่ออนไลน์)
+  //  ▸ คุ้มครอง: ต่ำกว่า Lv.30 · เลเวลต่ำกว่าเรา 15+ (ยกเว้นคนม่วง/แดง) · เพื่อนร่วมปาร์ตี้ · ค่ายพัก/อยุธยา/ลานราหู/สุสาน
+  //  ▸ หัวแดงตาย: EXP −5% ของหลอด + ของในกระเป๋าหล่นให้คนฆ่า 1–3 ชิ้น (ไม่รวมของสวม/ล็อก/จองชุด A/B) · ซื้อของร้าน/วาร์ปกลับเมืองไม่ได้
+  const PK_LV = 30, PK_GAP = 15, PK_FLAG_MS = 30000, PK_KARMA = 100, PK_DECAY = 5;
+  let pkEnabled = true, pkEnv = null, lastPkTick = 0;
+  const flagged = new Set();
+  const isRed = (q) => (q?.save?.karma || 0) > 0;
+  const isPurple = (q, now = Date.now()) => (q?.pkFlagUntil || 0) > now;
+  const innocent = (q, now) => !isRed(q) && !isPurple(q, now);
+  const pkColor = (q, now = Date.now()) => (isRed(q) ? 'red' : isPurple(q, now) ? 'purple' : null);
+  const pushPk = (q) => io.emit('pk:state', { id: q.id, pk: pkColor(q) });
+  /** อยู่ในเขต PK ไหม (แดนต่าง ๆ นอกค่ายพัก · ไม่ใช่อยุธยา/ลานอีเวนต์/สุสาน) */
+  function pkZone(q) {
+    if (!pkEnv || q.world !== 'td') return false;
+    const M = getMap(pkEnv.mapOf(q));
+    return !!M?.realm && !M.event && M.id !== 'suriya' && !pkEnv.inTown(q);
+  }
+  /** เหตุผลที่ตีไม่ได้ (null = ตีได้) */
+  function pkBlock(p, t, now) {
+    if (!pkEnabled) return 'ระบบ PK ปิดอยู่';
+    if ((p.level || 1) < PK_LV) return `ต้อง Lv.${PK_LV} ขึ้นไปถึงเปิด PK ได้`;
+    if ((t.level || 1) < PK_LV) return `${t.name} ยังต่ำกว่า Lv.${PK_LV} (ได้รับการคุ้มครอง)`;
+    if (p.partyId && p.partyId === t.partyId) return 'ตีเพื่อนร่วมปาร์ตี้ไม่ได้';
+    if (!pkZone(p) || !pkZone(t)) return 'ต้องอยู่ในแดน (นอกค่ายพัก) ทั้งคู่ · อยุธยา/ลานราหู/สุสาน ห้าม PK';
+    if (duels.get(p.id)?.foe === t.id) return 'กำลังดวลกันอยู่';
+    if (innocent(t, now) && (t.level || 1) < (p.level || 1) - PK_GAP) return `${t.name} เลเวลต่ำกว่าคุณเกิน ${PK_GAP} (ได้รับการคุ้มครอง)`;
+    return null;
+  }
+  /** ฆ่าได้ในโหมด PK */
+  function onPkKill(p, t, wasInnocent) {
+    if (wasInnocent) {
+      const was = isRed(p);
+      p.save.karma = (p.save.karma || 0) + PK_KARMA; p.dirty = true; queueSync(p);
+      if (!was) pushPk(p);
+      io.emit('chat', { id: null, name: '☠️ PK', text: `${p.name} สังหาร ${t.name} กลายเป็นหัวแดง! (บาป ${p.save.karma})` });
+      return;
+    }
+    if (!isRed(t)) return io.emit('chat', { id: null, name: '⚔️ PK', text: `${p.name} ปราบ ${t.name} ในการต่อสู้` });
+    // หัวแดงตาย: เสีย EXP + ของหล่นให้คนฆ่า
+    const c = t.save, lossExp = Math.min(c.exp || 0, Math.round(expToNext(c.level || 1) * 0.05));
+    c.exp = Math.max(0, (c.exp || 0) - lossExp);
+    const pool = (c.inventory || []).filter((s) => s && ITEMS[s.id] && s.qty > 0 && !c.locked?.includes(s.id) && count(c, s.id) - presetReserved(c, s.id) > 0);
+    const got = [];
+    for (let n = 1 + Math.floor(Math.random() * 3); n > 0 && pool.length; n--) {
+      const s = pool.splice(Math.floor(Math.random() * pool.length), 1)[0];
+      if (!removeItem(c, s.id, 1)) continue;
+      addItem(p.save, s.id, 1); got.push(ITEMS[s.id].nameTh);
+    }
+    t.dirty = true; p.dirty = true; refresh(t); refresh(p); queueSync(t); queueSync(p);
+    sys(t.id, `☠️ คุณตายขณะเป็นหัวแดง: EXP −${lossExp.toLocaleString()}${got.length ? ` · ของหล่น: ${got.join(', ')}` : ''}`);
+    if (got.length) sys(p.id, `💰 ได้ของจากหัวแดง ${t.name}: ${got.join(', ')}`);
+    io.emit('chat', { id: null, name: '⚔️ PK', text: `${p.name} ปราบหัวแดง ${t.name} ได้แล้ว!` });
+  }
+  function tickPk(now) {
+    for (const id of [...flagged]) { const q = players.get(id); if (!q) { flagged.delete(id); continue; } if (!isPurple(q, now)) { flagged.delete(id); pushPk(q); } }
+    if (now - lastPkTick < 60000) return;
+    lastPkTick = now;
+    for (const q of players.values()) {
+      if (!isRed(q)) continue;
+      q.save.karma = Math.max(0, q.save.karma - PK_DECAY); q.dirty = true;
+      if (!q.save.karma) { pushPk(q); sys(q.id, '🕊️ บาปหมดแล้ว · ชื่อกลับเป็นปกติ'); }
+    }
+  }
+
+  function tickDuels(now) {
+    if (now - lastDuelChk < 1000 || !duels.size) return;
+    lastDuelChk = now;
+    const seen = new Set();
+    for (const [id, d] of [...duels]) {
+      if (seen.has(id)) continue;
+      seen.add(d.foe);
+      const A = players.get(id), B = players.get(d.foe);
+      if (!A || !B) { endDuel(id, A ? id : d.foe, 'อีกฝ่ายออกจากเกม'); continue; }
+      if (A.dead || B.dead) { endDuel(id, A.dead ? d.foe : id, 'อีกฝ่ายสลบ'); continue; }
+      if (now > d.until) { endDuel(id, null, 'หมดเวลา (เสมอ)'); continue; }
+      if (apart(A, B) > DUEL_RANGE) endDuel(id, null, 'อยู่ห่างกันเกินไป');
+    }
+  }
+
   function onDisconnect(id) {
     const p = players.get(id);
     leaveParty(id);
     const t = tradeOf(id);
     if (t) closeTrade(t, 'อีกฝ่ายออกจากเกม');
+    if (duels.has(id)) endDuel(id, duels.get(id).foe, 'อีกฝ่ายออกจากเกม');
     partyInvites.delete(id);
     tradeReqs.delete(id);
+    duelReqs.delete(id);
     boss.contrib.delete(id);
     if (p) setTimeout(() => notifyFriendsOf(p, false), 0);
   }
@@ -554,6 +743,8 @@ export function setupSocial(io, players, H = {}) {
   let lastPartyPush = 0;
   function tick(now = Date.now()) {
     tickBoss(now);
+    tickDuels(now);
+    tickPk(now);
     if (now - lastPartyPush > 1000) {
       lastPartyPush = now;
       for (const party of parties.values()) pushParty(party);
@@ -577,5 +768,18 @@ export function setupSocial(io, players, H = {}) {
       if (ch) pushFriends(q);
     }
   }
-  return { partyBonus, partyMates, friendGone, friendRenamed, onConnection, onDisconnect, onJoin, tick, bossPublic, shareExp, announceTitles, partyOf, pushParty, leaveParty, _boss: boss, _parties: parties, _trades: trades };
+  /** index.js ส่งข้อมูลโลกให้ (td สร้างทีหลัง social) */
+  const setPkEnv = (env) => { pkEnv = env; };
+  /** GM: เปิด/ปิด PK ทั้งเซิร์ฟ · ล้าง/ตั้งบาป */
+  function pkGm(cmd, target, n) {
+    if (cmd === 'on' || cmd === 'off') {
+      pkEnabled = cmd === 'on';
+      if (!pkEnabled) for (const q of players.values()) if (q.pkMode) { q.pkMode = false; emitTo(q.id, 'pk:mode', { on: false, msg: 'GM ปิดระบบ PK' }); }
+      io.emit('chat', { id: null, name: '📢 ประกาศ', text: pkEnabled ? '⚔️ เปิดระบบ PK แล้ว (Lv.30+ ในแดนต่าง ๆ นอกค่ายพัก)' : '🕊️ ปิดระบบ PK ชั่วคราว' });
+      return pkEnabled ? 'เปิด PK แล้ว' : 'ปิด PK แล้ว';
+    }
+    return `PK ตอนนี้: ${pkEnabled ? 'เปิด' : 'ปิด'} · ใช้ /gm pk on|off · /gm karma <ชื่อ> [ค่า]`;
+  }
+  function setKarma(t, n) { const was = isRed(t); t.save.karma = Math.max(0, n); t.dirty = true; queueSync(t); if (was !== isRed(t)) pushPk(t); }
+  return { setPkEnv, pkGm, setKarma, pkColor, partyBonus, partyMates, friendGone, friendRenamed, onConnection, onDisconnect, onJoin, tick, bossPublic, shareExp, announceTitles, partyOf, pushParty, leaveParty, _boss: boss, _parties: parties, _trades: trades };
 }

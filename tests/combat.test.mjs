@@ -10,15 +10,29 @@ import { SKILLS } from '../shared/data/skills.js';
 let seed = 42;
 const rng = () => ((seed = (seed * 1103515245 + 12345) % 2147483648) / 2147483648);
 
-// 1) สูตร derived: STR/INT/VIT/DEX/CRI มีผลตามที่ออกแบบ
-const base = { STR: 10, DEX: 10, INT: 10, CRI: 10, VIT: 10 };
+// 1) สูตร derived แบบ RO: STR/AGI/VIT/INT/DEX/LUK มีผลตามที่ออกแบบ
+const base = { STR: 10, AGI: 10, VIT: 10, INT: 10, DEX: 10, LUK: 10 };
 const d0 = computeDerived(base, JOBS.swordman, 1);
-const up = (k) => computeDerived({ ...base, [k]: base[k] + 1 }, JOBS.swordman, 1);
-assert.equal(up('STR').patk - d0.patk, 2, 'STR +1 → ATK +2');
-assert.equal(up('VIT').maxHp - d0.maxHp, 12, 'VIT +1 → HP +12');
-assert.ok(up('INT').matk > d0.matk, 'INT → MATK');
-assert.ok(up('DEX').accuracy > d0.accuracy && up('DEX').critRate > d0.critRate, 'DEX → ACC + CRIT');
-assert.ok(Math.abs(up('CRI').critDmg - d0.critDmg - 0.02) < 1e-9, 'CRI +1 → crit dmg +2%');
+const up = (k, opt) => computeDerived({ ...base, [k]: base[k] + 1 }, JOBS.swordman, 1, {}, opt);
+assert.ok(up('STR').patk > d0.patk, 'STR → ATK ประชิด');
+assert.ok(up('DEX', { ranged: true }).patk > computeDerived(base, JOBS.swordman, 1, {}, { ranged: true }).patk, 'DEX → ATK ธนู');
+assert.ok(up('AGI').aspd > d0.aspd && up('AGI').eva >= d0.eva, 'AGI → ความเร็วตี + หลบ');
+assert.ok(up('VIT').maxHp > d0.maxHp, 'VIT → HP');
+assert.ok(up('INT').matk > d0.matk && up('INT').maxMp > d0.maxMp, 'INT → MATK + MP');
+assert.ok(up('DEX').accuracy > d0.accuracy, 'DEX → แม่นยำ');
+assert.ok(up('LUK').critRate > d0.critRate && up('LUK').critDmg > d0.critDmg, 'LUK → คริ');
+{ // ค่าสูง: ATK ต่อแต้มคุ้มขึ้น (แบบ RO) · ความเร็วตีมีเพดาน
+  const at = (v) => computeDerived({ ...base, STR: v }, JOBS.swordman, 1).patk;
+  assert.ok(at(101) - at(100) > at(11) - at(10), 'STR สูงยิ่งคุ้ม');
+  assert.ok(computeDerived({ ...base, AGI: 999 }, JOBS.swordman, 1).aspd <= 0.3, 'ความเร็วตีไม่เกิน 30%');
+}
+// แต้มแบบ RO: ค่าสูงแพงขึ้น · เพดาน 130 · Lv.150 ได้ 2,670 แต้ม
+{ const { statCost, statPointsAt, raiseCost, planRaise, STAT_CAP } = await import('../shared/stats.js');
+  assert.equal(statCost(1), 2); assert.equal(statCost(10), 2); assert.equal(statCost(11), 3); assert.equal(statCost(99), 11);
+  assert.equal(statPointsAt(1), 48); assert.equal(statPointsAt(150), 2670);
+  assert.equal(raiseCost(1, 98), 628, '1 → 99 ใช้ 628 แต้มแบบ RO');
+  const { add, used } = planRaise({ STR: 1, AGI: 1, VIT: 1, INT: 1, DEX: 1, LUK: 1 }, statPointsAt(150), { STR: 1, VIT: 0.8 });
+  assert.equal(1 + add.STR, STAT_CAP, 'ค่าหลักตันที่เพดาน'); assert.ok(used <= statPointsAt(150)); }
 
 // 2) โอกาสโดนอยู่ในช่วง 60–99%
 assert.equal(hitChanceOf(90, 0), 0.95);
@@ -45,7 +59,7 @@ assert.ok(avg('magic') > avg('physical'), 'magic ignores more armor');
 // 5) ทุกอาชีพ Lv1 ฆ่าผีถ้วยแก้วได้ใน 2–6 ครั้ง (สมดุลเบื้องต้น) และ DPS ต่างกันไม่เกิน 2.5 เท่า
 const dps = {};
 for (const [id, job] of Object.entries(JOBS)) {
-  const d = computeDerived(job.startStats, job, 1);
+  const d = computeDerived({ STR: 5, AGI: 5, VIT: 5, INT: 5, DEX: 5, LUK: 5 }, job, 1, {}, { ranged: id === 'archer' });   // ตัวใหม่: 48 แต้มลงให้ทุกค่า 5
   const a = job.attack;
   const power = (a.kind === 'magic' ? d.matk : d.patk) * a.mult;
   const hits = Math.ceil(MONSTERS.phi_tuay_kaew.hp / power);
@@ -65,6 +79,12 @@ for (const [job, list] of Object.entries(SKILLS)) {
   assert.ok(list.length >= 5, `${job} has >= 5 skills`);
   if (job !== 'hybrid') assert.ok(list.filter((s) => s.ultimate).length >= 1, `${job} has an ultimate`);   // สกิลผสมไม่มีท่าไม้ตาย
   for (const s of list) {
+    if (s.type === 'passive') {                                             // สกิลติดตัว: โบนัสต้องมีและโตตามเลเวล
+      const b1 = s.passive(1), b5 = s.passive(MAX_SKILL_LV);
+      assert.ok(Object.keys(b1).length > 0, `${s.id} passive bonus`);
+      assert.ok(Object.entries(b5).every(([k, v]) => v > (b1[k] || 0)), `${s.id} passive scales`);
+      continue;
+    }
     const a1 = skillStats(s, 1), a5 = skillStats(s, MAX_SKILL_LV);
     assert.ok(a1.cd > 0 && a1.mp > 0, `${s.id} cost`);
     assert.ok(a5.cd < a1.cd && a5.mp >= a1.mp, `${s.id} scales cd/mp`);
@@ -103,6 +123,35 @@ assert.equal(sanitizeAppearance({ job: 'boxer', weapon: 'yant_staff' }).job, 'ma
 assert.equal(sanitizeAppearance({ weapon: 'hp_s' }).weapon, null, 'non-weapon rejected');
 assert.equal(sanitizeAppearance({ path: 'hacker' }).path, null);
 assert.equal(weaponStyle('horn_bow'), 'archer');
+
+// 6c2) SP: Lv.1–60 ทุกเลเวล · หลัง 60 ทุก 2 เลเวล · Lv.150 = 105 · ตัวเก่า SP เกิน → รีสกิลฟรี
+{
+  const { spAt, spForLevel } = await import('../shared/data/skills.js');
+  assert.equal(spAt(1), 1); assert.equal(spAt(60), 60); assert.equal(spAt(62), 61); assert.equal(spAt(150), 105);
+  let sum = spAt(1); for (let L = 2; L <= 150; L++) sum += spForLevel(L);
+  assert.equal(sum, spAt(150), 'SP ที่ได้ทีละเลเวลรวมตรงกับ spAt');
+  const { migrate } = await import('../shared/charmodel.js');
+  const old = migrate({ name: 'เก่า', appearance: {}, level: 100, v: 2, skills: { sword_twin: 5, sword_thrust: 5 }, sp: 0 });
+  assert.equal(old.sp, spAt(100) - 10, 'ใช้ไม่เกิน → คำนวณ SP เหลือใหม่');
+  const big = migrate({ name: 'เกิน', appearance: {}, level: 100, v: 2, skills: Object.fromEntries(['sword_twin', 'sword_thrust', 'sword_wind', 'sword_guard', 'sword_pikat', 'sword_banner', 'sword_whirl', 'sword_leap', 'sword_berserk', 'sword_execute', 'mage_akom', 'mage_yant', 'mage_thunder', 'mage_kalp', 'mage_ghostfire', 'mage_curse', 'mage_shield', 'mage_holy'].map((id) => [id, 5])), sp: 0 });   // 90 SP > Lv.100 มี 80
+  assert.deepEqual(big.skills, {}, 'ใช้เกิน → รีสกิลฟรี'); assert.equal(big.sp, spAt(100)); assert.ok(big.spNotice);
+}
+
+// 6d) สกิลติดตัว (Passive): มีผลใน getDerived เฉพาะตอนถืออาวุธแนวนั้น · ใส่ Hotbar ไม่ได้
+import { newCharacter, assignHotbar } from '../shared/charmodel.js';
+import { getDerived } from '../shared/character.js';
+{
+  const c = newCharacter('ทดสอบ', {});
+  c.level = 20; c.appearance.job = 'swordman';
+  const base = getDerived(c);
+  c.skills.sword_p_mastery = 3;
+  assert.ok(getDerived(c).patk > base.patk, 'passive เพิ่ม ATK เมื่อถือดาบ');
+  c.appearance.job = 'boxer';
+  assert.equal(getDerived(c).patk, base.patk, 'เปลี่ยนอาวุธ → passive ดาบไม่ทำงาน');
+  assert.equal(assignHotbar(c, '3', 'sword_p_mastery'), false, 'passive ใส่ Hotbar ไม่ได้');
+  c.appearance.job = 'archer'; c.skills.arch_p_step = 5;
+  assert.ok(getDerived(c).aspd >= 0.1, 'ย่องเบาไร้เงา Lv.5 → ความเร็วตี +10%');
+}
 // 6d) โบนัสสายหลักคูณค่าพลัง
 {
   const b = computeDerived(base, VILLAGER, 10), w = computeDerived(base, VILLAGER, 10, JOBS.swordman.pathBonus);

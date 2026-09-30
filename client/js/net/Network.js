@@ -70,6 +70,7 @@ export class Network {
     for (const ev of ['party:invite', 'party:state', 'party:exp', 'trade:request', 'trade:state', 'trade:closed', 'trade:complete',
       'raid:state', 'raid:spawn', 'raid:attack', 'raid:impact', 'raid:dmg', 'raid:reward', 'raid:defeated',
       'news:live', 'news:add', 'news:del', 'player:rename', 'char:load', 'char:sync', 'pl:hit', 'pl:die', 'pl:hp', 'friends:state', 'online:list', 'title:new',
+      'pvp:request', 'pvp:state', 'pvp:dmg', 'pk:state', 'pk:mode', 'pk:fail',
       'rboss:spawn', 'rboss:list', 'rboss:down', 'rboss:slam', 'rboss:reward',
       'dg:start', 'dg:state', 'dg:wave', 'dg:cleared', 'dg:dmg', 'dg:die', 'dg:exp', 'dg:slam', 'dg:end', 'dg:exit',
       // โลก New Version (top-down)

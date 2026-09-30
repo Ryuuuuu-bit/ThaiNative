@@ -3,6 +3,7 @@
 //  ▸ ข้อมูลสร้างจากไฟล์ข้อมูลเกมโดยตรง (MONSTERS · ผังแมพ · การ์ด · สุสานใต้ดิน) → อัปเดตเองเมื่อแก้ข้อมูล
 //  ▸ แท็บ: ผีทั้งหมด / บอส / ค้นหาของดรอป · กรองตามแมพ · ค้นหาชื่อ
 // ============================================================
+import { mobAtkMul, mobExp, expLevelMul } from '/shared/stats.js';
 import { MONSTERS } from '/shared/data/monsters.js';
 import { ITEMS } from '/shared/data/items.js';
 import { CARD_OF_MON, CARD_BY_ID, CARD_DROP, CARD_SLOT_TH, cardText } from '/shared/data/cards.js';
@@ -103,7 +104,7 @@ export class GuideBook {
     const sel = this.sel || L[0]?.id;
     const me = this.char?.level || 1;
     const rows = L.map((m) => {
-      const d = m.d, gap = d.level - me, col = gap >= 6 ? 'hard' : gap <= -6 ? 'easy' : 'even';
+      const d = m.d, mul = expLevelMul(me, d.level), col = mul < 1 ? (d.level < me ? 'easy' : 'hard') : 'even';   // สี = EXP: เทา/แดง = โดนลด · ปกติ = เต็ม/โบนัส
       return `<button class="gb-row${m.id === sel ? ' on' : ''}" data-mon="${m.id}">
         ${this.art(m.id, d)}<span class="gb-nm"><b>${esc(d.nameTh)}</b><small>${d.boss ? '👑 บอส · ' : d.elite ? '⭐ หัวหน้า · ' : ''}${esc(m.where[0]?.mapTh || '')}${d.nightOnly ? ' · 🌙' : ''}</small></span>
         <span class="gb-lv ${col}">Lv.${d.level}</span></button>`;
@@ -119,11 +120,14 @@ export class GuideBook {
   detail(id) {
     const { mobs } = build(), m = mobs.find((x) => x.id === id); if (!m) return '';
     const d = m.d, cid = CARD_OF_MON[id], cd = cid && CARD_BY_ID[cid];
-    const stats = [['HP', d.hp?.toLocaleString('en-US')], ['โจมตี', d.atk], ['ป้องกัน', d.def], ['หลบ', d.eva], ['EXP', d.exp ? d.exp.toLocaleString('en-US') : 'พิเศษ'], ['เงิน', Array.isArray(d.gold) && d.gold[1] ? `฿${d.gold[0].toLocaleString('en-US')}–${d.gold[1].toLocaleString('en-US')}` : 'พิเศษ']];
+    const me = this.char?.level || 1, eff = d.exp ? mobExp(d.exp, me, d.level, !!d.boss) : 0;   // EXP จริงตามเลเวลเรา (โบนัสผีเวลสูง/แคปผีอ่อน)
+    const expCell = !d.exp ? 'พิเศษ' : eff === d.exp ? eff.toLocaleString('en-US')
+      : `<span title="ฐาน ${d.exp.toLocaleString('en-US')} · คิดตามเลเวลคุณ (Lv.${me})">${eff.toLocaleString('en-US')} <small>${eff > d.exp ? '⬆โบนัส' : '⬇ลด'}</small></span>`;
+    const stats = [['HP', d.hp?.toLocaleString('en-US')], ['โจมตี', d.atk ? Math.round(d.atk * mobAtkMul(d.level)) : d.atk], ['ป้องกัน', d.def], ['หลบ', d.eva], ['EXP', expCell], ['เงิน', Array.isArray(d.gold) && d.gold[1] ? `฿${d.gold[0].toLocaleString('en-US')}–${d.gold[1].toLocaleString('en-US')}` : 'พิเศษ']];
     const gearLv = d.boss ? [Math.min(d.level + 6, 148) - 4, Math.min(d.level + 6, 148) + 2] : [Math.min(d.level, 148) - 4, Math.min(d.level, 148) + 2];
     const drops = [
       ...(d.drops || []).filter((dr) => ITEMS[dr.item]).map((dr) => ({ html: `${itemIcon(dr.item, ITEMS[dr.item].icon)}<span>${esc(ITEMS[dr.item].nameTh)}</span>`, tip: dr.item, rate: dr.chance })),
-      { html: `<i class="gb-ic">🗡️</i><span>อุปกรณ์สุ่ม Lv.${Math.max(1, gearLv[0])}–${gearLv[1]} <small>(มีค่าสุ่ม 0–3 บรรทัด)</small></span>`, rate: gearRate(d) },
+      { html: `<i class="gb-ic">🗡️</i><span>อุปกรณ์สุ่ม Lv.${Math.max(1, gearLv[0])}–${gearLv[1]} <small>(ค่าสุ่ม 0–3 บรรทัด · ครึ่งหนึ่งเป็นของสายที่ถือ)</small></span>`, rate: gearRate(d) },
       ...(cd ? [{ html: `${itemIcon(cid, '🃏')}<span>${esc(cd.nameTh)} <small>ช่อง${CARD_SLOT_TH[cd.slot]} · ${esc(cardText(cd))}</small></span>`, tip: cid, rate: cardRate(d) }] : []),
     ];
     const where = m.where.map((w) => `<li>${w.icon} <b>${esc(w.mapTh)}</b>${w.zoneTh ? ` › ${esc(w.zoneTh)}` : ''}${w.n ? ` <small>(${w.n} ตัว)</small>` : ''}${w.event ? ' <small>· อีเวนต์บอสโลก</small>' : ''}
@@ -131,11 +135,11 @@ export class GuideBook {
     const notes = [
       d.nightOnly ? '🌙 ออกเฉพาะกลางคืน' : '',
       d.boss && d.respawnMs ? `⏱ เกิดใหม่ทุก ${Math.round(d.respawnMs / 60000)} นาที · ผู้ช่วยตีได้ของ/การ์ดของตัวเอง` : '',
-      d.elite && !d.boss ? '⭐ ผีหัวหน้า: ดรอปอุปกรณ์ ×3 · การ์ด 1.2%' : '',
+      d.elite && !d.boss ? `⭐ ผีหัวหน้า: ดรอปอุปกรณ์ ×3 · การ์ด ${pct(CARD_DROP.elite)}` : '',
     ].filter(Boolean);
     return `<div class="gb-card">
       <div class="gb-top">${this.art(id, d, true)}<div><h3>${esc(d.nameTh)} <small>${esc(d.nameEn || '')}</small></h3>
-        <div class="gb-tags"><span class="gb-lv ${(() => { const g = d.level - (this.char?.level || 1); return g >= 6 ? 'hard' : g <= -6 ? 'easy' : 'even'; })()}">Lv.${d.level}</span>${d.boss ? '<span class="gb-tag boss">👑 บอส</span>' : ''}${d.elite ? '<span class="gb-tag">⭐ หัวหน้า</span>' : ''}${d.nightOnly ? '<span class="gb-tag night">🌙 กลางคืน</span>' : ''}</div>
+        <div class="gb-tags"><span class="gb-lv ${(() => { const mul = expLevelMul(me, d.level); return mul < 1 ? (d.level < me ? 'easy' : 'hard') : 'even'; })()}">Lv.${d.level}</span>${d.boss ? '<span class="gb-tag boss">👑 บอส</span>' : ''}${d.elite ? '<span class="gb-tag">⭐ หัวหน้า</span>' : ''}${d.nightOnly ? '<span class="gb-tag night">🌙 กลางคืน</span>' : ''}</div>
         ${d.desc ? `<p class="gb-desc">${esc(d.desc)}</p>` : ''}</div></div>
       <div class="gb-stats">${stats.map(([k, v]) => `<div><small>${k}</small><b>${v ?? '—'}</b></div>`).join('')}</div>
       <h4>📍 ที่อยู่</h4><ul class="gb-where">${where}</ul>

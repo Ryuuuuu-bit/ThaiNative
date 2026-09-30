@@ -3,7 +3,7 @@
 // ============================================================
 import { JOBS } from '/shared/data/classes.js';
 import { ITEMS } from '/shared/data/items.js';
-import { CARDS, CARD_BY_ID, CARD_SLOT_TH, SLOT_CARD, CARD_SOCKET_ENH, BOOK_TIERS, socketCount, cardRemoveCost, cardText, cardBonus, bookCount } from '/shared/data/cards.js';
+import { CARDS, CARD_BY_ID, CARD_SLOT_TH, SLOT_CARD, CARD_SOCKET_ENH, CARD_DROP, CARD_MUL_MAX, BOOK_TIERS, socketCount, cardRemoveCost, cardText, cardBonus, bookCount } from '/shared/data/cards.js';
 import * as Inv from './Inventory.js';
 import { cardGain } from './ItemFilter.js';
 import { ask, notice } from './Dialog.js';
@@ -88,13 +88,13 @@ export class CardUI {
       const have = c.inventory.filter((s) => CARD_BY_ID[s.id]?.slot === type).map((s) => ({ ...s, g: cardGain(c, this.pickSlot, s.id) ?? 0 })).sort((a, b) => b.g - a.g);   // ดีสุดก่อน
       picker = `<div class="cs-pick"><div class="cs-pick-h">เลือกการ์ด${CARD_SLOT_TH[type]}ใส่ช่อง <b>${EQ_TH[this.pickSlot]}</b> <button class="btn ghost sm" data-cancel>ยกเลิก</button></div>
         ${have.length ? `<div class="tc-grid">${have.map((s) => `<div class="tc-wrap">${cardHtml(CARD_BY_ID[s.id], { count: s.qty, pick: true })}<b class="tc-gain ${s.g > 0 ? 'up' : ''}">⚔ ${s.g > 0 ? '+' : ''}${s.g.toLocaleString('en-US')}</b></div>`).join('')}</div>`
-          : `<div class="empty">ไม่มีการ์ด${CARD_SLOT_TH[type]}ในกระเป๋า · ล่าผีเพื่อสะสม (ดรอป 0.5%)</div>`}</div>`;
+          : `<div class="empty">ไม่มีการ์ด${CARD_SLOT_TH[type]}ในกระเป๋า · ล่าผีเพื่อสะสม (ดรอป ${+(CARD_DROP.normal * 100).toFixed(2)}%)</div>`}</div>`;
     }
     const { bonus, econ } = cardBonus(c);
     const tot = cardText({ bonus, econ: Object.fromEntries(Object.entries(econ).filter(([, v]) => v)) });
     const inBag = c.inventory.filter((s) => CARD_BY_ID[s.id]).reduce((a, s) => a + s.qty, 0);
     const hj = c.appearance?.job || c.path || 'swordman', mg = hj === 'mage' || hj === 'healer';
-    const mainTh = mg ? 'INT' : hj === 'archer' ? 'STR+DEX' : 'STR';
+    const mainTh = mg ? 'INT' : hj === 'archer' ? 'DEX' : 'STR';
     el.innerHTML = `<p class="greet">การ์ดติดกับ<b>ช่องสวมใส่</b> (เหมือนตีบวก) ใส่ได้ทุกช่อง: อาวุธ · หมวก · เสื้อ · ถุงมือ · รองเท้า · เข็มขัด · เครื่องประดับ — อาวุธ/เสื้อตีบวก +${CARD_SOCKET_ENH} ได้ช่องที่ 2</p>
       <p class="meta cs-job">⚖ ทุกอาชีพได้ค่าเท่ากัน · ตอนนี้ถือ${JOBS[hj]?.nameTh ? ` <b>${JOBS[hj].nameTh}</b>` : ''}: "พลังโจมตี" = <b>${mg ? 'MATK' : 'ATK'}</b> · "สถานะหลัก" = <b>${mainTh}</b></p>
       <div class="cs-list">${rows}</div>${picker}
@@ -124,7 +124,7 @@ export class CardUI {
         <span class="meta">${next ? `อีก ${next.n - n} ชนิด → ${next.text}` : 'สะสมครบทุกชนิดแล้ว!'}</span></div>
       <div class="cb-tiers">${BOOK_TIERS.map((t) => `<span class="${n >= t.n ? 'on' : ''}">${n >= t.n ? '✔' : '○'} ${t.n} ชนิด: ${t.text}</span>`).join('')}</div>
       <div class="tc-grid book">${CARDS.map((cd) => cardHtml(cd, { unknown: !book[cd.id], count: Inv.count(c, cd.id) })).join('')}</div>
-      <div class="meta cs-foot">ผีทั่วไปดรอปการ์ด 0.5% · ผีหัวหน้า 1.2% · บอส 20% (บัฟดรอปช่วยได้สูงสุด ×1.5) · การ์ดที่ได้ครั้งแรกจะถูกบันทึกในสมุดถาวร (ขายไปแล้วก็ยังนับ)</div>`;
+      <div class="meta cs-foot">ผีทั่วไปดรอปการ์ด ${+(CARD_DROP.normal * 100).toFixed(2)}% · ผีหัวหน้า ${+(CARD_DROP.elite * 100).toFixed(2)}% · บอส ${+(CARD_DROP.boss * 100).toFixed(0)}% (บัฟดรอปช่วยได้สูงสุด ×${CARD_MUL_MAX}) · การ์ดที่ได้ครั้งแรกจะถูกบันทึกในสมุดถาวร (ขายไปแล้วก็ยังนับ)</div>`;
   }
 
   // ---------------- แท็บแลกการ์ด (ร้านยายติ๋ม) ----------------

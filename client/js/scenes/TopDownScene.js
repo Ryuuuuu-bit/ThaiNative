@@ -9,6 +9,7 @@ import { MONSTERS } from '/shared/data/monsters.js';
 import { ITEMS } from '/shared/data/items.js';
 import { JOBS } from '/shared/data/classes.js';
 import { getDerived } from '/shared/character.js';
+import { attackInterval, buffAspd } from '/shared/stats.js';
 import { gainExp, PRESET_LABEL, presetInfo } from '/shared/charmodel.js';
 import { bakeCharacter } from '../gfx/SpriteFactory.js';
 import { bakeFx, popupNumber, hitSpark, yantCircle, squash } from '../gfx/Fx.js';
@@ -27,7 +28,7 @@ import { questState as qState } from '../systems/Inventory.js';
 import { QUESTS } from '/shared/data/village.js';
 import { count } from '../systems/Inventory.js';
 import { TILE, T, SPAWN as TD_SPAWN, isIsland, bakeTileset, bakeProps, OX } from '../topdown/AyutthayaMap.js';
-import { TD_MAPS, EVENT_MAPS, getMap, validMap, arrivalPoint } from '/shared/td/maps.js';
+import { TD_MAPS, EVENT_MAPS, getMap, validMap, arrivalPoint, RESPAWN_WAIT_MS } from '/shared/td/maps.js';
 import { CRYPT_ZONES, lvOf } from '/shared/data/crypt.js';
 import { WorldBossUI } from '../topdown/WorldBoss.js';
 import { hasDir8, resolveAct } from '../topdown/Dir8.js';
@@ -662,8 +663,34 @@ export class TopDownScene extends Phaser.Scene {
     return !this.mobAt(w.x, w.y, 40);
   }
 
+  /** SP สูตรใหม่ทำให้แต้มสกิลที่ลงไว้เกิน → รีสกิลให้ฟรีแล้ว แจ้งครั้งเดียว */
+  spNotice() {
+    const c = this.player?.char;
+    if (!c?.spNotice || this._spTold) return;
+    this._spTold = true;
+    notice({ title: 'รีสกิลให้ฟรีแล้ว', icon: '📘',
+      text: `แต้มสกิล (SP) ปรับใหม่: Lv.1–60 ได้ 1 SP ทุกเลเวล · หลัง Lv.60 ได้ 1 SP ทุก 2 เลเวล\nแต้มที่ลงไว้เกินจำนวนใหม่ → คืน SP ให้ทั้งหมดแล้ว มี ${c.sp} SP\n\nกด K แล้วลงสกิลใหม่ได้เลย (ตอนนี้ต้องเลือกสายหลัก/สายรองให้ดี)` })
+      .then(() => { this.econ.act('spAck'); this.ui.toggle?.('skill-panel', true); });
+  }
+
+  /** ระบบสเตตัสเปลี่ยนเป็นแบบ RO → รีแต้มให้ฟรีแล้ว แจ้งครั้งเดียว */
+  statsRONotice() {
+    this.spNotice();
+    const c = this.player?.char;
+    if (!c?.statsRONotice || this._statsTold) return;
+    this._statsTold = true;
+    notice({ title: 'ระบบสเตตัสใหม่มาแล้ว!', icon: '📊',
+      text: `สเตตัสเปลี่ยนเป็น 6 ค่า: STR · AGI · VIT · INT · DEX · LUK
+ค่ายิ่งสูงยิ่งใช้แต้มมาก (สูงสุด 130) · เลเวลสูงยิ่งได้แต้มมาก
+
+รีแต้มให้ฟรีแล้ว: มีแต้ม ${c.statPoints.toLocaleString()} แต้ม
+กด C แล้วลงใหม่ หรือกด "✨ ลงอัตโนมัติ" ตามอาวุธที่ถือ` })
+      .then(() => { this.econ.act('statsAck'); this.ui.toggle?.('stats-panel', true); });
+  }
+
   /** ระบบชุดแต่งตัวถูกเอาออกจากเกม → แจ้งยอดเงินที่คืน (ครั้งเดียว) */
   cosRefundNotice() {
+    this.statsRONotice();
     const r = this.player?.char?.cosRefund;
     if (!r || r.told || !r.n || this._cosTold) return;
     this._cosTold = true;
@@ -944,11 +971,18 @@ export class TopDownScene extends Phaser.Scene {
   //  ต่อสู้
   // ------------------------------------------------------------
   attackRange() { const a = JOBS[this.player.char.appearance.job]?.attack; return a?.style === 'projectile' ? Math.min(240, a.range) : 28; }   // ธนู 240 · เวท 220 · หมอยา 200 (server รับถึง range+30)
-  attackCd() { return JOBS[this.player.char.appearance.job]?.attack?.cooldown || 600; }
+  attackCd() { const c = this.player.char; return attackInterval(JOBS[c.appearance.job]?.attack?.cooldown || 600, getDerived(c).aspd + buffAspd(this.player.buffs, this.time.now)); }   // AGI เร่งความเร็วตี (แบบ RO)
+
+  /** ดาเมจที่เราทำใส่คู่ดวล (server แจ้งกลับ) → ตัวเลขลอยบนหัวอีกฝ่าย */
+  pvpDmg({ id, dmg, crit, miss } = {}) {
+    const r = this.remotes.get(id);
+    if (!r) return;
+    popupNumber(this, r.x, r.y - 34, miss ? 'MISS' : `${dmg}${crit ? '!' : ''}`, miss ? 'miss' : crit ? 'crit' : 'normal');
+  }
 
   playerAttack(m, time) {
     const p = this.player, ranged = this.attackRange() > 40;
-    p.nextAtk = time + Math.max(450, this.attackCd()); p.st = 'attack'; p.setVelocity(0, 0);
+    p.nextAtk = time + this.attackCd(); p.st = 'attack'; p.setVelocity(0, 0);
     p.dir = dirFromVector(m.x - p.x, m.y - p.y, p.dir);
     this.playerAnim('attack', true);
     const magic = JOBS[p.char.appearance.job]?.attack?.kind === 'magic';
@@ -983,7 +1017,10 @@ export class TopDownScene extends Phaser.Scene {
     const mine = d.by === 'me' || d.by === this.net?.selfId;
     if (Number.isFinite(d.hp)) m.hp = d.hp;
     if (!d.hit) { popupNumber(this, m.x, m.y - m.displayHeight, 'MISS', 'miss'); if (mine) this.sfx.play('miss'); return; }
-    if (d.dot) { popupNumber(this, m.x + 6, m.y - m.displayHeight, `☠${d.dmg}`, 'miss'); m.setTint(0x9dff8a); this.time.delayedCall(120, () => m.clearTint()); return; }   // พิษต่อเนื่อง
+    if (d.dot) {                                                                         // ดาเมจต่อเนื่อง: พิษ/เลือดไหล/ไฟลุก (สีต่างกัน)
+      const [ic, tint] = { bleed: ['🩸', 0xff7a6a], burn: ['🔥', 0xffb35c] }[d.dot] || ['☠', 0x9dff8a];
+      popupNumber(this, m.x + 6, m.y - m.displayHeight, `${ic}${d.dmg}`, 'miss'); m.setTint(tint); this.time.delayedCall(120, () => m.clearTint()); return;
+    }
     popupNumber(this, m.x, m.y - m.displayHeight - 4, d.crit ? `${d.dmg}!` : `${d.dmg}`, d.crit ? 'crit' : 'normal');
     hitSpark(this, m.x, m.y - m.displayHeight * 0.5, { crit: d.crit, dir: m.x >= this.player.x ? 1 : -1 });
     squash(this, m, d.crit ? 0.25 : 0.15, 90); m.setTintFill(d.crit ? 0xffd35c : 0xffffff); this.time.delayedCall(60, () => { m.clearTint(); m.setTint(d.crit ? 0xffe9a6 : 0xffd0d0); }); this.time.delayedCall(140, () => m.clearTint());
@@ -1078,8 +1115,8 @@ export class TopDownScene extends Phaser.Scene {
     p.dead = true; p.char.hp = 0; p.target = null; p.path = []; p.setVelocity(0, 0);
     this.playerAnim('die', true); this.sfx.play('die');
     const doc = (this.social?.party?.members || []).some((m) => m.id !== this.net?.selfId && m.wj === 'healer' && !m.dead);
-    const wait = doc ? 10000 : 3000, where = this.M.realm ? `ฟื้นที่${this.M.ZONES.hub.nameTh}` : 'ฟื้นที่ประตูเมือง';
-    this.ui.banner('💀 คุณสลบไป…', doc ? `🌿 มีหมอยาในปาร์ตี้ — รอพิธีสู่ขวัญ… (${where}ใน 10 วินาที)` : `${where}ใน 3 วินาที`);
+    const wait = RESPAWN_WAIT_MS, where = this.M.realm ? `ฟื้นที่${this.M.ZONES.hub.nameTh}` : 'ฟื้นที่ประตูเมือง';   // รอ 10 วิเสมอ (หมอยาชุบได้ก่อน)
+    this.ui.banner('💀 คุณสลบไป…', doc ? `🌿 มีหมอยาในปาร์ตี้ — รอพิธีสู่ขวัญ… (${where}ใน 10 วินาที)` : `${where}ใน 10 วินาที`);
     this.time.delayedCall(wait, () => {
       if (!p.dead) return;
       if (this.econ.server) return this.net.send('td:respawn');
@@ -1270,7 +1307,7 @@ export class TopDownScene extends Phaser.Scene {
     net.on('online:count', (n) => this.ui.setOnlineTotal(n));
     net.on('status', (on) => { this.ui.setOnline(on, this.remotes.size); if (!on) { this.remotes.forEach((r) => r.destroy()); this.remotes.clear(); } })
       .on('init', ({ admin, serverTime, dayMs }) => { if (account.account) account.account.admin = !!admin; this.atmo?.sync(serverTime, dayMs); net.send('td:enter'); })
-      .on('char:load', (s) => { this.econ.apply(s); this.cosRefundNotice(); })
+      .on('char:load', (s) => { this.econ.apply(s); this.cosRefundNotice(); this.social?.syncSelfPk?.(); })
       .on('mk:travel', (t) => this.onTravel(t))
       .on('mk:note', (d) => { this.ui.toast(d?.text || '', 'ok', 6000); this.ui.mkV?.fetch(true); })
       .on('char:sync', (s) => this.econ.apply(s))
@@ -1362,6 +1399,8 @@ export class TopDownScene extends Phaser.Scene {
     const label = (lv) => `${q.gm ? '[GM] ' : ''}${q.name} Lv.${lv}`;
     const tag = makeText(this, q.x, q.y, label(q.level), { fontSize: '7px', color: '#aed6f1', align: 'center' }).setOrigin(0.5, 1);
     if (q.gm) gmStyle(tag);                                                          // GM: ชื่อแดงขอบขาวเรืองแสง
+    const paintPk = (pk) => { if (q.gm) return; tag.setColor(pk === 'red' ? '#ff4a3d' : pk === 'purple' ? '#d38cff' : '#aed6f1'); };   // PK: หัวแดง / ม่วง (ตีคนก่อน)
+    paintPk(q.pk);
     const ttl = makeText(this, q.x, q.y, '', { fontSize: '7px', color: '#ffffff', align: 'center' }).setOrigin(0.5, 1);   // ฉายา (สีตามฉายา) เหนือชื่อ
     const paintTitle = (t) => { const T = TITLE_BY_ID[t]; ttl.setText(T ? `«${T.nameTh}»` : '').setColor(T?.color || '#ffffff').setVisible(!!T); };
     paintTitle(q.title);
@@ -1370,6 +1409,7 @@ export class TopDownScene extends Phaser.Scene {
     s._remote = true;
     s.on('pointerdown', (ptr) => {
       if (uiBlocked(ptr) || ptr.rightButtonDown()) return;
+      if (this.social?.pkOn && !ptr.event?.shiftKey) { ptr.event?.stopPropagation?.(); this.social.pkAttack(r.id); return; }   // โหมด PK: คลิกคน = โจมตี (Shift+คลิก = เมนู)
       if (this.playerMenuClick(ptr)) { ptr.event?.stopPropagation?.(); this.social?.openPlayerMenu(r, { x: ptr.x, y: ptr.y }); return; }
       // ระหว่างสู้: กดค้างที่ตัวผู้เล่น ~0.45 วิ = เปิดเมนู (มือถือไม่มี Shift)
       const x0 = ptr.x, y0 = ptr.y;
@@ -1390,6 +1430,7 @@ export class TopDownScene extends Phaser.Scene {
       destroy: () => { this.weapons?.detach(s); s.destroy(); tag.destroy(); ttl.destroy(); sh.destroy(); this.shadows = this.shadows.filter((x) => x.obj !== s); },
       get x() { return s.x; }, get y() { return s.y; }, get appearance() { return q.appearance; },
       setTitle(t) { paintTitle(t); },
+      setPk(pk) { q.pk = pk; r.pk = pk; paintPk(pk); },
       rename(n, gm) { q.name = n; r.name = n; q.gm = !!gm; tag.setText(label(r.level)); gmStyle(tag, !!gm, '#aed6f1'); },
       setAppearance: (a) => { q.appearance = a; this.applyHero(s, a); },
     };
@@ -1562,7 +1603,7 @@ export class TopDownScene extends Phaser.Scene {
     return [];
   }
 
-  moveTo(x, y) { const p = this.player; this.pendingTalk = null; if (p.alive) p.path = this.findPath(p.x, p.y - 2, x, y); }   // สั่งเดินที่ใหม่ = เลิกเดินไปคุย NPC ที่ค้างอยู่ (talk() ตั้งกลับเองหลังเรียก)
+  moveTo(x, y) { const p = this.player; this.pendingTalk = null; if (this.social && !this._pkChase) this.social.pkTarget = null; if (p.alive) p.path = this.findPath(p.x, p.y - 2, x, y); }   // สั่งเดินที่ใหม่ = เลิกเดินไปคุย NPC ที่ค้างอยู่ (talk() ตั้งกลับเองหลังเรียก)
 
   /**
    * กันติดสิ่งก่อสร้าง: เดินตามทาง (คลิก/Auto) แต่ตำแหน่งไม่ขยับเกิน 0.45 วิ
@@ -1598,7 +1639,7 @@ export class TopDownScene extends Phaser.Scene {
       let vx = typing ? 0 : kR - kL;
       let vy = typing ? 0 : kD - kU;
       if (this.touch?.vec) { vx += this.touch.vec.x; vy += this.touch.vec.y; }   // จอยสติ๊กบนมือถือ
-      if (vx || vy) { p.path = []; p.target = null; this.pendingTalk = null; this.social?.pw?.stopFollow(); }   // เดินเอง = เลิกติดตามหัวหน้า
+      if (vx || vy) { p.path = []; p.target = null; this.pendingTalk = null; this.social?.pw?.stopFollow(); if (this.social) this.social.pkTarget = null; }   // เดินเอง = เลิกติดตามหัวหน้า
       else if (p.target) {
         const m = p.target;
         if (!m.alive) p.target = null;
@@ -1611,6 +1652,19 @@ export class TopDownScene extends Phaser.Scene {
               if (!p.path.length && p.autoTarget === m) { m.autoSkip = time + 8000; p.target = null; p.autoTarget = null; }   // หาทางไปไม่ได้ → ข้ามทันที ไม่ยืนนิ่ง
             }
           } else { p.path = []; p.autoSince = time; if (time >= p.nextAtk && p.st !== 'attack') this.playerAttack(m, time); }
+        }
+      } else if (this.social?.duel || this.social?.pkTarget) {                // ดวล/PK: ไม่มีเป้าผี → ตีปกติใส่ผู้เล่นเป้าเมื่ออยู่ในระยะ (สกิลกดใช้ตามปกติ)
+        const pk = !this.social.duel, foe = this.remotes.get(pk ? this.social.pkTarget : this.social.duel.foe);
+        if (pk && foe && this.ui.target === this.social.pkFrame) this.ui.targetUntil = performance.now() + 4000;   // ล็อกอยู่ → กรอบเป้าหมายค้างไว้
+        if (!foe) { if (pk) this.social.pkTarget = null; }
+        else if (Math.hypot(foe.x - p.x, foe.y - p.y) > this.attackRange() + 14) {
+          if (pk && time > (p.nextPath || 0)) { p.nextPath = time + 400; p.path = this.findPath(p.x, p.y - 2, foe.x, foe.y); if (!p.path.length) this.social.pkTarget = null; }   // PK: ไล่ตาม
+        } else if (time >= p.nextAtk && p.st !== 'attack') {
+          p.path = []; p.nextAtk = time + this.attackCd(); p.st = 'attack'; p.setVelocity(0, 0);
+          p.dir = dirFromVector(foe.x - p.x, foe.y - p.y, p.dir);
+          this.playerAnim('attack', true);
+          this.sfx.play(this.attackRange() > 40 ? 'arrow' : 'swing');
+          this.net?.send(pk ? 'pk:hit' : 'pvp:hit', pk ? { id: foe.id } : {});
         }
       } else if (this.settings.autoSkill && !p.path.length && !this.recalling && !this.social?.pw?.following && time > (p.nextAuto || 0)) {
         // Auto: ไม่มีเป้า/ไม่ได้สั่งเดิน → ล็อกผีที่ใกล้ที่สุดในหน้าจอ (ตามชนิดที่เลือก) แล้วเดินไปตีเอง

@@ -902,6 +902,26 @@
     "ui_sprout": "assets/icons/ui_sprout.png",
     "ui_tiger": "assets/icons/ui_tiger.png",
     "ui_drum": "assets/icons/ui_drum.png",
-    "ui_wand": "assets/icons/ui_wand.png"
+    "ui_wand": "assets/icons/ui_wand.png",
+    "sk_sword_p_mastery": "assets/icons/sk_sword_p_mastery.png",
+    "sk_sword_p_iron": "assets/icons/sk_sword_p_iron.png",
+    "sk_mage_p_focus": "assets/icons/sk_mage_p_focus.png",
+    "sk_mage_p_soul": "assets/icons/sk_mage_p_soul.png",
+    "sk_arch_p_eye": "assets/icons/sk_arch_p_eye.png",
+    "sk_arch_p_step": "assets/icons/sk_arch_p_step.png",
+    "sk_boxer_p_fist": "assets/icons/sk_boxer_p_fist.png",
+    "sk_boxer_p_step": "assets/icons/sk_boxer_p_step.png",
+    "sk_heal_p_herb": "assets/icons/sk_heal_p_herb.png",
+    "sk_heal_p_metta": "assets/icons/sk_heal_p_metta.png",
+    "ui_pk_red": "assets/icons/ui_pk_red.png",
+    "ui_pk": "assets/icons/ui_pk.png",
+    "ui_pk_purple": "assets/icons/ui_pk_purple.png",
+    "ui_anchor": "assets/icons/ui_anchor.png",
+    "ui_dove": "assets/icons/ui_dove.png",
+    "ui_scale": "assets/icons/ui_scale.png",
+    "ui_blood": "assets/icons/ui_blood.png",
+    "ui_slow": "assets/icons/ui_slow.png",
+    "ui_hourglass": "assets/icons/ui_hourglass.png",
+    "ui_trap": "assets/icons/ui_trap.png"
   }
 }

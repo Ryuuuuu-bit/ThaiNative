@@ -8,13 +8,14 @@
 // ============================================================
 export const PATH_LV = 10;
 
-/** สัดส่วนลงแต้มแนะนำ (ปุ่ม "ลงอัตโนมัติ") ตามสาย/แนวต่อสู้ */
+/** สเตตัสแนะนำแบบ RO (ปุ่ม "ลงอัตโนมัติ"): น้ำหนัก = สัดส่วน "ค่าสเตตัส" ที่อยากได้ (ไม่ใช่สัดส่วนแต้ม เพราะค่าสูงแพงขึ้น)
+ *  ▸ ลงทีละขั้นให้ค่าที่ต่ำที่สุดเมื่อเทียบน้ำหนักก่อน · ค่าหลักน้ำหนัก 1 จะแตะเพดาน 130 ก่อน */
 export const STAT_PLAN = {
-  swordman: { STR: 0.45, VIT: 0.35, DEX: 0.1, CRI: 0.1 },
-  mage:     { INT: 0.6, VIT: 0.25, DEX: 0.15 },
-  archer:   { DEX: 0.4, STR: 0.35, CRI: 0.15, VIT: 0.1 },
-  boxer:    { STR: 0.4, DEX: 0.25, VIT: 0.25, CRI: 0.1 },
-  healer:   { INT: 0.5, VIT: 0.35, DEX: 0.15 },
+  swordman: { STR: 1, VIT: 0.8, DEX: 0.4, AGI: 0.4, LUK: 0.2 },
+  mage:     { INT: 1, DEX: 0.6, VIT: 0.5 },
+  archer:   { DEX: 1, AGI: 0.6, VIT: 0.4, STR: 0.3, LUK: 0.15 },
+  boxer:    { STR: 1, AGI: 0.8, VIT: 0.5, DEX: 0.3, LUK: 0.3 },
+  healer:   { INT: 1, VIT: 0.7, DEX: 0.5 },
 };          // เลเวลที่เลือกสายหลักได้
 export const SUB_CAP = 2;           // เลเวลสกิลสูงสุดของสายรอง / ก่อนเลือกสาย
 
@@ -22,7 +23,7 @@ export const SUB_CAP = 2;           // เลเวลสกิลสูงส�
 export const VILLAGER = {
   id: 'villager', nameTh: 'ชาวบ้าน',
   baseHp: 105, baseMp: 40, hpPerLevel: 12,
-  startStats: { STR: 5, DEX: 5, INT: 5, CRI: 3, VIT: 5 },
+  startStats: { STR: 1, AGI: 1, VIT: 1, INT: 1, DEX: 1, LUK: 1 },
 };
 export const JOBS = {
   swordman: {
@@ -31,9 +32,9 @@ export const JOBS = {
     weaponTh: 'ดาบ', icon: '⚔️',
     desc: 'สายประชิด ถึก ตีแรง ใช้ STR เป็นหลัก',
     baseHp: 120, baseMp: 20, hpPerLevel: 14,
-    startStats: { STR: 8, DEX: 4, INT: 2, CRI: 3, VIT: 8 },
+    startStats: { STR: 1, AGI: 1, VIT: 1, INT: 1, DEX: 1, LUK: 1 },
     weapon: 'sword', color: '#c0392b',
-    attack: { kind: 'physical', style: 'melee', range: 30, cooldown: 480, mult: 1.1, mpCost: 0 },
+    attack: { kind: 'physical', style: 'melee', range: 30, cooldown: 480, mult: 1.2, mpCost: 0 },
   },
   mage: {
     id: 'mage', nameTh: 'จอมขมังเวทย์', nameEn: 'Mage',
@@ -41,9 +42,9 @@ export const JOBS = {
     weaponTh: 'ไม้เท้า/คทา', icon: '🔮',
     desc: 'ยิงลูกไฟระยะไกล ความเสียหายเวทย์สูง ใช้ INT',
     baseHp: 80, baseMp: 60, hpPerLevel: 9,
-    startStats: { STR: 2, DEX: 4, INT: 10, CRI: 3, VIT: 5 },
+    startStats: { STR: 1, AGI: 1, VIT: 1, INT: 1, DEX: 1, LUK: 1 },
     weapon: 'staff', color: '#8e44ad',
-    attack: { kind: 'magic', style: 'projectile', range: 220, cooldown: 700, mult: 1.35, mpCost: 3, projectile: 'fireball', speed: 230 },
+    attack: { kind: 'magic', style: 'projectile', range: 220, cooldown: 700, mult: 1.25, mpCost: 3, projectile: 'fireball', speed: 230 },
   },
   archer: {
     id: 'archer', nameTh: 'พรานป่า', nameEn: 'Archer',
@@ -51,7 +52,7 @@ export const JOBS = {
     weaponTh: 'ธนู', icon: '🏹',
     desc: 'ยิงไกล แม่นยำ คริติคอลสูง ใช้ STR + DEX',
     baseHp: 95, baseMp: 30, hpPerLevel: 11,
-    startStats: { STR: 6, DEX: 9, INT: 2, CRI: 5, VIT: 5 },
+    startStats: { STR: 1, AGI: 1, VIT: 1, INT: 1, DEX: 1, LUK: 1 },
     weapon: 'bow', color: '#27ae60', critBonus: 0.08,
     attack: { kind: 'physical', style: 'projectile', range: 260, cooldown: 560, mult: 1.25, mpCost: 0, projectile: 'arrow', speed: 360 },
   },
@@ -61,9 +62,9 @@ export const JOBS = {
     weaponTh: 'มือเปล่า/ผ้าพันมือ', icon: '🥊',
     desc: 'หมัด-ศอก-เข่า ต่อยเร็ว ทุกหมัดที่ 3 เป็น "ศอกกลับ" แรง x1.8',
     baseHp: 110, baseMp: 25, hpPerLevel: 13,
-    startStats: { STR: 8, DEX: 7, INT: 1, CRI: 4, VIT: 7 },
+    startStats: { STR: 1, AGI: 1, VIT: 1, INT: 1, DEX: 1, LUK: 1 },
     weapon: 'wraps', color: '#e67e22',
-    attack: { kind: 'physical', style: 'melee', range: 22, cooldown: 300, mult: 0.75, mpCost: 0, comboEvery: 3, comboMult: 1.8 },
+    attack: { kind: 'physical', style: 'melee', range: 22, cooldown: 450, mult: 0.75, mpCost: 0, comboEvery: 3, comboMult: 1.8 },
   },
   healer: {
     id: 'healer', nameTh: 'หมอยา', nameEn: 'Herbal Healer',
@@ -71,7 +72,7 @@ export const JOBS = {
     weaponTh: 'ไม้เท้าสมุนไพร', icon: '🌿', support: true,
     desc: 'สายซัพพอร์ต รักษาเพื่อน ชุบชีวิต บัฟทั้งทีม ปาลูกกลอนสมุนไพรใส่ผี ใช้ INT',
     baseHp: 95, baseMp: 55, hpPerLevel: 10,
-    startStats: { STR: 2, DEX: 4, INT: 8, CRI: 3, VIT: 7 },
+    startStats: { STR: 1, AGI: 1, VIT: 1, INT: 1, DEX: 1, LUK: 1 },
     weapon: 'staff', color: '#2ecc71',          // ท่าทาง/ภาพตัวละครแบบถือไม้เท้า (ชนิดอาวุธในกระเป๋า = 'herb')
     attack: { kind: 'magic', style: 'projectile', range: 200, cooldown: 720, mult: 1.1, mpCost: 2, projectile: 'pill', speed: 240 },
   },

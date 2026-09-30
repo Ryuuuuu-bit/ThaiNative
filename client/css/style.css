@@ -515,6 +515,10 @@ kbd { display: inline-block; min-width: 1.6em; text-align: center; padding: 0 .3
 /* ---------- QOL: ลงแต้มสถานะ ---------- */
 .stat-row.q { grid-template-columns: 2.6em 1fr 3.4em auto; }
 .stat-row .v .add { color: #58d68d; font-size: .85em; margin-left: .15em; }
+.stat-row .v .st-cost { display: block; font-size: .68em; font-weight: 400; color: var(--muted, #a894b8); white-space: nowrap; }
+/* สกิลติดตัว (Passive) ในหน้าต่างสกิล */
+.sk-card .sk-ptag { color: #9be15d; font-size: .72em; font-weight: 600; border: 1px solid rgba(155,225,93,.5); border-radius: .6em; padding: 0 .4em; vertical-align: 1px; }
+.sk-card.sk-pass { border-color: rgba(155,225,93,.35); }
 .st-btns { display: flex; gap: 2px; }
 .st-btns button { min-width: 1.9em; padding: 0 .3em; font-size: .78em; }
 .st-btns button.minus { background: #7b241c; }

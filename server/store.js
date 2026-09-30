@@ -80,10 +80,18 @@ class PgStore {
       const { rows } = await this.pool.query("SELECT value FROM meta WHERE key = 'reset'");
       if (rows[0]?.value !== reset) {
         await this.pool.query('TRUNCATE characters, sessions, accounts RESTART IDENTITY CASCADE');
+        // Fresh Server: ล้างข้อมูลเกมที่ผูกกับบัญชีด้วย (id บัญชีเริ่มนับ 1 ใหม่ → ถ้าไม่ล้าง บัญชีใหม่จะได้กล่องตลาด/รางวัลราหูของบัญชีเก่าเลขเดียวกัน)
+        //  ▸ market_v1 = ตลาด/ป้ายรับซื้อ/กล่องรับของ/พ่อค้าเร่ · wb_state = รางวัลราหูค้างส่ง/MVP · news = ข่าวด่วน GM · name_holds = ชื่อที่กันไว้
+        //  ▸ เก็บไว้: reset (กันล้างซ้ำ) · discord_news (ไม่ให้ข่าวเก่าทั้งหมดถูกโพสต์ซ้ำเข้า Discord) · ธงแปลงข้อมูล (names_v2 ฯลฯ)
+        await this.pool.query("DELETE FROM meta WHERE key IN ('market_v1', 'wb_state', 'news')");
+        try { await this.pool.query('DELETE FROM name_holds'); } catch { /* ยังไม่มีตาราง = ไม่มีอะไรต้องล้าง */ }
         await this.pool.query("INSERT INTO meta (key, value) VALUES ('reset', $1) ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value", [reset]);
-        console.log(`[store] RESET_ALL_DATA=${reset} → ล้างบัญชี/ตัวละคร/เซสชันทั้งหมดแล้ว`);
+        console.log(`[store] RESET_ALL_DATA=${reset} → Fresh Server: ล้างบัญชี/ตัวละคร/เซสชัน/ตลาด/รางวัลราหู/ข่าว GM/ชื่อที่กันไว้ แล้ว`);
       }
     }
+    // รุ่นข้อมูล (= ค่า reset ล่าสุด): ตลาด/ราหูแปะรุ่นตอนเซฟ · โหลดแล้วรุ่นไม่ตรง = ข้อมูลก่อน wipe → ทิ้ง
+    // (กันเซิร์ฟตัวเก่าตอน deploy ซ้อนกัน เซฟตลาดเก่ากลับเข้ามาหลังตัวใหม่ล้างไปแล้ว)
+    try { const { rows } = await this.pool.query("SELECT value FROM meta WHERE key = 'reset'"); this.gen = rows[0]?.value || ''; } catch { this.gen = ''; }
     await this.migrateNames();
     try {                                                                           // ครั้งเดียว: ปลดชื่อที่เคยกันไว้ (ตัวละครที่ถูกลบ) ให้ใช้ได้ทันที
       const { rows } = await this.pool.query("SELECT 1 FROM meta WHERE key = 'holds_clear_v1'");

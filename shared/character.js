@@ -5,8 +5,8 @@
 import { ENHANCE } from './data/village.js';
 import { JOBS, VILLAGER, JOB_IDS } from './data/classes.js';
 import { ITEMS } from './data/items.js';
-import { computeDerived, STAT_KEYS, MAX_LEVEL, POINTS_PER_LEVEL, clamp } from './stats.js';
-import { SKILL_BY_ID, MAX_SKILL_LV, SP_PER_LEVEL, START_SP, skillStats, skillUsable, masteryOf } from './data/skills.js';
+import { computeDerived, skillCooldown, STAT_KEYS, MAX_LEVEL, STAT_CAP, STAT_START, statSpentOn, statPointsAt, clamp } from './stats.js';
+import { SKILL_BY_ID, MAX_SKILL_LV, spAt, skillStats, skillUsable, masteryOf } from './data/skills.js';
 import { combineBlessings } from './data/blessings.js';
 import { setInfo } from './data/gear.js';
 import { passiveBonus } from './data/passives.js';
@@ -38,7 +38,12 @@ export function getDerived(c) {
   for (const [k, v] of Object.entries(cardBonus(c).bonus)) bonus[k] = (bonus[k] || 0) + v;          // การ์ด + สมุดสะสม
   const m = masteryLevel(c.wm?.[c.appearance?.job] || 0).lv;                                         // ความชำนาญอาวุธที่ถือ
   if (m) { bonus.patkMul = (bonus.patkMul || 0) + m * 0.01; bonus.matkMul = (bonus.matkMul || 0) + m * 0.01; }
-  return computeDerived(c.stats, VILLAGER, c.level, bonus);
+  for (const [id, lv] of Object.entries(c.skills || {})) {                                           // สกิลติดตัว (Passive) · มีผลเมื่อถืออาวุธแนวนั้น
+    const s = SKILL_BY_ID[id];
+    if (!s || s.type !== 'passive' || !(lv > 0) || s.job !== c.appearance?.job) continue;
+    for (const [k, v] of Object.entries(s.passive(Math.min(lv, MAX_SKILL_LV)) || {})) bonus[k] = (bonus[k] || 0) + v;
+  }
+  return computeDerived(c.stats, VILLAGER, c.level, bonus, { ranged: c.appearance?.job === 'archer' });   // ธนูใช้ DEX เป็นค่าหลักแบบ RO
 }
 
 /**
@@ -47,7 +52,7 @@ export function getDerived(c) {
  * ▸ ประมาณการ: Lv.1 ≈ 150 · Lv.50 ≈ 6k · Lv.99 ≈ 15k · Lv.150 ของครบ ≈ 27k+
  */
 export function combatPower(c, d = getDerived(c)) {
-  const off = Math.max(d.patk, d.matk) * (1 + d.critRate * Math.max(0, d.critDmg - 1));
+  const off = Math.max(d.patk, d.matk) * (1 + d.critRate * Math.max(0, d.critDmg - 1)) * (1 + (d.aspd || 0) * 0.5 + (d.castRed || 0) * 0.5);   // AGI/DEX (ความเร็วตี/ลดคูลดาวน์) นับเป็นพลังรุกด้วย
   return Math.max(0, Math.round(off * 3 + d.maxHp * 0.4 + d.maxMp * 0.15 + d.def * 6 + d.eva * 4 + Math.max(0, d.accuracy - 85) * 2 + Math.max(0, (d.healPow || 1) - 1) * 1500));
 }
 
@@ -90,11 +95,11 @@ export function sanitizeChar(raw, now = Date.now()) {
   const int = (v, lo, hi, d = lo) => (Number.isFinite(+v) ? clamp(Math.floor(+v), lo, hi) : d);
   const level = int(raw.level, 1, MAX_LEVEL, 1);
   const stats = {};
-  for (const k of STAT_KEYS) stats[k] = int(raw.stats?.[k], 0, 999, 5);
-  // แต้มสถานะรวมต้องไม่เกินที่เลเวลนี้มีได้ (เริ่มต้น + 5/เลเวล) → ถ้าเกินให้ย่อสัดส่วนลง
-  const base = Object.values(VILLAGER.startStats).reduce((a, b) => a + b, 0), maxPts = base + (level - 1) * POINTS_PER_LEVEL + int(raw.bonusPoints, 0, 2, 0);   // +2 จากการแปลงเซฟเก่า
-  const total = STAT_KEYS.reduce((a, k) => a + stats[k], 0);
-  if (total > maxPts) for (const k of STAT_KEYS) stats[k] = Math.floor(stats[k] * maxPts / total);
+  for (const k of STAT_KEYS) stats[k] = int(raw.stats?.[k], STAT_START, STAT_CAP, STAT_START);
+  // แต้มที่ใช้ไปต้องไม่เกินที่เลเวลนี้มีได้ (แบบ RO ค่าสูงแพงขึ้น) → ถ้าเกินให้ลดค่าที่สูงสุดลงทีละขั้นจนพอดี
+  const maxPts = statPointsAt(level) + int(raw.bonusPoints, 0, 2, 0);   // +2 จากการแปลงเซฟเก่า
+  const spent = () => STAT_KEYS.reduce((a, k) => a + statSpentOn(stats[k]), 0);
+  while (spent() > maxPts) { const k = STAT_KEYS.reduce((a, b) => (stats[b] > stats[a] ? b : a)); if (stats[k] <= STAT_START) break; stats[k]--; }
   const equipment = {};
   for (const slot of EQUIP_SLOTS) {
     const id = raw.equipment?.[slot], it = typeof id === 'string' ? ITEMS[id] : null;
@@ -105,7 +110,7 @@ export function sanitizeChar(raw, now = Date.now()) {
   const skills = {};
   for (const [id, lv] of Object.entries(raw.skills || {})) if (SKILL_BY_ID[id]) skills[id] = int(lv, 0, MAX_SKILL_LV, 0);
   // SP รวมต้องไม่เกินที่เลเวลนี้มีได้
-  const maxSp = START_SP + (level - 1) * SP_PER_LEVEL, usedSp = Object.values(skills).reduce((a, b) => a + b, 0);
+  const maxSp = spAt(level), usedSp = Object.values(skills).reduce((a, b) => a + b, 0);
   if (usedSp > maxSp) for (const id of Object.keys(skills)) skills[id] = Math.floor(skills[id] * maxSp / usedSp);
   const seen = new Set();
   const blessings = (Array.isArray(raw.blessings) ? raw.blessings : []).filter((b) => b && !seen.has(b.id) && seen.add(b.id)).slice(0, 10).map((b) => ({
@@ -153,7 +158,7 @@ export function attackGate(p, skillId, combo, now = Date.now()) {
     if (!base) return false;
     const st = (g.sk[skillId] ||= { at: 0, n: 0 });
     if (now - st.at > 1500) {
-      const cd = skillStats(base, p.char?.skills?.[skillId] || 1).cd || 0;
+      const cd = skillCooldown(skillStats(base, p.char?.skills?.[skillId] || 1).cd || 0, p.char ? getDerived(p.char).castRed : 0);   // DEX ลดคูลดาวน์
       if (st.at && now - st.at < cd * 0.8) return false;
       st.at = now; st.n = 0;
     }

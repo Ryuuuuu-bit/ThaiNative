@@ -101,8 +101,8 @@ export const ENHANCE = {
   bonus: {
     weapon: (lv) => ({ atk: lv * 3, matk: lv * 3 }),
     armor: (lv) => ({ def: lv * 2, hp: lv * 15 }),
-    accessory: (lv) => ({ def: lv, CRI: Math.floor(lv / 2) }),
-    accessory2: (lv) => ({ def: lv, CRI: Math.floor(lv / 2) }),
+    accessory: (lv) => ({ def: lv, LUK: Math.floor(lv / 2) }),
+    accessory2: (lv) => ({ def: lv, LUK: Math.floor(lv / 2) }),
     helm: (lv) => ({ def: lv, hp: lv * 8 }),
     gloves: (lv) => ({ atk: lv * 2, matk: lv * 2 }),
     boots: (lv) => ({ def: lv, eva: Math.floor(lv / 2) }),

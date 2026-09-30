@@ -91,7 +91,11 @@ assert.equal(grant(newCharacter('x', {}), { exp: 40 }).ups, 1);
 
 // 10) แคป EXP ตามช่วงเลเวล (แพตช์ #21)
 import { mobExp, expLevelMul, expToNext as e2n } from '../shared/stats.js';
-assert.equal(expLevelMul(50, 50), 1); assert.equal(expLevelMul(50, 55), 1); assert.equal(expLevelMul(50, 45), 1);
+assert.equal(expLevelMul(50, 50), 1); assert.equal(expLevelMul(50, 55), 1.1, 'ผีสูงกว่า 5 เลเวล โบนัส +10%'); assert.equal(expLevelMul(50, 45), 1);
+assert.equal(expLevelMul(50, 60), 1.2, 'ผีสูงกว่า 10 เลเวล โบนัสเต็ม +20%'); assert.equal(expLevelMul(50, 61), 1.1, 'เกิน 10 เลเวลเริ่มลด');
+{ const { mobAtkMul } = await import('../shared/stats.js');
+  assert.equal(mobAtkMul(10), 1, 'ผีมือใหม่ไม่แรงขึ้น'); assert.equal(mobAtkMul(30), 1.35); assert.equal(mobAtkMul(150), 1.35); }
+assert.equal(e2n(30), Math.floor(40 * Math.pow(30, 1.6)), 'Lv1–30 เส้นเดิม'); assert.ok(e2n(149) > 40 * Math.pow(149, 1.6) * 10, 'ช่วงท้ายชันขึ้นแบบ RO');
 assert.equal(expLevelMul(60, 50), 0.5); assert.equal(expLevelMul(99, 1), 0.1, 'ผีอ่อนมาก เหลือ 10%');
 assert.equal(expLevelMul(1, 57), 0.2, 'ผีเก่งมาก เหลือ 20%');
 assert.ok(mobExp(895, 1, 57) <= e2n(1) * 0.2 + 1, 'ฆ่าตัวเดียวได้ไม่เกิน 20% ของหลอด');

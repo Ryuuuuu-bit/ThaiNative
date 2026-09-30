@@ -36,6 +36,7 @@ export function buffText(b = {}) {
   if (b.defMul) o.push(`ป้องกัน +${Math.round(b.defMul * 100)}%`);
   if (b.critAdd) o.push(`คริ +${Math.round(b.critAdd * 100)}%`);
   if (b.speed) o.push(`วิ่งเร็ว +${Math.round(b.speed * 100)}%`);
+  if (b.aspd) o.push(`ตีเร็ว +${Math.round(b.aspd * 100)}%`);
   if (b.cleanse) o.push('ล้างสถานะผิดปกติ');
   if (b.undying) o.push('กันตาย 1 ครั้ง');
   return o.join(' · ');

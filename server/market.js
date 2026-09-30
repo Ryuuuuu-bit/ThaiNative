@@ -28,12 +28,13 @@ export function setupMarket(io, players, { td, refresh, persist, storeReady, isN
   async function flush() {
     clearTimeout(saveT); saveT = null;
     if (!loaded) return;
-    try { await (await storeReady).setMeta?.('market_v1', JSON.stringify({ ...S, travel: { ...S.travel } })); } catch (e) { console.error('[market] save', e.message); }
+    try { const st = await storeReady; await st.setMeta?.('market_v1', JSON.stringify({ ...S, travel: { ...S.travel }, gen: st.gen || '' })); } catch (e) { console.error('[market] save', e.message); }   // แปะรุ่นข้อมูล (Fresh Server)
   }
   (async () => {
     try {
-      const d = JSON.parse((await (await storeReady).getMeta?.('market_v1')) || 'null');
-      if (d) Object.assign(S, d, { travel: d.travel?.active && d.travel.until > Date.now() ? d.travel : { active: false, next: Date.now() + rand(15, 35) * 60e3 } });
+      const st = await storeReady, d = JSON.parse((await st.getMeta?.('market_v1')) || 'null');
+      if (d && (d.gen || '') !== (st.gen || '')) console.log('[market] ข้อมูลก่อน wipe (รุ่นไม่ตรง) → ทิ้ง');
+      else if (d) Object.assign(S, d, { travel: d.travel?.active && d.travel.until > Date.now() ? d.travel : { active: false, next: Date.now() + rand(15, 35) * 60e3 } });
     } catch (e) { console.error('[market] load', e.message); }
     loaded = true;
     console.log(`[market] ${S.listings.length} แผง · ${S.orders.length} ป้ายรับซื้อ`);

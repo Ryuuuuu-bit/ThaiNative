@@ -13,6 +13,7 @@ import { MAPS, mapAt, gateNear, canTravelFrom } from '../shared/data/maps.js';
 import { sanitizeAppearance } from '../shared/data/appearance.js';
 import { getDerived, combatPower } from '../shared/character.js';
 import { migrate } from '../shared/charmodel.js';
+import { skillCooldown } from '../shared/stats.js';
 import { runAction, packChar, count as invCount, removeItem, addItem } from '../shared/economy.js';
 import { ITEMS } from '../shared/data/items.js';
 import { checkName, nameKey, nameIdeas } from '../shared/data/names.js';
@@ -159,7 +160,8 @@ const mobs = setupMobs(io, players, { dayMs: DAY_MS, shareExp: social.shareExp, 
 /** ดันเจี้ยนปาร์ตี้ (ห้องแยก) */
 const dungeon = setupDungeon(io, players, { social, ...helpers });
 /** โลก New Version (top-down อยุธยา) */
-const td = setupTD(io, players, { dayMs: DAY_MS, shareExp: social.shareExp, partyOf: social.partyOf, partyBonus: social.partyBonus, ...helpers });
+const td = setupTD(io, players, { dayMs: DAY_MS, shareExp: social.shareExp, partyOf: social.partyOf, partyBonus: social.partyBonus, pkColor: social.pkColor, ...helpers });
+social.setPkEnv({ inTown: (p) => td.inTown(p), mapOf: (p) => td.mapOf(p) });   // เขต PK: แดน นอกค่ายพัก
 const tdSys = td;                                   // (ในตัวจัดการสกิล ชื่อ td ถูกใช้เป็นธงโลก top-down)
 /** หมอยา: ฮีล/สายใย/เมล็ด/ชุบชีวิต/กันตาย */
 healer = setupHealer(io, players, { ...helpers, social, tdSys, onHeal: (c, n) => worldBoss?.onHeal?.(c, n) });
@@ -334,7 +336,9 @@ io.on('connection', (socket) => {
     if (now - (p.econT || 0) > 1000) { p.econT = now; p.econN = 0; }
     if (++p.econN > 25) return done({ r: { ok: false, msg: 'ทำรายการถี่เกินไป' } });
     const a = String(d.a || '');
-    if (p.dead && !['lock', 'hotbar', 'title', 'qDrop', 'friendDel', 'cosAck'].includes(a)) return done({ r: { ok: false, msg: 'ตายอยู่ – รอฟื้นก่อน' } });
+    if ((p.save.karma || 0) > 0 && (['buy', 'buyback', 'recall'].includes(a) || (a === 'use' && String(d.id || '').startsWith('yant_home'))))   // หัวแดง: ร้านไม่ขาย · วาร์ปกลับเมืองไม่ได้
+      return done({ r: { ok: false, msg: `☠️ หัวแดง (บาป ${p.save.karma}): ร้านไม่ขายให้ และวาร์ปกลับเมืองไม่ได้ · บาปลด 5/นาทีที่ออนไลน์` } });
+    if (p.dead && !['lock', 'hotbar', 'title', 'qDrop', 'friendDel', 'cosAck', 'statsAck', 'spAck'].includes(a)) return done({ r: { ok: false, msg: 'ตายอยู่ – รอฟื้นก่อน' } });
     // โลก top-down: ร้าน/NPC ตรวจจากตำแหน่ง NPC ในอยุธยา (แปลงเป็นพิกัดหมู่บ้านเดิม) · ไม่ใกล้ใคร = นอกหมู่บ้าน
     const ex = p.world === 'td' ? (td.econX(p) ?? MAPS.m1.minX + 700) : p.x;
     if (p.world === 'td' && a === 'recall' && d.to === 'hunt') return done({ r: { ok: false, msg: 'ในโลกใหม่ใช้ได้เฉพาะวาร์ปกลับเมือง' } });
@@ -375,6 +379,7 @@ io.on('connection', (socket) => {
     const base = SKILL_BY_ID[d.skillId];
     const now = Date.now();
     if (!p || !base || p.dead) return;
+    if (base.type === 'passive') return;                                // สกิลติดตัว: ไม่มีการร่าย
     if (!skillUsable(base, p.appearance.job)) return;
     const lv = p.save.skills?.[base.id] || 0;
     if (!lv || now - p.lastSkill < 150) return;
@@ -383,7 +388,7 @@ io.on('connection', (socket) => {
     const skx = (p.save.skx ||= {}), m0 = skillMastery(skx[base.id] || 0).m;
     const sk = skillStats(base, lv, m0);
     p.skillAt ||= {};
-    if (now - (p.skillAt[base.id] || 0) < sk.cd * 0.8) return;         // คูลดาวน์ (server)
+    if (now - (p.skillAt[base.id] || 0) < skillCooldown(sk.cd, getDerived(p.save).castRed) * 0.8) return;         // คูลดาวน์ (server) · DEX ลดได้
     const cost = sk.mp || 0;                                            // MP: server ถือค่าจริง (client แจ้งได้แค่ต่ำกว่า)
     if (cost && (p.save.mp || 0) < cost * 0.85) return;
     p.save.mp = Math.max(0, (p.save.mp || 0) - cost);
@@ -667,6 +672,13 @@ function gmServer(p, { cmd, rest = '' }) {
       sys(t, `ได้รับ ${got} จาก GM`);
       log(`give ${t.name} ${got}`);
       return { msg: `ให้ ${t.name}: ${got}` };
+    }
+    case 'pk': return { msg: social.pkGm(String(args[0] || '').toLowerCase()) };   // /gm pk on|off
+    case 'karma': {                                                           // /gm karma <ชื่อ> [ค่า] · ไม่ใส่ค่า = ล้างบาป
+      const { t, err } = need('/gm karma <ชื่อ> [ค่า]'); if (err) return err;
+      social.setKarma(t, Math.max(0, Math.floor(Number(args[1]) || 0)));
+      log(`karma ${t.name} ${t.save.karma}`);
+      return { msg: `บาปของ ${t.name} → ${t.save.karma}` };
     }
     case 'market': {
       const s = market.stats();

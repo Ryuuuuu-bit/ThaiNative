@@ -9,9 +9,9 @@ import { ENHANCE } from './data/village.js';
 import { JOBS, VILLAGER, PATH_LV, SUB_CAP } from './data/classes.js';
 import { ITEMS, STARTING_GOLD, STARTING_ITEMS, STARTER_WEAPON, WTYPE_JOB } from './data/items.js';
 import { sanitizeAppearance, weaponTier } from './data/appearance.js';
-import { expToNext, POINTS_PER_LEVEL, STAT_KEYS, MAX_LEVEL } from './stats.js';
+import { expToNext, STAT_KEYS, MAX_LEVEL, STAT_CAP, STAT_START, statCost, statSpentOn, statPointsAt, pointsForLevel } from './stats.js';
 import { getDerived } from './character.js';
-import { SKILL_SLOTS, OLD_SKILL_SLOTS, SP_PER_LEVEL, START_SP, SKILL_BY_ID, canLearn, isItemSlot, slotItemId, skillCap, skillUsable } from './data/skills.js';
+import { SKILL_SLOTS, OLD_SKILL_SLOTS, SP_PER_LEVEL, START_SP, spAt, spForLevel, SKILL_BY_ID, canLearn, isItemSlot, slotItemId, skillCap, skillUsable } from './data/skills.js';
 import { PASSIVES, KEYSTONE, canAllocate, branchPoints, totalPassivePoints, PASSIVES_ON } from './data/passives.js';
 import { LIFE, LIFE_IDS, lifeLevel, masteryLevel } from './data/life.js';
 import { fixCards } from './data/cards.js';
@@ -45,14 +45,15 @@ function fixHotbar(c, hb) {
   return out;
 }
 
+const NEW_STAT = 5;                                    // ตัวใหม่: 6 ค่า × (1→5) = 48 แต้มพอดี
 export function newCharacter(name, appearance = {}) {
   const c = {
     v: SAVE_VERSION,
     name: String(name || '').replace(/[<>#]/g, '').replace(/\s+/g, ' ').trim().slice(0, 16) || 'ผู้กล้า',   // ชื่อจริงตรวจที่ server (shared/data/names.js)
     appearance: sanitizeAppearance({ ...appearance, weapon: null, armor: null, path: null }),   // ชุดกำหนดตามเพศ (ชาย ม่อฮ่อม · หญิง เรือนต้น)
     path: null,
-    level: 1, exp: 0, statPoints: 0,
-    stats: { ...VILLAGER.startStats },
+    level: 1, exp: 0, statPoints: statPointsAt(1) - STAT_KEYS.length * statSpentOn(NEW_STAT), statsRO: true, spV2: true,   // แบบ RO: แต้ม 48 ลงให้ก่อนเท่า ๆ กัน (ทุกค่า 5) · รีแต้มแล้วกลับเป็น 1
+    stats: Object.fromEntries(STAT_KEYS.map((k) => [k, NEW_STAT])),
     hp: 0, mp: 0,
     gold: STARTING_GOLD,
     inventory: STARTING_ITEMS.map((i) => ({ ...i })),
@@ -205,8 +206,8 @@ export function gainExp(c, amount) {
   while (c.level < MAX_LEVEL && c.exp >= expToNext(c.level)) {
     c.exp -= expToNext(c.level);
     c.level++;
-    c.statPoints += POINTS_PER_LEVEL;
-    c.sp = (c.sp || 0) + SP_PER_LEVEL;
+    c.statPoints += pointsForLevel(c.level);                           // แบบ RO: floor((L−1)/5)+3
+    c.sp = (c.sp || 0) + spForLevel(c.level);                        // หลัง Lv.60 ได้ SP ทุก 2 เลเวล
     ups++;
   }
   if (c.level >= MAX_LEVEL) c.exp = 0;
@@ -214,14 +215,17 @@ export function gainExp(c, amount) {
   return ups;
 }
 
+/** เพิ่มค่าสถานะ 1 ขั้น (แบบ RO: ค่ายิ่งสูงยิ่งใช้แต้มมาก · เพดาน 130) */
 export function allocateStat(c, key) {
-  if (!STAT_KEYS.includes(key) || c.statPoints <= 0) return false;
-  c.stats[key]++;
-  c.statPoints--;
+  if (!STAT_KEYS.includes(key)) return false;
+  const v = c.stats[key] || STAT_START, cost = statCost(v);
+  if (v >= STAT_CAP || c.statPoints < cost) return false;
+  c.stats[key] = v + 1;
+  c.statPoints -= cost;
   return true;
 }
 
-export const totalSp = (c) => START_SP + (c.level - 1) * SP_PER_LEVEL;
+export const totalSp = (c) => spAt(c.level);
 
 export function learnSkill(c, id) {
   const r = canLearn(c, id);
@@ -230,7 +234,7 @@ export function learnSkill(c, id) {
   c.skills[id] = (c.skills[id] || 0) + 1;
   const job = SKILL_BY_ID[id].job;
   const hb = job === c.appearance.job ? c.hotbar : c.hotbars?.[job];
-  if (c.skills[id] === 1 && hb && !Object.values(hb).includes(id)) {
+  if (c.skills[id] === 1 && SKILL_BY_ID[id].type !== 'passive' && hb && !Object.values(hb).includes(id)) {   // สกิลติดตัวไม่ลง Hotbar
     const free = SKILL_FILL_ORDER.find((k) => !hb[k]);
     if (free) hb[free] = id;
   }
@@ -241,7 +245,7 @@ export function assignHotbar(c, key, id) {
   key = String(key);
   if (!SKILL_SLOTS.includes(key)) return false;
   if (id && isItemSlot(id)) { if (!hotbarItemOk(slotItemId(id))) return false; }
-  else if (id && !(c.skills[id] > 0)) return false;
+  else if (id && (!(c.skills[id] > 0) || SKILL_BY_ID[id]?.type === 'passive')) return false;   // สกิลติดตัวใส่ Hotbar ไม่ได้
   const from = id ? SKILL_SLOTS.find((k) => c.hotbar[k] === id) : null;
   const old = c.hotbar[key];
   c.hotbar[key] = id;
@@ -281,8 +285,8 @@ export function resetWeaponSkills(c, job) {
 // ------------------------------------------------------------
 export const PRESET_N = 2, PRESET_LABEL = ['A', 'B'];
 export const PRESET_SLOTS = EQUIP_SLOTS.filter((s) => !FLASK_SLOTS.includes(s));
-export const totalStatPts = (c) => (c.level - 1) * POINTS_PER_LEVEL + (c.bonusPoints || 0);
-const statSpent = (st) => STAT_KEYS.reduce((a, k) => a + Math.max(0, (st[k] | 0) - VILLAGER.startStats[k]), 0);
+export const totalStatPts = (c) => statPointsAt(c.level) + (c.bonusPoints || 0);
+const statSpent = (st) => STAT_KEYS.reduce((a, k) => a + statSpentOn(st[k] || STAT_START), 0);
 const spSpent = (sk) => Object.values(sk).reduce((a, v) => a + (v | 0), 0);
 
 /** ถ่ายค่าชุดที่ใช้อยู่ */
@@ -303,7 +307,7 @@ function cleanPreset(p) {
   const eq = {};
   for (const s of PRESET_SLOTS) { const id = p.eq?.[s]; eq[s] = typeof id === 'string' && ITEMS[id]?.type === SLOT_TYPE[s] ? id : null; }
   const stats = {};
-  for (const k of STAT_KEYS) stats[k] = Math.max(VILLAGER.startStats[k], Math.min(999, Math.floor(+p.stats?.[k] || 0)));
+  for (const k of STAT_KEYS) stats[k] = Math.max(VILLAGER.startStats[k], Math.min(STAT_CAP, Math.floor(+p.stats?.[k] || 0)));
   const skills = {};
   for (const [id, lv] of Object.entries(p.skills || {})) if (SKILL_BY_ID[id] && lv > 0) skills[id] = Math.min(5, Math.floor(+lv) || 0);
   const hb = p.hotbar && typeof p.hotbar === 'object' ? p.hotbar : emptyHotbar();
@@ -351,7 +355,7 @@ export function presetInfo(c, i) {
 
 export function resetStats(c) {
   c.stats = { ...VILLAGER.startStats };
-  c.statPoints = (c.level - 1) * POINTS_PER_LEVEL + (c.bonusPoints || 0);
+  c.statPoints = totalStatPts(c);
 }
 
 export function choosePath(c, path) {
@@ -382,7 +386,14 @@ export function migrate(c) {
   c.exp = Number.isFinite(+c.exp) ? Math.max(0, Math.floor(+c.exp)) : 0;
   c.statPoints = Number.isFinite(+c.statPoints) ? Math.max(0, Math.floor(+c.statPoints)) : 0;
   if (!c.stats || typeof c.stats !== 'object') c.stats = { ...VILLAGER.startStats };
-  for (const k of STAT_KEYS) c.stats[k] = Number.isFinite(+c.stats[k]) ? Math.max(0, Math.floor(+c.stats[k])) : VILLAGER.startStats[k];
+  for (const k of STAT_KEYS) c.stats[k] = Number.isFinite(+c.stats[k]) ? Math.max(STAT_START, Math.min(STAT_CAP, Math.floor(+c.stats[k]))) : VILLAGER.startStats[k];
+  for (const k of Object.keys(c.stats)) if (!STAT_KEYS.includes(k)) delete c.stats[k];   // ค่าเก่า (CRI) ที่ไม่มีแล้ว
+  // ระบบสเตตัสแบบ RO (6 ค่า · ค่าสูงแพงขึ้น): รีแต้มฟรีครั้งเดียวทั้งชุดที่ใช้อยู่และชุด A/B อีกชุด
+  if (!c.statsRO) {
+    c.statsRO = true; c.statsRONotice = true;
+    resetStats(c);
+    if (Array.isArray(c.presets)) for (const p of c.presets) if (p?.stats) p.stats = { ...VILLAGER.startStats };
+  }
   if (!c.skills || typeof c.skills !== 'object') c.skills = {};
   c.hotbar = fixHotbar(c, c.hotbar);
   if (c.hotbars && typeof c.hotbars === 'object') for (const j of Object.keys(c.hotbars)) c.hotbars[j] = fixHotbar(c, c.hotbars[j]);
@@ -422,6 +433,17 @@ export function migrate(c) {
   if (typeof c.sp !== 'number') {
     const spent = Object.values(c.skills).reduce((a, b) => a + b, 0);
     c.sp = Math.max(0, totalSp(c) - spent);
+  }
+  // SP สูตรใหม่ (หลัง Lv.60 ได้ทุก 2 เลเวล): ครั้งเดียว · ใช้เกินที่มี = รีสกิลฟรี (ชุด A/B อีกชุดด้วย) · ไม่เกิน = คำนวณแต้มเหลือใหม่
+  if (!c.spV2) {
+    c.spV2 = true;
+    const spent = Object.values(c.skills).reduce((a, b) => a + (b | 0), 0);
+    if (spent > totalSp(c)) {
+      c.skills = {}; c.sp = totalSp(c); c.spNotice = true;
+      c.hotbar = fixHotbar(c, c.hotbar);
+      if (c.hotbars && typeof c.hotbars === 'object') for (const j of Object.keys(c.hotbars)) c.hotbars[j] = fixHotbar(c, c.hotbars[j]);
+    } else c.sp = totalSp(c) - spent;
+    if (Array.isArray(c.presets)) for (const p of c.presets) if (p?.skills && Object.values(p.skills).reduce((a, b) => a + (b | 0), 0) > totalSp(c)) { p.skills = {}; c.spNotice = true; }
   }
   if (!(c.v >= 2)) {
     const job = JOBS[c.appearance?.job] ? c.appearance.job : 'swordman';

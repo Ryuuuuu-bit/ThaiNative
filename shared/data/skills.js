@@ -1,6 +1,6 @@
 // ============================================================
 //  ระบบสกิล (5 อาชีพ × 6 สกิล + ขุนศึก/จอมขมังเวทย์ มีสกิลขั้นสูงเพิ่มอีก 4) + Skill Tree
-//  ▸ เรียน/อัปเลเวลสกิลด้วย Skill Point (SP) ได้ 1 SP ต่อเลเวลตัวละคร
+//  ▸ เรียน/อัปเลเวลสกิลด้วย Skill Point (SP): Lv.1–60 ได้ 1 SP ต่อเลเวล · หลัง Lv.60 ได้ 1 SP ทุก 2 เลเวล (spAt)
 //  ▸ สกิลละ 5 เลเวล: ตัวคูณดาเมจ +15%/เลเวล, คูลดาวน์ -4%/เลเวล, MP +10%/เลเวล
 //  ▸ ติดตั้งลง Hotbar Q W E R T (ลาก-วาง หรือคลิกเลือก)
 //
@@ -18,9 +18,13 @@
 //   seed       เมล็ดฝังเพื่อน บานเมื่อครบเวลา/เลือดต่ำ { range, delay, lowHp, hmult }
 //   revive     พิธีชุบชีวิต/รักษา% + กันตาย { radius, heal, undying, castMs }
 //   mortar     ครกยาลงพื้น ตีผีในวง แล้วรักษาเพื่อนในวง { offset, radius, hits, interval, mult, hmult, perHit, perMax }
-//  effect (ติดกับศัตรูที่โดน):
+//   passive    สกิลติดตัว (ไม่ต้องร่าย · ใส่ Hotbar ไม่ได้) { passive: (lv) => bonus } มีผลเมื่อถืออาวุธแนวนั้น
+//  effect (ติดกับศัตรูที่โดน · บอสติดครึ่งเวลา):
 //   stun   { ms }              ศัตรูขยับ/โจมตีไม่ได้
-//   poison { ticks, every, ratio } ดาเมจต่อเนื่อง ratio × ดาเมจครั้งแรก ต่อ tick
+//   poison/bleed/burn { ticks, every, ratio } ดาเมจต่อเนื่อง ratio × ดาเมจครั้งแรก ต่อ tick (พิษ/เลือดไหล/ไฟลุก · คนละชนิดซ้อนกันได้)
+//   slow   { ms, pct }         เชื่องช้า: เดินช้าลง pct
+//   armorBreak { ms, pct }     เกราะแตก: DEF ลดลง pct
+//   weak   { ms, pct }         อ่อนแรง: ตีเบาลง pct
 // ============================================================
 import { SUB_CAP } from './classes.js';
 import { PASSIVES, KEYSTONE, BRANCHES, branchPoints, PASSIVES_ON } from './passives.js';
@@ -34,12 +38,21 @@ export const slotItemId = (v) => (isItemSlot(v) ? v.slice(3) : null);
 export const MAX_SKILL_LV = 5;
 export const SP_PER_LEVEL = 1;
 export const START_SP = 1;
+/** แต้มสกิลช่วงหลัง: Lv.1–60 ได้ 1 SP ทุกเลเวล · หลัง Lv.60 ได้ 1 SP ทุก 2 เลเวล (Lv.150 รวม 105 → ตันสายหลัก + เหลือ ~45 ให้สายรอง ต้องเลือก) */
+export const SP_SLOW_FROM = 60;
+/** SP ที่ได้ตอนขึ้นเป็นเลเวล L */
+export const spForLevel = (L) => (L <= SP_SLOW_FROM ? SP_PER_LEVEL : L % 2 === 0 ? SP_PER_LEVEL : 0);
+/** SP รวมที่เลเวลนี้มี */
+export const spAt = (level) => {
+  const L = Math.max(1, level | 0);
+  return START_SP + (Math.min(L, SP_SLOW_FROM) - 1) * SP_PER_LEVEL + Math.floor(Math.max(0, L - SP_SLOW_FROM) / 2) * SP_PER_LEVEL;
+};
 
 export const SKILLS = {
   // ---------------- จอมขมังเวทย์ ----------------
   mage: [
     { id: 'mage_akom', nameTh: 'คาถาอาคม', icon: '📿', reqLv: 1, type: 'projectile', kind: 'magic',
-      mp: 6, cd: 1800, mult: 0.72, proj: 'fireball', speed: 270, range: 240, count: 3, spread: 12, sfx: 'fireball',
+      mp: 6, cd: 1800, mult: 0.62, proj: 'fireball', speed: 270, range: 240, count: 3, spread: 12, sfx: 'fireball',
       desc: 'ยิงลูกไฟอาคม 3 ลูกโค้งเข้าเป้า' },
     { id: 'mage_yant', nameTh: 'ยันต์ตรึงวิญญาณ', icon: '📜', reqLv: 2, type: 'projectile', kind: 'magic',
       mp: 10, cd: 6000, mult: 1.1, proj: 'yant', speed: 220, range: 220, pierce: true, effect: { stun: { ms: 1800 } }, sfx: 'buff',
@@ -51,8 +64,8 @@ export const SKILLS = {
       mp: 14, cd: 5000, mult: 2.6, range: 270, effect: { stun: { ms: 700 } }, sfx: 'thunder',
       desc: 'ฟ้าผ่าศัตรูที่ใกล้ที่สุด สะดุ้งชั่วครู่' },
     { id: 'mage_kalp', nameTh: 'เพลิงกัลป์ปราบผี', icon: '☄️', reqLv: 8, type: 'aoe', kind: 'magic', ultimate: true,
-      mp: 35, cd: 22000, mult: 2.2, radius: 110, offset: 110, hits: 4, interval: 240, fx: 'meteor', sfx: 'meteor',
-      desc: 'ไฟกัลป์ถล่มด้านหน้า 4 ระลอก' },
+      mp: 35, cd: 22000, mult: 2.2, radius: 110, offset: 110, hits: 4, interval: 240, effect: { burn: { ticks: 4, every: 600, ratio: 0.3 } }, fx: 'meteor', sfx: 'meteor',
+      desc: 'ไฟกัลป์ถล่มด้านหน้า 4 ระลอก ผีติดไฟลุกไหม้ต่อเนื่อง' },
     { id: 'mage_holy', nameTh: 'น้ำมนต์ธาราทิพย์', icon: '🪷', reqLv: 10, type: 'party', party: true,
       mp: 30, cd: 24000, radius: 220, buff: { def: 12 }, duration: 10000, heal: 0.25, mpHeal: 0.15, sfx: 'buff',
       desc: '[ปาร์ตี้] บัวทิพย์บานกลางวง ฟื้น HP 25% + MP 15% ทั้งปาร์ตี้ · ป้องกัน +12 นาน 10 วิ' },
@@ -61,14 +74,21 @@ export const SKILLS = {
       mp: 18, cd: 7000, mult: 0.95, proj: 'fireball', speed: 250, range: 230, count: 5, spread: 36, sfx: 'fireball',
       desc: 'เรียกไฟผีกองกอย 5 ดวงพุ่งแผ่เป็นพัด โดนได้หลายตัว' },
     { id: 'mage_curse', nameTh: 'คำสาปพรายตานี', icon: '☠️', reqLv: 40, type: 'aoe', kind: 'magic',
-      mp: 24, cd: 11000, mult: 1.2, radius: 90, offset: 120, hits: 1, effect: { poison: { ticks: 6, every: 700, ratio: 0.4 } }, sfx: 'buff',
-      desc: 'วงคำสาปใต้เป้า ผีทุกตัวในวงติดพิษพราย 6 ครั้ง' },
+      mp: 24, cd: 11000, mult: 1.2, radius: 90, offset: 120, hits: 1, effect: { poison: { ticks: 6, every: 700, ratio: 0.4 }, slow: { ms: 3500, pct: 0.35 } }, sfx: 'buff',
+      desc: 'วงคำสาปใต้เป้า ผีทุกตัวในวงติดพิษพราย 6 ครั้ง และเชื่องช้า −35% ไป 3.5 วิ' },
     { id: 'mage_meditate', nameTh: 'สมาธิกสิณไฟ', icon: '🧘', reqLv: 70, type: 'buff',
       mp: 20, cd: 32000, buff: { atkMul: 0.3, critAdd: 0.1 }, duration: 12000, heal: 0.1, sfx: 'buff',
       desc: 'เข้าฌานกสิณ พลังเวทย์ +30% คริ +10% ฟื้น HP 10% นาน 12 วิ' },
     { id: 'mage_storm', nameTh: 'พายุอัสนีเทพ', icon: '🌩️', reqLv: 100, type: 'aoe', kind: 'magic',
       mp: 48, cd: 20000, mult: 1.75, radius: 170, offset: 0, hits: 5, interval: 250, effect: { stun: { ms: 400 } }, sfx: 'thunder',
       desc: 'เรียกพายุฟ้าผ่ารอบตัว 5 ระลอก ผีในวงกว้างสะดุ้งทุกครั้ง' },
+    // ---- สกิลติดตัว (Passive · มีผลตลอดเมื่อถือไม้เท้า ไม่ต้องร่าย) ----
+    { id: 'mage_p_focus', nameTh: 'สมาธิกสิณ', icon: '🧠', reqLv: 5, type: 'passive',
+      passive: (lv) => ({ matkMul: 0.02 * lv, mp: 20 * lv }),
+      desc: 'ติดตัว: เพ่งกสิณจนจิตนิ่ง พลังเวทย์ +2% และ MP +20 ต่อเลเวล' },
+    { id: 'mage_p_soul', nameTh: 'จิตประภัสสร', icon: '✨', reqLv: 15, type: 'passive',
+      passive: (lv) => ({ castRed: 0.01 * lv, mpMul: 0.02 * lv }),
+      desc: 'ติดตัว: จิตผ่องใสร่ายมนต์ลื่นไหล ลดคูลดาวน์สกิล −1% และ MP สูงสุด +2% ต่อเลเวล' },
   ],
   // ---------------- หมอยา (ซัพพอร์ต) ----------------
   healer: [
@@ -88,8 +108,8 @@ export const SKILLS = {
       mp: 35, cd: 40000, radius: 220, castMs: 1200, heal: 0.4, undying: 10000, sfx: 'buff',
       desc: '★ ร่าย 1.2 วิ บายศรีสู่ขวัญ รักษา 40% ทุกคนในวง · ชุบชีวิตเพื่อนที่สลบ · ขวัญกันตาย 10 วิ (เลือดไม่ลดต่ำกว่า 1)' },
     { id: 'heal_mortar', nameTh: 'ครกยาระเบิดสมุนไพร', icon: '🪨', reqLv: 10, type: 'mortar', kind: 'magic', element: 'earth', heals: true,
-      mp: 28, cd: 16000, offset: 110, radius: 110, hits: 3, interval: 280, mult: 1.4, hmult: 0.6, perHit: 0.1, perMax: 0.5, effect: { stun: { ms: 400 } }, sfx: 'thunder',
-      desc: 'ตำครกยา 3 ที ลงกลางวง 110 · ผีในวงโดน ×1.4 + มึน · แล้วผงยาเขียววนเข้ารักษาเพื่อนในวง (+10% ต่อผีที่โดน สูงสุด +50%)' },
+      mp: 28, cd: 16000, offset: 110, radius: 110, hits: 3, interval: 280, mult: 1.4, hmult: 0.6, perHit: 0.1, perMax: 0.5, effect: { stun: { ms: 400 }, slow: { ms: 2500, pct: 0.3 } }, sfx: 'thunder',
+      desc: 'ตำครกยา 3 ที ลงกลางวง 110 · ผีในวงโดน ×1.4 + มึน + ฝุ่นยาเหนียวเท้า (ช้าลง 30%) · แล้วผงยาเขียววนเข้ารักษาเพื่อนในวง (+10% ต่อผีที่โดน สูงสุด +50%)' },
     // ---- สกิลขั้นสูง (Lv.20 / 40 / 70 / 100) · ซัพพอร์ตหลัก ----
     { id: 'heal_mist', nameTh: 'หมอกยาชโลมใจ', icon: '🌫️', reqLv: 20, type: 'party', party: true, element: 'water',
       mp: 22, cd: 14000, radius: 220, heal: 0.15, mpHeal: 0.1, buff: { def: 6 }, duration: 6000, sfx: 'buff',
@@ -103,6 +123,13 @@ export const SKILLS = {
     { id: 'heal_amrita', nameTh: 'น้ำอมฤตชุบชีวา', icon: '🏺', reqLv: 100, type: 'revive', element: 'light', heals: true,
       mp: 60, cd: 45000, radius: 260, castMs: 900, heal: 0.6, undying: 8000, sfx: 'buff',
       desc: 'ร่าย 0.9 วิ ประพรมน้ำอมฤต รักษา 60% ทุกคนในวงกว้าง · ชุบชีวิตเพื่อนที่สลบ · ขวัญกันตาย 8 วิ' },
+    // ---- สกิลติดตัว (Passive · มีผลตลอดเมื่อถือไม้เท้าสมุนไพร ไม่ต้องร่าย) ----
+    { id: 'heal_p_herb', nameTh: 'ตำรับโอสถโบราณ', icon: '📖', reqLv: 5, type: 'passive',
+      passive: (lv) => ({ healMul: 0.03 * lv, mp: 15 * lv }),
+      desc: 'ติดตัว: ท่องตำรายาจนขึ้นใจ พลังรักษา +3% และ MP +15 ต่อเลเวล' },
+    { id: 'heal_p_metta', nameTh: 'เมตตาบารมี', icon: '💚', reqLv: 15, type: 'passive',
+      passive: (lv) => ({ INT: 2 * lv, mpMul: 0.02 * lv }),
+      desc: 'ติดตัว: จิตเปี่ยมเมตตา INT +2 และ MP สูงสุด +2% ต่อเลเวล' },
   ],
   // ---------------- เคล็ดวิชาผสม (อยู่บนจุดผสมระหว่างสองกิ่ง · ใช้ได้เมื่อถืออาวุธของกิ่งใดกิ่งหนึ่ง) ----------------
   hybrid: [
@@ -125,27 +152,27 @@ export const SKILLS = {
   // ---------------- นักมวยคาดเชือก ----------------
   boxer: [
     { id: 'boxer_jab', nameTh: 'หมัดแย็บ', icon: '👊', reqLv: 1, type: 'melee', kind: 'physical',
-      mp: 3, cd: 2000, mult: 0.8, range: 28, hits: 3, interval: 110, sfx: 'punch',
+      mp: 3, cd: 2000, mult: 0.9, range: 28, hits: 3, interval: 110, sfx: 'punch',
       desc: 'แย็บรัว 3 หมัด' },
     { id: 'boxer_kick', nameTh: 'เตะก้านคอ', icon: '🦵', reqLv: 2, type: 'melee', kind: 'physical',
-      mp: 6, cd: 4500, mult: 2.0, range: 34, knock: 240, effect: { stun: { ms: 700 } }, sfx: 'kick',
-      desc: 'เตะแรง กระเด็นและมึนงง' },
+      mp: 6, cd: 4500, mult: 2.0, range: 34, knock: 240, effect: { stun: { ms: 700 }, weak: { ms: 5000, pct: 0.25 } }, sfx: 'kick',
+      desc: 'เตะก้านคอเต็มแรง กระเด็น มึนงง และอ่อนแรง (ตีเบาลง 25%) ไป 5 วิ' },
     { id: 'boxer_croc', nameTh: 'จระเข้ฟาดหาง', icon: '🐊', reqLv: 4, type: 'aoe', kind: 'physical',
-      mp: 10, cd: 7000, mult: 1.6, radius: 48, offset: 0, hits: 2, interval: 160, sfx: 'kick',
+      mp: 10, cd: 7000, mult: 1.8, radius: 48, offset: 0, hits: 2, interval: 160, sfx: 'kick',
       desc: 'หมุนตัวเตะกลับหลัง โดนทุกตัวรอบตัว 2 ครั้ง' },
     { id: 'boxer_waikru', nameTh: 'ไหว้ครูรำมวย', icon: '🙏', reqLv: 6, type: 'buff',
-      mp: 15, cd: 22000, buff: { atkMul: 0.35 }, duration: 12000, heal: 0.2, sfx: 'buff',
-      desc: 'ฟื้น HP 20% พลังโจมตี +35% นาน 12 วิ' },
+      mp: 15, cd: 22000, buff: { atkMul: 0.35, aspd: 0.1 }, duration: 12000, heal: 0.2, sfx: 'buff',
+      desc: 'ฟื้น HP 20% พลังโจมตี +35% ตีเร็วขึ้น 10% นาน 12 วิ' },
     { id: 'boxer_ngouy', nameTh: 'หักงวงไอยรา', icon: '🐘', reqLv: 8, type: 'dash', kind: 'physical', ultimate: true,
-      mp: 25, cd: 18000, mult: 4.0, distance: 80, leap: true, effect: { stun: { ms: 1500 } }, sfx: 'dash',
-      desc: 'กระโดดทุ่มศอกลงกลางหัว แรงมาก + มึนงง' },
+      mp: 25, cd: 18000, mult: 4.0, distance: 80, leap: true, effect: { stun: { ms: 1500 }, armorBreak: { ms: 8000, pct: 0.4 } }, sfx: 'dash',
+      desc: 'กระโดดทุ่มศอกลงกลางหัว แรงมาก มึนงง และเกราะแตก (DEF −40%) ไป 8 วิ' },
     { id: 'boxer_drum', nameTh: 'กลองมังคละปลุกใจ', icon: '🥁', reqLv: 10, type: 'party', party: true,
       mp: 24, cd: 26000, radius: 220, buff: { def: 18, atkMul: 0.1 }, duration: 12000, heal: 0.15, sfx: 'buff',
       desc: '[ปาร์ตี้] ตีกลองศึก 3 จังหวะ ฟื้น HP 15% · ป้องกัน +18 โจมตี +10% ทั้งปาร์ตี้ 12 วิ' },
     // ---- สกิลขั้นสูง (Lv.20 / 40 / 70 / 100) ----
     { id: 'boxer_elbow', nameTh: 'ศอกกลับพลิกล็อก', icon: '💥', reqLv: 20, type: 'melee', kind: 'physical',
-      mp: 12, cd: 5500, mult: 1.7, range: 30, hits: 2, interval: 130, effect: { stun: { ms: 500 } }, sfx: 'punch',
-      desc: 'ศอกกลับ 2 จังหวะ ผีสะดุ้ง' },
+      mp: 12, cd: 5500, mult: 1.7, range: 30, hits: 2, interval: 130, effect: { stun: { ms: 500 }, bleed: { ticks: 4, every: 600, ratio: 0.25 } }, sfx: 'punch',
+      desc: 'ศอกกลับ 2 จังหวะ ผีสะดุ้งและคมศอกบาดจนเลือดไหลต่อเนื่อง' },
     { id: 'boxer_knee', nameTh: 'เข่าลอยทะลวงฟ้า', icon: '🦿', reqLv: 40, type: 'dash', kind: 'physical',
       mp: 20, cd: 10000, mult: 2.8, distance: 95, radius: 55, leap: true, effect: { stun: { ms: 900 } }, sfx: 'dash',
       desc: 'กระโดดเข่าลอยเข้าหาเป้า ผีรอบจุดลงมึน 0.9 วิ' },
@@ -153,17 +180,24 @@ export const SKILLS = {
       mp: 26, cd: 28000, buff: { defMul: 0.3, atkMul: 0.2 }, duration: 10000, heal: 0.12, sfx: 'buff',
       desc: 'ลงคาถามหาอุด ป้องกัน +30% โจมตี +20% ฟื้น HP 12% นาน 10 วิ' },
     { id: 'boxer_hanuman', nameTh: 'หนุมานถวายแหวน', icon: '🐒', reqLv: 100, type: 'melee', kind: 'physical',
-      mp: 44, cd: 16000, mult: 0.95, range: 38, hits: 8, interval: 110, all: true, sfx: 'punch',
+      mp: 44, cd: 16000, mult: 1.1, range: 38, hits: 8, interval: 110, all: true, sfx: 'punch',
       desc: 'ท่าไม้ครูหมัด-เท้า-เข่า-ศอก 8 จังหวะ โดนทุกตัวด้านหน้า' },
+    // ---- สกิลติดตัว (Passive · มีผลตลอดเมื่อใส่ผ้าพันมือ ไม่ต้องร่าย) ----
+    { id: 'boxer_p_fist', nameTh: 'หมัดหนักคาดเชือก', icon: '👊', reqLv: 5, type: 'passive',
+      passive: (lv) => ({ atk: 3 * lv, crit: 0.01 * lv }),
+      desc: 'ติดตัว: กำหมัดจนด้านแข็ง โจมตี +3 และคริ +1% ต่อเลเวล' },
+    { id: 'boxer_p_step', nameTh: 'ย่างสามขุม', icon: '🦶', reqLv: 15, type: 'passive',
+      passive: (lv) => ({ AGI: 2 * lv, hp: 30 * lv }),
+      desc: 'ติดตัว: ฝึกจังหวะเท้ามวยโบราณ AGI +2 และ HP +30 ต่อเลเวล' },
   ],
   // ---------------- ขุนศึก (ดาบคู่) ----------------
   swordman: [
     { id: 'sword_twin', nameTh: 'ฟันดาบคู่', icon: '⚔️', reqLv: 1, type: 'melee', kind: 'physical',
-      mp: 5, cd: 2500, mult: 0.9, range: 46, hits: 3, interval: 120, all: true, sfx: 'slash',
-      desc: 'ฟันไขว้ 3 ครั้ง โดนทุกตัวด้านหน้า' },
+      mp: 5, cd: 2500, mult: 1.0, range: 46, hits: 3, interval: 120, all: true, effect: { bleed: { ticks: 3, every: 600, ratio: 0.2 } }, sfx: 'slash',
+      desc: 'ฟันไขว้ 3 ครั้ง โดนทุกตัวด้านหน้า คมดาบบาดจนเลือดไหลต่อเนื่อง' },
     { id: 'sword_thrust', nameTh: 'แทงทะลวง', icon: '🗡️', reqLv: 2, type: 'dash', kind: 'physical',
-      mp: 8, cd: 6000, mult: 1.9, distance: 110, effect: { stun: { ms: 500 } }, sfx: 'dash',
-      desc: 'พุ่งแทงทะลุแนวศัตรู สะดุ้งชั่วครู่ (อมตะระหว่างพุ่ง)' },
+      mp: 8, cd: 6000, mult: 1.9, distance: 110, effect: { stun: { ms: 500 }, armorBreak: { ms: 6000, pct: 0.3 } }, sfx: 'dash',
+      desc: 'พุ่งแทงทะลุแนวศัตรู สะดุ้งและเกราะแตก (DEF −30%) ไป 6 วิ (อมตะระหว่างพุ่ง)' },
     { id: 'sword_wind', nameTh: 'ดาบวายุ', icon: '🌪️', reqLv: 4, type: 'projectile', kind: 'physical',
       mp: 10, cd: 5000, mult: 1.7, proj: 'wave', speed: 270, range: 230, pierce: true, sfx: 'wind',
       desc: 'คลื่นดาบทะลุทุกตัว' },
@@ -171,7 +205,7 @@ export const SKILLS = {
       mp: 12, cd: 18000, buff: { def: 25, atkMul: 0.15 }, duration: 10000, heal: 0.15, sfx: 'buff',
       desc: 'ฟื้น HP 15% ป้องกัน +25 โจมตี +15% นาน 10 วิ' },
     { id: 'sword_pikat', nameTh: 'เพลงดาบพิฆาต', icon: '🔥', reqLv: 8, type: 'aoe', kind: 'physical', ultimate: true,
-      mp: 28, cd: 20000, mult: 1.3, radius: 62, offset: 10, hits: 6, interval: 150, sfx: 'storm',
+      mp: 28, cd: 20000, mult: 1.45, radius: 62, offset: 10, hits: 6, interval: 150, sfx: 'storm',
       desc: 'ร่ายเพลงดาบรอบตัว 6 ครั้ง' },
     { id: 'sword_banner', nameTh: 'ธงชัยเฉลิมพล', icon: '🚩', reqLv: 10, type: 'party', party: true,
       mp: 26, cd: 28000, radius: 220, buff: { atkMul: 0.22, def: 8 }, duration: 12000, heal: 0.08, sfx: 'buff',
@@ -184,11 +218,18 @@ export const SKILLS = {
       mp: 22, cd: 12000, mult: 3.0, distance: 130, radius: 70, leap: true, effect: { stun: { ms: 1000 } }, sfx: 'dash',
       desc: 'กระโดดข้ามไปฟาดดาบลงพื้น ทุกตัวในวงรอบจุดลงสะดุ้ง 1 วิ' },
     { id: 'sword_berserk', nameTh: 'โทสะขุนศึก', icon: '😤', reqLv: 70, type: 'buff',
-      mp: 30, cd: 30000, buff: { atkMul: 0.35, critAdd: 0.15, speed: 0.15 }, duration: 10000, heal: 0, sfx: 'buff',
-      desc: 'ปลุกโทสะนักรบ โจมตี +35% คริ +15% วิ่งเร็วขึ้น 15% นาน 10 วิ' },
+      mp: 30, cd: 30000, buff: { atkMul: 0.35, critAdd: 0.15, speed: 0.15, aspd: 0.15 }, duration: 10000, heal: 0, sfx: 'buff',
+      desc: 'ปลุกโทสะนักรบ โจมตี +35% คริ +15% ตีเร็วขึ้น 15% วิ่งเร็วขึ้น 15% นาน 10 วิ' },
     { id: 'sword_execute', nameTh: 'ดาบประหารอสูร', icon: '⚡', reqLv: 100, type: 'melee', kind: 'physical',
       mp: 40, cd: 15000, mult: 5.2, range: 66, hits: 1, all: true, effect: { stun: { ms: 1500 } }, sfx: 'slash',
       desc: 'รวมพลังฟันดาบฟ้าผ่าเพียงครั้งเดียว แรงมาก โดนทุกตัวด้านหน้า มึน 1.5 วิ' },
+    // ---- สกิลติดตัว (Passive · มีผลตลอดเมื่อถือดาบ ไม่ต้องร่าย) ----
+    { id: 'sword_p_mastery', nameTh: 'ชำนาญดาบ', icon: '🗡️', reqLv: 5, type: 'passive',
+      passive: (lv) => ({ atk: 4 * lv, patkMul: 0.01 * lv }),
+      desc: 'ติดตัว: ฝึกเพลงดาบทุกเช้า โจมตี +4 และ ATK +1% ต่อเลเวล' },
+    { id: 'sword_p_iron', nameTh: 'หนังเหนียวคงกระพัน', icon: '🪨', reqLv: 15, type: 'passive',
+      passive: (lv) => ({ def: 2 * lv, hpMul: 0.02 * lv }),
+      desc: 'ติดตัว: ลงคาถาชาตรี ป้องกัน +2 และ HP สูงสุด +2% ต่อเลเวล' },
   ],
   // ---------------- พรานป่า ----------------
   archer: [
@@ -199,8 +240,8 @@ export const SKILLS = {
       mp: 8, cd: 5000, mult: 0.9, proj: 'arrow_poison', speed: 360, range: 280, effect: { poison: { ticks: 5, every: 700, ratio: 0.35 } }, sfx: 'arrow',
       desc: 'ศรอาบพิษ ดาเมจต่อเนื่อง 5 ครั้ง' },
     { id: 'arch_pierce', nameTh: 'ศรทะลวงเกราะ', icon: '🎯', reqLv: 4, type: 'projectile', kind: 'physical',
-      mp: 10, cd: 6000, mult: 2.1, proj: 'arrow_big', speed: 520, range: 330, pierce: true, sfx: 'arrowBig',
-      desc: 'ศรพลังสูงทะลุทุกตัว' },
+      mp: 10, cd: 6000, mult: 2.1, proj: 'arrow_big', speed: 520, range: 330, pierce: true, effect: { armorBreak: { ms: 6000, pct: 0.35 } }, sfx: 'arrowBig',
+      desc: 'ศรพลังสูงทะลุทุกตัว เจาะจนเกราะแตก (DEF −35%) ไป 6 วิ' },
     { id: 'arch_hawk', nameTh: 'ตาเหยี่ยว', icon: '🦅', reqLv: 6, type: 'buff',
       mp: 14, cd: 20000, buff: { atkMul: 0.3, critAdd: 0.3 }, duration: 10000, heal: 0, sfx: 'buff',
       desc: 'โจมตี +30% คริ +30% นาน 10 วิ' },
@@ -208,21 +249,28 @@ export const SKILLS = {
       mp: 26, cd: 18000, mult: 1.25, radius: 90, offset: 110, hits: 5, interval: 200, fx: 'arrowRain', sfx: 'arrowRain',
       desc: 'ธนูตกเป็นห่าฝน 5 ระลอก' },
     { id: 'arch_garuda', nameTh: 'ลมใต้ปีกครุฑ', icon: '🪶', reqLv: 10, type: 'party', party: true,
-      mp: 24, cd: 26000, radius: 220, buff: { critAdd: 0.15, atkMul: 0.1 }, duration: 12000, heal: 0.08, sfx: 'buff',
-      desc: '[ปาร์ตี้] ปีกครุฑโอบปาร์ตี้ คริ +15% โจมตี +10% ทั้งปาร์ตี้ 12 วิ' },
+      mp: 24, cd: 26000, radius: 220, buff: { critAdd: 0.15, atkMul: 0.1, aspd: 0.08 }, duration: 12000, heal: 0.08, sfx: 'buff',
+      desc: '[ปาร์ตี้] ปีกครุฑโอบปาร์ตี้ คริ +15% โจมตี +10% ตีเร็วขึ้น 8% ทั้งปาร์ตี้ 12 วิ' },
     // ---- สกิลขั้นสูง (Lv.20 / 40 / 70 / 100) ----
     { id: 'arch_volley', nameTh: 'ศรกระจายเจ็ดดาว', icon: '✨', reqLv: 20, type: 'projectile', kind: 'physical',
       mp: 16, cd: 7000, mult: 0.9, proj: 'arrow', speed: 420, range: 280, count: 5, spread: 34, sfx: 'arrow',
       desc: 'ยิงศร 5 ดอกแผ่เป็นพัด โดนได้หลายตัวด้านหน้า' },
     { id: 'arch_trap', nameTh: 'กับดักหนามพราน', icon: '🪤', reqLv: 40, type: 'aoe', kind: 'physical',
-      mp: 20, cd: 12000, mult: 1.6, radius: 72, offset: 120, hits: 1, effect: { stun: { ms: 1600 } }, sfx: 'kick',
-      desc: 'ปากับดักหนามลงใต้เป้า ผีในวงโดนหนามแทงและติดกับ 1.6 วิ' },
+      mp: 20, cd: 12000, mult: 1.6, radius: 72, offset: 120, hits: 1, effect: { stun: { ms: 1600 }, slow: { ms: 3000, pct: 0.4 } }, sfx: 'kick',
+      desc: 'ปากับดักหนามลงใต้เป้า ผีในวงติดกับ 1.6 วิ หลุดแล้วยังเดินช้าลง 40% อีก 3 วิ' },
     { id: 'arch_snipe', nameTh: 'ศรสังหารเหยี่ยวราตรี', icon: '🎯', reqLv: 70, type: 'projectile', kind: 'physical',
       mp: 32, cd: 14000, mult: 6.2, proj: 'arrow_big', speed: 760, range: 380, sfx: 'arrowBig',
       desc: 'เล็งนานแล้วยิงศรเดียวไกลมาก แรงมาก (เป้าเดียว)' },
     { id: 'arch_meteor', nameTh: 'ศรเพลิงอัคนีบาต', icon: '☄️', reqLv: 100, type: 'aoe', kind: 'physical',
       mp: 46, cd: 20000, mult: 1.75, radius: 120, offset: 140, hits: 5, interval: 240, fx: 'arrowRain', sfx: 'arrowRain',
       desc: 'ยิงศรเพลิงขึ้นฟ้า ตกเป็นห่าลูกไฟ 5 ระลอกในวงกว้าง' },
+    // ---- สกิลติดตัว (Passive · มีผลตลอดเมื่อถือธนู ไม่ต้องร่าย) ----
+    { id: 'arch_p_eye', nameTh: 'ตาเหยี่ยวพราน', icon: '👁️', reqLv: 5, type: 'passive',
+      passive: (lv) => ({ DEX: 2 * lv, acc: 2 * lv }),
+      desc: 'ติดตัว: สายตาคมดั่งเหยี่ยว DEX +2 และแม่นยำ +2 ต่อเลเวล' },
+    { id: 'arch_p_step', nameTh: 'ย่องเบาไร้เงา', icon: '🍃', reqLv: 15, type: 'passive',
+      passive: (lv) => ({ aspd: 0.02 * lv, eva: 2 * lv }),
+      desc: 'ติดตัว: ฝีเท้าเบาดั่งใบไม้ ความเร็วตี +2% และหลบ +2 ต่อเลเวล' },
   ],
 };
 
@@ -254,8 +302,8 @@ export function skillStats(skill, lv = 1, mastery = 0) {
     ...skill,
     lv: L + 1, mastery: M,
     mult: skill.mult ? +(skill.mult * (1 + 0.15 * L) * (1 + 0.02 * M)).toFixed(3) : undefined,
-    mp: Math.round(skill.mp * (1 + 0.1 * L)),
-    cd: Math.round(skill.cd * (1 - 0.04 * L) * (1 - 0.01 * M)),
+    mp: skill.mp ? Math.round(skill.mp * (1 + 0.1 * L)) : 0,
+    cd: skill.cd ? Math.round(skill.cd * (1 - 0.04 * L) * (1 - 0.01 * M)) : 0,
     duration: skill.duration ? Math.round(skill.duration * (1 + 0.1 * L)) : undefined,
     heal: typeof skill.heal === 'number' ? +(skill.heal * (1 + 0.1 * L)).toFixed(3) : skill.heal,
     hmult: skill.hmult ? +(skill.hmult * (1 + 0.15 * L) * (1 + 0.02 * M)).toFixed(3) : undefined,

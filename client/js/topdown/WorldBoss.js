@@ -84,6 +84,7 @@ export class WorldBossUI {
       bar.querySelector('.wb-hpbar i').style.width = `${Math.max(0, pctv * 100)}%`;
       bar.querySelector('.wb-hpbar span').textContent = S.state === 'fight' ? `${Math.round(S.hp).toLocaleString()} / ${S.maxHp.toLocaleString()} (${(pctv * 100).toFixed(1)}%)` : S.state === 'open' ? 'รอพระราหูลงมา…' : 'จบการต่อสู้';
       bar.querySelector('.wb-ph').textContent = S.state === 'fight' && S.phase ? `เฟส ${S.phase} · ${PHASES[S.phase - 1].nameTh}` : '';
+      bar.querySelector('.lv').textContent = S.state === 'fight' ? `ขั้น ${S.tier || 5} · Lv.${S.lv || 150}` : '';   // ราหูโตตามเซิร์ฟ (ขั้น 1–5)
       bar.querySelector('.wb-time').textContent = S.state === 'open' ? `⏳ ${mmss(S.at - now)}` : S.state === 'fight' ? `⏱ ${mmss(S.fightEnd - now)}` : S.state === 'ended' ? `ปิดลานใน ${mmss(S.closeAt - now)}` : '';
       bar.querySelector('.wb-tip').textContent = S.state === 'open' ? `ออนไลน์ในค่าย ${S.online ?? '-'} คน · ม่วง = ดาเมจ · เงิน = ที่ปลอดภัย/เป้าให้ตี · แดง = อันตรายสูง` : '';
     }

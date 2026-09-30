@@ -53,6 +53,8 @@ export class TdSocial {
       $('#player-menu').classList.add('hidden');
       if (act === 'party') this.invite(id);
       if (act === 'trade') this.requestTrade(id);
+      if (act === 'duel') this.requestDuel(id);
+      if (act === 'pk') this.pkAttack(id, true);
       if (act === 'friend') this.addFriend(id);
       if (act === 'whisper') { const nm = this.scene.remotes.get(id)?.name || this.menuName; if (nm) this.ui.chatBox?.whisperTo(nm); }
     };
@@ -128,6 +130,7 @@ export class TdSocial {
       this.scene.sfx.play('click');
       if (act === 'invite') this.invite(id);
       if (act === 'trade') this.requestTrade(id);
+      if (act === 'duel') this.requestDuel(id);
       if (act === 'leave') this.net.send('party:leave');
       if (act === 'kick') this.net.send('party:kick', { id });
       if (act === 'friend') this.addFriend(id);
@@ -192,6 +195,78 @@ export class TdSocial {
     if (!this.player.alive) return;
     this.net.send('trade:request', { id });
   }
+  requestDuel(id) {
+    if (!this.net.online) return this.ui.toast('ต้องออนไลน์ก่อน', 'warn');
+    if (!this.player.alive) return;
+    if (this.duel) return this.ui.toast('กำลังดวลอยู่', 'warn');
+    this.net.send('pvp:duel', { id });
+  }
+  // ---------------- PK (หัวแดง · Lv.30+ ในแดนนอกค่ายพัก) ----------------
+  /** เปิด/ปิดโหมด PK (server ตัดสินว่าเปิดได้ไหม) */
+  togglePk(force) {
+    if (!this.net.online) return this.ui.toast('ต้องออนไลน์ก่อน', 'warn');
+    const on = force ?? !this.pkOn;
+    if (on && !this.pkOn && (this.player.char.level || 1) < 30) return this.ui.toast('ต้อง Lv.30 ขึ้นไปถึงเปิดโหมด PK ได้', 'warn');
+    this.net.send('pk:mode', { on });
+  }
+  onPkMode({ on, msg } = {}) {
+    this.pkOn = !!on;
+    if (!on) this.pkTarget = null;
+    document.body.classList.toggle('pk-on', this.pkOn);
+    this.pkBadge();
+    this.ui.toast(msg || (on ? '☠️ เปิดโหมด PK · คลิกผู้เล่นในแดน (นอกค่ายพัก) เพื่อโจมตี · Shift+คลิก = เมนู · พิมพ์ /pk อีกครั้งเพื่อปิด' : '🕊️ ปิดโหมด PK'), on ? 'warn' : '', 3500);
+    this.scene.sfx.play(on ? 'invite' : 'click');
+  }
+  /** ป้ายสถานะ PK มุมจอ (โหมดเปิด / ชื่อม่วง / หัวแดง) */
+  pkBadge() {
+    let el = document.getElementById('pk-badge');
+    if (!el) { el = document.createElement('div'); el.id = 'pk-badge'; el.title = 'คลิกเพื่อปิดโหมด PK'; el.onclick = () => this.togglePk(false); document.getElementById('td-hud')?.appendChild(el); }
+    const me = this.selfPk;
+    el.className = me === 'red' ? 'red' : me === 'purple' ? 'purple' : '';
+    el.innerHTML = me === 'red' ? '☠️ หัวแดง' : me === 'purple' ? '⚔️ ชื่อม่วง' : '☠️ PK';
+    el.classList.toggle('hidden', !this.pkOn && !me);
+  }
+  /** เลือกผู้เล่นเป็นเป้า PK แล้วเดินเข้าไปตี */
+  pkAttack(id, fromMenu = false) {
+    if (!this.pkOn) { if (fromMenu) { this.togglePk(true); this._pkQueue = id; } return; }
+    const r = this.scene.remotes.get(id);
+    if (!r) return;
+    this.pkTarget = id;
+    const p = this.player; p.target = null; p.autoTarget = null;
+    // กรอบเป้าหมายแบบเดียวกับตอนตีผี: ชื่อ · เลเวล · แถบเลือดของผู้เล่นที่ล็อกไว้ (อ่านค่าสดจาก remote ทุกเฟรม)
+    this.pkFrame = { isPlayer: true, get alive() { return r.hp > 0; }, get hp() { return r.hp || 0; }, def: { get nameTh() { return `☠ ${r.name}`; }, get level() { return r.level || 1; }, get hp() { return r.maxHp || 1; } } };
+    this.ui.setTarget(this.pkFrame);
+    this.ui.toast(`☠️ ล็อกเป้า ${r.name}`, 'warn', 1400);
+  }
+  /** เข้าเกม: บาปค้างจากรอบก่อน → ชื่อแดงทันที (ไม่ต้องรอ server) */
+  syncSelfPk() { if ((this.player?.char?.karma || 0) > 0 && this.selfPk !== 'red') { this.selfPk = 'red'; this.onPkState({ id: this.net.selfId, pk: 'red' }); } }
+  /** สีชื่อ PK ของใครสักคนเปลี่ยน */
+  onPkState({ id, pk } = {}) {
+    if (id === this.net.selfId) {
+      const was = this.selfPk;
+      this.selfPk = pk || null;
+      const tag = this.scene.nameTag;
+      if (tag && !this.scene.selfGm?.()) tag.setColor(pk === 'red' ? '#ff4a3d' : pk === 'purple' ? '#d38cff' : '#fff3c4');
+      if (pk === 'red' && was !== 'red') this.ui.toast('☠️ คุณกลายเป็นหัวแดง! ร้านไม่ขายให้ วาร์ปกลับเมืองไม่ได้ ตายแล้วเสีย EXP + ของหล่น · บาปลดตามเวลาออนไลน์', 'warn', 5000);
+      this.pkBadge();
+      return;
+    }
+    this.scene.remotes.get(id)?.setPk?.(pk);
+  }
+
+  /** สถานะดวลจาก server: เริ่ม/จบ */
+  onDuelState(d) {
+    if (d.phase === 'start') {
+      this.duel = { foe: d.foe, foeName: d.foeName, until: Date.now() + (d.ms || 180000) };
+      this.scene.sfx.play('invite');
+      this.ui.toast(`⚔️ เริ่มดวลกับ ${d.foeName}! เดินเข้าไปตี/ใช้สกิลใส่ได้เลย (แพ้เมื่อเลือดเหลือ 10% · 3 นาที)`, 'warn', 4000);
+    } else {
+      const won = d.winnerId && d.winnerId === this.net.selfId;
+      this.duel = null;
+      this.scene.sfx.play(won ? 'levelup' : 'invite');
+      this.ui.toast(d.winner ? (won ? '🏆 คุณชนะการดวล!' : `แพ้การดวล... ${d.winner} ชนะ`) : `จบการดวล · ${d.reason || 'เสมอ'}`, won ? '' : 'warn', 3500);
+    }
+  }
   shareExp() {}
   partyChat(text) { this.net.send('party:chat', text); }
 
@@ -246,6 +321,15 @@ export class TdSocial {
       .on('online:list', (list) => { this.online = Array.isArray(list) ? list : []; if (!$('#social-panel').classList.contains('hidden')) this.renderSocialPanel(); })
       .on('friends:state', (list) => { this.friends = list || []; if (!$('#social-panel').classList.contains('hidden')) this.renderFriends(); })
       .on('title:new', ({ id }) => this.onNewTitles([id]))
+      .on('pvp:request', ({ fromId, fromName }) => this.ask(
+        `⚔️ <b>${esc(fromName)}</b> ท้าดวล!<br><small>ดวลฉันมิตร ไม่เสียของ/EXP · แพ้เมื่อเลือดเหลือ 10% · 3 นาที</small>`,
+        () => this.net.send('pvp:respond', { fromId, accept: true }),
+        () => this.net.send('pvp:respond', { fromId, accept: false })))
+      .on('pvp:state', (d) => this.onDuelState(d))
+      .on('pk:mode', (d) => { this.onPkMode(d); if (d.on && this._pkQueue) { const q = this._pkQueue; this._pkQueue = null; this.pkAttack(q); } })
+      .on('pk:state', (d) => this.onPkState(d))
+      .on('pk:fail', ({ msg }) => { this.ui.toast(msg, 'warn', 2200); this.pkTarget = null; })
+      .on('pvp:dmg', (d) => this.scene.pvpDmg?.(d))
       .on('trade:request', ({ fromId, fromName }) => this.ask(
         `<b>${esc(fromName)}</b> ขอแลกเปลี่ยนสิ่งของกับคุณ`,
         () => n.send('trade:respond', { fromId, accept: true }),
@@ -274,7 +358,7 @@ export class TdSocial {
     const nearIds = new Set(near.map((r) => r.id));
     const far = (this.online || []).filter((o) => !nearIds.has(o.id));
     const btns = (id, name, same) => `<span>${inParty.has(id) ? '<small class="ok">ในปาร์ตี้</small>' : `<button class="btn ghost sm" data-act="invite" data-id="${id}">🤝 เชิญ</button>`}
-          ${same ? `<button class="btn ghost sm" data-act="trade" data-id="${id}">💱 เทรด</button>` : ''}
+          ${same ? `<button class="btn ghost sm" data-act="trade" data-id="${id}">💱 เทรด</button><button class="btn ghost sm" data-act="duel" data-id="${id}" title="ท้าดวลฉันมิตร">⚔️</button>` : ''}
           <button class="btn ghost sm" data-act="friend" data-id="${id}" title="เพิ่มเพื่อน">➕👥</button>
           <button class="btn ghost sm" data-act="whisper" data-name="${esc(name)}">💬</button></span>`;
     const rowsNear = near.map((r) => `<div class="soc-row"><span>${esc(r.name)} <small>Lv.${r.level || '?'} · ห่าง ${Math.round(Math.hypot(r.x - this.player.x, r.y - this.player.y) / 16 / 5) * 5} ม.</small></span>${btns(r.id, r.name, true)}</div>`);

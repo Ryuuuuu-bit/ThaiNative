@@ -65,7 +65,7 @@ export const EMO_ICON = {
   '🎣': 'fish', '⚒': 'anvil', '📰': 'menu_news', '🗺': 'menu_map', '⚙': 'menu_settings', '❓': 'menu_help', '🎒': 'menu_bag',
   '⛑': 'slot_helm', '💍': 'slot_ring', '🥋': 'slot_armor', '📿': 'slot_amulet', '🧤': 'slot_gloves', '👢': 'slot_boots', '🎗': 'slot_belt',
   '📜': 'scroll', '⚠': 'warn', '🎁': 'gift', '📢': 'megaphone', '❗': 'exclaim', '🌳': 'tree', '🙏': 'wai', '🤝': 'handshake', '🏠': 'house', '👹': 'yak',
-  '💀': 'skull', '🔗': 'link', '💱': 'exchange', '👁': 'eye', '👻': 'ghost', '🎉': 'party_pop',
+  '💀': 'skull', '☠': 'pk_red', '🔗': 'link', '💱': 'exchange', '👁': 'eye', '👻': 'ghost', '🎉': 'party_pop',
   '🔧': 'wrench', '🧺': 'basket', '🪦': 'tomb', '⛺': 'tent', '💨': 'wind', '🌟': 'star', '⭐': 'star', '🔓': 'unlock', '➕': 'plus', '🖱': 'mouse',
   '🔑': 'key', '🎲': 'dice', '💎': 'gem', '🎖': 'medal2', '🛠': 'tools', '🔍': 'search', '🔎': 'search', '🗑': 'trash',
   '🥇': 'gold1', '🥈': 'silver2', '🥉': 'bronze3', '📥': 'inbox', '📤': 'outbox', '👤': 'person', '🧑': 'person', '♂': 'male', '♀': 'female',
@@ -79,6 +79,14 @@ export const EMO_ICON = {
   '💖': 'donate', '⛶': 'fullscreen', '⇄': 'swap', '🧭': 'compass', '🌏': 'globe', '☰': 'menu', 'ℹ': 'info', '↩': 'return', '🔇': 'mute', '🚩': 'flag',
   '🐘': 'elephant', '🐍': 'naga_snake', '🐒': 'monkey', '🐊': 'croc', '🦅': 'garuda', '☄': 'comet',
   '🌑': 'eclipse', '💠': 'moon_crystal', '🔮': 'job_mage', '🏹': 'job_archer', '🥊': 'job_boxer', '💚': 'heal', '✨': 'sparkle', '🛒': 'shop', '📐': 'range', '✔': 'check',
+  // ---- เพิ่ม: ใช้ไอคอนที่มีอยู่แล้ว (ความหมายเดียวกัน) ----
+  '🙂': 'smile', '🧘': 'hermit', '📕': 'book', '🍜': 'soup', '💾': 'memo', '🌪': 'wind', '🍃': 'herb', '🌫': 'cloud', '🍀': 'sprout',
+  '🌘': 'eclipse', '🌸': 'flower', '🏵': 'flower', '🧠': 'think', '⛰': 'mountain', '🏪': 'shop', '🏺': 'jar', '⚱': 'jar', '🦴': 'crossbones',
+  '🛕': 'pagoda', '⛲': 'water', '🏃': 'walk', '🔄': 'swap', '😤': 'fire', '🔆': 'sun', '🍵': 'cup', '🧿': 'eye', '🌩': 'rain', '📉': 'chart',
+  '👊': 'arm', '✊': 'arm', '🧥': 'slot_armor', '🥼': 'slot_armor', '👕': 'slot_armor', '🦺': 'slot_armor', '🩳': 'slot_armor',
+  '🥾': 'slot_boots', '🩴': 'slot_boots', '🦷': 'it:yak_fang', '🍄': 'it:herb_mushroom',
+  // ---- ไอคอนใหม่ (tools/build_pk_passive_icons.py / PixelLab) · ไม่มีไฟล์ = คงอีโมจิเดิม ----
+  '⏳': 'hourglass', '⏱': 'hourglass', '⚓': 'anchor', '🕊': 'dove', '⚖': 'scale', '🩸': 'blood', '🪤': 'trap', '🐌': 'slow',
 };
 const EMO_RE = new RegExp(`(${Object.keys(EMO_ICON).join('|')})\\uFE0F?`, 'gu');
 const EMO_SKIP = 'input,textarea,select,option,script,style,#chat-log,.cb-log,.cb-emos,.job-badge,[data-noemo]';

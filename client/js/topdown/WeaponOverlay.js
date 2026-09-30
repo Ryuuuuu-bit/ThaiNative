@@ -4,6 +4,7 @@
 //  ▸ วางที่มือตามทิศ · อยู่หลังตัวเมื่อหันหลัง · เหวี่ยง/ยก/ง้างตอนโจมตี
 // ============================================================
 import { heldInfo, enhGlow } from '../gfx/PlayerArt.js';
+import { ITEMS } from '/shared/data/items.js';
 
 /** สีออร่าตีบวก (0xRRGGBB) ตามขั้น · ใช้ชุดสีเดียวกับไอคอน/ภาพเดิม */
 const auraColor = (lv) => { const g = enhGlow(lv); if (!g) return 0; const [r, gg, b] = g.color.split(',').map(Number); return (r << 16) | (gg << 8) | b; };
@@ -49,7 +50,8 @@ export class WeaponOverlay {
     const { spr, img } = it;
     if (!spr.active) return this.detach(spr);
     const a = it.getApp?.();
-    const key = a?.weapon ? `ico_it_${a.weapon}` : null;
+    const w = a?.weapon, art = w && ITEMS[w]?.art;
+    const key = !w ? null : this.s.textures.exists(`ico_it_${w}`) || !art ? `ico_it_${w}` : `ico_it_${art}`;   // ของที่ใช้ภาพร่วม (ของแดงขั้นต่ำ) → ภาพชิ้นหลัก
     this.aura(it, a, time);
     // แสดงเฉพาะบนภาพ 8 ทิศ (สไปรต์เดิมวาดอาวุธในตัวอยู่แล้ว) และอาวุธที่มีภาพ
     it.fx.clear().setVisible(false);

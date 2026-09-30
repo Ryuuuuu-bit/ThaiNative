@@ -6,7 +6,7 @@
 // ============================================================
 import {
   WB_ID, WB_MAP, ARENA, ARENA_C, arenaPx, PHASES, phaseOf, WB_SKILLS, TRAPS, NAVA_COLORS, wbHp,
-  nextSpawnAt, lastSpawnAt, WB_FIGHT_MS, WB_ANNOUNCE_MS, WB_CLOSE_MS, WB_MVP_MS, WB_STONE, wbReward, WB_MIN_SHARE, WB_FULL_LV, WB_BASE_EXP, WB_BASE_GOLD,
+  nextSpawnAt, lastSpawnAt, WB_FIGHT_MS, WB_ANNOUNCE_MS, WB_CLOSE_MS, WB_MVP_MS, WB_STONE, wbReward, WB_MIN_SHARE, WB_FULL_LV, WB_BASE_EXP, WB_BASE_GOLD, WB_TIERS, wbTier,
 } from '../shared/data/worldboss.js';
 import { TD_MAPS } from '../shared/td/maps.js';
 import { TILE } from '../shared/td/ayutthaya.js';
@@ -43,7 +43,7 @@ export function setupWorldBoss(io, players, { td, hurtPlayer, queueSync, social,
   function status() {
     const b = boss();
     return {
-      state: S.state, at: S.at, fightEnd: S.fightEnd, closeAt: S.closeAt, phase: S.phase,
+      state: S.state, at: S.at, fightEnd: S.fightEnd, closeAt: S.closeAt, phase: S.phase, lv: S.lv || 150, tier: S.tier?.n || 5, tierTh: S.tier?.nameTh || '',
       hp: b && S.state === 'fight' ? Math.max(0, Math.round(b.hp)) : 0, maxHp: S.maxHp,
       mvp: S.mvp && S.mvp.until > Date.now() ? S.mvp : null,
       pools: TRAPS.pool.spots.map((s) => ({ x: s.x * TILE, y: s.y * TILE, r: TRAPS.pool.r * TILE })),
@@ -69,14 +69,15 @@ export function setupWorldBoss(io, players, { td, hurtPlayer, queueSync, social,
       try {
         const now = Date.now();
         const pending = [...S.pending].filter(([, v]) => v.until > now);
-        const data = { pending, mvp: S.mvp && S.mvp.until > now ? S.mvp : null };
-        await (await storeReady).setMeta?.('wb_state', JSON.stringify(data));
+        const st = await storeReady, data = { pending, mvp: S.mvp && S.mvp.until > now ? S.mvp : null, gen: st.gen || '' };   // แปะรุ่นข้อมูล (Fresh Server)
+        await st.setMeta?.('wb_state', JSON.stringify(data));
       } catch (e) { console.error('[wb] persist', e.message); }
     }, 500);
   }
   storeReady?.then(async (st) => {
     try {
       const d = JSON.parse((await st.getMeta?.('wb_state')) || 'null'); if (!d) return;
+      if ((d.gen || '') !== (st.gen || '')) return console.log('[wb] ข้อมูลก่อน wipe (รุ่นไม่ตรง) → ทิ้ง');
       const now = Date.now();
       for (const [k, v] of d.pending || []) if (v?.until > now && !S.pending.has(k)) S.pending.set(k, v);
       if (d.mvp?.until > now && !S.mvp) { S.mvp = d.mvp; S.lastMvp = d.mvp; }
@@ -113,14 +114,18 @@ export function setupWorldBoss(io, players, { td, hurtPlayer, queueSync, social,
   function startFight() {
     const b = boss(); if (!b) return;
     for (const m of W().mobs) if (m.wb && m.wb !== 'boss') { m.hp = 0; m.st = 'dead'; m.respawnAt = Infinity; m.pending = []; }   // ล้างผลึก/บริวารค้าง
-    // เลือด = 8M × "คนที่อยู่ในลานตอนบอสเกิด" (ไม่ใช่คนออนไลน์ทั้งเซิร์ฟ) · Lv.ต่ำกว่า 90 นับ 1/4 คน (ช่วยได้ แต่ไม่ถ่วงเลือดบอส)
+    // ขั้นราหูโตตามเซิร์ฟ: เลเวลเฉลี่ย 5 คนเก่งสุดในลาน → ขั้น 1–5 (Lv.30–150)
+    // เลือด = เลือดต่อคนของขั้น × "คนในลานตอนบอสเกิด" · คนเลเวลต่ำกว่าขั้น −15 นับ 1/4 คน (ช่วยได้ แต่ไม่ถ่วงเลือดบอส)
     const inRoom = td.playersIn(WB_MAP).filter((p) => !p.dead);
     S.online = inRoom.length;
-    S.maxHp = wbHp(Math.max(1, inRoom.reduce((a, p) => a + ((p.level || 1) >= WB_FULL_LV ? 1 : 0.25), 0)));
-    Object.assign(b, { x: ARENA_C.x, y: ARENA_C.y + TILE / 2, hp: S.maxHp, st: 'idle', target: null, pending: [], dmgBy: new Map(), stunUntil: 0, poison: null, respawnAt: Infinity, aoe: null });
+    const T = wbTier(inRoom.map((p) => p.level || 1));
+    S.tier = T; S.lv = T.lv;
+    S.maxHp = wbHp(Math.max(1, inRoom.reduce((a, p) => a + ((p.level || 1) >= T.lv - 15 ? 1 : 0.25), 0)), T.hpPer);
+    Object.assign(b, { x: ARENA_C.x, y: ARENA_C.y + TILE / 2, hp: S.maxHp, st: 'idle', target: null, pending: [], dmgBy: new Map(), stunUntil: 0, dots: null, respawnAt: Infinity, aoe: null,
+      wbDef: Math.round((b.d.def || 0) * T.lv / 150) });                                  // เกราะตามขั้น (คนเลเวลต่ำยังตีเข้า)
     S.state = 'fight'; S.fightEnd = Date.now() + WB_FIGHT_MS; S.ledger = new Map(); S.phase = 0; S.tele = []; S.nextSkill = {}; S.gcd = Date.now() + 3000;
     S.traps = { yant: [], thornNext: Date.now() + 4000, thornSet: 0, fireNext: 0, fires: [] };
-    say(`🌑 พระราหู ผู้กลืนจันทร์ Lv.150 ลงมาแล้ว! เลือด ${S.maxHp.toLocaleString()} (ในลาน ${S.online} คน) · มีเวลา 30 นาที`);
+    say(`🌑 พระราหู ขั้น ${T.n} "${T.nameTh}" Lv.${T.lv} ลงมาแล้ว! เลือด ${S.maxHp.toLocaleString()} (ในลาน ${S.online} คน) · มีเวลา 30 นาที`);
     setPhase(1);
     push();
   }
@@ -180,13 +185,14 @@ export function setupWorldBoss(io, players, { td, hurtPlayer, queueSync, social,
       const share = r.dmg / total, rank = i + 1, isMvp = win && S.mvp?.key === r.key;
       const out = { rank, pct: +(share * 100).toFixed(2), mvp: isMvp, win, items: [], exp: 0, gold: 0, board };
       if (share >= minShare || isMvp) {
-        const R = wbReward(rank, share, isMvp), k = win ? 1 : 0.25;
-        out.expBase = Math.round(WB_BASE_EXP * R.expK * k);                          // EXP จริงคิดตอนมอบ (แคป 1 เลเวล ตามเลเวลตอนรับ)
-        out.gold = Math.round(WB_BASE_GOLD * R.goldK * k);
-        out.items.push({ id: WB_STONE, qty: win ? R.stone : 1 });
-        if (win) out.items.push({ id: 'yak_fang', qty: R.fang });
-        if (win && Math.random() < R.card) out.items.push({ id: `card_${WB_ID}`, qty: 1, card: true });
-        if (win && Math.random() < R.red) out.red = true;                          // ชิ้นขอบแดงสุ่มตามอาชีพตอนรับ
+        const R = wbReward(rank, share, isMvp), k = win ? 1 : 0.25, T = S.tier || WB_TIERS[WB_TIERS.length - 1];
+        out.lv = T.lv; out.tier = T.n; out.redLv = T.red;
+        out.expBase = Math.round(WB_BASE_EXP * T.k * R.expK * k);                  // EXP จริงคิดตอนมอบ (แคป 1 เลเวล ตามเลเวลตอนรับ)
+        out.gold = Math.round(WB_BASE_GOLD * T.k * R.goldK * k);                   // เงินตามขั้น (เซิร์ฟใหม่เงินไม่เฟ้อ)
+        out.items.push({ id: WB_STONE, qty: win ? Math.max(1, Math.round(R.stone * T.k)) : 1 });
+        if (win && T.fang) out.items.push({ id: 'yak_fang', qty: R.fang });
+        if (win && T.card && Math.random() < R.card) out.items.push({ id: `card_${WB_ID}`, qty: 1, card: true });
+        if (win && Math.random() < R.red) out.red = true;                          // ชิ้นขอบแดงสุ่มตามอาชีพ + ตามขั้นราหู ตอนรับ
         out.ok = true;
       }
       const p = [...players.values()].find((q) => q.acc === r.acc && (q.slot || 0) === r.slot);
@@ -199,13 +205,14 @@ export function setupWorldBoss(io, players, { td, hurtPlayer, queueSync, social,
   function deliver(p, out) {
     const c = p.save;
     if (out.ok) {
-      if (out.expBase != null) out.exp = mobExp(out.expBase, c.level || 1, 150, true);   // แคปเหมือนบอสอื่น: ได้ไม่เกิน 1 เลเวลต่อครั้ง
+      if (out.expBase != null) out.exp = mobExp(out.expBase, c.level || 1, out.lv || 150, true);   // แคปเหมือนบอสอื่น: ได้ไม่เกิน 1 เลเวลต่อครั้ง · เลเวลตามขั้นราหู
       gainExp(c, out.exp); c.gold = (c.gold || 0) + out.gold;
       for (const it of out.items) addItem(c, it.id, it.qty);
       if (out.items.some((it) => it.card)) say(`🃏 ${p.name} ได้การ์ดพระราหู!`, '🃏 การ์ดหายาก');
       if (out.red) {
-        const job = c.appearance?.job, pool = RED_GEAR.filter((id) => ITEMS[id].job === job);
-        const id = pick(pool.length ? pool : RED_GEAR);
+        const job = c.appearance?.job, lvl = out.redLv || 140, tierPool = RED_GEAR.filter((id) => ITEMS[id].lv === lvl);   // ของแดงขั้นเดียวกับราหูรอบนั้น
+        const pool = tierPool.filter((id) => ITEMS[id].job === job);
+        const id = pick(pool.length ? pool : tierPool.length ? tierPool : RED_GEAR);
         addItem(c, id, 1); out.items.push({ id, qty: 1, red: true }); out.red = false;
         say(`✨ ${p.name} ได้ ${ITEMS[id].nameTh} (อุปกรณ์ขอบแดง)!`, '✨ ของหายาก');
       }
@@ -260,7 +267,7 @@ export function setupWorldBoss(io, players, { td, hurtPlayer, queueSync, social,
     crystal(now, sk) {
       const mobs = W().mobs.filter((m) => m.wb === 'crystal');
       if (mobs.some((m) => m.st !== 'dead')) return false;
-      const hp = Math.round(Math.min(400000, 30000 + S.online * 6000));
+      const hp = Math.round(Math.min(400000, 30000 + S.online * 6000) * (S.tier?.k ?? 1));   // ผลึกตามขั้นราหู
       mobs.forEach((m, i) => { const a = Math.PI / 4 + i * Math.PI / 2 + rand(-0.3, 0.3), d = rand(12, 18) * TILE; Object.assign(m, { x: ARENA_C.x + Math.cos(a) * d, y: ARENA_C.y + Math.sin(a) * d, hp, st: 'idle', pending: [], dmgBy: new Map(), stunUntil: 0, poison: null, maxHp: hp }); });
       S.crystals = mobs.map((m) => ({ mid: m.mid, until: now + sk.life }));
       io.to(room).emit('wb:crystal', { mids: mobs.map((m) => m.mid), hp, until: now + sk.life });
@@ -274,7 +281,7 @@ export function setupWorldBoss(io, players, { td, hurtPlayer, queueSync, social,
       free.forEach((m, i) => {
         const a = S.face + (i - 1) * 0.9, x = ARENA_C.x + Math.cos(a) * 4 * TILE, y = ARENA_C.y + Math.sin(a) * 4 * TILE;
         const t = f.length ? f[Math.floor(Math.random() * f.length)] : null;
-        Object.assign(m, { x, y, hp: m.d.hp, st: t ? 'chase' : 'wander', target: t?.id || null, pending: [], dmgBy: new Map(), stunUntil: 0, poison: null, nextAtk: now + 800, s: { ...m.s, x, y } });
+        Object.assign(m, { x, y, hp: Math.round(m.d.hp * (S.tier?.k ?? 1)), maxHp: Math.round(m.d.hp * (S.tier?.k ?? 1)), st: t ? 'chase' : 'wander', target: t?.id || null, pending: [], dmgBy: new Map(), stunUntil: 0, poison: null, nextAtk: now + 800, s: { ...m.s, x, y } });
       });
       tele({ kind: 'minion', shape: 'burst', x: ARENA_C.x, y: ARENA_C.y, ms: sk.warn, at: now + sk.warn, dmg: 0, color: sk.color, hit: null });
       return true;

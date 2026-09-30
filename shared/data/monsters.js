@@ -313,7 +313,7 @@ for (const [id, m] of Object.entries(MONSTERS)) {
 // เลือดจริงคำนวณตอนเกิดจากคนออนไลน์ (shared/data/worldboss.js) · ดาเมจเป็น % HP ผู้เล่น · ไม่เกิดเองตามเวลา
 Object.assign(MONSTERS, {
   rahu_eclipse: { nameTh: 'พระราหู ผู้กลืนจันทร์', nameEn: 'Rahu the Moon-Devourer', level: 150, boss: true, worldBoss: true, count: 1,
-    desc: 'อสูรครึ่งตัวผู้กลืนดวงจันทร์ ลงมาทุก 2 ชั่วโมงที่ลานสุริยคราส ทั้งเซิร์ฟต้องช่วยกันปราบภายใน 30 นาที',
+    desc: 'อสูรครึ่งตัวผู้กลืนดวงจันทร์ ลงมาทุก 1 ชั่วโมงที่ลานสุริยคราส ทั้งเซิร์ฟต้องช่วยกันปราบภายใน 30 นาที',
     hp: 1000000, atk: 900, def: 75, eva: 20, acc: 260, speed: 0, behavior: 'floater', attackRange: 60, attackCooldown: 99999,
     exp: 0, gold: [0, 0], drops: [], respawnMs: 1e12, scale: 2.6, d8: 'phra_rahu', frame: { w: 32, h: 44 } },
   rahu_shade: { nameTh: 'บริวารราหู', nameEn: 'Rahu Shade', level: 120, count: 1, wbPart: true, pctDmg: 0.06,

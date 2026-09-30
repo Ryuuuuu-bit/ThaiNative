@@ -8,7 +8,7 @@ import { MONSTERS } from '../shared/data/monsters.js';
 import { JOBS } from '../shared/data/classes.js';
 import { SKILL_BY_ID } from '../shared/data/skills.js';
 import { rollDamage } from '../shared/stats.js';
-import { combatDerived, attackSpec, blessingsOf, attackGate } from '../shared/character.js';
+import { combatDerived, attackSpec, blessingsOf, attackGate, getDerived } from '../shared/character.js';
 import { dayPhase, dayIndex, moonOf, nightMods, isNight } from '../shared/data/world.js';
 import { rollGearDrop } from '../shared/data/gear.js';
 import { rollAffixes, affixId } from '../shared/data/affixes.js';
@@ -19,12 +19,14 @@ import { FLASK_SLOTS } from '../shared/data/slots.js';
 import { ITEMS } from '../shared/data/items.js';
 import { NPC_BY_ID } from '../shared/data/npcs.js';
 import { TILE, T, OX } from '../shared/td/ayutthaya.js';
-import { TD_MAPS, TD_MAP_IDS, EVENT_MAPS, DEFAULT_MAP, getMap, validMap, arrivalPoint } from '../shared/td/maps.js';
-import { MAX_LEVEL, mobExp } from '../shared/stats.js';
+import { TD_MAPS, TD_MAP_IDS, EVENT_MAPS, DEFAULT_MAP, getMap, validMap, arrivalPoint, RESPAWN_WAIT_MS } from '../shared/td/maps.js';
+import { MAX_LEVEL, mobExp, mobAtkMul, attackInterval, buffAspd } from '../shared/stats.js';
+import { PARTY } from '../shared/constants.js';
 
 export const TD_SPAWN = { ...TD_MAPS.ayutthaya.spawn };
 const SPEED = 92;                   // ความเร็วเดินผู้เล่น (ตรงกับ client)
 const AGGRO = 110, LEASH = 260, RESPAWN_MS = 7000, STRIKE_MS = 260;
+const PARTY_LV_GAP = 15;                                          // ปาร์ตี้หาร EXP ได้เมื่อเลเวลห่างกันไม่เกินนี้ (แบบ RO Even Share)
 const BOSS_AGGRO = 150, BOSS_LEASH = 340, AOE_WARN_MS = 1000, BOSS_SHARE = 0.05;
 export const TD_MAP_V = 2;           // เวอร์ชันผังแผนที่ (2 = ขยายโซนรอบเมือง · เมืองเดิมเลื่อนไป OX ไทล์)
 const NPC_R = 56;                   // ระยะคุยกับ NPC
@@ -36,7 +38,7 @@ const ANIMS = ['idle', 'walk', 'attack', 'cast', 'hit', 'die'];
 const DIRS = ['south', 'south-east', 'east', 'north-east', 'north', 'north-west', 'west', 'south-west'];
 
 export function setupTD(io, players, opts = {}) {
-  const { dayMs = 20 * 60 * 1000, queueSync = () => {}, refresh = () => {}, hurtPlayer = () => {}, shareExp = () => {}, partyOf = () => null, partyBonus = () => 1 } = opts;
+  const { pkColor = () => null, dayMs = 20 * 60 * 1000, queueSync = () => {}, refresh = () => {}, hurtPlayer = () => {}, shareExp = () => {}, partyOf = () => null, partyBonus = () => 1 } = opts;
   const worlds = Object.fromEntries(TD_MAP_IDS.map((id) => [id, makeWorld(id)]));   // + ห้องสุสานใต้ดิน (crypt:…) สร้าง/ลบตามการใช้งาน
   const mapOf = (p) => (Object.hasOwn(worlds, p.tmap || '') ? p.tmap : DEFAULT_MAP);
   const W = (p) => worlds[mapOf(p)];
@@ -47,7 +49,7 @@ export function setupTD(io, players, opts = {}) {
     const m = nightMods(phase, moon);
     return d.nightBoost && isNight(phase) ? { ...m, atk: m.atk * 1.15, exp: m.exp * 1.2, gold: m.gold * 1.2 } : m;
   }
-  const mobAtk = (d) => { const a = Math.round(d.atk * timeMods(d).atk); return { patk: a, matk: a, accuracy: d.acc, critRate: 0.05, critDmg: 1.5 }; };
+  const mobAtk = (d) => { const a = Math.round(d.atk * mobAtkMul(d.level) * timeMods(d).atk); return { patk: a, matk: a, accuracy: d.acc, critRate: 0.05, critDmg: 1.5, mob: true }; };   // ผี Lv21+ แรงขึ้นแบบ RO (stats.js)
   const tdPlayers = (id) => [...players.values()].filter((p) => p.world === 'td' && (!id || mapOf(p) === id));
 
   // ================= โลก 1 แมพ (ผี/ชน/รางวัล ของแมพนั้น) =================
@@ -64,10 +66,15 @@ export function setupTD(io, players, opts = {}) {
   // ---------------- ผี ----------------
   const mobs = L.spawns.map((s, i) => spawn({ mid: i, id: s.id, d: MONSTERS[s.id], s, boss: !!(s.boss || MONSTERS[s.id]?.boss) }, true));
   for (const m of mobs) if (m.s.wb) { m.hp = 0; m.st = 'dead'; m.respawnAt = Infinity; m.wb = m.s.wb; }   // บอสโลก/ผลึก/บริวาร: หลับไว้ ตัวควบคุมอีเวนต์ปลุก
+  // ผีส่วนเพิ่ม (MOB_DENSITY) เกิดตามจำนวนคนในแมพ: 1 คน = 30% · 5 คนขึ้นไป = ครบ → เซิร์ฟคนน้อยไม่แน่นจนโดนรุม
+  const extras = mobs.filter((m) => m.s.extra && !m.s.wb);
+  extras.forEach((m, i) => { m.extraIdx = i; });
+  const extraCap = (n) => Math.ceil(extras.length * Math.max(0.3, Math.min(1, n / 5)));
+  for (const m of extras) if (m.extraIdx >= extraCap(0)) { m.hp = 0; m.st = 'dead'; m.respawnAt = 0; }   // เริ่มต้น: เปิดแค่ 30%
   function spawn(m, quiet = false) {
     let x, y, n = 0;
     do { x = m.s.x + rand(-m.s.r, m.s.r); y = m.s.y + rand(-m.s.r, m.s.r); } while (solidAt(x, y) && ++n < 20);
-    Object.assign(m, { x, y, hp: m.d.hp, st: 'wander', target: null, nextThink: 0, wx: null, wy: null, nextAtk: 0, pending: [], dmgBy: new Map(), respawnAt: 0, dir: 0, nextAoe: Date.now() + 4000, aoe: null, stunUntil: 0, poison: null });
+    Object.assign(m, { x, y, hp: m.d.hp, st: 'wander', target: null, nextThink: 0, wx: null, wy: null, nextAtk: 0, pending: [], dmgBy: new Map(), respawnAt: 0, dir: 0, nextAoe: Date.now() + 4000, aoe: null, stunUntil: 0, dots: null, slowUntil: 0, slowPct: 0, defDownUntil: 0, defDownPct: 0, weakUntil: 0, weakPct: 0 });
     if (m.boss && !quiet && !m.s.wb) io.emit('chat', { id: null, name: '👑 บอส', text: `${m.d.nameTh} Lv.${m.d.level} ปรากฏตัวที่${M.ZONES[M.zoneAt(m.x, m.y)]?.nameTh || M.nameTh}${M.realm ? ` (${M.nameTh})` : ''}!` });
     return m;
   }
@@ -84,16 +91,22 @@ export function setupTD(io, players, opts = {}) {
   function tickMobs(dt, now, here) {
     for (const m of mobs) {
       const d = m.d;
-      if (m.st === 'dead') { if (now >= m.respawnAt && (!d.nightOnly || nightNow())) spawn(m); continue; }
-      // พิษ (สกิล): ดาเมจต่อเนื่องทุก every ms · คิดจากดาเมจครั้งที่โดน × ratio
-      if (m.poison && now >= m.poison.next) {
-        const P = m.poison, by = players.get(P.by);
-        m.hp -= P.dmg; P.left--; P.next = now + P.every;
-        if (by) m.dmgBy.set(by.id, (m.dmgBy.get(by.id) || 0) + P.dmg);
-        if (by && m.wb) wb?.onDmg(m, by, P.dmg);
-        io.to(room).emit('td:dmg', { mid: m.mid, by: P.by, hit: true, dot: true, dmg: P.dmg, hp: Math.max(0, Math.round(m.hp)) });
-        if (P.left <= 0) m.poison = null;
-        if (m.hp <= 0) { if (by && sameMap(by)) kill(m, by); else { m.hp = 1; } continue; }
+      if (m.st === 'dead') { if (now >= m.respawnAt && (!d.nightOnly || nightNow()) && (m.extraIdx == null || m.extraIdx < extraCap(here.length))) spawn(m); continue; }   // ผีส่วนเพิ่มรอจนคนในแมพพอ
+      // ดาเมจต่อเนื่อง (พิษ/เลือดไหล/ไฟลุก): ทุก every ms · คิดจากดาเมจครั้งที่โดน × ratio · คนละชนิดซ้อนกันได้
+      if (m.dots) {
+        for (const k of Object.keys(m.dots)) {
+          const P = m.dots[k];
+          if (now < P.next) continue;
+          const by = players.get(P.by);
+          m.hp -= P.dmg; P.left--; P.next = now + P.every;
+          if (by) m.dmgBy.set(by.id, (m.dmgBy.get(by.id) || 0) + P.dmg);
+          if (by && m.wb) wb?.onDmg(m, by, P.dmg);
+          io.to(room).emit('td:dmg', { mid: m.mid, by: P.by, hit: true, dot: k, dmg: P.dmg, hp: Math.max(0, Math.round(m.hp)) });
+          if (P.left <= 0) delete m.dots[k];
+          if (m.hp <= 0) { if (by && sameMap(by)) kill(m, by); else m.hp = 1; break; }
+        }
+        if (!Object.keys(m.dots || {}).length) m.dots = null;
+        if (m.st === 'dead') continue;
       }
       // ติดมึน (สกิล): ไม่เดิน ไม่ตี · ท่าตีที่ค้างถูกยกเลิก
       if (now < m.stunUntil) { m.pending = []; continue; }
@@ -106,6 +119,7 @@ export function setupTD(io, players, opts = {}) {
           if (p.dead || Math.hypot(p.tx - a.x, p.ty - a.y) > a.r) continue;
           const pd = combatDerived(p.char, p.buffs, now);
           const r = rollDamage({ ...mobAtk(d), accuracy: 999 }, { def: pd.def, eva: 0 }, 'physical', d.aoe.mult || 1.3);
+          if (now < m.weakUntil) r.dmg = Math.max(1, Math.round(r.dmg * (1 - (m.weakPct || 0))));   // อ่อนแรง (สกิล)
           hurtPlayer(p, r.dmg, { hit: true, crit: r.crit, x: Math.round(m.x), force: true, td: true, mid: m.mid });
         }
       }
@@ -116,6 +130,7 @@ export function setupTD(io, players, opts = {}) {
           const pd = combatDerived(p.char, p.buffs, now);
           const r = rollDamage(mobAtk(d), { def: pd.def, eva: pd.eva }, d.projectile ? 'magic' : 'physical', 1);
           if (d.pctDmg && r.hit) r.dmg = Math.max(1, Math.round(p.maxHp * d.pctDmg));   // บริวารราหู: ดูด % HP
+          if (r.hit && now < m.weakUntil) r.dmg = Math.max(1, Math.round(r.dmg * (1 - (m.weakPct || 0))));   // อ่อนแรง (สกิล)
           hurtPlayer(p, r.dmg, { hit: r.hit, crit: r.crit, x: Math.round(m.x), force: true, td: true, mid: m.mid });
         }
       }
@@ -128,7 +143,7 @@ export function setupTD(io, players, opts = {}) {
       if (best && (m.wb || home < (m.boss ? BOSS_LEASH : LEASH))) { m.st = 'chase'; m.target = best.id; }
       else if (m.st === 'chase') { m.st = 'wander'; m.target = null; m.wx = m.s.x; m.wy = m.s.y; }
       if (m.boss && m.st !== 'chase' && m.hp < d.hp) { m.hp = Math.min(d.hp, m.hp + d.hp * 0.03 * dt); if (m.hp >= d.hp) m.dmgBy.clear(); }   // ไม่มีใครสู้ → ฟื้นเลือด
-      const spd = (d.speed || 40) * 0.9;
+      const spd = (d.speed || 40) * 0.9 * (now < m.slowUntil ? 1 - (m.slowPct || 0) : 1);   // เชื่องช้า (สกิล)
       if (m.st === 'chase') {
         const p = players.get(m.target), pos = { x: p.tx, y: p.ty }, dd = dist(m, pos);
         if (dd <= (d.attackRange || 16) + 8) {
@@ -175,20 +190,53 @@ export function setupTD(io, players, opts = {}) {
       if (sk === 'heal_mortar') p.mortarHits = { at: t.at, n: t.mobs.size };
     }
     // คูลดาวน์ตีปกติ (server): เร็วกว่าที่ client ตั้งไว้เล็กน้อยเผื่อ lag
-    if (!sk) { if (now - (p.tdAtk || 0) < (atk?.cooldown || 500) * 0.7) return; p.tdAtk = now; }
+    if (!sk) { if (now - (p.tdAtk || 0) < attackInterval(atk?.cooldown || 500, getDerived(p.char).aspd + buffAspd(p.buffs, now)) * 0.7) return; p.tdAtk = now; }   // AGI เร่งความเร็วตี
     const spec = attackSpec(p.char, job, sk, gate === 'combo');
     if (!spec) return;
-    const r = rollDamage(combatDerived(p.char, p.buffs, now), { def: m.d.def, eva: m.d.eva }, spec.kind, spec.mult);
+    const r = rollDamage(combatDerived(p.char, p.buffs, now), { def: (m.wbDef ?? m.d.def) * (now < m.defDownUntil ? 1 - (m.defDownPct || 0) : 1), eva: m.d.eva }, spec.kind, spec.mult);   // เกราะแตก: DEF ผีลด
     if (!r.hit) return io.to(room).emit('td:dmg', { mid: m.mid, by: p.id, hit: false, dmg: 0 });
     m.hp -= r.dmg;
     m.dmgBy.set(p.id, (m.dmgBy.get(p.id) || 0) + r.dmg);
     if (m.wb) wb?.onDmg(m, p, r.dmg);
     // ผลพิเศษของสกิล: มึน (บอสติดครึ่งเวลา) · พิษ (ต่อเนื่อง ticks ครั้ง ครั้งละ ratio × ดาเมจที่โดน)
-    if (spec.effect?.stun && m.hp > 0) m.stunUntil = Math.max(m.stunUntil || 0, now + spec.effect.stun.ms * (m.boss ? 0.5 : 1));
-    if (spec.effect?.poison && m.hp > 0) { const P = spec.effect.poison; m.poison = { by: p.id, dmg: Math.max(1, Math.round(r.dmg * P.ratio)), left: P.ticks, every: P.every, next: now + P.every }; }
+    const eff = spec.effect || {}, effMul = m.boss ? 0.5 : 1;                                            // บอสติดสถานะครึ่งเวลา
+    if (eff.stun && m.hp > 0) m.stunUntil = Math.max(m.stunUntil || 0, now + eff.stun.ms * effMul);
+    for (const k of ['poison', 'bleed', 'burn']) if (eff[k] && m.hp > 0) { const P = eff[k]; (m.dots ||= {})[k] = { by: p.id, dmg: Math.max(1, Math.round(r.dmg * P.ratio)), left: P.ticks, every: P.every, next: now + P.every }; }
+    if (eff.slow && m.hp > 0) { m.slowUntil = Math.max(m.slowUntil || 0, now + eff.slow.ms * effMul); m.slowPct = Math.max(m.slowPct || 0, eff.slow.pct); }
+    if (eff.armorBreak && m.hp > 0) { m.defDownUntil = Math.max(m.defDownUntil || 0, now + eff.armorBreak.ms * effMul); m.defDownPct = Math.max(m.defDownPct || 0, eff.armorBreak.pct); }
+    if (eff.weak && m.hp > 0) { m.weakUntil = Math.max(m.weakUntil || 0, now + eff.weak.ms * effMul); m.weakPct = Math.max(m.weakPct || 0, eff.weak.pct); }
     if (m.st !== 'chase') { m.st = 'chase'; m.target = p.id; }
     io.to(room).emit('td:dmg', { mid: m.mid, by: p.id, hit: true, crit: r.crit, dmg: r.dmg, hp: Math.max(0, Math.round(m.hp)) });
     if (m.hp <= 0) kill(m, p);
+  }
+
+  /** แบ่ง EXP ผี 1 ตัวแบบ RO → Map(id → { exp, bonus% })
+   *  ▸ แต่ละคนได้ส่วนตามดาเมจที่ทำ · สมาชิกปาร์ตี้รวมส่วนเข้ากองกลาง แล้วหารเท่ากันให้เพื่อนที่อยู่แมพเดียวกัน (ยังไม่ตาย)
+   *  ▸ กองกลางได้โบนัส +10%/เพื่อนเพิ่ม 1 คน · เลเวลในกลุ่มห่างเกิน 15 = ไม่หาร (ต่างคนต่างได้ส่วนตัวเอง)
+   *  ▸ แต่ละคนคิดแคปตามช่วงเลเวล/เพดาน 20% ของหลอดของตัวเอง + พร EXP ของตัวเอง */
+  function splitExp(m, killer, baseExp) {
+    const contrib = new Map([...m.dmgBy].filter(([id, v]) => v > 0 && sameMap(players.get(id))));
+    if (!contrib.has(killer.id)) contrib.set(killer.id, 1);
+    const total = [...contrib.values()].reduce((a, b) => a + b, 0) || 1;
+    const out = new Map(), pools = new Map();
+    const give = (q, raw, bonus = 0) => {
+      if (!q?.save) return;
+      const e = Math.round(mobExp(raw * blessingsOf(q.save).expMul, q.save.level, m.d.level, !!m.boss));
+      const cur = out.get(q.id); out.set(q.id, { exp: (cur?.exp || 0) + e, bonus: Math.max(cur?.bonus || 0, bonus) });
+    };
+    for (const [id, dmg] of contrib) {
+      const q = players.get(id), party = partyOf(q), raw = baseExp * dmg / total;
+      if (!party) { give(q, raw); continue; }
+      const pool = pools.get(party) || { raw: 0, own: [] }; pool.raw += raw; pool.own.push([q, raw]); pools.set(party, pool);
+    }
+    for (const [party, pool] of pools) {
+      const mates = [...party.members].map((id) => players.get(id)).filter((q) => q?.save && !q.dead && sameMap(q));
+      const lv = mates.map((q) => q.save.level);
+      if (mates.length < 2 || Math.max(...lv) - Math.min(...lv) > PARTY_LV_GAP) { for (const [q, raw] of pool.own) give(q, raw); continue; }
+      const bonus = PARTY.mapBonus * (mates.length - 1);
+      for (const q of mates) give(q, pool.raw * (1 + bonus) / mates.length, Math.round(bonus * 100));
+    }
+    return out;
   }
 
   function kill(m, killer) {
@@ -202,19 +250,20 @@ export function setupTD(io, players, opts = {}) {
     m.aoe = null;
     if (m.wb) { m.respawnAt = Infinity; wb?.onKill(m, killer); return; }       // บอสโลก: รางวัล/MVP ที่ตัวควบคุมอีเวนต์
     if (m.boss && !CR) io.emit('chat', { id: null, name: '👑 บอส', text: `${d.nameTh} ถูกปราบแล้ว! ผู้ปิดฉาก ${killer.name}${assist.length ? ` · ร่วมปราบอีก ${assist.length} คน` : ''} (เกิดใหม่ใน ${Math.round((d.respawnMs || RESPAWN_MS) / 60000)} นาที)` });
+    const split = splitExp(m, killer, d.exp * tm.exp);                           // EXP แบบ RO: ตามดาเมจ · ปาร์ตี้หารเท่ากัน
     const reward = (p, isKiller) => {
       if (!p?.save) return;
       const bl = blessingsOf(p.save);
-      const base = d.exp * tm.exp * bl.expMul;
-      const pb = partyBonus(p);                                                   // ปาร์ตี้แมพเดียวกัน +10%/คน
-      const exp = Math.round(mobExp(base, p.save.level, d.level, !!m.boss) * pb); // แคปตามช่วงเลเวล × โบนัสปาร์ตี้
-      const out = { mid: m.mid, mon: d.base || m.id, kind: isKiller ? 'kill' : 'assist', exp, pbonus: Math.round((pb - 1) * 100), gold: 0, items: [], x: Math.round(m.x), y: Math.round(m.y), night: tm.exp > 1 };
+      const exp = split.get(p.id)?.exp || 0, pb = split.get(p.id)?.bonus || 0;
+      split.delete(p.id);
+      const out = { mid: m.mid, mon: d.base || m.id, kind: isKiller ? 'kill' : 'assist', exp, pbonus: pb, gold: 0, items: [], x: Math.round(m.x), y: Math.round(m.y), night: tm.exp > 1 };
       if (isKiller || m.boss) {                                                   // บอส: ทุกคนที่ช่วยตีได้ของ/การ์ดของตัวเอง
         out.gold = Math.round(rand(d.gold[0], d.gold[1]) * tm.gold * bl.goldMul);
         out.items = (d.drops || []).filter((dr) => Math.random() < dr.chance * bl.dropMul).map((dr) => ({ id: dr.item, qty: 1 }));
         if (m.boss) out.boss = true;
         const grade = m.boss ? 'boss' : d.elite ? 'elite' : 'normal';
-        let gear = m.boss ? rollGearDrop(d.level + 6, bl.dropMul * 25) : rollGearDrop(d.level, bl.dropMul * (d.elite ? 3 : 1));
+        const job = p.save.path || p.appearance?.job;
+        let gear = m.boss ? rollGearDrop(d.level + 6, bl.dropMul * 25, Math.random, job) : rollGearDrop(d.level, bl.dropMul * (d.elite ? 3 : 1), Math.random, job);   // ครึ่งหนึ่งเป็นของสายตัวเอง
         if (gear) {
           gear = affixId(gear, rollAffixes(ITEMS[gear], d.level, grade));               // ค่าสุ่มแบบ PoE (0–3 บรรทัด)
           const n = ITEMS[gear]?.affixN || 0;
@@ -231,10 +280,15 @@ export function setupTD(io, players, opts = {}) {
       Object.assign(out, grantKill(p.save, out));
       refresh(p); queueSync(p);
       io.to(p.id).emit('td:reward', out);
-      if (isKiller && !m.boss) shareExp(p, d.exp * tm.exp, assist, d.level);
     };
     reward(killer, true);
     for (const id of assist) reward(players.get(id), false);
+    for (const [id, r] of split) {                                                  // เพื่อนร่วมปาร์ตี้ที่ไม่ได้ตีตัวนี้ → ได้ส่วนแบ่ง EXP
+      const q = players.get(id); if (!q?.save || !r.exp) continue;
+      const g = grant(q.save, { exp: r.exp });
+      refresh(q); queueSync(q);
+      io.to(id).emit('party:exp', { amount: r.exp, from: killer.name, ups: g.ups, bonus: r.bonus });
+    }
     m.dmgBy.clear();
     if (CR) cryptKilled(self);
   }
@@ -280,7 +334,7 @@ export function setupTD(io, players, opts = {}) {
 
   // ---------------- เข้า/ออก/เดิน/วาร์ป ----------------
   const SPAWN_GUARD_MS = 3000;                               // หลังเข้าเกม/วาร์ป/ฟื้น: ผีไม่เล็ง 3 วิ (ถ้าเราตีก่อนก็หมดทันที)
-  function publicTd(p) { return { id: p.id, name: p.name, gm: !!p.admin, appearance: p.appearance, x: Math.round(p.tx), y: Math.round(p.ty), level: p.level, hp: Math.round(p.hp), maxHp: p.maxHp, title: p.save?.title || null }; }
+  function publicTd(p) { return { id: p.id, name: p.name, gm: !!p.admin, appearance: p.appearance, x: Math.round(p.tx), y: Math.round(p.ty), level: p.level, hp: Math.round(p.hp), maxHp: p.maxHp, title: p.save?.title || null, pk: pkColor(p) }; }
   const visited = (p) => (p.save.tdMaps ||= ['ayutthaya']);
 
   function place(socket, p, mapId, pos) {
@@ -380,6 +434,7 @@ export function setupTD(io, players, opts = {}) {
   function onRespawn(socket) {
     const p = players.get(socket.id);
     if (!p || p.world !== 'td' || (!p.dead && p.hp > 0)) return;
+    if (p.save.deadAt && Date.now() - p.save.deadAt < RESPAWN_WAIT_MS - 500) return;   // ต้องรอครบ 10 วิ (กันกดฟื้นเร็ว · หมอยาชุบได้ระหว่างนี้)
     const w = W(p);
     p.dead = false; p.hp = p.maxHp; p.invulnUntil = Date.now() + 2500; p.spawnGuardUntil = Date.now() + SPAWN_GUARD_MS; p.save.deadAt = 0;
     p.tx = w.M.spawn.x; p.ty = w.M.spawn.y; p.save.tdPos = { ...w.M.spawn }; p.hpDirty = true;

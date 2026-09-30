@@ -442,6 +442,14 @@ body.wb-on #ticker { top: 17cqh; }
 /* สีเลเวลเป้าหมาย (แคป EXP ตามช่วงเลเวล) */
 #t-lv.lv-low { color: #9aa0a6; }
 #t-lv.lv-high { color: #ff6b5a; }
+#t-lv.lv-bonus { color: #7de08a; }   /* ผีสูงกว่า 1–10 เลเวล = EXP โบนัส (แบบ RO) */
+/* ป้ายสถานะ PK (โหมดเปิด / ชื่อม่วง / หัวแดง) ใต้กรอบผู้เล่น */
+#pk-badge { position: absolute; left: var(--hud-pad, 12px); top: calc(var(--hud-pad, 12px) + 11cqh); z-index: 9; pointer-events: auto; cursor: pointer;
+  padding: .35cqh 1.2cqh; border-radius: 1cqh; font-size: 1.9cqh; font-weight: 700; color: #fff; background: rgba(90,20,30,.88); border: .2cqh solid #ff6b5a; box-shadow: 0 0 1.2cqh rgba(255,60,50,.5); }
+#pk-badge.hidden { display: none; }
+#pk-badge.purple { background: rgba(70,30,100,.9); border-color: #d38cff; box-shadow: 0 0 1.2cqh rgba(200,120,255,.5); }
+#pk-badge.red { background: rgba(140,10,10,.92); border-color: #ff4a3d; animation: pk-pulse 1.4s ease-in-out infinite; }
+@keyframes pk-pulse { 50% { box-shadow: 0 0 2.2cqh rgba(255,40,30,.9); } }
 /* ปุ่ม/หน้าต่างสนับสนุนผู้พัฒนา */
 #btn-donate { top: calc(2 * (5cqh + .7cqh)); background: linear-gradient(180deg, #e0567f, #9c2c55); border-color: rgba(255,200,215,.8); color: #fff; }
 #btn-donate .nb-ic { font-size: 2.3cqh; }

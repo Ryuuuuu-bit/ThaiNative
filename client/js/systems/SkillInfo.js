@@ -8,8 +8,9 @@ const pct = (v) => `${Math.round(v * 100)}%`;
 const n0 = (v) => Math.round(v).toLocaleString();
 const BUFF_TH = {
   def: (v) => `ป้องกัน +${v}`, defMul: (v) => `ป้องกัน +${pct(v)}`, atkMul: (v) => `พลังโจมตี (ATK/MATK) +${pct(v)}`,
-  critAdd: (v) => `โอกาสคริ +${pct(v)}`, speed: (v) => `ความเร็วเดิน +${pct(v)}`, cleanse: () => 'ล้างสถานะผิดปกติ',
+  critAdd: (v) => `โอกาสคริ +${pct(v)}`, speed: (v) => `ความเร็วเดิน +${pct(v)}`, aspd: (v) => `ความเร็วโจมตี +${pct(v)}`, cleanse: () => 'ล้างสถานะผิดปกติ',
 };
+const DOT_TH = { poison: 'พิษ', bleed: 'เลือดไหล', burn: 'ไฟลุก' };
 
 /**
  * @param sk  skillStats(...) ของเลเวลที่จะแสดง
@@ -23,7 +24,7 @@ export function skillCalcHtml(sk, d, { lv = 1, next = null } = {}) {
   if (sk.mult) {
     const per = power * sk.mult;
     const hits = (sk.hits || 1), count = sk.count || 1, bounces = sk.bounces || 0;
-    rows.push(`<b>ประเภท:</b> ${kind === 'magic' ? '🔮 เวทย์ · ใช้ MATK · ทะลุเกราะ (DEF ศัตรูมีผลแค่ 25%)' : kind === 'best' ? '⚡ ผสม · ใช้ค่าที่สูงกว่าระหว่าง ATK/MATK' : '⚔️ กายภาพ · ใช้ ATK (DEF ศัตรูหักออก 50%)'}`);
+    rows.push(`<b>ประเภท:</b> ${kind === 'magic' ? '🔮 เวทย์ · ใช้ MATK · โดนเสมอไม่สนหลบ · ทะลุเกราะ (DEF ศัตรูมีผลแค่ 25%)' : kind === 'best' ? '⚡ ผสม · ใช้ค่าที่สูงกว่าระหว่าง ATK/MATK' : '⚔️ กายภาพ · ใช้ ATK (DEF ศัตรูหักออก 50%)'}`);
     rows.push(`<b>ต่อครั้ง:</b> ${pName} ${n0(power)} × ${pct(sk.mult)} = <em>${n0(per)}</em> <small>(สุ่ม ${n0(per * 0.9)}–${n0(per * 1.1)})</small>`);
     const shape = sk.type === 'aoe' || sk.type === 'mortar' ? `โดนทุกตัวในรัศมี ${sk.radius}px` : sk.pierce ? 'ทะลุทุกตัวในแนว' : sk.type === 'bounce' ? `เด้งต่อได้ ${bounces} เป้า` : sk.all ? 'โดนทุกตัวตรงหน้า' : sk.type === 'dash' ? `พุ่ง ${sk.distance}px ชนตัวแรก` : 'เป้าเดียว';
     const times = hits * count;
@@ -47,7 +48,10 @@ export function skillCalcHtml(sk, d, { lv = 1, next = null } = {}) {
   if (sk.undying) rows.push(`<b>ขวัญกันตาย:</b> เพื่อนที่ฟื้นจะไม่ตาย (HP เหลือ 1) นาน ${(sk.undying / 1000).toFixed(0)} วิ`);
   const eff = sk.effect || {};
   if (eff.stun) rows.push(`<b>ติดมึน:</b> ${(eff.stun.ms / 1000).toFixed(1)} วิ — ผีหยุดเดินและหยุดตี (บอสติดครึ่งเวลา)`);
-  if (eff.poison) { const P = eff.poison; rows.push(`<b>พิษ:</b> ${P.ticks} ครั้ง ทุก ${(P.every / 1000).toFixed(1)} วิ ครั้งละ ${pct(P.ratio)} ของดาเมจที่โดน (รวมเพิ่ม ${pct(P.ratio * P.ticks)})`); }
+  for (const [k, th] of Object.entries(DOT_TH)) if (eff[k]) { const P = eff[k]; rows.push(`<b>${th}:</b> ${P.ticks} ครั้ง ทุก ${(P.every / 1000).toFixed(1)} วิ ครั้งละ ${pct(P.ratio)} ของดาเมจที่โดน (รวมเพิ่ม ${pct(P.ratio * P.ticks)})`); }
+  if (eff.slow) rows.push(`<b>เชื่องช้า:</b> ผีเดินช้าลง ${pct(eff.slow.pct)} นาน ${(eff.slow.ms / 1000).toFixed(1)} วิ (บอสครึ่งเวลา)`);
+  if (eff.armorBreak) rows.push(`<b>เกราะแตก:</b> DEF ผี −${pct(eff.armorBreak.pct)} นาน ${(eff.armorBreak.ms / 1000).toFixed(0)} วิ (บอสครึ่งเวลา)`);
+  if (eff.weak) rows.push(`<b>อ่อนแรง:</b> ผีตีเบาลง ${pct(eff.weak.pct)} นาน ${(eff.weak.ms / 1000).toFixed(0)} วิ (บอสครึ่งเวลา)`);
   if (sk.type === 'dash') rows.push('<b>พุ่ง:</b> อมตะชั่วครู่ระหว่างพุ่ง (0.3 วิ)');
   rows.push(`<b>MP ${sk.mp} · คูลดาวน์ ${(sk.cd / 1000).toFixed(1)} วิ</b>${sk.mastery ? ` <small>(รวมชำนาญขั้น ${sk.mastery}: แรง +${sk.mastery * 2}% · CD −${sk.mastery}%)</small>` : ''}`);
   if (next?.mult && sk.mult) rows.push(`<span class="nx">→ Lv.${lv + 1}: ตัวคูณ ${pct(next.mult)} (ต่อครั้ง ≈ ${n0(power * next.mult)}) · MP ${next.mp} · CD ${(next.cd / 1000).toFixed(1)} วิ</span>`);

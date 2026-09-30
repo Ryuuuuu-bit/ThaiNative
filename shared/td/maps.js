@@ -17,7 +17,9 @@ export { isCrypt } from '../data/crypt.js';
  * ▸ ไม่คูณ: บอส · ผีกลางคืน (nightOnly)
  */
 export const MOB_DENSITY = { ayutthaya: 5, himmaphan: 5, nagaphop: 5, naraka: 5, dusit: 5, sumeru: 5 };
-export const CAMP_MAX = 7;
+/** ตายแล้วต้องรอกี่ ms ถึงกดฟื้นที่จุดเกิดได้ (ระหว่างนี้หมอยาชุบได้) · server บังคับด้วย */
+export const RESPAWN_WAIT_MS = 10000;
+export const CAMP_MAX = 5;                  // ผีต่อกองสูงสุด (ผีแรงขึ้นแบบ RO → กองเล็กลง ไม่โดนรุม 7 ตัวพร้อมกัน)
 function densify(L, mult, M) {
   if (!(mult > 1)) return L;
   let seed = 7919;

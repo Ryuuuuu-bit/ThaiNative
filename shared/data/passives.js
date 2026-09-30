@@ -14,7 +14,7 @@ export const BRANCHES = {
   boxer:    { dir: D5(4), nameTh: 'กิ่งมวยคาดเชือก', color: '#eb984e' },
 };
 
-// โบนัสที่ใช้ได้: STR DEX INT CRI VIT (แต้มสถานะ) · hp mp atk matk def (ค่าตรง) · crit (อัตราคริ) · hpMul mpMul patkMul matkMul (%)
+// โบนัสที่ใช้ได้: STR AGI VIT INT DEX LUK (แต้มสถานะ) · hp mp atk matk def (ค่าตรง) · crit (อัตราคริ) · hpMul mpMul patkMul matkMul (%)
 const ARM = {
   swordman: [
     { n: 'กำลังแขน', b: { STR: 2 } },
@@ -40,13 +40,13 @@ const ARM = {
   ],
   archer: [
     { n: 'สายตาไว', b: { DEX: 2 } },
-    { n: 'มือนิ่ง', b: { CRI: 2 } },
+    { n: 'มือนิ่ง', b: { LUK: 2 } },
     { n: 'เล็งจุดตาย', b: { crit: 0.04, DEX: 2 }, k: 'notable' },
     { n: 'ฝีเท้าพราน', b: { DEX: 2 } },
     { n: 'สายธนูตึง', b: { atk: 6 } },
-    { n: 'เหยี่ยวล่าเหยื่อ', b: { crit: 0.05, CRI: 3 }, k: 'notable' },
+    { n: 'เหยี่ยวล่าเหยื่อ', b: { crit: 0.05, LUK: 3 }, k: 'notable' },
     { n: 'ศรพิฆาต', b: { patkMul: 0.07, atk: 4 }, k: 'notable' },
-    { n: 'ใจพราน', b: { DEX: 2, CRI: 2 } },
+    { n: 'ใจพราน', b: { DEX: 2, LUK: 2 } },
     { n: 'พรานไพรตาเหยี่ยว', b: { crit: 0.08, patkMul: 0.06 }, k: 'key' },
   ],
   healer: [
@@ -66,7 +66,7 @@ const ARM = {
     { n: 'แม่ไม้มวยไทย', b: { patkMul: 0.06, STR: 2 }, k: 'notable' },
     { n: 'ฟุตเวิร์ค', b: { DEX: 2 } },
     { n: 'ทนหมัด', b: { hp: 30 } },
-    { n: 'ลูกไม้ศอกเข่า', b: { crit: 0.03, CRI: 3 }, k: 'notable' },
+    { n: 'ลูกไม้ศอกเข่า', b: { crit: 0.03, LUK: 3 }, k: 'notable' },
     { n: 'ใจสู้', b: { hpMul: 0.06, VIT: 2 }, k: 'notable' },
     { n: 'คาดเชือกเชิงครู', b: { STR: 2, DEX: 2 } },
     { n: 'นายขนมต้มคาดเชือก', b: { hpMul: 0.06, patkMul: 0.1 }, k: 'key' },
@@ -80,7 +80,7 @@ const HYBRID = [
   ['swordman', 'mage', 'ดาบลงอาคม', { STR: 1, INT: 1, hp: 10 }],
   ['mage', 'healer', 'ยาลงยันต์', { INT: 2, mp: 10 }],
   ['healer', 'archer', 'สมุนไพรพรานป่า', { VIT: 1, DEX: 1, hp: 15 }],
-  ['archer', 'boxer', 'ว่องไวดั่งลิง', { DEX: 1, STR: 1, CRI: 1 }],
+  ['archer', 'boxer', 'ว่องไวดั่งลิง', { DEX: 1, STR: 1, LUK: 1 }],
   ['boxer', 'swordman', 'กระบี่กระบอง', { STR: 1, VIT: 1, def: 2 }],
 ];
 
@@ -134,8 +134,8 @@ export function passiveBonus(owned) {
 }
 
 /** ข้อความโบนัส */
-const LABEL = { STR: 'STR', DEX: 'DEX', INT: 'INT', CRI: 'CRI', VIT: 'VIT', hp: 'HP', mp: 'MP', atk: 'โจมตี', matk: 'พลังเวทย์', def: 'ป้องกัน',
-  crit: 'คริติคอล', hpMul: 'HP', mpMul: 'MP', patkMul: 'โจมตี', matkMul: 'พลังเวทย์' };
+const LABEL = { STR: 'STR', AGI: 'AGI', DEX: 'DEX', INT: 'INT', LUK: 'LUK', VIT: 'VIT', hp: 'HP', mp: 'MP', atk: 'โจมตี', matk: 'พลังเวทย์', def: 'ป้องกัน',
+  crit: 'คริติคอล', hpMul: 'HP', mpMul: 'MP', patkMul: 'ATK', matkMul: 'พลังเวทย์', acc: 'แม่นยำ', eva: 'หลบ', healMul: 'พลังรักษา', castRed: 'ลดคูลดาวน์สกิล', aspd: 'ความเร็วตี' };
 export function bonusText(b) {
-  return Object.entries(b || {}).map(([k, v]) => /Mul$|^crit$/.test(k) ? `${LABEL[k]} +${Math.round(v * 100)}%` : `${LABEL[k] || k} +${v}`).join(' · ');
+  return Object.entries(b || {}).map(([k, v]) => /Mul$|^crit$|^castRed$|^aspd$/.test(k) ? `${LABEL[k]} +${Math.round(v * 100)}%` : `${LABEL[k] || k} +${v}`).join(' · ');
 }

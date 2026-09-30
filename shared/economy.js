@@ -19,7 +19,7 @@ import { NPCS, SHOP_NPC, FISH_SPOT, CAMP, HERB_NODES, nearNpc, nearSpot } from '
 import { TITLE_BY_ID, checkTitles } from './data/titles.js';
 import { getDerived, EQUIP_SLOTS, SLOT_TYPE } from './character.js';
 import { OUTFITS, HAIRSTYLES } from './data/appearance.js';
-import { STAT_KEYS, expToNext, MAX_LEVEL } from './stats.js';
+import { STAT_KEYS, expToNext, MAX_LEVEL, STAT_CAP, raiseCost } from './stats.js';
 import { SKILL_BY_ID } from './data/skills.js';
 import { gainExp, resetStats, resetSkills, resetWeaponSkills, syncAppearance, learnSkill, assignHotbar, allocateStat, allocPassive, resetPassives, addLifeXp, lifeLv, addMastery, recomputePath, ensurePresets, snapPreset, blankPreset, applyPresetStats, PRESET_SLOTS, PRESET_LABEL, presetReserved, presetOf } from './charmodel.js';
 import { HERB_SPOTS } from './td/ayutthaya.js';
@@ -163,6 +163,8 @@ function unequip(c, { slot }) {
 }
 /** รับทราบการคืนเงินชุดแต่งตัว (ระบบถูกเอาออกจากเกม) */
 function cosAck(c) { if (c.cosRefund) c.cosRefund.told = true; return OK(''); }
+function statsAck(c) { delete c.statsRONotice; return OK(''); }
+function spAck(c) { delete c.spNotice; return OK(''); }   // รับทราบ: รีสกิลฟรีจาก SP สูตรใหม่   // รับทราบ: สเตตัสแบบ RO รีแต้มให้แล้ว
 
 function use(c, { id }) {
   const it = ITEMS[id];
@@ -540,12 +542,15 @@ function chest(c, a, ctx) {
 //  สถานะ / สกิล / Hotbar
 // ------------------------------------------------------------
 function alloc(c, { add = {} }) {
-  const plan = STAT_KEYS.map((k) => [k, int(add[k], 0, 999, 0)]);
-  const total = plan.reduce((a, [, n]) => a + n, 0);
-  if (!total || total > c.statPoints) return NO('แต้มสถานะไม่พอ');
+  const plan = STAT_KEYS.map((k) => [k, int(add[k], 0, STAT_CAP, 0)]);
+  const steps = plan.reduce((a, [, n]) => a + n, 0);
+  if (!steps) return NO('ยังไม่ได้เลือกค่าที่จะลง');
+  if (plan.some(([k, n]) => (c.stats[k] || 1) + n > STAT_CAP)) return NO(`ค่าสถานะสูงสุด ${STAT_CAP}`);
+  const cost = plan.reduce((a, [k, n]) => a + raiseCost(c.stats[k] || 1, n), 0);   // แบบ RO: ค่ายิ่งสูงยิ่งแพง
+  if (cost > c.statPoints) return NO(`แต้มสถานะไม่พอ (ต้องใช้ ${cost} มี ${c.statPoints})`);
   for (const [k, n] of plan) for (let i = 0; i < n; i++) allocateStat(c, k);
   clampHp(c);
-  return OK(`ลงแต้มสถานะแล้ว ${total} แต้ม`);
+  return OK(`ลงสถานะแล้ว +${steps} (ใช้ ${cost} แต้ม)`);
 }
 function learn(c, { id, max }) {
   if (!SKILL_BY_ID[id]) return NO('ไม่มีสกิลนี้');
@@ -652,9 +657,9 @@ function gm(c, { cmd = 'help', a1, a2, rest = '' }, ctx) {
       return OK(`พบ ${hits.length} รายการ: ${hits.slice(0, 15).map((k) => `${ITEMS[k].nameTh} (${k})`).join(' · ')}${hits.length > 15 ? ' …' : ''}`, { gm: true });
     }
     // คำสั่งที่ต้องยุ่งกับผู้เล่นคนอื่น/ผีในแมพ → server จัดการ (server/index.js gmServer)
-    case 'who': case 'goto': case 'summon': case 'kick': case 'mute': case 'unmute': case 'god': case 'killall': case 'give': case 'market':
+    case 'who': case 'goto': case 'summon': case 'kick': case 'mute': case 'unmute': case 'god': case 'killall': case 'give': case 'market': case 'pk': case 'karma':
       return OK('', { gm: true, gmSrv: { cmd: String(cmd).toLowerCase(), rest: String(rest || '') } });
-    default: return OK('คำสั่ง: /gm gold [จำนวน] · /gm lv [เลเวล] · /gm exp [จำนวน] · /gm item <id> [จำนวน] · /gm find <ชื่อ> · /gm sp [n] · /gm stat [n] · /gm enh <weapon|armor|accessory|accessory2> [ขั้น] · /gm heal · /gm hp <%> · /gm god · /gm killall · /gm map <mapId> · /gm who · /gm goto <ชื่อ> · /gm summon <ชื่อ> · /gm give <ชื่อ> <gold|itemId> [จำนวน] · /gm kick <ชื่อ> [เหตุผล] · /gm mute <ชื่อ> [นาที] · /gm unmute <ชื่อ> · /gm market · /gm rahu … · /gm merchant [close] · /gm say <ข้อความ> · /gm news … · /gm patch [นาที] [ข้อความ] · /gm patch cancel', { gm: true });
+    default: return OK('คำสั่ง: /gm gold [จำนวน] · /gm lv [เลเวล] · /gm exp [จำนวน] · /gm item <id> [จำนวน] · /gm find <ชื่อ> · /gm sp [n] · /gm stat [n] · /gm enh <weapon|armor|accessory|accessory2> [ขั้น] · /gm heal · /gm hp <%> · /gm god · /gm killall · /gm map <mapId> · /gm who · /gm goto <ชื่อ> · /gm summon <ชื่อ> · /gm give <ชื่อ> <gold|itemId> [จำนวน] · /gm kick <ชื่อ> [เหตุผล] · /gm mute <ชื่อ> [นาที] · /gm unmute <ชื่อ> · /gm market · /gm pk on|off · /gm karma <ชื่อ> [ค่า] · /gm rahu … · /gm merchant [close] · /gm say <ข้อความ> · /gm news … · /gm patch [นาที] [ข้อความ] · /gm patch cancel', { gm: true });
   }
 }
 
@@ -764,12 +769,12 @@ function preset(c, { i }, ctx) {
 
 // ------------------------------------------------------------
 export const ACTIONS = {
-  use, equip, unequip, cosAck, buy, sell, sellMany, sellCart, buyback, lock, offer, siamsi, craft, enhance,
+  use, equip, unequip, cosAck, statsAck, spAck, buy, sell, sellMany, sellCart, buyback, lock, offer, siamsi, craft, enhance,
   qAccept, qDrop, qClaim, path, passive, passiveReset, bounty, fishBite, fishLand, fishLose, gather, chest,
   alloc, learn, hotbar, recall, dye, title, friendDel, gm, cardIn, cardOut, cardTrade, flask, preset, demandSell,
 };
 /** ระหว่างเทรด ห้ามทำสิ่งที่แตะกระเป๋า/เงิน (กันของซ้ำ) */
-const TRADE_SAFE = new Set(['flask', 'cosAck', 'lock', 'qAccept', 'qDrop', 'hotbar', 'title', 'friendDel', 'fishBite', 'fishLand', 'fishLose', 'gather', 'chest', 'learn', 'alloc', 'passive']);
+const TRADE_SAFE = new Set(['flask', 'cosAck', 'statsAck', 'spAck', 'lock', 'qAccept', 'qDrop', 'hotbar', 'title', 'friendDel', 'fishBite', 'fishLand', 'fishLose', 'gather', 'chest', 'learn', 'alloc', 'passive']);
 
 /**
  * รันคำสั่ง: ctx = { rnd, now, x (ตำแหน่งผู้เล่น · null = ไม่ตรวจ), night, admin, trade, sess }

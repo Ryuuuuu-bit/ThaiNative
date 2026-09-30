@@ -95,11 +95,11 @@ function armorBonus(job, lv) {
 }
 function accBonus(job, lv, leg) {
   const m = leg ? 1.5 : 1;
-  if (job === 'swordman') return { STR: R((1 + lv / 4) * m), def: R((1 + lv / 5) * m), ...(lv >= 6 ? { CRI: R(lv / 6 * m) } : {}) };
+  if (job === 'swordman') return { STR: R((1 + lv / 4) * m), def: R((1 + lv / 5) * m), ...(lv >= 6 ? { LUK: R(lv / 6 * m) } : {}) };
   if (job === 'mage') return { INT: R((1 + lv / 4) * m), mp: R((10 + lv * 3) * m), ...(lv >= 4 ? { matk: R(lv * 0.5 * m) } : {}) };
-  if (job === 'archer') return { DEX: R((1 + lv / 4) * m), ...(lv >= 6 ? { CRI: R(lv / 6 * m) } : {}), ...(lv >= 10 ? { crit: +(0.005 * F(lv / 5) * m).toFixed(3) } : {}) };
+  if (job === 'archer') return { DEX: R((1 + lv / 4) * m), ...(lv >= 6 ? { LUK: R(lv / 6 * m) } : {}), ...(lv >= 10 ? { crit: +(0.005 * F(lv / 5) * m).toFixed(3) } : {}) };
   if (job === 'healer') return { INT: R((1 + lv / 5) * m), VIT: R((1 + lv / 6) * m), mp: R((8 + lv * 2.5) * m), healMul: +((0.02 + lv * 0.002) * m).toFixed(3) };
-  return { STR: R((1 + lv / 5) * m), VIT: R((1 + lv / 5) * m), hp: R((10 + lv * 4) * m) };
+  return { STR: R((1 + lv / 5) * m), AGI: R((1 + lv / 5) * m), hp: R((10 + lv * 4) * m) };   // มวย: STR + AGI แบบ RO
 }
 
 // ------------------------------------------------------------
@@ -200,9 +200,17 @@ function buildRed(out) {
     const wb = weaponBonus(job, 150, true), cb = accBonus(job, 150, true);
     out[`g_${k}_wred`] = { lv: 140, job, tier: 30, red: true, sell: 20000, nameTh: `☾ ${wn}`, type: 'weapon', icon: iw, wtype: WTYPE[job], bonus: { ...wb, critDmg: +((wb.critDmg || 0) + 0.15).toFixed(2) }, ...(GEAR_ART[`g_${k}_wred`]?.grip ? GEAR_ART[`g_${k}_wred`] : GEAR_ART[art('w')] || {}) };
     out[`g_${k}_cred`] = { lv: 140, job, tier: 30, red: true, sell: 20000, nameTh: `☾ ${cn}`, type: 'accessory', icon: ic, bonus: { ...cb, hpMul: +((cb.hpMul || 0) + 0.06).toFixed(2) } };
+    // ขั้นต่ำ (ราหูขั้น 1–4 · เซิร์ฟยังเลเวลไม่ถึง): ชื่อเดียวกัน + เลขขั้น · ค่าตามเลเวลของชิ้น (ไม่เท่าชิ้น Lv.140) · โบนัสแดงเล็กลงตามขั้น
+    for (const [L, roman] of RED_LOW) {
+      const w = weaponBonus(job, L, true), c = accBonus(job, L, true), s = L / 150;
+      out[`g_${k}_wred${L}`] = { lv: L, job, tier: Math.round(L / 5), red: true, redLow: true, sell: Math.round(20000 * s), nameTh: `☾ ${wn} ${roman}`, type: 'weapon', icon: iw, wtype: WTYPE[job], bonus: { ...w, critDmg: +((w.critDmg || 0) + 0.15 * s).toFixed(2) }, ...(GEAR_ART[`g_${k}_wred`]?.grip ? GEAR_ART[`g_${k}_wred`] : GEAR_ART[art('w')] || {}), art: `g_${k}_wred` };   // ไอคอน/ภาพเดียวกับชิ้น Lv.140
+      out[`g_${k}_cred${L}`] = { lv: L, job, tier: Math.round(L / 5), red: true, redLow: true, sell: Math.round(20000 * s), nameTh: `☾ ${cn} ${roman}`, type: 'accessory', icon: ic, bonus: { ...c, hpMul: +((c.hpMul || 0) + 0.06 * s).toFixed(2) }, art: `g_${k}_cred` };
+    }
   }
   return out;
 }
+/** ของแดงขั้นต่ำตามขั้นราหู (Lv.30/60/90/120) · ชิ้น Lv.140 เดิมคือขั้นสูงสุด */
+const RED_LOW = [[30, 'I'], [60, 'II'], [90, 'III'], [120, 'IV']];
 export const GEAR = buildRed(build());
 /** อุปกรณ์ขอบแดง (ชุดสุริยคราส) */
 export const RED_GEAR = Object.keys(GEAR).filter((id) => GEAR[id].red);
@@ -215,11 +223,13 @@ export const gearShopStock = (job) => GEAR_IDS.filter((id) => GEAR[id].job === j
 const GEAR_ORDER = ['weapon', 'helm', 'armor', 'gloves', 'boots', 'belt', 'accessory'];
 
 /** ดรอปอุปกรณ์ขั้นสูงจากผี: เลือกชิ้น drop ที่เลเวลใกล้ผี (−4 … +2) โอกาส 1.2% ต่อตัว (× ตัวคูณดรอป) */
-export function rollGearDrop(monLevel, dropMul = 1, rnd = Math.random) {
+export function rollGearDrop(monLevel, dropMul = 1, rnd = Math.random, job = null) {
   if (rnd() > 0.02 * dropMul) return null;                       // 2% ต่อตัว (ของมีค่าสุ่มจาก affixes.js)
   // ผีดรอปได้ทั้งของร้าน (มักมีค่าสุ่มติดมา) และของดรอปล้วน · ไม่รวมของตำนาน
   const L = Math.min(monLevel, 148);                              // บอส Lv.99 (+6) ยังดรอปของขั้นสูงสุด Lv.95 ได้
   const pool = GEAR_IDS.filter((id) => !GEAR[id].legend && !GEAR[id].red && GEAR[id].lv >= L - 4 && GEAR[id].lv <= L + 2);
+  const mine = job ? pool.filter((id) => GEAR[id].job === job) : [];
+  if (mine.length && rnd() < 0.5) return mine[F(rnd() * mine.length)];   // ครึ่งหนึ่งเป็นของสายคนฆ่า (ที่เหลือสุ่มทุกสาย ไว้ขาย/เทรด)
   return pool.length ? pool[F(rnd() * pool.length)] : null;
 }
 
@@ -231,7 +241,7 @@ export const SET_NAME = { swordman: 'ชุดขุนศึก', mage: 'ชุ
 const SET_BONUS = {
   swordman: [(L) => ({ def: R(2 + L / 4) }), (L) => ({ atk: R(4 + L / 2), hp: R(30 + L * 6) }), (L) => ({ crit: 0.05, STR: R(2 + L / 6) }), (L) => ({ patkMul: 0.08, hp: R(40 + L * 5) })],
   mage:     [(L) => ({ mp: R(20 + L * 3) }), (L) => ({ matk: R(5 + L * 0.6), INT: R(1 + L / 8) }), (L) => ({ crit: 0.04, matk: R(4 + L / 2) }), (L) => ({ matkMul: 0.08, mp: R(30 + L * 4) })],
-  archer:   [(L) => ({ DEX: R(1 + L / 8) }), (L) => ({ atk: R(4 + L / 2), CRI: R(1 + L / 8) }), (L) => ({ crit: 0.06, DEX: R(2 + L / 6) }), (L) => ({ patkMul: 0.08, eva: R(3 + L / 4) })],
+  archer:   [(L) => ({ DEX: R(1 + L / 8) }), (L) => ({ atk: R(4 + L / 2), LUK: R(1 + L / 8) }), (L) => ({ crit: 0.06, DEX: R(2 + L / 6) }), (L) => ({ patkMul: 0.08, eva: R(3 + L / 4) })],
   boxer:    [(L) => ({ hp: R(25 + L * 5) }), (L) => ({ atk: R(4 + L / 2), def: R(2 + L / 5) }), (L) => ({ crit: 0.05, VIT: R(2 + L / 6) }), (L) => ({ patkMul: 0.08, def: R(3 + L / 4) })],
   healer:   [(L) => ({ mp: R(20 + L * 3) }), (L) => ({ matk: R(4 + L * 0.5), VIT: R(1 + L / 8) }), (L) => ({ hp: R(30 + L * 5), INT: R(1 + L / 8) }), (L) => ({ matkMul: 0.06, hpMul: 0.06 })],
 };

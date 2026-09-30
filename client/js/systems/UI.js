@@ -7,7 +7,7 @@ import { NewsBoard } from './NewsBoard.js';
 import { skillCalcHtml } from './SkillInfo.js';
 import { JOBS, JOB_IDS, PATH_LV, STAT_PLAN } from '/shared/data/classes.js';
 import { ITEMS, SHOPS, sellPrice, WTYPE_JOB } from '/shared/data/items.js';
-import { STAT_KEYS, STAT_INFO, expToNext, MAX_LEVEL, expLevelMul } from '/shared/stats.js';
+import { STAT_KEYS, STAT_INFO, expToNext, MAX_LEVEL, expLevelMul, STAT_CAP, statCost, raiseCost, maxRaise, planRaise, pointsForLevel, skillCooldown } from '/shared/stats.js';
 import { getDerived, pathName } from './Character.js';
 import { combatPower } from '/shared/character.js';
 import { buffText } from '../topdown/PartyWindow.js';
@@ -273,10 +273,10 @@ export class UI {
     $('#target').classList.toggle('hidden', !show);
     if (show) {
       $('#t-lv').textContent = `Lv.${t.def.level}`;
-      // สีเลเวลเป้าหมาย: เทา = อ่อนกว่ามาก (EXP ลด) · แดง = สูงกว่ามาก (EXP ลด) · ปกติ = ได้เต็ม
+      // สีเลเวลเป้าหมาย: เทา = อ่อนกว่ามาก (EXP ลด) · แดง = สูงเกิน 10 เลเวล (EXP ลด) · เขียว = สูงกว่า 1–10 (EXP โบนัส) · ปกติ = เต็ม
       const lvGap = t.def.level - (p?.char?.level || 1), mul = expLevelMul(p?.char?.level || 1, t.def.level);
-      const tl = $('#t-lv'); tl.className = mul < 1 ? (lvGap < 0 ? 'lv-low' : 'lv-high') : '';
-      tl.title = mul < 1 ? `EXP ${Math.round(mul * 100)}% (เลเวลห่างเกิน 5)` : 'EXP เต็ม';
+      const tl = $('#t-lv'); tl.className = t.isPlayer ? 'lv-high' : mul < 1 ? (lvGap < 0 ? 'lv-low' : 'lv-high') : mul > 1 ? 'lv-bonus' : '';   // เป้าเป็นผู้เล่น (PK) = แดงเสมอ
+      tl.title = t.isPlayer ? 'ผู้เล่น (PK)' : mul < 1 ? (lvGap < 0 ? `EXP ${Math.round(mul * 100)}% (ผีอ่อนกว่ามาก)` : `EXP ${Math.round(mul * 100)}% (สูงกว่าเกิน 10 เลเวล)`) : mul > 1 ? `EXP +${Math.round((mul - 1) * 100)}% (ผีเลเวลสูงกว่า)` : 'EXP เต็ม';
       $('#t-name').textContent = t.def.nameTh;
       $('#t-fill').style.width = `${Math.max(0, t.hp / t.def.hp) * 100}%`;
       $('#t-hp').textContent = `${Math.max(0, Math.ceil(t.hp))} / ${t.def.hp}`;
@@ -437,12 +437,13 @@ export class UI {
   updateSkillBar(time) {
     const c = this.char, p = this.scene.player;
     if (this.skillSig !== this.hotbarSig()) this.buildSkillBar();
+    const dv = getDerived(c);
     this.skillEls.forEach((el) => {
       const id = el.dataset.id;
       if (!id) return;
       const st = skillStats(SKILL_BY_ID[id], c.skills[id]);
       const left = p.cooldownLeft(id, time);
-      el.querySelector('.cd').style.height = left ? `${(left / st.cd) * 100}%` : '0';
+      el.querySelector('.cd').style.height = left ? `${Math.min(100, (left / (skillCooldown(st.cd, dv.castRed) || 1)) * 100)}%` : '0';   // คูลดาวน์จริงหลัง DEX
       el.querySelector('.cdt').textContent = left ? (left / 1000).toFixed(left < 1000 ? 1 : 0) : '';
       if (el.dataset.cd === '1' && !left) { el.classList.remove('ready'); void el.offsetWidth; el.classList.add('ready'); }
       el.dataset.cd = left ? '1' : '0';
@@ -612,6 +613,19 @@ export class UI {
       const cur = skillStats(base, Math.max(1, lv), mm.m), next = lv < MAX_SKILL_LV ? skillStats(base, lv + 1, mm.m) : null;
       const chk = canLearn(c, base.id);
       const locked = c.level < base.reqLv || cap === 0;
+      if (base.type === 'passive') {                                           // สกิลติดตัว: ไม่มีร่าย/Hotbar · โชว์โบนัสตรง ๆ
+        const now = bonusText(base.passive(Math.max(1, lv))), nx = lv && lv < MAX_SKILL_LV ? bonusText(base.passive(lv + 1)) : null;
+        return `<div class="sk-card sk-pass ${locked ? 'locked' : ''} ${lv ? '' : 'unlearned'}">
+        <div class="sk-icon" data-id="${base.id}">${skillIcon(base.id, base.icon)}</div>
+        <div class="sk-name">${base.nameTh} <small class="sk-ptag">🧘 ติดตัว</small></div>
+        <div class="sk-pips">${Array.from({ length: MAX_SKILL_LV }, (_, i) => `<i class="${i < lv ? 'on' : ''}"></i>`).join('')}</div>
+        <div class="sk-lv">Lv.${lv} / ${MAX_SKILL_LV}</div>
+        <div class="sk-desc">${base.desc}</div>
+        <div class="sk-stat">${lv ? `ตอนนี้: ${now}` : `Lv.1: ${now}`}${nx ? `<br><span style="color:#58d68d">→ Lv.${lv + 1}: ${nx}</span>` : ''}<br><small>มีผลตลอดเมื่อถือ${JOBS[job].weaponTh} ไม่ต้องร่าย ไม่ใช้ช่อง Hotbar</small></div>
+        <span class="sk-ups"><button class="sk-up" data-learn="${base.id}" ${chk.ok ? '' : 'disabled'}>${lv ? '+ อัป' : '+ เรียน'}</button><button class="sk-up max" data-learnmax="${base.id}" ${chk.ok ? '' : 'disabled'}>MAX</button></span>
+        <div class="sk-req">${chk.ok || lv >= MAX_SKILL_LV ? '' : chk.reason}</div>
+      </div>`;
+      }
       const stat = (st) => `MP ${st.mp} · CD ${(st.cd / 1000).toFixed(1)}s${st.mult ? `<br>ดาเมจ x${st.mult}` : ''}${st.duration ? `<br>นาน ${(st.duration / 1000).toFixed(0)}s` : ''}`;
       const slotKey = SKILL_SLOTS.find((k) => c.hotbar[k] === base.id);
       return `<div class="sk-card ${base.ultimate ? 'ult' : ''} ${locked ? 'locked' : ''} ${lv ? '' : 'unlearned'}">
@@ -833,43 +847,50 @@ export class UI {
   renderStats() {
     const c = this.char;
     const D = (this.statDraft ||= {});
-    let used = STAT_KEYS.reduce((a, k) => a + (D[k] || 0), 0);
+    // แบบ RO: ค่ายิ่งสูงยิ่งใช้แต้มมาก → ร่างนับเป็น "ขั้น" ต่อค่า แล้วคิดแต้มจริงจากราคาขั้นบันได
+    const costOf = (k) => raiseCost(c.stats[k], D[k] || 0);
+    let used = STAT_KEYS.reduce((a, k) => a + costOf(k), 0);
     if (used > c.statPoints) { this.statDraft = {}; return this.renderStats(); }
-    const left = c.statPoints - used;
-    $('#st-points').textContent = used ? `${left} (ร่าง +${used})` : c.statPoints;
-    const btn = (k, n, label) => `<button data-st="${k}" data-n="${n}" ${left >= 1 ? '' : 'disabled'}>${label}</button>`;
+    const left = c.statPoints - used, steps = STAT_KEYS.reduce((a, k) => a + (D[k] || 0), 0);
+    $('#st-points').textContent = used ? `${left} (ร่าง −${used})` : c.statPoints;
     const hj = (c.appearance?.job && STAT_PLAN[c.appearance.job]) ? c.appearance.job : (c.path || 'swordman'), plan = STAT_PLAN[hj] || {};
     const rank = Object.keys(plan).sort((a, b) => plan[b] - plan[a]);
-    const recTag = (k) => (plan[k] ? `<em class="st-rec r${rank.indexOf(k)}" title="แนะนำสำหรับ${JOBS[hj]?.nameTh || ''} (ตามอาวุธที่ถือ) · สัดส่วน ${Math.round(plan[k] * 100)}%">${rank.indexOf(k) === 0 ? '★ หลัก' : '☆ รอง'} ${Math.round(plan[k] * 100)}%</em>` : '');
-    $('#st-list').innerHTML = `<div class="st-rec-head">${JOBS[hj]?.icon || ''} แนะนำตามอาวุธที่ถือ: <b>${JOBS[hj]?.nameTh || ''}</b> · ${rank.map((k) => `${k} ${Math.round(plan[k] * 100)}%`).join(' · ')}</div>` + STAT_KEYS.map((k) => `
+    const recTag = (k) => (plan[k] ? `<em class="st-rec r${rank.indexOf(k)}" title="แนะนำสำหรับ${JOBS[hj]?.nameTh || ''} (ตามอาวุธที่ถือ)">${rank.indexOf(k) === 0 ? '★ หลัก' : '☆ รอง'}</em>` : '');
+    const row = (k) => {
+      const now = c.stats[k] + (D[k] || 0), next = now >= STAT_CAP ? null : statCost(now), can = next != null && next <= left;
+      const btn = (n, label) => `<button data-st="${k}" data-n="${n}" ${can ? '' : 'disabled'}>${label}</button>`;
+      return `
       <div class="stat-row q${plan[k] ? ' rec' : ''}">
         <span class="k">${k}</span>
         <span><div>${STAT_INFO[k].nameTh} ${recTag(k)}</div><div class="d">${STAT_INFO[k].desc}</div></span>
-        <span class="v">${c.stats[k]}${D[k] ? `<b class="add">+${D[k]}</b>` : ''}</span>
-        <span class="st-btns"><button class="minus" data-st="${k}" data-n="-1" ${D[k] ? '' : 'disabled'}>−</button>${btn(k, 1, '+1')}${btn(k, 5, '+5')}${btn(k, 10, '+10')}${btn(k, 999, 'MAX')}</span>
-      </div>`).join('');
+        <span class="v">${c.stats[k]}${D[k] ? `<b class="add">+${D[k]}</b>` : ''}<small class="st-cost">${next == null ? 'สูงสุด' : `+1 ใช้ ${next}`}</small></span>
+        <span class="st-btns"><button class="minus" data-st="${k}" data-n="-1" ${D[k] ? '' : 'disabled'}>−</button>${btn(1, '+1')}${btn(5, '+5')}${btn(10, '+10')}${btn(999, 'MAX')}</span>
+      </div>`;
+    };
+    $('#st-list').innerHTML = `<div class="st-rec-head">${JOBS[hj]?.icon || ''} แนะนำตามอาวุธที่ถือ: <b>${JOBS[hj]?.nameTh || ''}</b> · ${rank.join(' › ')} <small>(ค่ายิ่งสูงยิ่งใช้แต้มมาก · สูงสุด ${STAT_CAP})</small></div>` + STAT_KEYS.map(row).join('');
     $('#st-list').querySelectorAll('[data-st]').forEach((b) => (b.onclick = (e) => {
       const k = b.dataset.st; let n = +b.dataset.n;
       if (e.shiftKey && n === 1) n = 10;                                  // Shift+คลิก = +10
-      const free = c.statPoints - STAT_KEYS.reduce((a, x) => a + (D[x] || 0), 0);
-      D[k] = Math.max(0, (D[k] || 0) + (n > 0 ? Math.min(n, free) : n));
+      if (n < 0) D[k] = Math.max(0, (D[k] || 0) - 1);
+      else {
+        const free = c.statPoints - STAT_KEYS.reduce((a, x) => a + costOf(x), 0);
+        D[k] = (D[k] || 0) + Math.min(n, maxRaise(c.stats[k] + (D[k] || 0), free));
+      }
       this.scene.sfx.play('click');
       this.renderStats();
     }));
     const style = (c.appearance?.job && STAT_PLAN[c.appearance.job]) ? c.appearance.job : (c.path || 'swordman');   // แนะนำตามอาวุธที่ถืออยู่
     $('#st-actions').innerHTML = c.statPoints ? `
-      <button class="btn ghost sm" data-sa="auto" ${left ? '' : 'disabled'}>✨ ลงอัตโนมัติ (${JOBS[style].nameTh})</button>
-      <button class="btn ghost sm" data-sa="reset" ${used ? '' : 'disabled'}>↺ ยกเลิกร่าง</button>
-      <button class="btn primary sm" data-sa="ok" ${used ? '' : 'disabled'}>✔ ยืนยัน (${used} แต้ม)</button>` : '<span class="meta">ไม่มีแต้มเหลือ · ได้ 5 แต้มทุกเลเวล</span>';
+      <button class="btn ghost sm" data-sa="auto" ${left >= 2 ? '' : 'disabled'}>✨ ลงอัตโนมัติ (${JOBS[style].nameTh})</button>
+      <button class="btn ghost sm" data-sa="reset" ${steps ? '' : 'disabled'}>↺ ยกเลิกร่าง</button>
+      <button class="btn primary sm" data-sa="ok" ${steps ? '' : 'disabled'}>✔ ยืนยัน (${used} แต้ม)</button>` : `<span class="meta">ไม่มีแต้มเหลือ · เลเวลถัดไปได้ ${pointsForLevel(c.level + 1)} แต้ม</span>`;
     $('#st-actions').querySelectorAll('[data-sa]').forEach((b) => (b.onclick = () => {
       const a = b.dataset.sa;
       if (a === 'reset') this.statDraft = {};
-      if (a === 'auto') {                                                  // แบ่งแต้มที่เหลือตามสัดส่วนของสาย (เศษไปตัวที่ได้สัดส่วนมากสุด)
-        const plan = STAT_PLAN[style], keys = Object.keys(plan);
-        const give = keys.map((k) => ({ k, n: Math.floor(left * plan[k]), r: left * plan[k] % 1 }));
-        let rest = left - give.reduce((x, g) => x + g.n, 0);
-        give.sort((x, y) => y.r - x.r).forEach((g) => { if (rest > 0) { g.n++; rest--; } });
-        give.forEach((g) => (D[g.k] = (D[g.k] || 0) + g.n));
+      if (a === 'auto') {                                                  // ลงทีละขั้นตามสเตตัสแนะนำแบบ RO (ค่าที่ต่ำสุดเทียบน้ำหนักก่อน)
+        const cur = Object.fromEntries(STAT_KEYS.map((k) => [k, c.stats[k] + (D[k] || 0)]));
+        const { add } = planRaise(cur, left, STAT_PLAN[style]);
+        for (const [k, n] of Object.entries(add)) D[k] = (D[k] || 0) + n;
       }
       if (a === 'ok') {
         const add = { ...D };
@@ -881,15 +902,15 @@ export class UI {
       this.renderStats();
     }));
     // ค่าพลังก่อน → หลัง (ตามร่าง)
-    const d = getDerived(c), after = used ? getDerived({ ...c, stats: Object.fromEntries(STAT_KEYS.map((k) => [k, c.stats[k] + (D[k] || 0)])) }) : d;
+    const d = getDerived(c), after = steps ? getDerived({ ...c, stats: Object.fromEntries(STAT_KEYS.map((k) => [k, c.stats[k] + (D[k] || 0)])) }) : d;
     const pct = (v) => `${(v * 100).toFixed(1)}%`;
     const rows = [
       ['HP สูงสุด', 'maxHp'], ['MP สูงสุด', 'maxMp'], ['พลังโจมตีกายภาพ', 'patk'], ['พลังเวทย์', 'matk'],
       ['ความแม่นยำ', 'accuracy', (v) => `${v}%`], ['โอกาสคริติคอล', 'critRate', pct],
-      ['ความแรงคริติคอล', 'critDmg', (v) => `x${v.toFixed(2)}`], ['ป้องกัน', 'def'], ['หลบ', 'eva'],
+      ['ความแรงคริติคอล', 'critDmg', (v) => `x${v.toFixed(2)}`], ['ป้องกัน', 'def'], ['หลบ', 'eva'], ['ความเร็วโจมตี', 'aspd', (v) => `+${Math.round((v || 0) * 100)}%`], ['ลดคูลดาวน์สกิล', 'castRed', (v) => `−${((v || 0) * 100).toFixed(1)}%`],
       ...((d.healPow || 1) > 1 || c.appearance?.job === 'healer' ? [['พลังรักษา 💚', 'healPow', (v) => `${Math.round(((v || 1) - 1) * 100)}%`]] : []),
     ];
-    const cp0 = combatPower(c, d), cp1 = used ? combatPower(c, after) : cp0, rk = c.rec?.cpRank;
+    const cp0 = combatPower(c, d), cp1 = steps ? combatPower(c, after) : cp0, rk = c.rec?.cpRank;
     { const ps = $('#st-preset'); if (ps) { ps.innerHTML = this.presetStrip(c); ps.querySelectorAll('[data-pset]').forEach((b) => (b.onclick = () => this.scene.swapPreset?.())); } }
     $('#st-derived').innerHTML = `<div class="cp-line"><span>⚔ ค่าพลังรวม</span><b>${cp0.toLocaleString('en-US')}${cp1 !== cp0 ? ` <em class="up">→ ${cp1.toLocaleString('en-US')}</em>` : ''}${rk ? ` <small>อันดับ #${rk}</small>` : ''}</b></div>` + rows.map(([label, key, f = (v) => v]) => {
       const up = after[key] !== d[key];
