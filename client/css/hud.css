@@ -393,6 +393,13 @@ body.td-mode.lowhp #hud::before { content: ''; position: absolute; inset: 0; z-i
 #wb-hud .wb-go { background: linear-gradient(180deg, #ffd35c, #e0a21a); color: #3a2200; border: 2px solid #fff3c4; padding: .35em .9em; font-weight: 700; }
 #wb-hud .wb-go:hover { filter: brightness(1.1); }
 @keyframes wbPulse { 50% { box-shadow: 0 0 30px rgba(181,125,255,.8); } }
+/* ย่อประกาศพระราหู → ป้ายเล็กมุมบน (ยังเห็นเวลา) */
+#wb-hud .wb-min { background: rgba(0,0,0,.35); color: #e3d4ff; border: 1px solid rgba(181,125,255,.6); border-radius: 8px; width: 1.9em; height: 1.9em; padding: 0; font-size: 1em; line-height: 1; cursor: pointer; }
+#wb-hud .wb-min:hover { color: #fff; border-color: #fff; }
+#wb-hud .wb-pill { position: absolute; top: 11%; left: 50%; transform: translateX(-50%); display: flex; align-items: center; gap: .35em; padding: .2em .7em; font: inherit; font-size: .82em;
+  color: #ffd35c; background: rgba(28,12,58,.88); border: 1px solid #b57dff; border-radius: 99px; box-shadow: 0 0 10px rgba(181,125,255,.4); pointer-events: auto; cursor: pointer; }
+#wb-hud .wb-pill.hidden { display: none; }
+#wb-hud .wb-pill b { font-weight: 600; }
 #wb-hud .wb-bar { position: absolute; top: 2%; left: 50%; transform: translateX(-50%); width: min(44%, 36em); padding: .4em .7em .45em; background: rgba(18,8,38,.9); border: 2px solid #8f6cf0; border-radius: 12px; pointer-events: auto; }
 #wb-hud .wb-top { display: flex; align-items: baseline; gap: .8em; }
 #wb-hud .wb-top b { color: #ffd35c; } #wb-hud .wb-top .lv { color: #ff6b5b; font-style: normal; font-size: .85em; }
@@ -444,7 +451,7 @@ body.wb-on #ticker { top: 17cqh; }
 #t-lv.lv-high { color: #ff6b5a; }
 #t-lv.lv-bonus { color: #7de08a; }   /* ผีสูงกว่า 1–10 เลเวล = EXP โบนัส (แบบ RO) */
 /* ป้ายสถานะ PK (โหมดเปิด / ชื่อม่วง / หัวแดง) ใต้กรอบผู้เล่น */
-#pk-badge { position: absolute; left: var(--hud-pad, 12px); top: calc(var(--hud-pad, 12px) + 11cqh); z-index: 9; pointer-events: auto; cursor: pointer;
+#pk-badge { position: absolute; left: calc(var(--hud-pad, 12px) + 45cqh); top: calc(var(--hud-pad, 12px) + .6cqh); z-index: 15; pointer-events: auto; cursor: pointer; white-space: nowrap;   /* ติดขอบขวากรอบโปรไฟล์ (กรอบกว้าง 44cqh) ไม่ซ่อนหลังกรอบ */
   padding: .35cqh 1.2cqh; border-radius: 1cqh; font-size: 1.9cqh; font-weight: 700; color: #fff; background: rgba(90,20,30,.88); border: .2cqh solid #ff6b5a; box-shadow: 0 0 1.2cqh rgba(255,60,50,.5); }
 #pk-badge.hidden { display: none; }
 #pk-badge.purple { background: rgba(70,30,100,.9); border-color: #d38cff; box-shadow: 0 0 1.2cqh rgba(200,120,255,.5); }

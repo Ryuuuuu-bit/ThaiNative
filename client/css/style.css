@@ -202,6 +202,14 @@ button { font-family: inherit; cursor: pointer; }
   background: radial-gradient(circle, rgba(60,0,0,.35), rgba(0,0,0,.75)); }
 .death h2 { margin: 0; font-size: 2em; color: #e74c3c; text-shadow: 0 3px 0 #000; }
 .death p { color: var(--muted); }
+/* จอตาย: นับถอยหลังตัวใหญ่ · คลิกทะลุได้ (แชท/เมนูยังใช้ได้) */
+.death { pointer-events: none; z-index: 20; }
+.death .death-n { font-size: 5em; font-weight: 800; line-height: 1.1; color: #ffd76a; text-shadow: 0 4px 0 #000, 0 0 18px rgba(255,120,60,.6); }
+.death .death-n.soon { color: #7de08a; animation: death-pulse .5s ease-in-out infinite alternate; }
+.death p { margin: .3em 0; font-size: 1.1em; }
+.death p b { color: #ffd76a; }
+.death .death-doc { font-size: .95em; color: #9be15d; }
+@keyframes death-pulse { to { transform: scale(1.12); } }
 .keys { display: grid; grid-template-columns: 1fr 1fr; gap: .5em 1em; font-size: .9em; }
 kbd { display: inline-block; min-width: 1.6em; text-align: center; padding: 0 .3em; margin-right: .2em; border: 1px solid var(--gold);
   border-bottom-width: 3px; border-radius: 4px; background: #2a1b3a; font-family: inherit; font-size: .85em; }

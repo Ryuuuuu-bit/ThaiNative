@@ -20,6 +20,7 @@ const ICONS = {
   blood: 'one red liquid water droplet shape, teardrop, glossy highlight, simple object, no face, no skull',
   trap: 'open iron jaw trap device lying on the ground, metal spring hunting snare with saw-tooth jaws, object only, no animal',
   slow: 'cute green snail with spiral shell',
+  'it:junk_coin': 'old bronze Chinese trade coin with square hole in the middle, junk ship emblem, slightly worn',   // เบี้ยสำเภา (ไอเทม)
 };
 
 async function call(name, args) {
@@ -38,7 +39,8 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 const outDir = path.join(ROOT, 'client/assets/icons'), srcDir = path.join(ROOT, 'assets_src/pixellab/icons');
 fs.mkdirSync(srcDir, { recursive: true });
-const todo = Object.entries(ICONS).filter(([k]) => FORCE || !fs.existsSync(path.join(outDir, `ui_${k}.png`)));
+const fileKey = (k) => (k.startsWith('it:') ? `it_${k.slice(3)}` : `ui_${k}`);   // ไอคอนไอเทม it:<id> · ไอคอน UI ปกติ ui_<key>
+const todo = Object.entries(ICONS).filter(([k]) => FORCE || !fs.existsSync(path.join(outDir, `${fileKey(k)}.png`)));
 console.log('จะสร้าง', todo.length, 'ไอคอน:', todo.map(([k]) => k).join(' '));
 
 const jobs = [];
@@ -60,8 +62,8 @@ for (let round = 0; round < 40 && Object.keys(done).length < jobs.length; round+
     if (/fail|error/i.test(text) && !img) { console.error('ล้มเหลว', j.key, text.slice(0, 200)); done[j.key] = 'fail'; continue; }
     if (!img) continue;
     const buf = Buffer.from(img.data, 'base64');
-    fs.writeFileSync(path.join(srcDir, `ui_${j.key}.png`), buf);
-    fs.writeFileSync(path.join(outDir, `ui_${j.key}.png`), buf);
+    fs.writeFileSync(path.join(srcDir, `${fileKey(j.key)}.png`), buf);
+    fs.writeFileSync(path.join(outDir, `${fileKey(j.key)}.png`), buf);
     done[j.key] = 'ok';
     console.log('✔', j.key);
   }
@@ -70,6 +72,6 @@ for (let round = 0; round < 40 && Object.keys(done).length < jobs.length; round+
 // ลงทะเบียน manifest (icons)
 const manP = path.join(ROOT, 'client/assets/manifest.json');
 const man = JSON.parse(fs.readFileSync(manP, 'utf8'));
-for (const [k, st] of Object.entries(done)) if (st === 'ok') man.icons[`ui_${k}`] = `assets/icons/ui_${k}.png`;
+for (const [k, st] of Object.entries(done)) if (st === 'ok') man.icons[fileKey(k)] = `assets/icons/${fileKey(k)}.png`;
 fs.writeFileSync(manP, JSON.stringify(man, null, 2) + '\n');
 console.log('เสร็จ', Object.values(done).filter((s) => s === 'ok').length, '/', jobs.length);

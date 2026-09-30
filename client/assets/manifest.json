@@ -922,6 +922,7 @@
     "ui_blood": "assets/icons/ui_blood.png",
     "ui_slow": "assets/icons/ui_slow.png",
     "ui_hourglass": "assets/icons/ui_hourglass.png",
-    "ui_trap": "assets/icons/ui_trap.png"
+    "ui_trap": "assets/icons/ui_trap.png",
+    "it_junk_coin": "assets/icons/it_junk_coin.png"
   }
 }

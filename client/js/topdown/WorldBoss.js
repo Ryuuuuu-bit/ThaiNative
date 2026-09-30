@@ -17,13 +17,17 @@ export class WorldBossUI {
   constructor(scene) {
     this.s = scene; this.st = { state: 'idle' }; this.skew = 0; this.tele = new Map(); this.decor = []; this.fires = []; this.mvp = null; this.mvpTags = new Map();   // skew = เวลา server − เวลาเครื่องนี้
     const hud = document.createElement('div'); hud.id = 'wb-hud'; hud.innerHTML = `
-      <div class="wb-ann hidden"><span class="wb-ic">🌑</span><div class="wb-txt"><b>พระราหู ผู้กลืนจันทร์</b><small></small></div><button class="wb-go">ไปลานสุริยคราส</button></div>
+      <div class="wb-ann hidden"><span class="wb-ic">🌑</span><div class="wb-txt"><b>พระราหู ผู้กลืนจันทร์</b><small></small></div><button class="wb-go">ไปลานสุริยคราส</button><button class="wb-min" title="ย่อ (ยังเห็นเวลานับถอยหลัง)">–</button></div>
+      <button class="wb-pill hidden" title="แตะเพื่อขยายประกาศพระราหู"><span>🌑</span><b></b></button>
       <div class="wb-bar hidden"><div class="wb-top"><b>🌑 พระราหู ผู้กลืนจันทร์ <em class="lv">Lv.150</em></b><span class="wb-ph"></span><span class="wb-time"></span></div>
         <div class="wb-hpbar"><i></i><span></span></div><div class="wb-btm"><small class="wb-tip"></small><button class="wb-leave">ออกจากลาน</button></div></div>
       <div class="wb-cast hidden"><b></b><small></small></div>
       <div class="wb-res hidden"></div>`;
     ($('#td-hud') || document.body).appendChild(hud); this.hud = hud;
     hud.querySelector('.wb-go').onclick = () => this.go();
+    // ย่อประกาศ: จำไว้ต่อรอบ (รอบใหม่ขยายให้เห็นอีกครั้ง) · แตะป้ายเล็กเพื่อขยายกลับ
+    hud.querySelector('.wb-min').onclick = (e) => { e.stopPropagation(); this.minAt = this.st.at; this.s.sfx?.play('click'); this.refresh(); };
+    hud.querySelector('.wb-pill').onclick = (e) => { e.stopPropagation(); this.minAt = null; this.s.sfx?.play('click'); this.refresh(); };
     hud.querySelector('.wb-leave').onclick = () => this.leave();
     this.timer = setInterval(() => this.refresh(), 500);
     scene.events.once('shutdown', () => this.destroy());
@@ -73,8 +77,11 @@ export class WorldBossUI {
   refresh() {
     const S = this.st, now = this.now, H = this.hud;
     const ann = H.querySelector('.wb-ann'), bar = H.querySelector('.wb-bar');
-    const showAnn = !this.here && (S.state === 'open' || S.state === 'fight');
+    const active = !this.here && (S.state === 'open' || S.state === 'fight'), mini = active && this.minAt === S.at;
+    const showAnn = active && !mini, pill = H.querySelector('.wb-pill');
     ann.classList.toggle('hidden', !showAnn);
+    pill.classList.toggle('hidden', !mini);
+    if (mini) pill.querySelector('b').textContent = S.state === 'open' ? `ราหู ${mmss(S.at - now)}` : `ราหู ${S.maxHp ? Math.round(S.hp / S.maxHp * 100) : 100}% · ${mmss(S.fightEnd - now)}`;
     if (showAnn) ann.querySelector('small').textContent = S.state === 'open' ? `ลงมาในอีก ${mmss(S.at - now)} · วาร์ปรอที่ค่ายรอคราสได้เลย` : `กำลังสู้อยู่! เลือดเหลือ ${S.maxHp ? Math.round(S.hp / S.maxHp * 100) : 100}% · เหลือเวลา ${mmss(S.fightEnd - now)}`;
     const showBar = this.here && S.state !== 'idle';
     bar.classList.toggle('hidden', !showBar);

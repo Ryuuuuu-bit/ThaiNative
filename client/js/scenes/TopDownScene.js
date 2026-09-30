@@ -1116,7 +1116,7 @@ export class TopDownScene extends Phaser.Scene {
     this.playerAnim('die', true); this.sfx.play('die');
     const doc = (this.social?.party?.members || []).some((m) => m.id !== this.net?.selfId && m.wj === 'healer' && !m.dead);
     const wait = RESPAWN_WAIT_MS, where = this.M.realm ? `ฟื้นที่${this.M.ZONES.hub.nameTh}` : 'ฟื้นที่ประตูเมือง';   // รอ 10 วิเสมอ (หมอยาชุบได้ก่อน)
-    this.ui.banner('💀 คุณสลบไป…', doc ? `🌿 มีหมอยาในปาร์ตี้ — รอพิธีสู่ขวัญ… (${where}ใน 10 วินาที)` : `${where}ใน 10 วินาที`);
+    this.ui.showDeath(wait, { where, doc });                                     // จอตาย + นับถอยหลังสด
     this.social && (this.social.pkTarget = null);                              // ตาย = เลิกไล่เป้า PK
     const tryRespawn = () => {                                                  // ส่งซ้ำทุก 3 วิจนกว่าจะฟื้น (เน็ตหลุด/ต่อใหม่ช่วงรอ ไม่ค้างเป็นศพ)
       if (!p.dead) return;
@@ -1132,7 +1132,7 @@ export class TopDownScene extends Phaser.Scene {
     const p = this.player;
     if (!p.dead) return;
     p.dead = false; p.st = 'idle'; p.char.hp = hp;
-    this.playerAnim('idle', true);
+    this.playerAnim('idle', true); this.ui.hideDeath?.();
     this.ui.toast(`🪷 ${by || 'หมอยา'} ทำพิธีสู่ขวัญ เรียกขวัญคุณกลับมาแล้ว!`, 'ok', 3000);
     this.sfx.play('blessing'); this.ui.hudCache = '';
   }
@@ -1140,7 +1140,7 @@ export class TopDownScene extends Phaser.Scene {
   onRespawn({ x, y, hp }) {
     const p = this.player;
     p.dead = false; p.st = 'idle'; p.setPosition(x, y); p.char.hp = hp ?? p.derived.maxHp;
-    this.playerAnim('idle', true);
+    this.playerAnim('idle', true); this.ui.hideDeath?.();
     yantCircle(this, p.x, p.y, { tint: 0xffe9a6, size: 60, ms: 900 }); this.sfx.play('blessing');
     this.ui.hudCache = '';
   }

@@ -366,17 +366,26 @@ export class UI {
     this.bannerT = setTimeout(() => el.classList.add('hidden'), 2200);
   }
 
-  showDeath(ms) {
+  /** จอตาย: นับถอยหลังจนฟื้นที่จุดเกิด (where = ข้อความจุดฟื้น · doc = มีหมอยาในปาร์ตี้ชุบได้) · ฟื้น/โดนชุบ → hideDeath() */
+  showDeath(ms, { where = 'ฟื้นที่จุดเกิด', doc = false } = {}) {
     const el = $('#death');
+    const end = performance.now() + ms;
+    el.innerHTML = `<h2>💀 คุณหมดสติ…</h2><div class="death-n" id="death-t">${Math.ceil(ms / 1000)}</div>
+      <p id="death-p">${where}ในอีก <b id="death-s">${Math.ceil(ms / 1000)}</b> วินาที</p>
+      ${doc ? '<p class="death-doc">🌿 มีหมอยาในปาร์ตี้ — ชุบชีวิตได้ก่อนหมดเวลา (ฟื้นตรงที่สลบ)</p>' : '<p class="death-doc">หมอยาใกล้ ๆ ชุบชีวิตให้ได้ก่อนหมดเวลา</p>'}`;
     el.classList.remove('hidden');
-    let left = Math.ceil(ms / 1000);
-    $('#death-t').textContent = left;
     clearInterval(this.deathT);
-    this.deathT = setInterval(() => {
-      left--; $('#death-t').textContent = Math.max(0, left);
-      if (left <= 0) { clearInterval(this.deathT); el.classList.add('hidden'); }
-    }, 1000);
+    const tick = () => {
+      const left = Math.max(0, Math.ceil((end - performance.now()) / 1000));
+      const n = $('#death-t'), s = $('#death-s');
+      if (n) { n.textContent = left || '…'; n.classList.toggle('soon', left <= 3); }
+      if (s) s.textContent = left;
+      if (!left) { const pEl = $('#death-p'); if (pEl) pEl.textContent = 'กำลังฟื้น…'; clearInterval(this.deathT); }
+    };
+    tick();
+    this.deathT = setInterval(tick, 250);
   }
+  hideDeath() { clearInterval(this.deathT); $('#death')?.classList.add('hidden'); }
 
   /** on = ต่อเซิร์ฟอยู่ · near = ผู้เล่นอื่นในแผนที่นี้ · จำนวนที่แสดง = ออนไลน์ทั้งเซิร์ฟ (server ส่ง online:count) */
   setOnline(on, near = this.nearN || 0) {
