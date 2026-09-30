@@ -151,7 +151,7 @@ export function setupAuth(app, hooks = {}) {
     if (!cur) return res.status(404).json({ error: 'ช่องนี้ไม่มีตัวละคร' });
     if (name.toLowerCase() !== String(cur.name).trim().toLowerCase()) return res.status(400).json({ error: 'ชื่อที่พิมพ์ยืนยันไม่ตรงกับชื่อตัวละคร' });
     await req.store.deleteCharacter(req.account.id, slot);
-    await req.store.holdName?.(cur.nk || checkName(cur.name).key, req.account.id);     // กันชื่อไว้ให้บัญชีนี้ 7 วัน
+    await req.store.releaseHold?.(cur.nk || checkName(cur.name).key);                  // ลบตัวละคร → ชื่อว่างให้ใครก็ใช้ได้ทันที
     try { await req.store.dropFriendRefs?.(req.account.id, cur.name); } catch (e) { console.error('[delete] friends', e.message); }
     try { hooks.charDeleted?.(req.account.id, slot, cur.name); } catch (e) { console.error('[delete] hook', e.message); }
     lbCache = null;

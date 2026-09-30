@@ -85,6 +85,14 @@ class PgStore {
       }
     }
     await this.migrateNames();
+    try {                                                                           // ครั้งเดียว: ปลดชื่อที่เคยกันไว้ (ตัวละครที่ถูกลบ) ให้ใช้ได้ทันที
+      const { rows } = await this.pool.query("SELECT 1 FROM meta WHERE key = 'holds_clear_v1'");
+      if (!rows[0]) {
+        const h = await this.pool.query('DELETE FROM name_holds');
+        await this.pool.query("INSERT INTO meta (key, value) VALUES ('holds_clear_v1', $1) ON CONFLICT (key) DO NOTHING", [String(h.rowCount || 0)]);
+        console.log(`[store] holds_clear_v1: ปลดชื่อที่กันไว้ ${h.rowCount || 0} ชื่อ`);
+      }
+    } catch (e) { console.error('[store] holds_clear_v1:', e.message); }
     try { const r = await this.purgeDeleted(); console.log(`[store] purge: เพื่อนค้าง ${r.friends} ตัว · กันชื่อหมดอายุ ${r.holds} · เซสชันหมดอายุ ${r.sessions}`); }
     catch (e) { console.error('[store] purge:', e.message); }
     return this;
