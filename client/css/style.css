@@ -2224,3 +2224,17 @@ body.td-mode.m-hud .npc-dlg { font-size: 3.1cqh; bottom: 24cqh; }
   .eh-mats { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 }
 #shop-panel.shop-v3 .sv-go:disabled { opacity: 1 !important; filter: none !important; background: linear-gradient(180deg, #5a4a3a, #3a2e24) !important; color: #b9a88a !important; border-color: #6b5a44 !important; }
+/* ขาย: ปุ่มเลือกทั้งหมดที่แสดง */
+.window .sell-quick .sq-all { background: linear-gradient(180deg, #ffe38a, #d9a52e) !important; color: #2a1b0c !important; border-color: #fff0b8 !important; font-weight: 700; }
+.window .sell-quick .sq-all:disabled { filter: grayscale(.7) brightness(.7); }
+/* ตัวกรองแถวขาย (PC) + ช่องพิมพ์ในกล่อง Dialog */
+.if-row.if-sell { display: flex; flex-wrap: wrap; align-items: center; gap: .35em; }
+.if-row.if-sell .if-lbl { color: var(--muted, #a894b8); font-size: .85em; }
+.if-row.if-sell .if-sp { flex: 1; }
+.if-row.if-sell select.on { border-color: #f0c04a; color: #ffe38a; }
+.if-chip b.down { color: #ff7a6a; }
+.dlg .dlg-in { width: 100%; font: inherit; padding: .45em .6em; border-radius: .5em; border: 1px solid #6b5230; background: #1a1024; color: #efe3cc; }
+.if-row.if-sell { font-size: .86em; flex-wrap: nowrap; }
+.if-row.if-sell .if-chip, .if-row.if-sell select { padding-top: .25em; padding-bottom: .25em; white-space: nowrap; }
+.if-row.if-sell .if-preset { max-width: 12em; min-width: 0; }
+.sell-grid .sell-n img, .sell-grid .sell-n .px-ico, .sell-grid .sell-n .ico-wrap { width: 1.1em !important; height: 1.1em !important; position: static !important; vertical-align: -2px; }

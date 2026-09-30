@@ -10,7 +10,7 @@ import { itemIcon, makeText } from '../systems/util.js';
 import { inlineStats } from '../systems/ItemTip.js';
 import { baseItemId } from '/shared/data/items.js';
 import { TITLE_BY_ID } from '/shared/data/titles.js';
-import { newFilter, applyFilter, filterBarHtml, bindFilterBar } from '../systems/ItemFilter.js';
+import { newFilter, loadFilter, saveFilter, applyFilter, filterBarHtml, bindFilterBar } from '../systems/ItemFilter.js';
 import { combatPower } from '/shared/character.js';
 import { ask } from '../systems/Dialog.js';
 import { PARTY } from '/shared/constants.js';
@@ -429,7 +429,7 @@ export class TdSocial {
     };
     clearInterval(this.readyT); tick(); if (both) this.readyT = setInterval(tick, 250);
     // กระเป๋า: ตัวกรองมาตรฐาน (เหมือนกระเป๋า/ร้านค้า)
-    const tf = (this.trF ||= newFilter());
+    const tf = (this.trF ||= loadFilter('trade')); saveFilter('trade', tf);
     const bag = c.inventory.filter((it) => ITEMS[it.id]);
     if (!this.trBarDrawn || this.trBarSig !== JSON.stringify(tf) + bag.length) {
       this.trBarSig = JSON.stringify(tf) + bag.length; this.trBarDrawn = true;

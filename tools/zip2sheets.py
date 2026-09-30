@@ -18,6 +18,7 @@ acc = {}
 for name, dirs in fr.get('animations', {}).items():
     low = name.lower()
     g = 'falling-back-death' if re.search('die|death', low) else 'cross-punch' if re.search('attack|punch', low) else 'walking-6-frames' if 'walk' in low else None
+    if not g and low == 'animating' and max(len(v) for v in dirs.values()) == 6: g = 'walking-6-frames'   # ท่าเดินจาก template ที่ไม่มีชื่อ
     if not g: continue
     for d, v in dirs.items(): acc.setdefault(g, {}).setdefault(d, v)      # หลายกลุ่มท่าเดียวกัน → รวมทิศ (กลุ่มแรกมาก่อน)
 for g, dirs in acc.items():

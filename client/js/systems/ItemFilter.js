@@ -9,6 +9,7 @@ import { SLOT_TH, GEAR_TYPES, FLASK_SLOTS } from '/shared/data/slots.js';
 import { CARD_BY_ID, SLOT_CARD, socketCount } from '/shared/data/cards.js';
 import { JOBS, JOB_IDS } from '/shared/data/classes.js';
 import { uiIcon } from './util.js';
+import { askText } from './Dialog.js';
 
 const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
@@ -35,7 +36,20 @@ export const SLOT_F = { any: 'ทุกช่อง', weapon: 'อาวุธ',
 export const SORTS = { type: 'ประเภท', cp: 'ค่าพลัง ▲', rar: 'ความหายาก', lv: 'เลเวลของ', price: 'มูลค่า', name: 'ชื่อ' };
 const ORDER = ['weapon', 'helm', 'armor', 'gloves', 'boots', 'belt', 'accessory', 'flask', 'costume', 'card', 'home', 'consumable', 'food', 'reset', 'reskill', 'rename', 'offering', 'herb', 'fish', 'material', 'skin'];
 
-export const newFilter = (o = {}) => ({ kind: 'all', slot: 'any', job: '', wear: false, better: false, rar: 0, sort: 'type', q: '', ...o });
+export const newFilter = (o = {}) => ({ kind: 'all', slot: 'any', job: '', wear: false, better: false, rar: 0, sort: 'type', q: '', notMine: false, worse: false, rarMax: 0, lvBelow: 0, ...o });
+
+// ---------------- จำตัวกรอง (ต่อหน้าต่าง) + ชุดตัวกรองที่บันทึก (ใช้ในแท็บขาย) ----------------
+const LS = { get: (k, d) => { try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : d; } catch { return d; } }, set: (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch { /* */ } } };
+const KEEP = ['kind', 'slot', 'job', 'wear', 'better', 'rar', 'sort', 'notMine', 'worse', 'rarMax', 'lvBelow'];   // ไม่จำคำค้นหา
+const pick = (f) => Object.fromEntries(KEEP.map((k) => [k, f[k]]));
+/** ตัวกรองของหน้าต่าง key (โหลดค่าที่ใช้ครั้งล่าสุด) */
+export const loadFilter = (key, def = {}) => newFilter({ ...def, ...LS.get('tn_if_' + key, {}), q: '' });
+export const saveFilter = (key, f) => LS.set('tn_if_' + key, pick(f));
+/** ชุดตัวกรองที่ผู้เล่นตั้งชื่อไว้ { name: filter } */
+export const filterPresets = () => LS.get('tn_if_presets', {});
+export const savePreset = (name, f) => { const all = filterPresets(); all[name] = pick(f); LS.set('tn_if_presets', all); };
+export const deletePreset = (name) => { const all = filterPresets(); delete all[name]; LS.set('tn_if_presets', all); };
+export const LV_BELOW = [0, 10, 20, 30, 40, 50, 70, 90, 120];
 
 // ---------------- ค่าพลังเมื่อสวม ----------------
 const jobFor = (c, eq) => WTYPE_JOB[ITEMS[eq.weapon]?.wtype] || c.appearance?.job || 'swordman';
@@ -134,6 +148,10 @@ export function applyFilter(c, list, f, { price = sellPrice } = {}) {
     if (f.wear && !canWear(c, it)) return false;
     if (f.rar && rarityOf(it) < f.rar) return false;
     if (f.better && !(canWear(c, it) && isMine(c, it) && (cpGain(c, idOf(x)) || 0) > 0)) return false;   // ดีกว่าที่ใส่ = เฉพาะของสายที่เล่นอยู่
+    if (f.notMine && !(GEAR_TYPES.includes(it.type) && !isMine(c, it))) return false;                     // อุปกรณ์ของสายอื่น
+    if (f.worse) { const g = cpGain(c, idOf(x)); if (g == null || g > 0 || !isMine(c, it) || Object.values(c.equipment || {}).includes(idOf(x))) return false; }   // สายฉัน แต่ใส่แล้วไม่ดีขึ้น
+    if (f.rarMax && rarityOf(it) > f.rarMax) return false;
+    if (f.lvBelow && !((it.lv || 1) < f.lvBelow)) return false;
     if (q && !it.nameTh.toLowerCase().includes(q) && !(it.affixes || []).some((a) => a.text?.toLowerCase().includes(q))) return false;
     return true;
   });
@@ -172,7 +190,25 @@ export function filterBarHtml(c, f, list = [], o = {}) {
       <select class="if-rar" title="ความหายากขั้นต่ำ">${RARITY_TH.map((l, i) => (i === 0 ? `<option value="0">ทุกระดับ</option>` : `<option value="${i}"${f.rar === i ? ' selected' : ''}>${l}+</option>`)).join('')}</select>
       <select class="if-sort" title="เรียงตาม">${Object.entries(SORTS).map(([k, l]) => `<option value="${k}"${f.sort === k ? ' selected' : ''}>${l}</option>`).join('')}</select>
     </div>` : o.sortRow === false ? '' : `<div class="if-row if-gear slim"><select class="if-sort" title="เรียงตาม">${Object.entries(SORTS).filter(([k]) => k !== 'cp').map(([k, l]) => `<option value="${k}"${f.sort === k ? ' selected' : ''}>${l}</option>`).join('')}</select></div>`}
+    ${o.sell ? sellRowHtml(f) : ''}
   </div>`;
+}
+/** แถวตัวกรองสำหรับขาย (PC): สายอื่น · แย่กว่าที่ใส่ · หายากไม่เกิน · เลเวลต่ำกว่า · ชุดตัวกรองที่บันทึก */
+function sellRowHtml(f) {
+  const chip = (k, on, label, title) => `<button type="button" class="if-chip${on ? ' on' : ''}" data-if="${k}" title="${title}">${label}</button>`;
+  const pr = filterPresets();
+  return `<div class="if-row if-sell">
+      <span class="if-lbl">ขาย:</span>
+      ${chip('notMine', f.notMine, '↔ ไม่ใช่สายฉัน', 'อุปกรณ์ของอาชีพอื่น')}
+      ${chip('worse', f.worse, '<b class="down">▼</b> ไม่ดีกว่าที่ใส่', 'ของสายที่เล่นอยู่ แต่ใส่แล้วค่าพลังไม่เพิ่ม')}
+      <select class="if-rarmax${f.rarMax ? ' on' : ''}" title="ความหายากสูงสุด">${RARITY_TH.map((l, i) => (i === 0 ? '<option value="0">หายากไม่จำกัด</option>' : `<option value="${i}"${f.rarMax === i ? ' selected' : ''}>ไม่เกิน${l}</option>`)).join('')}</select>
+      <select class="if-lvb${f.lvBelow ? ' on' : ''}" title="เลเวลของต่ำกว่า">${LV_BELOW.map((v) => `<option value="${v}"${f.lvBelow === v ? ' selected' : ''}>${v ? `เลเวลต่ำกว่า ${v}` : 'ทุกเลเวล'}</option>`).join('')}</select>
+      <span class="if-sp"></span>
+      <select class="if-preset" title="ชุดตัวกรองที่บันทึกไว้"><option value="">📁 ชุดตัวกรองที่บันทึก…</option>${Object.keys(pr).map((n) => `<option value="${esc(n)}">${esc(n)}</option>`).join('')}</select>
+      <button type="button" class="if-chip" data-ifsave title="บันทึกตัวกรองตอนนี้เป็นชุดใหม่">💾 บันทึก</button>
+      ${Object.keys(pr).length ? '<button type="button" class="if-chip" data-ifdel title="ลบชุดตัวกรองที่เลือก">🗑</button>' : ''}
+      <button type="button" class="if-chip" data-ifclear title="ล้างตัวกรองทั้งหมด">↺ ล้าง</button>
+    </div>`;
 }
 /** ผูกเหตุการณ์ของแถบตัวกรอง (root = กล่องที่มี .if-bar) · redraw() = วาดใหม่ (ช่องค้นหาคงโฟกัสให้) */
 export function bindFilterBar(root, f, redraw, scene) {
@@ -181,7 +217,16 @@ export function bindFilterBar(root, f, redraw, scene) {
   bar.querySelectorAll('[data-ifk]').forEach((b) => (b.onclick = () => { f.kind = b.dataset.ifk; if (f.kind !== 'all' && f.kind !== 'gear') f.slot = 'any'; click(); redraw(); }));
   bar.querySelectorAll('[data-if]').forEach((b) => (b.onclick = () => { f[b.dataset.if] = !f[b.dataset.if]; click(); redraw(); }));
   const sel = (cls, key, num = false) => { const e = bar.querySelector(cls); if (e) e.onchange = () => { f[key] = num ? +e.value : e.value; if (key === 'slot' && e.value !== 'any' && f.kind !== 'gear') f.kind = 'gear'; click(); redraw(); }; };
-  sel('.if-slot', 'slot'); sel('.if-job', 'job'); sel('.if-rar', 'rar', true); sel('.if-sort', 'sort');
+  sel('.if-slot', 'slot'); sel('.if-job', 'job'); sel('.if-rar', 'rar', true); sel('.if-sort', 'sort'); sel('.if-rarmax', 'rarMax', true); sel('.if-lvb', 'lvBelow', true);
+  const ps = bar.querySelector('.if-preset');
+  if (ps) ps.onchange = () => { const p = filterPresets()[ps.value]; if (p) { Object.assign(f, newFilter(), p, { q: '' }); f.preset = ps.value; click(); redraw(); } };
+  if (ps && f.preset) ps.value = f.preset;
+  bar.querySelector('[data-ifsave]')?.addEventListener('click', async () => {
+    const name = await askText({ title: 'ตั้งชื่อชุดตัวกรอง', icon: '💾', text: 'ใช้ชื่อเดิม = บันทึกทับ', input: f.preset || 'ขยะของฉัน' });
+    if (!name) return; savePreset(name.slice(0, 24), f); f.preset = name.slice(0, 24); click(); redraw();
+  });
+  bar.querySelector('[data-ifdel]')?.addEventListener('click', () => { const n = ps?.value || f.preset; if (!n) return; deletePreset(n); f.preset = ''; click(); redraw(); });
+  bar.querySelector('[data-ifclear]')?.addEventListener('click', () => { Object.assign(f, newFilter({ sort: f.sort }), { preset: '' }); click(); redraw(); });
   const q = bar.querySelector('.if-q');
   if (q) {
     q.addEventListener('keydown', (e) => e.stopPropagation());

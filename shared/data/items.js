@@ -244,7 +244,7 @@ export const SHOPS = {
       'cs_outfit_silk', 'cs_outfit_warrior', 'cs_outfit_mahadlek',
       'cs_head_ngob', 'cs_head_mongkol', 'cs_head_flower', 'cs_head_chada', 'cs_head_naga', 'cs_face_takhon', 'cs_face_khon',
       'cs_back_umbrella', 'cs_back_flag', 'cs_back_kinnari'],
-    tabs: ['buy', 'sell', 'dye'],
+    tabs: ['buy', 'sell'],
   },
   // ---------- ครูประจำอาชีพ (ขายอุปกรณ์สายตัวเอง Lv.1–20) ----------
   kru_sword: {
