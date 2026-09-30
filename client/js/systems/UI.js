@@ -35,6 +35,7 @@ import { account } from '../net/Account.js';
 import { CardUI } from './Cards.js';
 import { askQty } from './QtyPicker.js';
 import { GuideBook } from './GuideBook.js';
+import { ShopViews } from './ShopUI.js';
 import { CARD_BY_ID, SLOT_CARD, CARD_SLOT_TH, socketCount, cardText } from '/shared/data/cards.js';
 import { KINDS, rarityOf, newFilter, applyFilter, filterBarHtml, bindFilterBar, gainBadge, gainText, cpGain, bestSlotFor, bestLoadout, cardGain, bestCardSlot, baseCp, canWear, isMine } from './ItemFilter.js';
 import { ItemTip, impactLine, inlineStats, itemCard } from './ItemTip.js';
@@ -93,6 +94,7 @@ export class UI {
 
     this.cards = new CardUI(this);
     this.guide = new GuideBook(this);
+    this.shopV = new ShopViews(this);
     this.itemTip = new ItemTip(this, rarityOf);
     this.setupLayoutGuard();
     $('#hud').classList.remove('hidden');
@@ -109,7 +111,7 @@ export class UI {
     $('#shop-tabs').onclick = (e) => {
       const b = e.target.closest('button[data-tab]');
       if (!b) return;
-      this.shopTab = b.dataset.tab;
+      this.shopTab = b.dataset.tab; this.shopSel = null;
       $('#shop-tabs').querySelectorAll('button').forEach((x) => x.classList.toggle('active', x === b));
       this.renderShop();
     };
@@ -1097,12 +1099,11 @@ export class UI {
     for (const f of [this.shopF, this.sellF]) if (f) Object.assign(f, { kind: 'all', slot: 'any', q: '' });   // ร้านใหม่: ล้างหมวด/ค้นหา (คงตัวเลือกสายฉัน/เรียง)
     this.shopQty = 1;                        // เปิดร้านใหม่ทุกครั้ง → จำนวนกลับเป็น x1 (กันซื้อพลาดจากค่าที่ค้างจากร้านก่อน)
     const shop = SHOPS[shopId];
-    $('#shop-title').textContent = shop.nameTh;
-    $('#shop-greet').textContent = `“${shop.greeting}”`;
-    // ภาพ/ชื่อ NPC ด้านบน (ใช้เฟรมจากตัวละครในเกม)
     const [nm, ...rest] = shop.nameTh.split(' ');
     $('#shop-npc').textContent = npc?.nameTh || nm;
-    $('#shop-role').textContent = npc?.role || rest.join(' ');
+    $('#shop-title').textContent = rest.join(' ') || shop.nameTh;
+    $('#shop-role').textContent = npc?.role && !rest.join(' ').includes(npc.role) ? npc.role : '';
+    $('#shop-greet').textContent = `“${shop.greeting}”`;
     // ภาพหน้า NPC: ตัดจากสไปรต์ 8 ทิศ (ท่ายืน หันหน้า) → ครอปช่วงหัว-ไหล่ใส่วงกลม
     const pkey = npc?.key || SHOP_PORT[shopId];
     $('#shop-port').style.display = 'none'; $('#shop-port-ic').innerHTML = uiIcon('shop', npc?.icon || '🛒');
@@ -1110,95 +1111,36 @@ export class UI {
       if (!url || this.shopId !== shopId) return;
       $('#shop-port').src = url; $('#shop-port').style.display = ''; $('#shop-port').classList.add('real'); $('#shop-port-ic').innerHTML = '';
     });
-    const TAB_TH = { buy: '🛒 ซื้อ', sell: '💰 ขาย', enhance: `${uiIcon('anvil', '🔨')} ตีบวก`, cook: `${uiIcon('soup', '🍳')} ทำอาหาร`, brew: `${uiIcon('herb', '🌿')} ปรุงยา`, forge: '⚒️ สร้างอุปกรณ์', dye: '🎨 ย้อมสี', cards: '🃏 แลกการ์ด', quests: '📜 เควสอาชีพ', buyback: '↩ ซื้อคืน' };
     const tabs = [...(shop.tabs || ['buy', 'sell'])];
     if (tabs.includes('sell') && !tabs.includes('buyback')) tabs.splice(tabs.indexOf('sell') + 1, 0, 'buyback');   // ซื้อคืนของที่เพิ่งขาย (กันขายพลาด)
+    this.shopTabs = tabs;
     this.shopTab = tabs[0];
-    $('#shop-tabs').innerHTML = tabs.map((t, i) => `<button data-tab="${t}" class="${i ? '' : 'active'}">${TAB_TH[t]}</button>`).join('');
+    this.shopV.tryOn = {};
     this.closeAll();
     this.toggle('shop-panel', true);
   }
 
   renderShop() {
-    const c = this.char, shop = SHOPS[this.shopId];
+    const c = this.char, shop = SHOPS[this.shopId], V = this.shopV, el = $('#shop-list');
     $('#shop-gold').textContent = c.gold.toLocaleString();
-    $('#shop-panel').classList.toggle('selling', this.shopTab === 'sell');     // แท็บขาย: หน้าต่างสูงพอดีจอ ตารางไอเทมเลื่อนในตัว (ท้ายหน้าต่างไม่ทับตาราง)
-    let html;
-    if (this.shopTab === 'enhance') return this.scene.village.renderEnhance($('#shop-list'));
-    if (this.shopTab === 'cards') return this.cards.renderTrade($('#shop-list'));
-    if (this.shopTab === 'cook') return this.scene.village.renderCook($('#shop-list'));
-    if (this.shopTab === 'brew') return this.scene.village.renderBrew($('#shop-list'));
-    if (this.shopTab === 'forge') return this.scene.village.renderForge($('#shop-list'));
-    if (this.shopTab === 'dye') return this.renderDye($('#shop-list'));
-    if (this.shopTab === 'quests') return this.scene.village.renderQuestList($('#shop-list'), this.shopId);
-    if (this.shopTab === 'buyback') return this.renderBuyback($('#shop-list'));
-    // เลือกจำนวน: x1 / x5 / x10 / สูงสุด (ใช้ทั้งซื้อและขาย)
-    const QTY = [[1, 'x1'], [5, 'x5'], [10, 'x10'], [9999, 'สูงสุด']];
-    // ร้านครูอาชีพไม่มีแถบจำนวน → ซื้อทีละชิ้นเสมอ
-    const q = this.shopTab === 'buy' && shop.job ? 1 : this.shopQty || 1;
-    const custom = !QTY.some(([n]) => n === q);
-    const qtyBar = `<div class="qty-bar"><span>จำนวน:</span>${QTY.map(([n, l]) => `<button data-qty="${n}" class="${q === n ? 'active' : ''}">${l}</button>`).join('')}
-      <label class="qty-custom ${custom ? 'active' : ''}">ระบุ <input type="number" id="shop-qty-in" min="1" max="9999" value="${custom ? q : ''}" placeholder="เช่น 25" /></label></div>`;
-    if (this.shopTab === 'buy') {
-      // ตัวกรองมาตรฐาน (หมวด · ช่อง · สายฉัน · ใส่ได้ · ▲ ดีกว่า · หายาก · เรียง · ค้นหา)
-      const f = (this.shopF ||= newFilter());
-      const kinds = ['all', 'gear', 'use', 'card', 'etc'].filter((k) => k === 'all' || shop.stock.some((id) => ITEMS[id] && KINDS[k][1](ITEMS[id])));
-      if (!kinds.includes(f.kind)) f.kind = 'all';
-      const hasGear = shop.stock.some((id) => KINDS.gear[1](ITEMS[id]));
-      const filterBar = filterBarHtml(c, f, shop.stock, { kinds, gear: hasGear });
-      const stock = applyFilter(c, shop.stock, f, { price: (id) => ITEMS[id].price || 0 });
-      // แบบ 2 ฝั่ง: ซ้าย = ตารางสินค้า · ขวา = รายละเอียด + จำนวน + ปุ่มซื้อ
-      if (!stock.includes(this.shopSel)) this.shopSel = stock.find((id) => !(ITEMS[id].lv && c.level < ITEMS[id].lv)) || stock[0];
-      const sel = this.shopSel, si = ITEMS[sel];
-      const cards = stock.map((id) => {
-        const it = ITEMS[id], under = it.lv && c.level < it.lv, have = Inv.count(c, id);
-        return `<button class="sb-card${id === sel ? ' on' : ''}${under ? ' under' : ''}${rcls(it)}" data-sel="${id}"><span class="ic">${itemIcon(id, it.icon)}</span>
-          <span class="nm">${rname(it, esc(it.nameTh))}</span><span class="pr">฿${it.price.toLocaleString()}</span>${have ? `<i class="hv">มี ${have}</i>` : ''}${under ? `<i class="lk">🔒 Lv.${it.lv}</i>` : ''}${gainBadge(c, id)}</button>`;
-      }).join('');
-      let detail = '<p class="empty">เลือกสินค้าทางซ้าย</p>';
-      if (si) {
-        const owned = si.type === 'skin' && Inv.count(c, sel);
-        const n = si.type === 'skin' ? 1 : Math.max(1, Math.min(q, Math.floor(c.gold / si.price) || 1));
-        const afford = c.gold >= si.price * n;
-        const prev = ['costume', 'armor', 'weapon'].includes(si.type) ? `<button class="btn ghost sm" data-prev="${sel}">👁 ลองใส่</button>` : '';
-        detail = `<div class="item-tip sb-tip"><div class="tt-card">${itemCard(c, sel, { rarityOf: this.itemTip?.rarityOf || (() => 0) })}</div></div>
-          ${gainText(c, sel)}${impactLine(c, sel)}
-          ${shop.job || si.type === 'skin' ? '' : qtyBar}
-          <div class="sb-buy"><span class="tot">รวม <b class="${afford ? '' : 'bad'}">฿${(si.price * n).toLocaleString()}</b>${n > 1 ? ` <small>(${n} ชิ้น)</small>` : ''}</span>${prev}
-          <button class="btn primary" data-buy="${sel}" data-n="${n}" ${owned || !afford ? 'disabled' : ''}>${owned ? 'มีแล้ว' : !afford ? 'เงินไม่พอ' : n > 1 ? `ซื้อ x${n}` : 'ซื้อ'}</button></div>`;
-      }
-      html = filterBar + `<div class="shop-buy"><div class="sb-grid">${cards || '<p class="empty">ไม่มีสินค้าในหมวดนี้</p>'}</div><div class="sb-detail">${detail}</div></div>`;
-    } else return this.renderSell();
-    $('#shop-list').innerHTML = html;
-    const trade = (r) => { this.scene.sfx.play(r.ok ? 'buy' : 'error'); this.result(r); };
-    bindFilterBar($('#shop-list'), this.shopF, () => this.renderShop(), this.scene);
-    $('#shop-list').querySelectorAll('[data-qty]').forEach((b) => (b.onclick = () => { this.shopQty = +b.dataset.qty; this.scene.sfx.play('click'); this.renderShop(); }));
-    const qin = $('#shop-qty-in');
-    if (qin) {
-      // พิมพ์จำนวนเอง → อัปเดตราคา/ปุ่มทันที (ไม่ต้องกด Enter) แต่ไม่ให้ช่องหลุดโฟกัส
-      qin.addEventListener('keydown', (e) => e.stopPropagation());
-      qin.addEventListener('input', () => {
-        const v = Math.max(1, Math.min(9999, Math.floor(+qin.value || 0)));
-        if (!qin.value) return;
-        this.shopQty = v;
-        const pos = qin.selectionStart;
-        this.renderShop();
-        const q2 = $('#shop-qty-in'); q2.focus(); try { q2.setSelectionRange(pos, pos); } catch { /* number input */ }
-      });
-      qin.addEventListener('focus', () => (this.scene.input.keyboard.enabled = false));
-      qin.addEventListener('blur', () => (this.scene.input.keyboard.enabled = true));
-    }
-    const E = this.scene.econ, shopId = this.shopId;
-    $('#shop-list').querySelectorAll('[data-buy]').forEach((b) => (b.onclick = () => E.act('buy', { shop: shopId, id: b.dataset.buy, qty: +b.dataset.n || 1 }).then(trade)));
-    $('#shop-list').querySelectorAll('[data-sell]').forEach((b) => (b.onclick = () => E.act('sell', { id: b.dataset.sell, qty: +b.dataset.n || 1 }).then(trade)));
-    $('#shop-list').querySelectorAll('[data-prev]').forEach((b) => (b.onclick = () => this.preview(b.dataset.prev)));
-    $('#shop-list').querySelectorAll('[data-sel]').forEach((b) => (b.onclick = () => { this.shopSel = b.dataset.sel; this.scene.sfx.play('click'); const y = $('.sb-grid')?.scrollTop; this.renderShop(); const g = $('.sb-grid'); if (g && y) g.scrollTop = y; }));
-    $('#shop-list').querySelectorAll('[data-bulk]').forEach((b) => (b.onclick = async () => {
-      const list = Inv.bulkSellList(c, b.dataset.bulk);
-      const total = list.reduce((a, s) => a + sellPrice(s.id) * s.qty, 0), n = list.reduce((a, s) => a + s.qty, 0);
-      if (!list.length || !(await ask({ title: `ขาย${b.dataset.bulk === 'fish' ? 'ปลา' : 'ของดรอป'}ทั้งหมด?`, icon: '💰', ok: 'ขาย', text: `${list.length} ชนิด (${n} ชิ้น) ได้ ฿${total.toLocaleString()}\nของที่ล็อก 🔒 จะไม่ถูกขาย` }))) return;
-      E.act('sellMany', { kind: b.dataset.bulk }).then(trade);
-    }));
+    $('#shop-chips').innerHTML = V.chips(this.shopId);
+    $('#shop-tabs').innerHTML = V.rail(this.shopTabs || shop.tabs, this.shopId, this.shopTab);
+    const pan = $('#shop-panel');
+    pan.classList.toggle('selling', this.shopTab === 'sell');
+    pan.dataset.tab = this.shopTab;
+    const sell = this.shopTab === 'sell' || this.shopTab === 'buyback';
+    el.classList.toggle('sh-pad', !['buy', 'enhance', 'cook', 'brew', 'forge', 'sell'].includes(this.shopTab));
+    if (this.shopTab === 'enhance') return V.enhance(el, this.shopId);
+    if (this.shopTab === 'cards') return this.cards.renderTrade(el);
+    if (this.shopTab === 'cook') return V.craft(el, 'cook', 'ตกปลาได้ทุกที่ริมน้ำ (คูเมือง/แม่น้ำ/บึง) · หน่อไม้ป่าเก็บได้ในป่าไผ่ปู่โสม · กลางคืนมีโอกาสได้ปลาพรายวิญญาณ');
+    if (this.shopTab === 'brew') return V.craft(el, 'brew', 'ว่านหางจระเข้/ตะไคร้/ขมิ้น อยู่ทุ่งนา · รวงผึ้ง/หน่อไม้ อยู่ป่าไผ่ · อัญชัน อยู่บึงผีพราย · เห็ดผีเรืองแสง อยู่ป่าไผ่ลึกและป่าช้า');
+    if (this.shopTab === 'forge') return V.craft(el, 'forge', 'สร้างอุปกรณ์ Lv.22–150 จากของดรอปผี + แร่เหล็กไหล · ไม่ต้องรอดวงดรอป · เขี้ยวพญายักษ์ได้จากบอสปู่โสม/เปรตอสุรกาย/ชาละวัน · Lv.35+ ใช้วัตถุดิบแดนต่าง ๆ');
+    if (this.shopTab === 'dye') return this.renderDye(el);
+    if (this.shopTab === 'quests') return this.scene.village.renderQuestList(el, this.shopId);
+    if (this.shopTab === 'buyback') return this.renderBuyback(el);
+    if (this.shopTab === 'buy') return this.shopId === 'tailor' ? V.buyTailor(el, this.shopId) : shop.job ? V.buyTeacher(el, this.shopId) : V.buyList(el, this.shopId);
+    if (sell) return this.renderSell();
+    return this.renderSell();
   }
 
   /** แท็บซื้อคืน: ของที่เพิ่งขาย 10 รายการล่าสุด (ราคาเดิม) */

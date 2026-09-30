@@ -44,6 +44,7 @@ import { Tutorial } from '../topdown/Tutorial.js';
 import { ALL_ASSETS } from '/shared/data/td_assets.js';
 import { bakeGround, makeWater, TdAtmosphere, bakeTdFx, TdVfx, TdMinimap } from '../topdown/TdTheme.js';
 import { uiBlocked } from '../systems/uiGuard.js';
+import { NpcDialog } from '../topdown/NpcDialog.js';
 import { heroId, baseHeroId } from '../systems/HeroPreview.js';
 import { CostumeOverlay } from '../topdown/CostumeOverlay.js';
 import { Townsfolk } from '../topdown/Townsfolk.js';
@@ -627,14 +628,14 @@ export class TopDownScene extends Phaser.Scene {
     if (dist(p, n) > 52) { this.moveTo(n.x, n.y + 14); this.pendingTalk = n; return; }
     this.pendingTalk = null;
     this.sfx.play('npc');
-    if (n.id === 'quest') return this.village.openQuests();
-    if (n.id === 'warp') return this.openWarp();
-    if (n.id === 'crypt') return this.openCrypt();
     if (NPC_OPEN[n.id]) return this.ui.openShop(NPC_OPEN[n.id], n);
-    const lines = Array.isArray(n.lines) && n.lines.length ? n.lines : null;
-    if (!lines) return;
-    n.line = Number.isFinite(n.line) ? n.line : 0;                                          // บาง NPC (แมพอีเวนต์) ไม่มีตัวนับ → เคยขึ้น "undefined"
-    this.ui.toast(`💬 ${n.nameTh}: “${lines[n.line++ % lines.length]}”`, '', 4500);
+    // NPC อื่น: กล่องคุยด้านล่าง (ปุ่มหลักพาไปหน้าต่างของ NPC นั้น)
+    const dlg = (this.npcDlg ||= new NpcDialog(this));
+    const act = n.id === 'quest' ? { label: '📋 ดูกระดานเควส', run: () => this.village.openQuests() }
+      : n.id === 'warp' ? { label: '🌀 เปิดประตูมิติ', run: () => this.openWarp() }
+      : n.id === 'crypt' ? { label: '💀 ลงสุสานใต้ดิน', run: () => this.openCrypt() } : null;
+    if (!act && !(Array.isArray(n.lines) && n.lines.length)) return;
+    dlg.show({ ...n, icon: NPC_ICON[n.id], lines: n.lines?.length ? n.lines : [n.role || 'ว่าไงพ่อหนุ่มแม่หนู'], get line() { return n.line; }, set line(v) { n.line = v; } }, act);
   }
 
   // ------------------------------------------------------------
@@ -1415,7 +1416,7 @@ export class TopDownScene extends Phaser.Scene {
       document.getElementById('td-hud')?.appendChild(el);
       this.events.once('shutdown', () => { el.remove(); this.talkPill = null; });
     }
-    const n = this.player?.alive && !this.ui.anyOpen?.() ? this.nearestNpc(72) : null;
+    const n = this.player?.alive && !this.ui.anyOpen?.() && !this.npcDlg?.open ? this.nearestNpc(72) : null;
     el.classList.toggle('hidden', !n);
     if (!n || this.talkNpc === n) return;
     this.talkNpc = n;
@@ -1558,7 +1559,7 @@ export class TopDownScene extends Phaser.Scene {
     this.nameTag.setPosition(p.x, Math.min(p.y - p.displayHeight - 3, p._cosTop ?? Infinity));   // สวมหมวก/มงกุฎสูง → ยกป้ายชื่อขึ้น
     if (this.titleTag?.visible) this.titleTag.setPosition(p.x, this.nameTag.y - this.nameTag.displayHeight);
     if (time > (this.nextAutoMenu || 0)) { this.nextAutoMenu = time + 1000; this.refreshAutoMenuCounts(); }
-    if (time > (this.nextTalkPill || 0)) { this.nextTalkPill = time + 150; this.updateTalkPill(); this.refreshPresetBtn(); }
+    if (time > (this.nextTalkPill || 0)) { this.nextTalkPill = time + 150; this.updateTalkPill(); this.refreshPresetBtn(); this.npcDlg?.update(); }
     if (this.tut?.on) { if (time > (this.nextTut || 0)) { this.nextTut = time + 120; this.tut.update(); } }
     else if (!this.tut && this.net?.selfId && time > 2500) this.tut = new Tutorial(this);   // ผู้เล่นใหม่: แนะนำ 4 ขั้น
     this.folk?.update(delta);

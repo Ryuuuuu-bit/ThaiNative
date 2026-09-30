@@ -490,15 +490,18 @@
       </section>
 
       <!-- ร้านค้า NPC -->
-      <section id="shop-panel" class="panel window wide hidden">
-        <header><span id="shop-title">ร้านค้า</span> <button class="close">✕</button></header>
-        <div class="npc-hero">
-          <div class="npc-port"><img id="shop-port" alt="" /><span id="shop-port-ic"></span></div>
-          <div class="npc-say"><div class="npc-nm"><b id="shop-npc"></b><small id="shop-role"></small></div><p id="shop-greet" class="greet"></p></div>
-          <div class="shop-gold"><small>เงินของคุณ</small><span>฿ <b id="shop-gold">0</b></span></div>
+      <section id="shop-panel" class="panel window wide hidden shop-v3">
+        <header class="sh-head">
+          <div class="npc-port sh-port"><img id="shop-port" alt="" /><span id="shop-port-ic"></span></div>
+          <div class="sh-id"><div class="sh-name"><b id="shop-npc"></b><span class="sh-dot">·</span><span id="shop-title">ร้านค้า</span><small id="shop-role"></small></div><p id="shop-greet" class="greet"></p></div>
+          <div id="shop-chips" class="sh-chips"></div>
+          <div class="shop-gold sh-gold"><small>เงินของคุณ</small><span>฿<b id="shop-gold">0</b></span></div>
+          <button class="close">✕</button>
+        </header>
+        <div class="sh-body">
+          <nav class="sh-rail" id="shop-tabs"></nav>
+          <div id="shop-list" class="sh-main"></div>
         </div>
-        <div class="tabs shop-tabs" id="shop-tabs"></div>
-        <div id="shop-list" class="item-list"></div>
       </section>
 
       <!-- แชท -->

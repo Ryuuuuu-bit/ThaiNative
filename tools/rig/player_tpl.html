@@ -1,0 +1,251 @@
+<!doctype html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>/*TITLE*/</title>
+<style>
+  :root { --bg: #150e1c; --panel: #21162c; --line: #4a3560; --gold: #f0c04a; --text: #efe3cc; --muted: #a894b8; }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text); font-family: "Noto Sans Thai", "Leelawadee UI", Tahoma, sans-serif; line-height: 1.55; }
+  main { max-width: 980px; margin: 0 auto; padding: 20px 16px 40px; }
+  h1 { margin: 0 0 4px; font-size: 1.45rem; color: var(--gold); }
+  .sub { margin: 0 0 14px; color: var(--muted); }
+  .bar { display: flex; flex-wrap: wrap; gap: 10px 16px; align-items: center; margin-bottom: 12px; }
+  .seg { display: flex; flex-wrap: wrap; gap: 6px; }
+  .seg button, .btn { font: inherit; font-size: .95rem; padding: 6px 12px; border-radius: 8px; border: 1px solid var(--line); background: var(--panel); color: var(--text); cursor: pointer; }
+  .seg button.on, .btn.gold { background: linear-gradient(180deg, #ffe38a, #d9a52e); color: #2a1b0c; border-color: #fff0b8; font-weight: 700; }
+  label.chk { display: flex; gap: 6px; align-items: center; color: var(--muted); cursor: pointer; }
+  select { font: inherit; background: var(--panel); color: var(--text); border: 1px solid var(--line); border-radius: 8px; padding: 5px 8px; }
+  .stage { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 10px; }
+  .stage canvas { width: 100%; display: block; border-radius: 8px; image-rendering: pixelated; }
+  section { margin-top: 18px; background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 14px 16px; }
+  section h2 { margin: 0 0 8px; font-size: 1.05rem; color: var(--gold); }
+  .strip { overflow-x: auto; margin-top: 10px; background: repeating-conic-gradient(#2a1f36 0 25%, #221830 0 50%) 0 0 / 16px 16px; border-radius: 8px; }
+  .strip canvas { display: block; image-rendering: pixelated; }
+  .muted { color: var(--muted); font-size: .92rem; }
+</style>
+</head>
+<body>
+<main>
+  <h1>/*TITLE*/</h1>
+  <p class="sub">/*SUB*/</p>
+  <div class="bar">
+    <div class="seg" id="anims"></div>
+    <label class="chk">แสดงผล <select id="mode"><option value="pixel">ริก · พิกเซลคม</option><option value="baked">อบเป็นแผ่นเฟรม 8 fps</option><option value="smooth">Spine ลื่น (เบลอ)</option></select></label>
+    <label class="chk"><input type="checkbox" id="bones"> แสดงกระดูก</label>
+    <label class="chk">ความเร็ว <select id="speed"><option value="0.35">ช้ามาก</option><option value="0.6">ช้า</option><option value="1" selected>ปกติ</option></select></label>
+  </div>
+  <div class="stage"><canvas id="cv"></canvas></div>
+  <section>
+    <h2>อบเป็นแผ่นเฟรม</h2>
+    <p class="muted">บันทึกท่าที่เลือกเป็นแผ่นภาพเฟรม 8 fps แบบที่เกมใช้</p>
+    <button class="btn gold" id="bake">อบท่านี้</button> <span class="muted" id="bakeInfo"></span>
+    <div class="strip"><canvas id="sheet" width="1" height="1"></canvas></div>
+  </section>
+</main>
+<script>
+(() => {
+'use strict';
+const RIG = /*RIG*/null;
+const TAU = Math.PI * 2, DEG = 180 / Math.PI;
+const torsoB = RIG.bones.find((b) => b.n === 'torso');
+const K = Math.abs(torsoB.tip[1]) / 29;                         // สเกลท่าทาง/เอฟเฟกต์ตามขนาดตัว
+const [RW, RH] = RIG.size;
+const LW = Math.max(160, Math.round(RW * 1.7)), GROUND = Math.round(RH * 1.12), LH = GROUND + Math.round(18 * K);
+const ROOT = [Math.round(LW * 0.42), GROUND - (RIG.ground - RIG.root[1])];
+const S = Math.max(2, Math.min(4, Math.floor(900 / LW)));
+const imgs = {};
+const BN = Object.fromEntries(RIG.bones.map((b) => [b.n, b]));
+
+// ---------------- ท่าทาง (ค่าเป็นมุมที่เพิ่มจากท่ายืนในภาพ) ----------------
+function track(keys, t) {
+  if (t <= keys[0][0]) return keys[0][1];
+  for (let i = 1; i < keys.length; i++) { const [t1, v1] = keys[i]; if (t <= t1) { const [t0, v0] = keys[i - 1]; let u = (t - t0) / (t1 - t0); u = u * u * (3 - 2 * u); return v0 + (v1 - v0) * u; } }
+  return keys[keys.length - 1][1];
+}
+const ANIMS = /*ANIMS*/null || {
+  idle: { th: 'ยืนหายใจ', dur: 2.4, loop: true, f: (t) => { const b = Math.sin(t / 2.4 * TAU); return { ry: b * 0.9 * K, torso: b * 0.03, head: Math.sin(t / 2.4 * TAU - 0.7) * 0.06, fU: b * 0.05, fF: -b * 0.05, bU: -b * 0.06, sash: Math.sin(t / 2.4 * TAU * 2) * 0.07 }; } },
+  walk: { th: 'เดิน', dur: 1.2, loop: true, f: (t) => { const p = t / 1.2 * TAU, s = Math.sin(p), c = Math.cos(p);
+    return { ry: (Math.abs(s) * 2 - 1.5) * K, torso: 0.07 + Math.sin(2 * p) * 0.025, head: -0.04 + Math.sin(2 * p + 1) * 0.03, fLU: -s * 0.5, fLL: Math.max(0, c) * 0.85, bLU: s * 0.5, bLL: Math.max(0, -c) * 0.85, fU: s * 0.28, fF: s * 0.1, bU: -s * 0.35, bF: -s * 0.1, sash: -s * 0.14 + 0.05 }; } },
+  attack: { th: 'ฟาดอาวุธ', dur: 1.5, loop: true, ev: [[0.62, 'slam']], keys: {
+    fU: [[0, 0], [0.5, -3.15], [0.62, -0.25], [0.85, -0.25], [1.5, 0]], fF: [[0, 0], [0.5, 0.2], [0.62, 0.85], [0.85, 0.85], [1.5, 0]],
+    club: [[0, 0], [0.5, 0.1], [0.62, 0.8], [0.85, 0.8], [1.5, 0]], torso: [[0, 0], [0.5, -0.22], [0.62, 0.32], [0.85, 0.28], [1.5, 0]],
+    head: [[0, 0], [0.5, -0.15], [0.62, 0.12], [1.5, 0]], ry: [[0, 0], [0.5, -3], [0.62, 3], [0.85, 3], [1.5, 0]], rx: [[0, 0], [0.62, 3], [0.85, 3], [1.5, 0]],
+    bU: [[0, 0], [0.5, 0.65], [0.62, -0.75], [0.85, -0.65], [1.5, 0]], bF: [[0, 0], [0.5, -0.3], [0.62, 0.1], [1.5, 0]],
+    fLU: [[0, 0], [0.5, 0.15], [0.62, -0.45], [0.85, -0.45], [1.5, 0]], fLL: [[0, 0], [0.62, 0.45], [0.85, 0.45], [1.5, 0]],
+    bLU: [[0, 0], [0.62, 0.35], [0.85, 0.35], [1.5, 0]], bLL: [[0, 0], [0.62, 0.3], [1.5, 0]],
+    sash: [[0, 0], [0.5, -0.2], [0.7, 0.35], [0.95, -0.12], [1.2, 0.05], [1.5, 0]] } },
+  roar: { th: 'คำราม', dur: 2.0, loop: true, ev: [[0.45, 'ring'], [0.7, 'ring'], [0.95, 'ring'], [1.2, 'ring']], keys: {
+    fU: [[0, 0], [0.35, -2.35], [1.3, -2.35], [1.7, 0]], fF: [[0, 0], [0.35, 0.4], [1.3, 0.4], [1.7, 0]], club: [[0, 0], [0.35, 0.7], [1.3, 0.7], [1.7, 0]],
+    bU: [[0, 0], [0.35, 2.25], [1.3, 2.25], [1.7, 0]], bF: [[0, 0], [0.35, 0.8], [1.3, 0.8], [1.7, 0]],
+    head: [[0, 0], [0.25, 0.15], [0.4, -0.45], [1.3, -0.45], [1.7, 0]], torso: [[0, 0], [0.25, 0.1], [0.4, -0.14], [1.3, -0.14], [1.7, 0]],
+    ry: [[0, 0], [0.25, 2], [0.4, -2], [1.3, -2], [1.7, 0]], sash: [[0, 0], [0.4, 0.25], [0.7, -0.15], [1.0, 0.1], [1.4, -0.05], [1.8, 0]] },
+    post: (p, t) => { if (t > 0.4 && t < 1.3) { const j = Math.sin(t * 70) * 0.025; p.torso += j; p.head += j * 1.5; p.aura = 1; } } },
+  die: { th: 'ตาย', dur: 2.8, loop: false, ev: [[1.0, 'fall']], keys: {
+    torso: [[0, 0], [0.2, -0.25], [0.35, -0.15], [1.0, -1.5], [1.15, -1.38], [1.3, -1.5]], head: [[0, 0], [0.2, -0.35], [1.0, -0.2], [1.15, -0.35], [1.3, -0.25]],
+    ry: [[0, 0], [0.35, 1], [1.0, 15], [1.15, 12], [1.3, 15]], rx: [[0, 0], [1.0, -5]],
+    fU: [[0, 0], [0.2, 0.75], [1.0, 0.9], [1.15, 0.7], [1.3, 0.85]], fF: [[0, 0], [1.0, 1.1]], club: [[0, 0], [1.0, 0.1], [1.3, 0]],
+    bU: [[0, 0], [1.0, 0.65]], bF: [[0, 0], [1.0, 0.1]], fLU: [[0, 0], [0.35, -0.1], [1.0, -1.3], [1.3, -1.2]], fLL: [[0, 0], [1.0, 0.3]],
+    bLU: [[0, 0], [1.0, -1.3]], bLL: [[0, 0], [1.0, 0.5]], sash: [[0, 0], [1.0, -1.2]],
+    alpha: [[0, 1], [1.6, 1], [2.6, 0.35]], flash: [[0, 0], [0.05, 1], [0.3, 0]] } },
+};
+const SCALE_KEYS = { ry: 1, rx: 1 };
+function poseAt(name, t) {
+  const A = ANIMS[name], p = { rx: 0, ry: 0, alpha: 1, flash: 0, aura: 0 };
+  if (A.f) Object.assign(p, A.f(t));
+  if (A.keys) for (const k in A.keys) p[k] = track(A.keys[k], t) * (SCALE_KEYS[k] && !A.f ? K : 1);
+  if (A.post) A.post(p, t);
+  return p;
+}
+
+// ---------------- กระดูก ----------------
+function matrices(pose, base) {
+  const M = { root: base.translate(ROOT[0] + pose.rx, ROOT[1] + pose.ry) };
+  for (const b of RIG.bones) M[b.n] = M[b.p].translate(b.x, b.y).rotate((pose[b.n] || 0) * DEG);
+  for (const k of RIG.ik || []) {                                   // IK 2 ท่อน: มือตามจุดจับบนอาวุธ
+    const U = BN[k.u], F = BN[k.f], P = M[U.p];
+    const T = P.inverse().transformPoint(M[k.on].transformPoint(new DOMPoint(k.at[0], k.at[1])));
+    const sx = U.x, sy = U.y, dx = T.x - sx, dy = T.y - sy, a = [F.x, F.y], b = F.tip, L1 = Math.hypot(a[0], a[1]), L2 = Math.hypot(b[0], b[1]);
+    const D = Math.max(Math.abs(L1 - L2) + 0.01, Math.min(L1 + L2 - 0.01, Math.hypot(dx, dy)));
+    const A = Math.acos(Math.max(-1, Math.min(1, (L1 * L1 + D * D - L2 * L2) / (2 * L1 * D))));
+    const h = [a[0] + b[0], a[1] + b[1]], sg = Math.sign(h[0] * a[1] - h[1] * a[0]) || 1;
+    const tu = Math.atan2(dy, dx) + sg * A, ru = tu - Math.atan2(a[1], a[0]);
+    const ex = sx + L1 * Math.cos(tu), ey = sy + L1 * Math.sin(tu), rf = Math.atan2(T.y - ey, T.x - ex) - Math.atan2(b[1], b[0]) - ru;
+    M[k.u] = P.translate(sx, sy).rotate(ru * DEG); M[k.f] = M[k.u].translate(F.x, F.y).rotate(rf * DEG);
+  }
+  return M;
+}
+function drawChar(g, pose, base) {
+  const M = matrices(pose, base);
+  for (const n of RIG.order) { const pt = RIG.parts.find((q) => q.n === n); if (!pt) continue; g.setTransform(M[n]); g.drawImage(imgs[n], pt.dx, pt.dy); }
+  g.setTransform(1, 0, 0, 1, 0, 0);
+  if (pose.flash > 0.01) { g.globalCompositeOperation = 'source-atop'; g.globalAlpha = pose.flash; g.fillStyle = '#fff'; g.fillRect(0, 0, g.canvas.width, g.canvas.height); g.globalAlpha = 1; g.globalCompositeOperation = 'source-over'; }
+  return M;
+}
+function drawBones(g, M, sc) {
+  g.save(); g.setTransform(1, 0, 0, 1, 0, 0);
+  for (const b of RIG.bones) {
+    const o = M[b.n].transformPoint(new DOMPoint(0, 0)), t = M[b.n].transformPoint(new DOMPoint(b.tip[0], b.tip[1]));
+    const ox = o.x * sc, oy = o.y * sc, tx = t.x * sc, ty = t.y * sc, dx = tx - ox, dy = ty - oy, L = Math.hypot(dx, dy) || 1, nx = -dy / L * 4, ny = dx / L * 4, mx = ox + dx * 0.2, my = oy + dy * 0.2;
+    g.fillStyle = 'rgba(94,242,255,.28)'; g.strokeStyle = '#5ef2ff'; g.lineWidth = 1.5;
+    g.beginPath(); g.moveTo(ox, oy); g.lineTo(mx + nx, my + ny); g.lineTo(tx, ty); g.lineTo(mx - nx, my - ny); g.closePath(); g.fill(); g.stroke();
+    g.beginPath(); g.arc(ox, oy, 3.5, 0, TAU); g.fillStyle = '#5ef2ff'; g.fill();
+  }
+  g.restore();
+}
+
+// ---------------- เอฟเฟกต์ ----------------
+let fx = [], shakeT = 0;
+const R = (a, b) => a + Math.random() * (b - a);
+function impact(x, y) {
+  shakeT = 0.3;
+  for (let i = 0; i < 26; i++) { const a = Math.random() * Math.PI, sp = R(25, 80) * K; fx.push({ k: 'dot', x, y, vx: Math.cos(a) * sp * (Math.random() < 0.5 ? -1 : 1), vy: -Math.sin(a) * sp * 0.8, g: 90 * K, life: 0, max: R(0.45, 0.8), c: Math.random() < 0.35 ? '#ffe28a' : (Math.random() < 0.5 ? '#b9a58a' : '#8c7a64'), s: Math.random() < 0.4 ? 2 : 1 }); }
+  fx.push({ k: 'ring', x, y, r0: 2, r1: 34 * K, life: 0, max: 0.4, c: '#ffe28a', flat: 0.35 });
+  fx.push({ k: 'ring', x, y, r0: 2, r1: 20 * K, life: 0, max: 0.3, c: '#ffffff', flat: 0.35 });
+}
+function fall() { shakeT = 0.25; for (let i = 0; i < 30; i++) fx.push({ k: 'dot', x: ROOT[0] + R(-45, 20) * K, y: GROUND - 2, vx: R(-25, 25) * K, vy: R(-35, -10) * K, g: 40 * K, life: 0, max: R(0.6, 1), c: Math.random() < 0.5 ? '#b9a58a' : '#8c7a64', s: 2 }); }
+function ring(x, y) { fx.push({ k: 'ring', x, y, r0: 4, r1: 50 * K, life: 0, max: 0.55, c: '#ffdd88', flat: 1 }); }
+function aura(M) { if (Math.random() < 0.6) { const o = M.torso.transformPoint(new DOMPoint(R(-14, 14) * K, R(-30, 0) * K)); fx.push({ k: 'dot', x: o.x, y: o.y, vx: R(-6, 6), vy: R(-40, -20) * K, g: 0, life: 0, max: R(0.4, 0.8), c: Math.random() < 0.5 ? '#ffd24a' : '#ff8a3d', s: 1 }); } }
+function stepFx(dt) { for (const p of fx) { p.life += dt; if (p.k === 'dot') { p.vy += p.g * dt; p.x += p.vx * dt; p.y = Math.min(GROUND, p.y + p.vy * dt); } } fx = fx.filter((p) => p.life < p.max); shakeT = Math.max(0, shakeT - dt); }
+function drawFx(g, snap) {
+  const q = (v) => (snap ? Math.round(v) : v);
+  for (const p of fx) {
+    const u = p.life / p.max; g.globalAlpha = 1 - u * 0.8; g.fillStyle = p.c;
+    if (p.k === 'dot') g.fillRect(q(p.x), q(p.y), p.s, p.s);
+    else { const r = p.r0 + (p.r1 - p.r0) * (1 - (1 - u) ** 2), n = Math.max(16, Math.round(r * 5)); for (let i = 0; i < n; i++) { const a = i / n * TAU; g.fillRect(q(p.x + Math.cos(a) * r), q(p.y + Math.sin(a) * r * p.flat), 1, 1); } }
+  }
+  g.globalAlpha = 1;
+}
+
+// ---------------- ฉาก ----------------
+function drawBG(g) {
+  g.fillStyle = '#241a2e'; g.fillRect(0, 0, LW, LH);
+  const pw = Math.round(10 * K), gap = Math.round(34 * K);
+  for (let x = Math.round(6 * K); x < LW; x += gap) { g.fillStyle = '#2d2139'; g.fillRect(x, Math.round(LH * 0.18), pw, GROUND - Math.round(LH * 0.18)); g.fillStyle = '#3a2b47'; g.fillRect(x - 2, Math.round(LH * 0.18), pw + 4, 3); g.fillRect(x - 2, GROUND - 4, pw + 4, 4); }
+  g.fillStyle = '#3a2c45'; g.fillRect(0, GROUND, LW, LH - GROUND); g.fillStyle = '#4a3a57'; g.fillRect(0, GROUND, LW, 1);
+  g.fillStyle = '#31253c'; const tw = Math.round(16 * K); for (let x = 0; x < LW; x += tw) g.fillRect(x + ((x / tw) % 2 ? tw / 2 : 0), GROUND + 5, 1, LH - GROUND - 6); g.fillRect(0, GROUND + 6, LW, 1);
+}
+function drawShadow(g, pose, snap) {
+  const cx = ROOT[0] + pose.rx, w = (pose.ry > 8 * K ? 34 : 20) * K;
+  g.fillStyle = 'rgba(0,0,0,.35)';
+  for (let dy = -2; dy <= 2; dy++) { const hw = w * Math.sqrt(1 - (dy / 3) ** 2); g.fillRect(snap ? Math.round(cx - hw) : cx - hw, GROUND + dy, snap ? Math.round(hw * 2) : hw * 2, 1); }
+}
+function drawAura(g, pose, M) {
+  if (!pose.aura) return;
+  const o = M.torso.transformPoint(new DOMPoint(0, -16 * K)); const r = (30 + Math.sin(performance.now() / 90) * 3) * K;
+  const grd = g.createRadialGradient(o.x, o.y, r * 0.2, o.x, o.y, r); grd.addColorStop(0, 'rgba(255,200,80,.35)'); grd.addColorStop(1, 'rgba(255,120,40,0)');
+  g.fillStyle = grd; g.fillRect(o.x - r, o.y - r, r * 2, r * 2);
+}
+
+const cv = document.getElementById('cv'), g = cv.getContext('2d');
+cv.width = LW * S; cv.height = LH * S;
+const mk = (w, h) => { const c = document.createElement('canvas'); c.width = w; c.height = h; return c; };
+const low = mk(LW, LH), lo = low.getContext('2d'), layL = mk(LW, LH), ll = layL.getContext('2d'), layH = mk(LW * S, LH * S), lh = layH.getContext('2d');
+
+let anim = 'attack', t = 0, speed = 1, mode = 'pixel', showBones = false, last = performance.now();
+const animsEl = document.getElementById('anims');
+function setAnim(k) { anim = k; t = 0; fx = []; animsEl.innerHTML = ''; for (const n in ANIMS) { const b = document.createElement('button'); b.textContent = ANIMS[n].th; b.className = n === anim ? 'on' : ''; b.onclick = () => setAnim(n); animsEl.appendChild(b); } }
+document.getElementById('mode').onchange = (e) => (mode = e.target.value);
+document.getElementById('bones').onchange = (e) => (showBones = e.target.checked);
+document.getElementById('speed').onchange = (e) => (speed = +e.target.value);
+
+function fire(ev, pose) {
+  const M = matrices(pose, new DOMMatrix());
+  const w = RIG.bones.find((b) => b.n === 'club');
+  if (ev === 'slam' && w) { const tip = M.club.transformPoint(new DOMPoint(w.tip[0], w.tip[1])); impact(tip.x, Math.min(GROUND, tip.y)); }
+  else if (ev === 'ring') { const m = RIG.mouth || [10, -5]; const o = M.head.transformPoint(new DOMPoint(m[0], m[1])); ring(o.x, o.y); }
+  else if (ev === 'fall') fall();
+}
+
+function frame(now) {
+  const dt = Math.min(0.05, (now - last) / 1000) * speed; last = now;
+  const A = ANIMS[anim], prev = t; t += dt;
+  if (A.loop) { if (t >= A.dur) t -= A.dur; } else t = Math.min(t, A.dur);
+  for (const [et, name] of A.ev || []) { const hit = t >= prev ? (et > prev && et <= t) : (et > prev || et <= t); if (hit) fire(name, poseAt(anim, et)); }
+  stepFx(dt);
+  const sh = shakeT > 0 ? [(Math.random() - 0.5) * 4 * K * shakeT / 0.3, (Math.random() - 0.5) * 4 * K * shakeT / 0.3] : [0, 0];
+  const tt = mode === 'baked' ? Math.floor(t * 8) / 8 : t;
+  const pose = poseAt(anim, tt);
+  let M;
+  if (mode === 'smooth') {
+    g.setTransform(S, 0, 0, S, 0, 0); g.imageSmoothingEnabled = true; drawBG(g); drawShadow(g, pose, false);
+    lh.setTransform(1, 0, 0, 1, 0, 0); lh.clearRect(0, 0, layH.width, layH.height); lh.imageSmoothingEnabled = true; lh.imageSmoothingQuality = 'high';
+    M = drawChar(lh, { ...pose, rx: pose.rx + sh[0], ry: pose.ry + sh[1] }, new DOMMatrix().scale(S, S));
+    g.setTransform(S, 0, 0, S, 0, 0); drawAura(g, pose, M);
+    g.setTransform(1, 0, 0, 1, 0, 0); g.globalAlpha = pose.alpha; g.drawImage(layH, 0, 0); g.globalAlpha = 1;
+    g.setTransform(S, 0, 0, S, 0, 0); drawFx(g, false); g.setTransform(1, 0, 0, 1, 0, 0);
+  } else {
+    lo.setTransform(1, 0, 0, 1, 0, 0); drawBG(lo); drawShadow(lo, pose, true);
+    ll.setTransform(1, 0, 0, 1, 0, 0); ll.clearRect(0, 0, LW, LH); ll.imageSmoothingEnabled = false;
+    M = drawChar(ll, { ...pose, rx: Math.round(pose.rx + sh[0]), ry: Math.round(pose.ry + sh[1]) }, new DOMMatrix());
+    drawAura(lo, pose, M);
+    lo.globalAlpha = pose.alpha; lo.drawImage(layL, 0, 0); lo.globalAlpha = 1; drawFx(lo, true);
+    g.setTransform(1, 0, 0, 1, 0, 0); g.imageSmoothingEnabled = false; g.drawImage(low, 0, 0, LW * S, LH * S);
+  }
+  if (pose.aura) aura(M);
+  if (showBones) drawBones(g, M, mode === 'smooth' ? 1 : S);
+  requestAnimationFrame(frame);
+}
+
+document.getElementById('bake').onclick = () => {
+  const A = ANIMS[anim], n = Math.max(1, Math.ceil(A.dur * 8));
+  const x0 = Math.max(0, ROOT[0] - Math.round(RW * 0.8)), FW = Math.min(LW - x0, Math.round(RW * 1.6)), FH = LH;
+  const sheet = document.getElementById('sheet'); sheet.width = n * FW; sheet.height = FH; sheet.style.height = Math.min(FH * 2, 320) + 'px';
+  const sg = sheet.getContext('2d'); sg.clearRect(0, 0, sheet.width, FH); sg.imageSmoothingEnabled = false;
+  const tmp = mk(LW, LH), tg = tmp.getContext('2d'); tg.imageSmoothingEnabled = false;
+  for (let i = 0; i < n; i++) {
+    tg.setTransform(1, 0, 0, 1, 0, 0); tg.clearRect(0, 0, LW, LH);
+    const p = poseAt(anim, i / 8); p.rx = Math.round(p.rx); p.ry = Math.round(p.ry);
+    drawChar(tg, p, new DOMMatrix());
+    sg.globalAlpha = p.alpha; sg.drawImage(tmp, x0, 0, FW, FH, i * FW, 0, FW, FH); sg.globalAlpha = 1;
+    if (i) { sg.fillStyle = 'rgba(255,215,90,.35)'; sg.fillRect(i * FW, 0, 1, FH); }
+  }
+  document.getElementById('bakeInfo').textContent = `${A.th}: ${n} เฟรม · 1 เฟรม = ${FW}×${FH} px`;
+};
+
+Promise.all(RIG.parts.map((p) => new Promise((res) => { const im = new Image(); im.onload = res; im.src = p.img; imgs[p.n] = im; }))).then(() => { setAnim(anim); requestAnimationFrame(frame); });
+})();
+</script>
+</body>
+</html>
