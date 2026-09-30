@@ -644,7 +644,17 @@ function gm(c, { cmd = 'help', a1, a2, rest = '' }, ctx) {
       return OK(`ประกาศอัปแพตช์ในอีก ${min} นาที`, { gm: true, gmNotice: { kind: 'soon', min, text } });
     }
     case 'hp': { const pct = Math.max(0, Math.min(100, Number(a1) || 0)); return OK(pct ? `ตั้ง HP → ${pct}%` : 'สลบทันที (ทดสอบชุบชีวิต)', { gm: true, hpPct: pct }); }
-    default: return OK('คำสั่ง: /gm gold [จำนวน] · /gm lv [เลเวล] · /gm exp [จำนวน] · /gm item <id> [จำนวน] · /gm sp [n] · /gm stat [n] · /gm enh <weapon|armor|accessory|accessory2> [ขั้น] · /gm heal · /gm say <ข้อความ> · /gm patch [นาที] [ข้อความ] · /gm patch cancel', { gm: true });
+    case 'find': {                                                          // ค้นหา id ไอเทมจากชื่อ/บางส่วนของ id: /gm find เขี้ยว
+      const q = String(rest || '').trim().toLowerCase();
+      if (!q) return NO('ใช้: /gm find <ชื่อหรือ id บางส่วน>');
+      const hits = Object.keys(ITEMS).filter((k) => k.toLowerCase().includes(q) || String(ITEMS[k].nameTh || '').toLowerCase().includes(q));
+      if (!hits.length) return NO(`ไม่พบไอเทมที่ตรงกับ "${q}"`);
+      return OK(`พบ ${hits.length} รายการ: ${hits.slice(0, 15).map((k) => `${ITEMS[k].nameTh} (${k})`).join(' · ')}${hits.length > 15 ? ' …' : ''}`, { gm: true });
+    }
+    // คำสั่งที่ต้องยุ่งกับผู้เล่นคนอื่น/ผีในแมพ → server จัดการ (server/index.js gmServer)
+    case 'who': case 'goto': case 'summon': case 'kick': case 'mute': case 'unmute': case 'god': case 'killall': case 'give': case 'market':
+      return OK('', { gm: true, gmSrv: { cmd: String(cmd).toLowerCase(), rest: String(rest || '') } });
+    default: return OK('คำสั่ง: /gm gold [จำนวน] · /gm lv [เลเวล] · /gm exp [จำนวน] · /gm item <id> [จำนวน] · /gm find <ชื่อ> · /gm sp [n] · /gm stat [n] · /gm enh <weapon|armor|accessory|accessory2> [ขั้น] · /gm heal · /gm hp <%> · /gm god · /gm killall · /gm map <mapId> · /gm who · /gm goto <ชื่อ> · /gm summon <ชื่อ> · /gm give <ชื่อ> <gold|itemId> [จำนวน] · /gm kick <ชื่อ> [เหตุผล] · /gm mute <ชื่อ> [นาที] · /gm unmute <ชื่อ> · /gm market · /gm rahu … · /gm merchant [close] · /gm say <ข้อความ> · /gm news … · /gm patch [นาที] [ข้อความ] · /gm patch cancel', { gm: true });
   }
 }
 

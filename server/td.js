@@ -268,7 +268,13 @@ export function setupTD(io, players, opts = {}) {
   function forget(p) {
     for (const m of mobs) { if (m.target === p.id) { m.target = null; if (m.st === 'chase') { m.st = 'wander'; m.wx = m.s.x; m.wy = m.s.y; } } m.pending = m.pending.filter((a) => a.pid !== p.id); m.dmgBy.delete(p.id); }
   }
-  const self = { id: mapId, M, L, room, mobs, crypt: CR, solidAt, inTown, okPos, econX, npcNear, nearNpc, portalNear, onHit, tick, forget };
+  /** GM: ฆ่าผีที่ยังมีชีวิตทั้งแมพ (ได้รางวัลเหมือนตีเอง · ไม่แตะบอสโลก) → จำนวนที่ฆ่า */
+  function killAll(p) {
+    let n = 0;
+    for (const m of mobs) if (m.st !== 'dead' && !m.wb) { io.to(room).emit('td:dmg', { mid: m.mid, by: p.id, hit: true, crit: false, dmg: Math.round(m.hp), hp: 0 }); kill(m, p); n++; }
+    return n;
+  }
+  const self = { id: mapId, M, L, room, mobs, crypt: CR, solidAt, inTown, okPos, econX, npcNear, nearNpc, portalNear, onHit, tick, forget, killAll };
   return self;
   }
 
@@ -541,6 +547,16 @@ export function setupTD(io, players, opts = {}) {
       if (to === mapOf(p)) { const sp = TD_MAPS[to].spawn; p.tx = sp.x; p.ty = sp.y; socket.emit('td:correct', { x: sp.x, y: sp.y }); return true; }
       moveMap(socket, p, to, { ...TD_MAPS[to].spawn }, 'npc'); return true;
     },
+    /** GM: วาร์ปไปจุดที่ระบุ (ตามตัว/ดึงตัวผู้เล่น) · แมพเดียวกัน = แก้ตำแหน่งเฉย ๆ */
+    gmTeleport(p, mapId, pos) {
+      const sk = io.sockets.sockets.get(p.id);
+      if (!sk || p.world !== 'td' || !worlds[mapId]) return false;
+      if (mapId !== mapOf(p)) { moveMap(sk, p, mapId, pos, 'npc'); return true; }
+      p.tx = pos.x; p.ty = pos.y; p.tdLast = Date.now(); p.save.tdPos = { x: Math.round(pos.x), y: Math.round(pos.y) }; p.dirty = true;
+      sk.emit('td:correct', { x: Math.round(pos.x), y: Math.round(pos.y) });
+      return true;
+    },
+    gmKillAll: (p) => (p.world === 'td' ? W(p).killAll(p) : 0),
     onConnection(socket) {
       socket.on('td:enter', () => { const p = players.get(socket.id); if (p && p.world !== 'td') enter(socket, p); });   // เข้าได้ครั้งเดียวต่อการเชื่อมต่อ (กันส่งซ้ำเพื่อต่ออมตะ/ป้องกันผีเล็ง)
       socket.on('td:move', (s) => onMove(socket, s));

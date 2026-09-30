@@ -13,7 +13,8 @@ import { MAPS, mapAt, gateNear, canTravelFrom } from '../shared/data/maps.js';
 import { sanitizeAppearance } from '../shared/data/appearance.js';
 import { getDerived, combatPower } from '../shared/character.js';
 import { migrate } from '../shared/charmodel.js';
-import { runAction, packChar, count as invCount, removeItem } from '../shared/economy.js';
+import { runAction, packChar, count as invCount, removeItem, addItem } from '../shared/economy.js';
+import { ITEMS } from '../shared/data/items.js';
 import { checkName, nameKey, nameIdeas } from '../shared/data/names.js';
 import { SKILL_BY_ID, MAX_SKILL_LV, skillStats, skillUsable, skillMastery } from '../shared/data/skills.js';
 import { DAY_MS_DEFAULT, dayPhase, isNight } from '../shared/data/world.js';
@@ -123,6 +124,7 @@ let healer = null;
 function hurtPlayer(p, dmg, info = {}) {
   const now = Date.now();
   if (!p || p.dead || now < (p.invulnUntil || 0) || p.x <= (mapAt(p.x).safeEndX ?? -1e9) && !info.force) return false;
+  if (p.god && !info.gm) return false;                                      // GM โหมดอมตะ (/gm god)
   if (info.hit === false) { io.to(p.id).emit('pl:hit', { hit: false, dmg: 0, x: info.x ?? p.x }); return false; }
   dmg = Math.max(1, Math.round(dmg));
   p.hp = Math.max(0, p.hp - dmg);
@@ -356,9 +358,10 @@ io.on('connection', (socket) => {
     if (r.ok && r.gmRahu && p.admin) r.msg = worldBoss.gm(r.gmRahu);
     if (r.ok && r.gmMerchant && p.admin) r.msg = market.gm(r.gmMerchant);
     if (r.ok && r.gmNotice && p.admin) gmNotice(r.gmNotice, p);
+    if (r.ok && r.gmSrv && p.admin) { const g = gmServer(p, r.gmSrv); r.ok = g.ok !== false; r.msg = g.msg; }
     if (r.ok && r.hpPct != null && p.admin) {                                   // GM: ตั้ง HP / สลบ (ทดสอบหมอยา)
       p.invulnUntil = 0;
-      if (r.hpPct <= 0) hurtPlayer(p, p.hp + 1, { force: true });
+      if (r.hpPct <= 0) hurtPlayer(p, p.hp + 1, { force: true, gm: true });
       else { p.hp = Math.max(1, p.maxHp * r.hpPct / 100); p.hpDirty = true; }
     }
     p.syncDue = false;
@@ -464,6 +467,7 @@ io.on('connection', (socket) => {
     p.lastChat = Date.now();
     const msg = cleanText(text, 120);
     if (!msg) return;
+    if (mutedLeft(p)) return socket.emit('chat', { id: null, name: '📢 ระบบ', text: `คุณถูกห้ามแชทอีก ${mutedLeft(p)} นาที` });
     const wm = msg.match(/^\/w\s+(\S+)\s+(.+)$/i);                              // /w ชื่อ ข้อความ = กระซิบ
     if (wm) {
       const t = [...players.values()].find((q) => String(q.name).toLowerCase().replace(/\s+#/, '#') === wm[1].toLowerCase());
@@ -588,6 +592,88 @@ function gmNotice(n, by) {
   }
   patchTimers.push(setTimeout(() => { for (const p of players.values()) { p.dirty = true; persist(p); } }, Math.max(0, at - Date.now() - 5000)));   // เซฟทุกคนก่อนถึงเวลา
   console.log(`[gm] ${by?.name} ประกาศอัปแพตช์ใน ${n.min} นาที`);
+}
+
+/** นาทีที่ยังห้ามแชทเหลืออยู่ (0 = แชทได้) · เก็บในเซฟ ออก/เข้าใหม่ก็ยังโดน */
+function mutedLeft(p) { const t = (p?.save?.muteUntil || 0) - Date.now(); return t > 0 ? Math.ceil(t / 60000) : 0; }
+
+/** คำสั่ง GM ที่ต้องยุ่งกับผู้เล่นคนอื่น/ผีในแมพ (shared/economy.js ส่ง gmSrv มา) → { ok, msg } */
+function gmServer(p, { cmd, rest = '' }) {
+  const args = rest.trim().split(/\s+/).filter(Boolean);
+  const find = (name) => {
+    const k = String(name || '').toLowerCase().replace(/\s+#/, '#');
+    return k ? [...players.values()].find((q) => String(q.name).toLowerCase().replace(/\s+#/, '#') === k) : null;
+  };
+  const need = (usage) => {
+    const t = find(args[0]);
+    return t ? { t } : { err: { ok: false, msg: args[0] ? `ไม่พบผู้เล่นชื่อ "${args[0]}" ที่ออนไลน์อยู่` : `ใช้: ${usage}` } };
+  };
+  const mapName = (q) => { const id = td.mapOf(q); return td.world(id)?.M?.nameTh || id; };
+  const log = (s) => console.log(`[gm] ${p.name}: ${s}`);
+  const sys = (t, text) => io.to(t.id).emit('chat', { id: null, name: '🛠️ GM', text });
+  switch (cmd) {
+    case 'who': {
+      const list = [...players.values()].sort((a, b) => (b.level || 0) - (a.level || 0));
+      return { msg: `ออนไลน์ ${list.length} คน: ${list.map((q) => `${q.name} Lv.${q.level} @${mapName(q)}${q.dead ? ' 💀' : ''}`).join(' · ')}` };
+    }
+    case 'goto': case 'summon': {
+      const { t, err } = need(`/gm ${cmd} <ชื่อ>`); if (err) return err;
+      if (t === p) return { ok: false, msg: 'ใส่ชื่อผู้เล่นคนอื่น' };
+      const [from, to] = cmd === 'goto' ? [t, p] : [p, t];
+      if (!td.gmTeleport(to, td.mapOf(from), { x: from.tx, y: from.ty })) return { ok: false, msg: 'วาร์ปไม่ได้ (ต้องอยู่ในโลก top-down ทั้งคู่)' };
+      if (cmd === 'summon') sys(t, `คุณถูก GM ${p.name} เรียกตัว`);
+      log(`${cmd} ${t.name}`);
+      return { msg: cmd === 'goto' ? `วาร์ปไปหา ${t.name} (${mapName(t)})` : `ดึง ${t.name} มาหาแล้ว` };
+    }
+    case 'kick': {
+      const { t, err } = need('/gm kick <ชื่อ> [เหตุผล]'); if (err) return err;
+      if (t.admin) return { ok: false, msg: 'เตะแอดมินด้วยกันไม่ได้' };
+      const why = args.slice(1).join(' ').slice(0, 100);
+      io.to(t.id).emit('server:update', { msg: `คุณถูกเตะออกจากเกมโดย GM${why ? ` · ${why}` : ''}` });
+      setTimeout(() => io.sockets.sockets.get(t.id)?.disconnect(true), 300);
+      log(`kick ${t.name} ${why}`);
+      return { msg: `เตะ ${t.name} ออกแล้ว` };
+    }
+    case 'mute': case 'unmute': {
+      const { t, err } = need(`/gm ${cmd} <ชื่อ>${cmd === 'mute' ? ' [นาที]' : ''}`); if (err) return err;
+      const min = cmd === 'mute' ? Math.max(1, Math.min(10080, Number(args[1]) || 10)) : 0;
+      t.save.muteUntil = min ? Date.now() + min * 60000 : 0; t.dirty = true;
+      sys(t, min ? `คุณถูกห้ามแชท ${min} นาที` : 'คุณแชทได้ตามปกติแล้ว');
+      log(`${cmd} ${t.name} ${min || ''}`);
+      return { msg: min ? `ห้าม ${t.name} แชท ${min} นาที` : `ปลดห้ามแชท ${t.name} แล้ว` };
+    }
+    case 'god':
+      p.god = !p.god;
+      return { msg: p.god ? 'เปิดโหมดอมตะ (ไม่โดนดาเมจ · ออกเกมแล้วหาย)' : 'ปิดโหมดอมตะ' };
+    case 'killall': {
+      const n = td.gmKillAll(p);
+      return { msg: n ? `ฆ่าผีในแมพนี้ ${n} ตัว` : 'ไม่มีผีให้ฆ่าในแมพนี้' };
+    }
+    case 'give': {                                                            // ชดเชยของ/เงินให้ผู้เล่นคนอื่น
+      const { t, err } = need('/gm give <ชื่อ> <gold|itemId> [จำนวน]'); if (err) return err;
+      const what = args[1], c = t.save;
+      if (!what) return { ok: false, msg: 'ใช้: /gm give <ชื่อ> <gold|itemId> [จำนวน]' };
+      let got;
+      if (what.toLowerCase() === 'gold') {
+        const n = Math.max(1, Math.floor(Number(args[2]) || 0)); if (!Number(args[2])) return { ok: false, msg: 'ใส่จำนวนเงิน' };
+        c.gold = Math.min(999999999, (c.gold || 0) + n); got = `฿${n.toLocaleString()}`;
+      } else {
+        const id = ITEMS[what] ? what : Object.keys(ITEMS).find((k) => ITEMS[k].nameTh === what);
+        if (!id) return { ok: false, msg: `ไม่พบไอเทม "${what}" (ใช้ /gm find เพื่อหา id)` };
+        const n = Math.max(1, Math.min(9999, Math.floor(Number(args[2]) || 1)));
+        addItem(c, id, n); got = `${ITEMS[id].nameTh} x${n}`;
+      }
+      refresh(t); queueSync(t); persist(t);
+      sys(t, `ได้รับ ${got} จาก GM`);
+      log(`give ${t.name} ${got}`);
+      return { msg: `ให้ ${t.name}: ${got}` };
+    }
+    case 'market': {
+      const s = market.stats();
+      return { msg: `ตลาด: ฝากขาย ${s.listings} · ป้ายรับซื้อ ${s.orders} · กล่องรับของ ${s.boxes} · พ่อค้าเร่ ${s.travel ? 'อยู่ในเมือง' : 'ไม่อยู่'}` };
+    }
+  }
+  return { ok: false, msg: 'ไม่รู้จักคำสั่งนี้' };
 }
 
 // ปิด server (deploy ใหม่) → เซฟทุกคนก่อน
