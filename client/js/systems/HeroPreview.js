@@ -233,7 +233,7 @@ export function heroFace(app) {
   const cv = document.createElement('canvas'); cv.width = cv.height = 40;
   const g = cv.getContext('2d'); g.imageSmoothingEnabled = false;
   const v2 = isHeroV2(id), sz = v2 ? 34 : fw * 0.44;
-  g.drawImage(im, (fw - sz) / 2, v2 ? 14 : fh * 0.06, sz, sz, 0, 0, 40, 40);
+  g.drawImage(im, (fw - sz) / 2, v2 ? Math.max(14, Math.round(fh * 0.92) - 86) : fh * 0.06, sz, sz, 0, 0, 40, 40);   // v2: เท้าอยู่ที่ 92% ของช่อง → หัวอยู่เหนือเท้า ~86px (ช่องสูงขึ้นสำหรับดาบใหญ่)
   let url = null; try { url = cv.toDataURL(); } catch { url = null; }
   faces.set(id, url);
   return url;

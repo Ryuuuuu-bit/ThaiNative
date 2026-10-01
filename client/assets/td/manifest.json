@@ -1520,69 +1520,69 @@
   },
   "hero2_male_swordman_t1": {
    "anims": [
+    "idle",
     "walk",
     "slash",
-    "idle",
     "die"
    ],
    "frames": {
+    "idle": 4,
     "walk": 6,
     "slash": 8,
-    "idle": 4,
     "die": 7
    },
-   "frame": 104,
+   "frame": 112,
    "scale": 0.54,
    "lazy": true
   },
   "hero2_male_swordman_t2": {
    "anims": [
+    "idle",
     "walk",
     "slash",
-    "idle",
     "die"
    ],
    "frames": {
+    "idle": 4,
     "walk": 6,
     "slash": 8,
-    "idle": 4,
     "die": 7
    },
-   "frame": 104,
+   "frame": 136,
    "scale": 0.54,
    "lazy": true
   },
   "hero2_male_swordman_t3": {
    "anims": [
+    "idle",
     "walk",
     "slash",
-    "idle",
     "die"
    ],
    "frames": {
+    "idle": 4,
     "walk": 6,
     "slash": 8,
-    "idle": 4,
     "die": 7
    },
-   "frame": 104,
+   "frame": 136,
    "scale": 0.54,
    "lazy": true
   },
   "hero2_male_swordman_t4": {
    "anims": [
+    "idle",
     "walk",
     "slash",
-    "idle",
     "die"
    ],
    "frames": {
+    "idle": 4,
     "walk": 6,
     "slash": 8,
-    "idle": 4,
     "die": 7
    },
-   "frame": 104,
+   "frame": 136,
    "scale": 0.54,
    "lazy": true
   },
