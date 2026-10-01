@@ -76,7 +76,7 @@ export function makeVariant(baseIt, list) {
     ...baseIt, bonus, affixes: lines, affixN: n,
     nameTh: `${baseIt.nameTh} ${AFFIX[best].name}`,
     baseNameTh: baseIt.nameTh,
-    sell: Math.max(20, Math.floor(base * (1 + 0.6 * n + 0.2 * list.reduce((s, [, t]) => s + t, 0)))),
+    sell: Math.max(20, Math.floor(base * (1 + 0.3 * n + 0.1 * list.reduce((s, [, t]) => s + t, 0)))),   // ค่าสุ่มเพิ่มราคาขายร้านได้ไม่เกิน ×2.8 (เดิม ×4.6)
     price: undefined,
   };
 }

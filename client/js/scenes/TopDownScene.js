@@ -1329,6 +1329,15 @@ export class TopDownScene extends Phaser.Scene {
     }
   }
 
+  /** ฉายาตำนาน (fx 'glow'): เรืองแสงสีฉายา + หายใจช้า ๆ · ฉายาอื่นล้างเอฟเฟกต์ */
+  titleFx(txt, T) {
+    txt._fx?.remove(); txt._fx = null; txt.setAlpha(1);
+    if (T?.fx !== 'glow') { txt.setShadow(0, 0, '#000000', 0); return; }
+    txt.setShadow(0, 0, T.color, 6, true, true);
+    txt._fx = this.tweens.add({ targets: txt, alpha: 0.65, duration: 1100, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
+    if (!txt._fxHook) { txt._fxHook = true; txt.once('destroy', () => { txt._fx?.remove(); txt._fx = null; }); }
+  }
+
   /** ป้ายชื่อตัวเอง (มีฉายาอยู่บรรทัดบน) */
   refreshNameTag() {
     const c = this.player?.char; if (!c || !this.nameTag) return;
@@ -1336,7 +1345,7 @@ export class TopDownScene extends Phaser.Scene {
     const nm = `${this.selfGm?.() ? '[GM] ' : ''}${c.name}`;
     if (this.nameTag.text !== nm) { this.nameTag.setText(nm); gmStyle(this.nameTag, this.selfGm?.()); }
     const tt = t ? `«${t.nameTh}»` : '';
-    if (this.titleTag && this.titleTag.text !== tt) this.titleTag.setText(tt).setColor(t?.color || '#ffffff').setVisible(!!t);
+    if (this.titleTag && this.titleTag.text !== tt) { this.titleTag.setText(tt).setColor(t?.color || '#ffffff').setVisible(!!t); this.titleFx(this.titleTag, t); }
   }
 
   // ------------------------------------------------------------
@@ -1443,7 +1452,7 @@ export class TopDownScene extends Phaser.Scene {
     const paintPk = (pk) => { if (q.gm) return; tag.setColor(pk === 'red' ? '#ff4a3d' : pk === 'purple' ? '#d38cff' : '#aed6f1'); };   // PK: หัวแดง / ม่วง (ตีคนก่อน)
     paintPk(q.pk);
     const ttl = makeText(this, q.x, q.y, '', { fontSize: '7px', color: '#ffffff', align: 'center' }).setOrigin(0.5, 1);   // ฉายา (สีตามฉายา) เหนือชื่อ
-    const paintTitle = (t) => { const T = TITLE_BY_ID[t]; ttl.setText(T ? `«${T.nameTh}»` : '').setColor(T?.color || '#ffffff').setVisible(!!T); };
+    const paintTitle = (t) => { const T = TITLE_BY_ID[t]; ttl.setText(T ? `«${T.nameTh}»` : '').setColor(T?.color || '#ffffff').setVisible(!!T); this.titleFx(ttl, T); };
     paintTitle(q.title);
     s._tags = [tag, ttl];
     s.setInteractive({ useHandCursor: true });                                   // คลิกผู้เล่น → เมนู เชิญ/เทรด/เพื่อน/กระซิบ

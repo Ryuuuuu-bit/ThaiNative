@@ -1399,7 +1399,7 @@ export class UI {
     const c = this.char, have = new Set(c.titles || []);
     const row = (t) => {
       const on = c.title === t.id, ok = have.has(t.id);
-      return `<button class="title-row ${ok ? '' : 'locked'} ${on ? 'active' : ''} ${t.dynamic ? 'dyn' : ''}" data-title="${t.id}" ${ok ? '' : 'disabled'} style="--tc:${t.color}"><b>${ok ? '' : '🔒 '}${esc(t.nameTh)}</b><small>${esc(t.hint)}</small>${on ? '<i>✔ ใช้อยู่</i>' : ''}</button>`;
+      return `<button class="title-row ${ok ? '' : 'locked'} ${on ? 'active' : ''} ${t.dynamic ? 'dyn' : ''} ${t.fx === 'glow' ? 'glow' : ''}" data-title="${t.id}" ${ok ? '' : 'disabled'} style="--tc:${t.color}"><b>${ok ? '' : '🔒 '}${esc(t.nameTh)}</b><small>${esc(t.hint)}</small>${on ? '<i>✔ ใช้อยู่</i>' : ''}</button>`;
     };
     const cp = combatPower(c);
     const html = `<div class="title-sum">ปลดแล้ว <b>${TITLES.filter((t) => have.has(t.id)).length}/${TITLES.length}</b> · ค่าพลังรวม <b>⚔ ${cp.toLocaleString('en-US')}</b>${c.rec?.cpRank ? ` · อันดับ #${c.rec.cpRank}` : ''}</div>`

@@ -721,6 +721,10 @@ kbd { display: inline-block; min-width: 1.6em; text-align: center; padding: 0 .3
 .title-row { display: flex; flex-direction: column; align-items: flex-start; gap: .1em; text-align: left; background: rgba(0,0,0,.25); border: 1px solid rgba(212,175,55,.3); border-radius: 6px; padding: .3em .5em; color: var(--text); font: inherit; cursor: pointer; position: relative; }
 .title-row b { color: var(--tc, #f7dc6f); }
 .title-row small { color: #9a94a8; font-size: .78em; }
+.title-row.glow { border-color: color-mix(in srgb, var(--tc) 55%, transparent); }
+.title-row.glow b { text-shadow: 0 0 6px var(--tc), 0 0 12px color-mix(in srgb, var(--tc) 50%, transparent); animation: title-glow 2.2s ease-in-out infinite; }
+.title-row.glow.locked b { animation: none; text-shadow: none; }
+@keyframes title-glow { 50% { opacity: .7; } }
 .title-row i { position: absolute; right: .5em; top: .3em; font-style: normal; color: #82e0aa; font-size: .8em; }
 .title-row.active { border-color: #82e0aa; box-shadow: inset 0 0 0 1px rgba(130,224,170,.4); }
 .title-row.dyn b::after { content: ' ♛'; color: #ffd700; }

@@ -9,7 +9,7 @@
 import { ITEMS, SHOPS } from '/shared/data/items.js';
 import { JOBS } from '/shared/data/classes.js';
 import { ENHANCE } from '/shared/data/village.js';
-import { craftList, canCraft, demandLeft } from '/shared/economy.js';
+import { craftList, canCraft, demandLeft, shopPrice } from '/shared/economy.js';
 import { demandOf, COIN } from '/shared/data/trade.js';
 import { SLOT_TH, ENH_SLOTS, FLASK_SLOTS, GEAR_TYPES, TYPE_TH } from '/shared/data/slots.js';
 import { itemIcon, uiIcon } from './util.js';
@@ -119,7 +119,7 @@ export class ShopViews {
       const it = ITEMS[id], have = Inv.count(c, id), under = it.lv && c.level < it.lv, fs = flaskSlotOf(id);
       const tags = [fs ? `<i class="sv-tag on">ใส่ช่อง ${FKEY[fs]} อยู่</i>` : '', have ? `<i class="sv-tag">x${fmt(have)}</i>` : '', under ? `<i class="sv-tag lk">🔒 Lv.${it.lv}</i>` : ''].join('');
       return `<button class="sv-row${id === sel ? ' on' : ''}${under ? ' under' : ''}" data-sel="${id}"><span class="sv-ic">${itemIcon(id, it.icon)}</span>
-        <span class="sv-tx"><b>${esc(it.nameTh.replace(/\s*\(.*\)$/, ''))}${tags}</b><small>${esc(effLine(it))}</small></span><span class="sv-pr">฿${fmt(it.price)}</span></button>`;
+        <span class="sv-tx"><b>${esc(it.nameTh.replace(/\s*\(.*\)$/, ''))}${tags}</b><small>${esc(effLine(it))}</small></span><span class="sv-pr">฿${fmt(shopPrice(c, id))}</span></button>`;
     };
     const groups = GROUPS.map(([g, th, sub]) => { const ids = stock.filter((id) => groupOf(ITEMS[id]) === g); if (!ids.length) return '';
       return `<div class="sv-group"><div class="sv-gh"><b>${th}</b><small>${sub}</small></div><div class="sv-rows">${ids.map(card).join('')}</div></div>`; }).join('');
@@ -132,9 +132,9 @@ export class ShopViews {
     const c = this.c, it = ITEMS[id], ui = this.ui;
     if (!it) return '<p class="empty">เลือกสินค้าทางซ้าย</p>';
     const gear = GEAR_TYPES.includes(it.type), single = gear || it.type === 'skin';
-    const maxAfford = Math.max(1, Math.floor(c.gold / Math.max(1, it.price)));
+    const maxAfford = Math.max(1, Math.floor(c.gold / Math.max(1, shopPrice(c, id))));
     const n = single ? 1 : Math.max(1, Math.min(ui.shopQty || 1, 9999));
-    const cost = it.price * n, ok = c.gold >= cost, under = it.lv && c.level < it.lv, have = Inv.count(c, id);
+    const cost = shopPrice(c, id) * n, ok = c.gold >= cost, under = it.lv && c.level < it.lv, have = Inv.count(c, id);
     const typeTh = it.type === 'flask' ? 'ขวดยา · ใส่ช่อง Q/E' : it.type === 'consumable' ? 'ยากิน · ใช้ครั้งเดียว' : it.type === 'food' ? 'อาหาร · บัฟชั่วคราว' : TYPE_TH[it.type] || 'ของใช้';
     const job = it.job || (it.wtype && JOBS[{ sword: 'swordman', staff: 'mage', bow: 'archer', fist: 'boxer', herb: 'healer' }[it.wtype]]?.id);
     const cmp = gear ? `${gainText(c, id)}${impactLine(c, id)}` : '';
@@ -198,7 +198,7 @@ export class ShopViews {
       const it = ITEMS[id], under = (it.lv || 1) > c.level, g = gainOf(id), own = Inv.count(c, id);
       const tag = worn.has(id) ? '<i class="tm-tag on">ใส่อยู่</i>' : own ? '<i class="tm-tag">มีแล้ว</i>' : '';
       return `<button class="tm-cell${id === sel ? ' sel' : ''}${under ? ' under' : ''}" data-sel="${id}" title="${esc(it.nameTh)}">${tag}${g > 0 ? '<i class="tm-up">▲</i>' : ''}
-        <span class="tm-ic">${itemIcon(id, it.icon)}</span><span class="tm-pr">${under ? `🔒Lv.${it.lv}` : `฿${fmt(it.price)}`}</span></button>`;
+        <span class="tm-ic">${itemIcon(id, it.icon)}</span><span class="tm-pr">${under ? `🔒Lv.${it.lv}` : `฿${fmt(shopPrice(c, id))}`}</span></button>`;
     };
     const head = `<div class="tm-row tm-hd"><div class="tm-lv"></div>${cols.map((s) => `<div class="tm-col">${SLOT_TH[s]}</div>`).join('')}</div>`;
     const rows = lvs.map((lv) => `<div class="tm-row${lv === myTier ? ' me' : ''}"><div class="tm-lv"><b>Lv.${lv}</b>${lv === myTier ? '<small>เลเวลคุณ</small>' : ''}</div>${cols.map((s) => cell(s, lv)).join('')}</div>`).join('');
@@ -206,7 +206,7 @@ export class ShopViews {
     const note = `<div class="tm-note">${ups ? `<span class="up">▲ อัปเกรดได้ ${ups} ช่อง</span> · ของดีสุดที่ใส่ได้ตอน Lv.${c.level}${upCost ? ` รวม ฿${fmt(upCost)}` : ''}` : '✔ ใส่ของดีสุดที่ใส่ได้ครบแล้ว'}
       <span class="tm-adv">${bestSlot ? `เงินมี ฿${fmt(c.gold)} · แนะนำซื้อ${SLOT_TH[bestSlot]}ก่อน` : ''}</span></div>`;
     el.innerHTML = `<div class="sv-split"><div class="sv-left sv-matrix"><div class="tm-grid" style="--cols:${cols.length}">${head}${rows}</div>${note}
-      ${extra.length ? `<div class="sv-group"><div class="sv-gh"><b>อื่น ๆ</b></div><div class="sv-rows">${extra.map((id) => `<button class="sv-row${id === sel ? ' on' : ''}" data-sel="${id}"><span class="sv-ic">${itemIcon(id, ITEMS[id].icon)}</span><span class="sv-tx"><b>${esc(ITEMS[id].nameTh)}</b><small>${esc(effLine(ITEMS[id]))}</small></span><span class="sv-pr">฿${fmt(ITEMS[id].price)}</span></button>`).join('')}</div></div>` : ''}</div>
+      ${extra.length ? `<div class="sv-group"><div class="sv-gh"><b>อื่น ๆ</b></div><div class="sv-rows">${extra.map((id) => `<button class="sv-row${id === sel ? ' on' : ''}" data-sel="${id}"><span class="sv-ic">${itemIcon(id, ITEMS[id].icon)}</span><span class="sv-tx"><b>${esc(ITEMS[id].nameTh)}</b><small>${esc(effLine(ITEMS[id]))}</small></span><span class="sv-pr">฿${fmt(shopPrice(c, id))}</span></button>`).join('')}</div></div>` : ''}</div>
       <div class="sv-right">${this.buyDetail(sel, shopId, { equip: true })}</div></div>`;
     this.bindBuy(el, shopId);
   }
@@ -219,7 +219,7 @@ export class ShopViews {
     const slots = ENH_SLOTS.filter((s) => c.equipment[s]);
     if (!slots.includes(this.enhSlot)) this.enhSlot = slots.sort((a, b) => (c.enhance[b] || 0) - (c.enhance[a] || 0))[0] || ENH_SLOTS[0];
     const slot = this.enhSlot, id = c.equipment[slot], it = ITEMS[id], lv = c.enhance[slot] || 0, max = lv >= ENHANCE.max;
-    const cost = ENHANCE.cost(lv), ore = ENHANCE.ore(lv), fang = ENHANCE.fang(lv), rate = ENHANCE.rate(lv);
+    const cost = ENHANCE.cost(lv, c.level), ore = ENHANCE.ore(lv), fang = ENHANCE.fang(lv), rate = ENHANCE.rate(lv);
     const haveOre = Inv.count(c, 'black_iron'), haveFang = Inv.count(c, 'yak_fang'), guards = Inv.count(c, 'yant_guard');
     const cur = ENHANCE.bonus[slot]?.(lv) || {}, nxt = ENHANCE.bonus[slot]?.(lv + 1) || {};
     const sv = (k, v) => { const m = STAT[k]; return m?.f ? m.f(v) : fmt(v); };

@@ -128,4 +128,43 @@ for (const f of [1, 50, 100]) for (const k of ['silver', 'gold']) {
   assert.ok(a.drops.some((d) => d.item === CRYPT.dust), 'ดรอปผงวิญญาณ'); }
 assert.equal(partyHard(29, 6).hp, 1, 'ก่อนชั้น 30 ไม่เพิ่ม'); assert.ok(partyHard(100, 6).hp > partyHard(100, 2).hp); assert.equal(hpMul(1), 1);
 
+// ---- เควสถึง Lv.150: เควสต่างแดนส่งกับนายกองในแดน · minLv · รางวัลอุปกรณ์สายตัวเอง ----
+{
+  const { QUESTS: QS } = await import('../shared/data/village.js');
+  assert.ok(Math.max(...QS.map((q) => q.lv)) >= 145, 'มีเควสถึงช่วง Lv.150');
+  assert.ok(QS.every((q) => q.reward.gear), 'ทุกเควสให้อุปกรณ์');
+  const r = newCharacter('RealmQ', { gender: 'male' });
+  r.level = 50; r.appearance.job = 'mage';
+  const td = { td: true, tdNpc: 'quest', x: 1, rnd: Math.random };
+  assert.ok(runAction(r, 'qAccept', { id: 'r_hm1' }, td).ok, 'รับเควสแดนกับนายกอง');
+  for (let i = 0; i < 40; i++) grantKill(r, { mon: 'kumphan', exp: 0, gold: 0, items: [] });
+  assert.ok(!runAction(r, 'qClaim', { id: 'r_hm1' }, { ...td, tdNpc: 'shop' }).ok, 'ส่งกับร้านค้าไม่ได้');
+  const cl = runAction(r, 'qClaim', { id: 'r_hm1' }, td);
+  assert.ok(cl.ok && cl.gear && ITEMS[cl.gear]?.job === 'mage' && count(r, cl.gear) === 1, 'ส่งกับนายกองได้ + ได้อุปกรณ์สายตัวเอง');
+  // เควสอาชีพขั้นสูง: ผีต่ำกว่า minLv ไม่นับ
+  r.level = 30; r.appearance.job = 'swordman';
+  assert.ok(runAction(r, 'qAccept', { id: 'j_sw4' }, { rnd: Math.random }).ok);
+  grantKill(r, { mon: 'phi_tuay_kaew', exp: 0, gold: 0, items: [] });
+  assert.equal(r.quests.active.j_sw4, 0, 'ผีเลเวลต่ำไม่นับ');
+  grantKill(r, { mon: 'kumphan', exp: 0, gold: 0, items: [] });
+  assert.equal(r.quests.active.j_sw4, 1, 'ผีเลเวลถึงนับ');
+}
+
+// ---- ราคาตามเลเวล: บริการแพงขึ้นตามเลเวลตัวละคร · ของมือใหม่ราคาเดิม · ของ bound เทรดไม่ได้ ----
+{
+  const { shopPrice } = await import('../shared/economy.js');
+  const { ENHANCE } = await import('../shared/data/village.js');
+  const { tradable } = await import('../shared/data/trade.js');
+  const lo = { level: 1 }, hi = { level: 150 };
+  assert.equal(shopPrice(lo, 'reset_water'), 300, 'Lv.1 ราคาป้าย');
+  assert.ok(shopPrice(hi, 'reset_water') >= 300 * 45, 'Lv.150 แพงขึ้นราว ×50');
+  assert.equal(shopPrice(hi, 'hp_m'), ITEMS.hp_m.price, 'ยาธรรมดาราคาเดิม');
+  assert.ok(!tradable('reset_water') && tradable('hp_m'), 'ของราคาตามเลเวลเทรด/ขายตลาดไม่ได้');
+  assert.equal(ENHANCE.cost(0, 1), ENHANCE.cost(0), 'ตีบวก Lv.1 ราคาเดิม');
+  assert.ok(ENHANCE.cost(19, 150) > ENHANCE.cost(19, 1) * 15, 'ตีบวก Lv.150 แพงขึ้น ×15+');
+  const b = newCharacter('Buyer', { gender: 'male' }); b.level = 150; b.gold = 1e6;
+  const g0 = b.gold, r = runAction(b, 'buy', { shop: 'mae_kha', id: 'reset_water', qty: 1 }, { rnd: Math.random });
+  assert.ok(r.ok && g0 - b.gold === shopPrice(b, 'reset_water'), 'ซื้อจริงหักราคาตามเลเวล');
+}
+
 console.log('✔ economy tests passed');

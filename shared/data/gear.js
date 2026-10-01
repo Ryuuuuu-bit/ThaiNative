@@ -76,6 +76,8 @@ const ICON = { swordman: ['⚔️', '🛡️', '📿'], mage: ['🔮', '🧥', '
 const R = Math.round, F = Math.floor;
 /** ราคาซื้อตามเลเวล */
 export const gearPrice = (lv) => R((50 + lv * lv * 12 + lv * 40) / 10) * 10;
+/** ราคาขายร้านของอุปกรณ์ดรอป (สัดส่วนของ gearPrice) · 0.3 → 0.1 กันเงินเฟ้อจากการออโต้ทั้งวัน (ของดี ๆ ไปขายในตลาดผู้เล่นแทน) */
+export const DROP_SELL = 0.1;
 
 function weaponBonus(job, lv, leg) {
   const m = leg ? 1.22 : 1;
@@ -153,7 +155,7 @@ function build() {
     const GA = (id) => GEAR_ART[id] || GEAR_ART[id.replace(`g_${k}_`, `g_${gk}_`)] || {};
     GEAR_TIERS.forEach((lv, i) => {
       const n = String(i + 1).padStart(2, '0'), shop = lv <= SHOP_MAX_LV;
-      const base = (id, extra) => ({ ...(shop ? { price: gearPrice(lv) } : { sell: R(gearPrice(lv) * 0.3) }), lv, job, tier: i + 1, drop: !shop, ...extra, ...GA(id) });
+      const base = (id, extra) => ({ ...(shop ? { price: gearPrice(lv) } : { sell: R(gearPrice(lv) * DROP_SELL) }), lv, job, tier: i + 1, drop: !shop, ...extra, ...GA(id) });
       out[`g_${k}_w${n}`] = base(`g_${k}_w${n}`, { nameTh: N.w[i], type: 'weapon', icon: iw, wtype: WTYPE[job], bonus: weaponBonus(job, lv) });
       out[`g_${k}_a${n}`] = base(`g_${k}_a${n}`, { nameTh: N.a[i], type: 'armor', icon: ia, bonus: armorBonus(job, lv) });
       out[`g_${k}_c${n}`] = base(`g_${k}_c${n}`, { nameTh: N.c[i], type: 'accessory', icon: ic, bonus: accBonus(job, lv) });
@@ -162,14 +164,14 @@ function build() {
       PART_TIERS.forEach((lv, i) => {
         const shop = lv <= SHOP_MAX_LV, id = `g_${k}_${PART_CODE[slot]}${String(i + 1).padStart(2, '0')}`;
         const price = R(gearPrice(lv) * 0.6 / 10) * 10;
-        out[id] = { ...(shop ? { price } : { sell: R(price * 0.3) }), lv, job, tier: i + 1, drop: !shop, nameTh: `${PART_NOUN[job][slot]}${PART_WORD[i]}`,
+        out[id] = { ...(shop ? { price } : { sell: R(price * DROP_SELL) }), lv, job, tier: i + 1, drop: !shop, nameTh: `${PART_NOUN[job][slot]}${PART_WORD[i]}`,
           type: slot, icon: PART_ICON[slot], art: `gx_${k}_${slot}_${lv >= 16 ? 2 : 1}`, bonus: partBonus(slot, job, lv) };
       });
     }
     // ---- อุปกรณ์แมพต่างแดน Lv.35–95 (ดรอปเท่านั้น) · ใช้ภาพของชิ้นขั้นสูงเดิม (art/lookAs) จนกว่าจะมีภาพใหม่ ----
     HIGH_TIERS.forEach((lv, i) => {
       const n = String(GEAR_TIERS.length + i + 1).padStart(2, '0'), ref = String(12 + (i % 5)).padStart(2, '0'), sfx = HIGH_WORD[i];
-      const hi = (code, extra) => { const rid = `g_${k}_${code}${ref}`; return { sell: R(gearPrice(lv) * 0.3), lv, job, tier: GEAR_TIERS.length + i + 1, drop: true, realm: true, ...GA(rid), art: rid, lookAs: rid, ...extra }; };
+      const hi = (code, extra) => { const rid = `g_${k}_${code}${ref}`; return { sell: R(gearPrice(lv) * DROP_SELL), lv, job, tier: GEAR_TIERS.length + i + 1, drop: true, realm: true, ...GA(rid), art: rid, lookAs: rid, ...extra }; };
       out[`g_${k}_w${n}`] = hi('w', { nameTh: `${HIGH_NOUN[job][0]}${sfx}`, type: 'weapon', icon: iw, wtype: WTYPE[job], bonus: weaponBonus(job, lv) });
       out[`g_${k}_a${n}`] = hi('a', { nameTh: `${HIGH_NOUN[job][1]}${sfx}`, type: 'armor', icon: ia, bonus: armorBonus(job, lv) });
       out[`g_${k}_c${n}`] = hi('c', { nameTh: `${HIGH_NOUN[job][2]}${sfx}`, type: 'accessory', icon: ic, bonus: accBonus(job, lv) });
@@ -178,7 +180,7 @@ function build() {
       const n = String(PART_TIERS.length + i + 1).padStart(2, '0'), sfx = HIGH_WORD[HIGH_TIERS.indexOf(lv)];
       for (const slot of ['helm', 'gloves', 'boots', 'belt']) {
         const id = `g_${k}_${PART_CODE[slot]}${n}`, price = R(gearPrice(lv) * 0.6 / 10) * 10;
-        out[id] = { sell: R(price * 0.3), lv, job, tier: PART_TIERS.length + i + 1, drop: true, realm: true, nameTh: `${PART_NOUN[job][slot]}${sfx}`,
+        out[id] = { sell: R(price * DROP_SELL), lv, job, tier: PART_TIERS.length + i + 1, drop: true, realm: true, nameTh: `${PART_NOUN[job][slot]}${sfx}`,
           type: slot, icon: PART_ICON[slot], art: `gx_${k}_${slot}_2`, bonus: partBonus(slot, job, lv) };
       }
     });

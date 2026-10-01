@@ -4,9 +4,12 @@
 // ============================================================
 import { QUESTS } from './village.js';
 import { combatPower } from '../character.js';
+import { CARDS } from './cards.js';
+import { LIFE_IDS, lifeLevel, masteryLevel, LIFE_MAX, MASTERY_MAX } from './life.js';
+import { JOB_IDS } from './classes.js';
 
 /** หมวดฉายา (เรียงตามนี้ในหน้าเลือกฉายา) */
-export const TITLE_CATS = [['lv', 'เลเวล'], ['cp', 'ค่าพลังรวม'], ['rank', 'อันดับเซิร์ฟ'], ['boss', 'ปราบบอส'], ['explore', 'สำรวจ'], ['hunt', 'ล่าผี'], ['smith', 'ตีบวก'], ['support', 'สายซัพพอร์ต'], ['pvp', 'PVP'], ['life', 'อาชีพเสริม'], ['misc', 'อื่น ๆ']];
+export const TITLE_CATS = [['lv', 'เลเวล'], ['cp', 'ค่าพลังรวม'], ['rank', 'อันดับเซิร์ฟ'], ['legend', '✦ ตำนาน'], ['boss', 'ปราบบอส'], ['explore', 'สำรวจ'], ['hunt', 'ล่าผี'], ['smith', 'ตีบวก'], ['support', 'สายซัพพอร์ต'], ['pvp', 'PVP'], ['life', 'อาชีพเสริม'], ['misc', 'อื่น ๆ']];
 /** ค่าพลังรวมของตัวละคร (แคชตามรอบตรวจ) */
 const cpOf = (c) => { try { return combatPower(c); } catch { return 0; } };
 
@@ -37,6 +40,21 @@ export const TITLES = [
   { id: 'cp_top10', cat: 'rank', dynamic: true, nameTh: 'สิบยอดฝีมือ',          color: '#e5e8e8', hint: 'ค่าพลังรวมอันดับ 1–10 (ถือครองอยู่เท่านั้น)',   ok: (c, r) => r.cpRank >= 1 && r.cpRank <= 10 },
   { id: 'lv_top1',  cat: 'rank', dynamic: true, nameTh: 'ผู้นำแห่งเส้นทาง',       color: '#85c1e9', hint: 'เลเวลอันดับ 1 ของเซิร์ฟ (ถือครองอยู่เท่านั้น)',   ok: (c, r) => r.lvRank === 1 },
   { id: 'enh_top1', cat: 'rank', dynamic: true, nameTh: 'เทพเตาหลอม',          color: '#bb8fce', hint: 'ตีบวกอันดับ 1 ของเซิร์ฟ (ถือครองอยู่เท่านั้น)',   ok: (c, r) => r.enhRank === 1 },
+  // ---- ✦ ตำนาน: ฉายายากระดับท็อป · fx 'glow' = ป้ายเรืองแสงเหนือหัว ----
+  { id: 'lg_hunt20k', cat: 'legend', fx: 'glow', nameTh: 'ยมบาลเดินดิน',         color: '#ff6b6b', hint: 'ปราบผี 20,000 ตัว',                                        ok: (c, r) => (r.kills || 0) >= 20000 },
+  { id: 'lg_hunt50k', cat: 'legend', fx: 'glow', nameTh: 'มหากาฬผู้ล้างภพ',       color: '#ff3b3b', hint: 'ปราบผี 50,000 ตัว',                                        ok: (c, r) => (r.kills || 0) >= 50000 },
+  { id: 'lg_boss100', cat: 'legend', fx: 'glow', nameTh: 'ผู้ล่าเจ้าแห่งภพ',       color: '#f39c12', hint: 'ร่วมปราบบอสประจำโซนรวม 100 ครั้ง',                           ok: (c, r) => Object.values(tb(r)).reduce((a, n) => a + n, 0) >= 100 },
+  { id: 'lg_mara10',  cat: 'legend', fx: 'glow', nameTh: 'มารผู้กลืนมาร',         color: '#b03a2e', hint: 'ร่วมปราบพญามาราธิราช 10 ครั้ง',                               ok: (c, r) => (tb(r).phaya_mara || 0) >= 10 },
+  { id: 'lg_rahu10',  cat: 'legend', fx: 'glow', nameTh: 'สุริยันเหนือราหู',        color: '#ffd35c', hint: 'เป็น MVP ปิดฉากพระราหู 10 ครั้ง',                              ok: (c, r) => (r.wbMvp || 0) >= 10 },
+  { id: 'lg_crypt',   cat: 'legend', fx: 'glow', nameTh: 'ผู้ไร้หลุมฝังศพ',         color: '#a9cce3', hint: 'พิชิตสุสานใต้ดินครบ 100 ชั้น',                                 ok: (c) => (c.crypt?.best || 0) >= 100 },
+  { id: 'lg_deathless', cat: 'legend', fx: 'glow', nameTh: 'ผู้ไม่เคยล้ม',          color: '#e5e8e8', hint: 'ถึง Lv.100 โดยตายไม่เกิน 10 ครั้งตลอดการเดินทาง',                 ok: (c, r) => c.level >= 100 && (r.deaths || 0) <= 10 },
+  { id: 'lg_cards',   cat: 'legend', fx: 'glow', nameTh: 'ผู้ครองสมุดผีทั้งปวง',     color: '#c39bd3', hint: `สะสมการ์ดผีครบทั้ง ${CARDS.length} ใบในสมุดการ์ด`,                ok: (c) => CARDS.every((k) => (c.cardBook?.[k.id] || 0) > 0) },
+  { id: 'lg_weapons', cat: 'legend', fx: 'glow', nameTh: 'ปรมาจารย์ห้าศาสตรา',      color: '#76d7c4', hint: `ความชำนาญอาวุธครบ Lv.${MASTERY_MAX} ทั้ง 5 สาย`,                 ok: (c) => JOB_IDS.every((j) => masteryLevel(c.wm?.[j] || 0).lv >= MASTERY_MAX) },
+  { id: 'lg_life',    cat: 'legend', fx: 'glow', nameTh: 'ปราชญ์แห่งสุวรรณภูมิ',     color: '#82e0aa', hint: `อาชีพเสริมครบ Lv.${LIFE_MAX} ทุกอาชีพ (ตกปลา·ทำอาหาร·เก็บของ·ตีเหล็ก)`, ok: (c) => LIFE_IDS.every((k) => lifeLevel(c.life?.[k] || 0).lv >= LIFE_MAX) },
+  { id: 'lg_fish4',   cat: 'legend', fx: 'glow', nameTh: 'เจ้าสมุทรทั้งสี่ภพ',        color: '#5dade2', hint: 'ตกปลาตำนานได้ครบทั้ง 4 แดน',                                  ok: (c, r) => ['pla_takhian_thong', 'pla_krahoe', 'pla_thip', 'pla_anon'].every((k) => (r[`lf_${k}`] || 0) > 0) },
+  { id: 'lg_duel300', cat: 'legend', fx: 'glow', nameTh: 'เทพสงครามไร้พ่าย',       color: '#ffd700', hint: 'ชนะการดวล 300 ครั้ง',                                      ok: (c, r) => (r.duelWin || 0) >= 300 },
+  { id: 'lg_rich',    cat: 'legend', fx: 'glow', nameTh: 'มหาเศรษฐีสุวรรณภูมิ',      color: '#f7dc6f', hint: 'มีเงินติดตัว ฿10,000,000',                                  ok: (c) => (c.gold || 0) >= 10_000_000 },
+  { id: 'lg_ascend',  cat: 'legend', fx: 'glow', nameTh: 'ผู้อยู่เหนือไตรภูมิ',        color: '#ff9ff3', hint: 'สุดยอดแห่งตำนาน: Lv.150 · ปราบบอสครบ 9 ตัว · เควสต่างแดนครบ · พิชิตสุสาน 100 ชั้น', ok: (c, r) => c.level >= 150 && ALL9.every((k) => tb(r)[k]) && QUESTS.filter((q) => q.realm).every((q) => c.quests?.done?.includes(q.id)) && (c.crypt?.best || 0) >= 100 },
   // ---- บอส ----
   { id: 'rboss', cat: 'boss',      nameTh: 'ผู้พิชิตเจ้าถิ่น',      color: '#f39c12', hint: 'ร่วมปราบบอสประจำโซน 1 ตัว',                 ok: (c, r) => Object.keys(tb(r)).length >= 1 || (r.rboss || 0) >= 1 },
   { id: 'rboss5', cat: 'boss',     nameTh: 'ผู้ปราบผีใหญ่กรุงศรี',   color: '#e67e22', hint: 'ปราบบอสกรุงศรีฯ ครบ 4 ตัว (แม่นาค·ปู่โสม·เปรตอสุรกาย·ชาละวัน)', ok: (c, r) => AYT_BOSS.every((b) => tb(r)[b]) },
@@ -82,7 +100,11 @@ export const TITLES = [
   { id: 'herbal', cat: 'life',     nameTh: 'หมอยาป่า',            color: '#82e0aa', hint: 'เก็บสมุนไพร 100 ครั้ง',                     ok: (c, r) => (r.herb || 0) >= 100 },
   { id: 'crafter', cat: 'life',    nameTh: 'ช่างฝีมือกรุงศรี',       color: '#f0b27a', hint: 'สร้างอุปกรณ์/ปรุงยา/ทำอาหาร 50 ครั้ง',                ok: (c, r) => (r.craft || 0) >= 50 },
   { id: 'rich', cat: 'misc',       nameTh: 'เศรษฐีกรุงศรี',          color: '#f7dc6f', hint: 'มีเงินติดตัว ฿1,000,000',                   ok: (c) => (c.gold || 0) >= 1_000_000 },
-  { id: 'elder', cat: 'misc',      nameTh: 'ลูกรักผู้ใหญ่ชัย',       color: '#f8c471', hint: 'ทำเควสผู้ใหญ่ชัยครบทุกเควส',                  ok: (c) => QUESTS.every((q) => q.optional || c.quests?.done?.includes(q.id)) },
+  { id: 'elder', cat: 'misc',      nameTh: 'ลูกรักผู้ใหญ่ชัย',       color: '#f8c471', hint: 'ทำเควสผู้ใหญ่ชัยครบทุกเควส',                  ok: (c) => QUESTS.every((q) => q.optional || q.realm || q.adv || c.quests?.done?.includes(q.id)) },
+  // เคลียร์เควสต่างแดนครบทุกเควสของแดน (shared/data/village.js realm)
+  ...[['himmaphan', 'ผู้พิทักษ์หิมพานต์', '#82e0aa'], ['nagaphop', 'สหายแห่งนาคา', '#5dade2'], ['naraka', 'ผู้ฝ่าขุมนรก', '#ec7063'], ['dusit', 'แขกแห่งดาวดึงส์', '#f7dc6f'], ['sumeru', 'ผู้พิชิตเขาพระสุเมรุ', '#d2b4de']].map(([realm, nameTh, color]) => (
+    { id: `rq_${realm}`, cat: 'explore', nameTh, color, hint: `ทำเควสนายกองลาดตระเวนในแดนนี้ครบทุกเควส`, ok: (c) => QUESTS.filter((q) => q.realm === realm).every((q) => c.quests?.done?.includes(q.id)) })),
+  { id: 'rq_all', cat: 'explore', nameTh: 'วีรบุรุษไตรภูมิ', color: '#ffd76a', hint: 'ทำเควสต่างแดนครบทุกแดน', ok: (c) => QUESTS.filter((q) => q.realm).every((q) => c.quests?.done?.includes(q.id)) },
   { id: 'social', cat: 'misc',     nameTh: 'เพื่อนเยอะ',            color: '#76d7c4', hint: 'มีเพื่อนในรายชื่อ 5 คน',                     ok: (c) => (c.friends || []).length >= 5 },
 ];
 export const TITLE_BY_ID = Object.fromEntries(TITLES.map((t) => [t.id, t]));

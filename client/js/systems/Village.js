@@ -10,6 +10,7 @@ import { ENHANCE, QUESTS, QUEST_BY_ID, questGiver, GIVER_TH } from '/shared/data
 import { count, tradeLock, questState as qState } from './Inventory.js';
 import { craftList, canCraft, MAX_ACTIVE_QUESTS } from '/shared/economy.js';
 import { FISH_SPOT } from '/shared/data/npcs.js';
+import { TD_MAPS } from '/shared/td/maps.js';
 import { AURA_TH, AURA_COLOR } from '../gfx/Aura.js';
 import { JOBS, JOB_IDS } from '/shared/data/classes.js';
 import { SKILLS } from '/shared/data/skills.js';
@@ -236,7 +237,7 @@ export class Village {
       const id = c.equipment[slot], lv = c.enhance[slot] || 0;
       const tier = ENHANCE.auraTier(lv);
       if (lv >= ENHANCE.max) return `<div class="item"><span class="ic">🌈</span><span>${SLOT_TH[slot]} <b class="enh t${tier}">+${lv}</b> <span class="meta">สูงสุดแล้ว · ออร่ารุ้ง</span></span><span></span><span></span></div>`;
-      const cost = ENHANCE.cost(lv), ore = ENHANCE.ore(lv), fang = ENHANCE.fang(lv), rate = ENHANCE.rate(lv);
+      const cost = ENHANCE.cost(lv, c.level), ore = ENHANCE.ore(lv), fang = ENHANCE.fang(lv), rate = ENHANCE.rate(lv);
       const next = inlineStats(ENHANCE.bonus[slot](lv + 1));
       const can = id && c.gold >= cost && count(c, 'black_iron') >= ore && count(c, 'yak_fang') >= fang;
       const risk = lv < 10 ? 'พลาด: ขั้นไม่ลด' : lv < 15 ? '⚠️ พลาด: ลด 1 ขั้น' : '⚠️ พลาด: ลด 1 ขั้น (30% ลด 2)';
@@ -292,13 +293,14 @@ export class Village {
     if (g.herb) return `เก็บ${g.herb === 'any' ? 'สมุนไพรอะไรก็ได้' : ITEMS[g.herb]?.nameTh} ${g.n} ครั้ง`;
     if (g.heal) return `รักษาเพื่อนร่วมปาร์ตี้รวม ${g.n.toLocaleString()} HP`;
     if (g.revive) return `ชุบชีวิตเพื่อน ${g.n} ครั้ง`;
-    if (g.kill) return `ปราบ ${g.kill === 'any' ? 'ผีตัวไหนก็ได้' : g.kill === 'grave' ? 'ผีในป่าช้า' : MONSTERS[g.kill]?.nameTh} ${g.n} ตัว${g.job ? ` (ถือ${{ swordman: 'ดาบ', mage: 'ไม้เท้าอาคม', archer: 'ธนู', boxer: 'มือเปล่า/สนับมือ', healer: 'ไม้เท้าสมุนไพร' }[g.job]})` : ''}`;
+    if (g.kill) return `ปราบ ${g.kill === 'any' ? `ผีตัวไหนก็ได้${g.minLv ? ` Lv.${g.minLv}+` : ''}` : g.kill === 'grave' ? 'ผีในป่าช้า' : MONSTERS[g.kill]?.nameTh} ${g.n} ตัว${g.job ? ` (ถือ${{ swordman: 'ดาบ', mage: 'ไม้เท้าอาคม', archer: 'ธนู', boxer: 'มือเปล่า/สนับมือ', healer: 'ไม้เท้าสมุนไพร' }[g.job]})` : ''}`;
     return `ตก${g.fish === 'any' ? 'ปลาอะไรก็ได้' : ITEMS[g.fish]?.nameTh} ${g.n} ตัว`;
   }
 
   rewardText(q) {
     const r = q.reward;
-    return [`${r.exp} EXP`, `฿${r.gold}`, ...(r.items || []).map((it) => `${ITEMS[it.id].icon}${ITEMS[it.id].nameTh} x${it.qty}`)].join(' · ');
+    const gear = r.gear ? `🗡️ อุปกรณ์สายคุณ Lv.${Math.max(1, r.gear.lv - 4)}–${r.gear.lv}${r.gear.grade === 'boss' ? ' (ค่าสุ่มเกรดบอส)' : r.gear.grade === 'elite' ? ' (ค่าสุ่มเกรดดี)' : ''}` : '';
+    return [`${r.exp.toLocaleString('en-US')} EXP`, `฿${r.gold.toLocaleString('en-US')}`, gear, ...(r.items || []).map((it) => `${ITEMS[it.id].icon}${ITEMS[it.id].nameTh} x${it.qty}`)].filter(Boolean).join(' · ');
   }
 
   /** แนะนำระบบอาชีพใหม่ (แทนพิธีเลือกสายหลัก) – แสดงบนสุดของสมุดเควส */
@@ -321,7 +323,10 @@ export class Village {
   renderQuestList(el, giver) {
     const c = this.char, Q = c.quests, order = { ready: 0, active: 1, open: 2, locked: 3, done: 4 };
     const mine = (q) => questGiver(q) === giver || (giver === 'quest' && q.id in Q.active);
-    const list = QUESTS.filter(mine).map((q) => ({ q, st: this.questState(q) })).sort((a, b) => order[a.st] - order[b.st]);
+    const all = QUESTS.filter(mine).map((q) => ({ q, st: this.questState(q) })).sort((a, b) => (order[a.st] - order[b.st]) || (a.q.lv - b.q.lv));
+    // รายการยาว (เควสถึง Lv.150): ที่ยังล็อกโชว์แค่ 3 เควสถัดไป · ที่ทำแล้วยุบเป็นบรรทัดเดียว
+    const locked = all.filter((x) => x.st === 'locked'), done = all.filter((x) => x.st === 'done');
+    const list = all.filter((x) => x.st !== 'locked' && x.st !== 'done').concat(locked.slice(0, 3));
     const isJob = giver !== 'quest';
     const nActive = Object.keys(Q.active).filter((k) => (questGiver(QUEST_BY_ID[k]) === 'quest') !== isJob).length;
     const JOB_TH = { swordman: 'ดาบ', mage: 'ไม้เท้าอาคม', archer: 'ธนู', boxer: 'มือเปล่า/สนับมือ', healer: 'ไม้เท้าสมุนไพร' };
@@ -333,8 +338,9 @@ export class Village {
         : st === 'open' ? `<button data-q="accept:${q.id}" ${nActive >= MAX_ACTIVE ? 'disabled' : ''}>รับเควส</button>`
         : st === 'locked' ? `<span class="meta">Lv.${q.lv}</span>` : '<span class="meta">✔ สำเร็จ</span>';
       return `<div class="quest ${st}"><div><b>${esc(q.nameTh)}</b> <span class="meta">Lv.${q.lv}+</span>
-        <p>${esc(q.text)}</p><small>🎯 ${esc(this.goalText(q))} ${prog ? `<b>${prog}</b>` : ''}</small><small>🎁 ${esc(this.rewardText(q))}</small>${questGiver(q) !== 'quest' && giver === 'quest' ? `<small>👤 ส่งเควสกับ${GIVER_TH[questGiver(q)]}</small>` : ''}</div>${btn}</div>`;
-    }).join('');
+        <p>${esc(q.text)}</p><small>🎯 ${esc(this.goalText(q))} ${prog ? `<b>${prog}</b>` : ''}</small><small>🎁 ${esc(this.rewardText(q))}</small>${q.realm ? `<small>📍 ${esc(TD_MAPS[q.realm]?.icon || '')} ${esc(TD_MAPS[q.realm]?.nameTh || '')} · รับ/ส่งกับนายกองลาดตระเวนในค่ายได้</small>` : ''}${questGiver(q) !== 'quest' && giver === 'quest' ? `<small>👤 ส่งเควสกับ${GIVER_TH[questGiver(q)]}</small>` : ''}</div>${btn}</div>`;
+    }).join('') + (locked.length > 3 ? `<p class="hint">🔒 ยังมีเควสเลเวลสูงกว่านี้อีก ${locked.length - 3} เควส (ถึง Lv.${locked[locked.length - 1].q.lv})</p>` : '')
+      + (done.length ? `<p class="hint">✔ ทำสำเร็จแล้ว ${done.length} เควส</p>` : '');
     if (!isJob) $('#quest-note').textContent = `เควสทั่วไปรับได้พร้อมกัน ${MAX_ACTIVE} เควส (ตอนนี้ ${nActive}) · เควสอาชีพรับกับครูประจำอาชีพ`;
     el.onclick = isJob ? (e) => { const b = e.target.closest('button[data-q]'); if (!b) return; const [act, id] = b.dataset.q.split(':'); if (act === 'accept') this.accept(id); else if (act === 'claim') this.claim(id); else if (act === 'drop') this.drop(id); } : el.onclick;
   }
@@ -357,7 +363,7 @@ export class Village {
   claim(id) {
     const q = QUEST_BY_ID[id];
     if (!q) return;
-    if (!this.nearGiver(q)) return this.ui.toast(questGiver(q) === 'quest' ? 'กลับไปรับรางวัลกับผู้ใหญ่ชัยที่ลานน้ำพุกลางกรุงศรีฯ' : `กลับไปส่งเควสกับ${GIVER_TH[questGiver(q)]}`, 'warn');
+    if (!this.nearGiver(q)) return this.ui.toast(questGiver(q) === 'quest' ? 'กลับไปรับรางวัลกับผู้ใหญ่ชัย (ลานน้ำพุกรุงศรีฯ) หรือนายกองลาดตระเวนในค่ายต่างแดน' : `กลับไปส่งเควสกับ${GIVER_TH[questGiver(q)]}`, 'warn');
     if (this.claiming) return;                                         // กันกดซ้ำระหว่างรอ server
     this.claiming = id;
     document.querySelectorAll(`[data-q="claim:${id}"]`).forEach((b) => { b.disabled = true; b.textContent = 'กำลังส่ง…'; });
@@ -367,6 +373,7 @@ export class Village {
       this.scene.sfx.play('victory');
       this.ui.banner(`✔ เควสสำเร็จ: ${q.nameTh}`);
       this.ui.toast(`รางวัล: ${this.rewardText(q)}`);
+      if (r.gear && ITEMS[r.gear]) this.ui.toast(`🗡️ ได้รับ ${ITEMS[r.gear].nameTh}`);
       this.scene.combat.afterGrant(r);
       this.afterChange();
     });

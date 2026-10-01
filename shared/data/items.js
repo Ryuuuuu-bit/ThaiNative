@@ -14,7 +14,7 @@ const ITEMS_BASE = {
   hp_m:  { nameTh: 'ยาดมสมุนไพร (HP +180)', type: 'consumable', icon: '🌿', price: 70,  effect: { hp: 180 } },
   mp_s:  { nameTh: 'น้ำมะพร้าว (MP +30)',   type: 'consumable', icon: '🥥', price: 20,  effect: { mp: 30 } },
   mp_m:  { nameTh: 'ชาตะไคร้ (MP +90)',    type: 'consumable', icon: '🍵', price: 60,  effect: { mp: 90 } },
-  yant_home: { nameTh: 'ยันต์คืนถิ่น (วาร์ปกลับกรุงศรีฯ)', type: 'home', icon: '🏠', price: 40, desc: 'ร่าย 2.5 วิ (ห้ามขยับ/โดนตี) แล้ววาร์ปกลับลานน้ำพุกลางกรุงศรีฯ ได้จากทุกแดน · ปุ่ม B' },
+  yant_home: { nameTh: 'ยันต์คืนถิ่น (วาร์ปกลับกรุงศรีฯ)', type: 'home', icon: '🏠', price: 40, lvPrice: true, bound: true, desc: 'ร่าย 2.5 วิ (ห้ามขยับ/โดนตี) แล้ววาร์ปกลับลานน้ำพุกลางกรุงศรีฯ ได้จากทุกแดน · ปุ่ม B' },
 
   // ---------- อาวุธ (ใครก็ถือได้ · wtype = แนวต่อสู้/สกิลที่ใช้ได้ · แสดงในมือตัวละคร) ----------
   wood_sword:  { nameTh: 'ดาบไม้ฝึก',        type: 'weapon', icon: '🗡️', price: 80,  sell: 10, wtype: 'sword', bonus: { atk: 6 } },
@@ -49,8 +49,8 @@ const ITEMS_BASE = {
 
   // ---------- ล้างแต้ม / เปลี่ยนสายหลัก ----------
   rename_ticket: { nameTh: 'ใบเปลี่ยนชื่อ', type: 'rename', icon: '📝', price: 5000, desc: 'เปลี่ยนชื่อตัวละคร (ชื่อใหม่ต้องไม่ซ้ำใคร · ชื่อเดิมถูกกันไว้ให้ 7 วัน)' },
-  reskill_weapon: { nameTh: 'รีแต้มสกิลอาชีพ', type: 'reskill', icon: '📘', price: 200, desc: 'คืนแต้มสกิล (SP) ของอาวุธที่ถืออยู่ให้ลงใหม่ · สกิลอาวุธอื่นไม่หาย · ความชำนาญสกิลยังอยู่' },
-  reset_water:   { nameTh: 'รีแต้มสเตตัส', type: 'reset', icon: '💧', price: 300, desc: 'คืนแต้มสถานะทั้งหมดของชุดที่ใช้อยู่ (A/B) ให้ลงใหม่ · สกิลไม่หาย (รีสกิลใช้ "รีแต้มสกิลอาชีพ")' },
+  reskill_weapon: { nameTh: 'รีแต้มสกิลอาชีพ', type: 'reskill', icon: '📘', price: 200, lvPrice: true, bound: true, desc: 'คืนแต้มสกิล (SP) ของอาวุธที่ถืออยู่ให้ลงใหม่ · สกิลอาวุธอื่นไม่หาย · ความชำนาญสกิลยังอยู่' },
+  reset_water:   { nameTh: 'รีแต้มสเตตัส', type: 'reset', icon: '💧', price: 300, lvPrice: true, bound: true, desc: 'คืนแต้มสถานะทั้งหมดของชุดที่ใช้อยู่ (A/B) ให้ลงใหม่ · สกิลไม่หาย (รีสกิลใช้ "รีแต้มสกิลอาชีพ")' },
 
   // ---------- ของดรอปจากผี (ขายได้อย่างเดียว) ----------
   glass_shard:  { nameTh: 'ฟางหุ่นไล่กาต้องมนตร์', type: 'material', icon: '🌾', sell: 3 },

@@ -14,6 +14,8 @@ import { WORLD } from './constants.js';
 import { MAPS, mapAt } from './data/maps.js';
 import { rollFish, RECIPES, BREWS, ENHANCE, QUESTS, QUEST_BY_ID, questGiver, GIVER_TH, HERB_RESPAWN_MS, rollChest, dailyBounties } from './data/village.js';
 import { FORGE } from './data/crafting.js';
+import { GEAR, GEAR_IDS } from './data/gear.js';
+import { rollAffixes, affixId } from './data/affixes.js';
 import { BARTER, COIN, DEMAND, demandOf, dayKey } from './data/trade.js';
 import { NPCS, SHOP_NPC, FISH_SPOT, CAMP, HERB_NODES, nearNpc, nearSpot } from './data/npcs.js';
 import { TITLE_BY_ID, checkTitles } from './data/titles.js';
@@ -75,6 +77,7 @@ export function questEvent(c, type, id, amt = 1) {
     const q = QUEST_BY_ID[qid], g = q?.goal;
     if (!g || Q.active[qid] >= g.n) continue;
     if (g.job && type === 'kill' && c.appearance?.job !== g.job) continue;             // เควสอาชีพ: นับเฉพาะตอนถืออาวุธสายนั้น
+    if (g.minLv && type === 'kill' && (MONSTERS[id]?.level || 0) < g.minLv) continue;   // เควสขั้นสูง: ผีต้องเลเวลถึง
     const match = type === 'kill' ? g.kill && (g.kill === 'any' || g.kill === id || (g.kill === 'grave' && MONSTERS[id]?.zone?.[0] >= WORLD.graveX))
       : type === 'herb' ? g.herb && (g.herb === 'any' || g.herb === id)
       : type === 'fish' ? g.fish && (g.fish === 'any' ? id !== 'junk_boot' : g.fish === id)
@@ -224,13 +227,15 @@ function use(c, { id }) {
 // ------------------------------------------------------------
 //  ร้านค้า
 // ------------------------------------------------------------
+/** ราคาซื้อจากร้าน: ของ lvPrice (บริการ/ของใช้ประจำ) แพงขึ้นตามเลเวลตัวละคร ×(1 + (Lv−1)/3) · Lv.1 = ราคาป้าย · Lv.150 ≈ ×50 · ติด bound (ซื้อถูกตอนเลเวลต่ำไปขายต่อไม่ได้) */
+export const shopPrice = (c, id) => { const it = ITEMS[id]; if (!it?.price) return 0; return it.lvPrice ? Math.round((it.price * (1 + (Math.max(1, c?.level || 1) - 1) / 3)) / 10) * 10 : it.price; };
 function buy(c, { shop, id, qty = 1 }, ctx) {
   const S = SHOPS[shop], it = ITEMS[id];
   if (!S || !it?.price || !S.stock.includes(id)) return NO('ร้านไม่ขายของนี้');
   if (ctx.x != null && !atNpc(ctx, SHOP_NPC[shop])) return NO('ต้องยืนคุยกับเจ้าของร้านก่อน');
   qty = it.type === 'skin' ? 1 : int(qty, 1, 9999, 1);
   if (it.type === 'skin' && count(c, id)) return NO('มีคัมภีร์นี้แล้ว');
-  const cost = it.price * qty;
+  const cost = shopPrice(c, id) * qty;
   if (c.gold < cost) return NO('เงินไม่พอ');
   c.gold -= cost;
   addItem(c, id, qty);
@@ -401,7 +406,7 @@ function enhance(c, { slot, guard }, ctx) {
   if (!ENH_SLOTS.includes(slot)) return NO('ช่องไม่ถูกต้อง');
   if (ctx.x != null && !atNpc(ctx, 'smith')) return NO('ต้องยืนคุยกับลุงดำก่อน');
   c.enhance ||= {};
-  const lv = c.enhance[slot] || 0, cost = ENHANCE.cost(lv), ore = ENHANCE.ore(lv), fang = ENHANCE.fang(lv);
+  const lv = c.enhance[slot] || 0, cost = ENHANCE.cost(lv, c.level), ore = ENHANCE.ore(lv), fang = ENHANCE.fang(lv);
   if (!c.equipment[slot]) return NO('ยังไม่ได้สวมอุปกรณ์ช่องนี้');
   if (lv >= ENHANCE.max) return NO('ตีบวกสูงสุดแล้ว');
   if (c.gold < cost) return NO('เงินไม่พอ');
@@ -443,17 +448,27 @@ function qDrop(c, { id }) {
   delete c.quests.active[id];
   return OK('');
 }
+/** อุปกรณ์รางวัลเควส: สายตามอาวุธที่ถือ · เลเวล [lv−4, lv] · ไม่รวมของตำนาน/ของแดง · ค่าสุ่มตามเกรด */
+export function questGear(c, { lv, grade }, rnd = Math.random) {
+  const pool = GEAR_IDS.filter((g) => !GEAR[g].legend && !GEAR[g].red && GEAR[g].lv >= lv - 4 && GEAR[g].lv <= lv);
+  const mine = pool.filter((g) => GEAR[g].job === c.appearance?.job), from = mine.length ? mine : pool;
+  if (!from.length) return null;
+  const base = from[Math.floor(rnd() * from.length)];
+  return affixId(base, rollAffixes(ITEMS[base], lv, grade, rnd));
+}
 function qClaim(c, { id }, ctx) {
   const q = QUEST_BY_ID[id], Q = c.quests;
   if (!q || questState(c, q) !== 'ready') return NO('เควสยังไม่สำเร็จ');
   const giver = questGiver(q);
-  if (ctx.x != null && !(giver === 'quest' ? atChai(ctx) : atNpc(ctx, giver))) return NO(`กลับไปส่งเควสกับ${GIVER_TH[giver]}`);
+  if (ctx.x != null && !(giver === 'quest' ? atChai(ctx) : atNpc(ctx, giver))) return NO(`กลับไปส่งเควสกับ${giver === 'quest' ? 'ผู้ใหญ่ชัย หรือนายกองลาดตระเวนในค่ายต่างแดน' : GIVER_TH[giver]}`);
   delete Q.active[id];
   Q.done.push(id);
   c.gold += q.reward.gold;
   (q.reward.items || []).forEach((it) => addItem(c, it.id, it.qty));
+  const gear = q.reward.gear ? questGear(c, q.reward.gear, ctx.rnd || Math.random) : null;
+  if (gear && ITEMS[gear]) addItem(c, gear, 1);
   const ups = gainExp(c, q.reward.exp);
-  return OK(`✔ เควสสำเร็จ: ${q.nameTh}`, { quest: id, exp: q.reward.exp, ups });
+  return OK(`✔ เควสสำเร็จ: ${q.nameTh}`, { quest: id, exp: q.reward.exp, ups, gear: ITEMS[gear] ? gear : null });
 }
 function path() { return NO('ระบบใหม่: อาชีพมาจากต้นไม้พรสวรรค์ + อาวุธที่ใช้บ่อย (กด K)'); }
 /** ลงแต้มพรสวรรค์ */
@@ -464,7 +479,7 @@ function passive(c, { id }) {
   return OK(r.msg, { jobChanged: r.pathChanged });
 }
 /** ล้างต้นไม้พรสวรรค์: ต่ำกว่า Lv.10 ฟรี · จากนั้นเสียเงิน 60 × เลเวล */
-export const passiveResetCost = (c) => (c.level < 10 ? 0 : c.level * 60);
+export const passiveResetCost = (c) => (c.level < 10 ? 0 : c.level * c.level * 2);   // Lv.30 = 1,800 · Lv.150 = 45,000
 function passiveReset(c) {
   if (!PASSIVES_ON) return NO('ต้นไม้พรสวรรค์ปิดใช้งานชั่วคราว');
   if ((c.passives?.length || 1) <= 1) return NO('ยังไม่ได้ลงแต้มพรสวรรค์');
@@ -508,6 +523,7 @@ function fishLand(c, a, ctx) {
   const life = addLifeXp(c, 'fish', f.id === 'junk_boot' ? 1 : f.xp || 4);   // ปลาแดนสูงได้ EXP ทักษะมากขึ้น
   if (f.id !== 'junk_boot') rec(c, 'fish');
   if (f.id === 'pla_buek') rec(c, 'buek');
+  if (f.legend) rec(c, `lf_${f.id}`);                            // ปลาตำนานแต่ละแดน (ฉายาเจ้าสมุทรทั้งสี่ภพ)
   const quests = questEvent(c, 'fish', f.id);
   return OK('', { id: f.id, quests, bonus, life, legend: f.legend });
 }

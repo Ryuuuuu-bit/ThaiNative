@@ -7,6 +7,7 @@
 // ============================================================
 import { PARTY, WORLD } from '../shared/constants.js';
 import { ITEMS } from '../shared/data/items.js';
+import { tradable } from '../shared/data/trade.js';
 import { LEGEND_IDS, rollGearDrop } from '../shared/data/gear.js';
 import { RAID_BOSS as RB } from '../shared/data/raid.js';
 import { rollDamage, mobExp, attackInterval, expToNext, buffAspd } from '../shared/stats.js';
@@ -97,7 +98,7 @@ export function setupSocial(io, players, H = {}) {
   function cleanOffer(o = {}, save) {
     const items = [];
     for (const it of Array.isArray(o.items) ? o.items.slice(0, TRADE_SLOTS) : []) {
-      if (!ITEMS[it?.id] || ITEMS[it.id].type === 'skin') continue;
+      if (!tradable(it?.id)) continue;                                   // คัมภีร์/ของผูกตัว (bound) เทรดไม่ได้
       const qty = int(it.qty, 1, 9999);
       const ex = items.find((x) => x.id === it.id);
       if (ex) ex.qty = Math.min(9999, ex.qty + qty); else items.push({ id: it.id, qty });
@@ -370,7 +371,9 @@ export function setupSocial(io, players, H = {}) {
       const t = TITLE_BY_ID[id];
       if (!t || id === 'rookie') continue;
       emitTo(p.id, 'title:new', { id });
-      if (!['rich'].includes(id) && (!t.dynamic || ['cp_top1', 'lv_top1', 'enh_top1'].includes(id))) io.emit('chat', { id: null, name: '🏅 ฉายา', text: `${p.name} ได้รับฉายา “${t.nameTh}”` });
+      if (['rich', 'lg_rich'].includes(id) || (t.dynamic && !['cp_top1', 'lv_top1', 'enh_top1'].includes(id))) continue;   // ฉายาเงิน: ไม่ประกาศ (ไม่บอกว่าใครรวย)
+      if (t.cat === 'legend') io.emit('chat', { id: null, name: '✦ ตำนาน', text: `${p.name} ได้รับฉายาตำนาน “${t.nameTh}” — ${t.hint}!!` });   // ฉายาตำนาน: ประกาศพร้อมเงื่อนไข
+      else io.emit('chat', { id: null, name: '🏅 ฉายา', text: `${p.name} ได้รับฉายา “${t.nameTh}”` });
     }
   }
 
