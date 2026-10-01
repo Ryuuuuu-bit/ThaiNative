@@ -68,7 +68,7 @@ export class ChatBox {
     this.log = $('#chat-log'); this.input = $('#chat-input');
     root.querySelectorAll('[data-cbtab]').forEach((b) => (b.onclick = () => this.setTab(b.dataset.cbtab)));
     $('#cb-sys').onclick = () => { this.hideSys = !this.hideSys; $('#cb-sys').classList.toggle('off', this.hideSys); this.render(); this.save(); };
-    $('#cb-bub').onclick = () => { const s = this.scene.settings; s.chatBubble = s.chatBubble === false; $('#cb-bub').classList.toggle('off', !s.chatBubble); saveSettings(s); };
+    $('#cb-bub').onclick = () => { const s = this.scene.settings; s.chatBubble = s.chatBubble === false; $('#cb-bub').classList.toggle('off', !s.chatBubble); saveSettings(s); this.scene.ui?.syncSettings?.(); };
     $('#cb-bub').classList.toggle('off', this.scene.settings?.chatBubble === false);
     $('#cb-size').onclick = () => root.classList.toggle('tall');
     $('#chat-toggle').onclick = () => this.collapse(true);

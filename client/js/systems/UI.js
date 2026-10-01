@@ -25,7 +25,7 @@ import { MONSTERS } from '/shared/data/monsters.js';
 import { WORLD } from '/shared/constants.js';
 import { MAPS, MAP_LIST, REGIONS, mapAt } from '/shared/data/maps.js';
 
-import { saveSettings, toggleFullscreen } from './Settings.js';
+import { saveSettings, toggleFullscreen, DEFAULT_SETTINGS, PERF_PRESET } from './Settings.js';
 import { PORTRAITS } from '../gfx/SpriteFactory.js';
 import { modsText } from '/shared/data/blessings.js';
 import { ENHANCE } from '/shared/data/village.js';
@@ -175,7 +175,7 @@ export class UI {
   updateHud() {
     const c = this.char, d = getDerived(c);
     const need = expToNext(c.level);
-    const sig = [c.hp, c.mp, d.maxHp, d.maxMp, c.title, d.patk, d.matk, d.def, d.critRate, account.account?.admin, c.exp, c.level, c.gold, c.appearance.job, c.path, c.statPoints, c.sp, JSON.stringify(c.skills), (c.passives || []).length, Inv.count(c, 'hp_s'), Inv.count(c, 'mp_s'), this.scene.player?.d8id, this.scene.textures?.exists(`td:${this.scene.player?.d8id}:idle`)].join('|');
+    const sig = [Math.floor(c.hp), Math.floor(c.mp), d.maxHp, d.maxMp, c.title, d.patk, d.matk, d.def, d.critRate, account.account?.admin, c.exp, c.level, c.gold, c.appearance.job, c.path, c.statPoints, c.sp, JSON.stringify(c.skills), (c.passives || []).length, Inv.count(c, 'hp_s'), Inv.count(c, 'mp_s'), this.scene.player?.d8id, this.scene.textures?.exists(`td:${this.scene.player?.d8id}:idle`)].join('|');
     if (sig === this.hudCache) return;
     this.hudCache = sig;
 
@@ -308,7 +308,7 @@ export class UI {
     const now = Date.now();
     const bless = (p.char.blessings || []).filter((b) => b.until > now);
     const mins = (b) => { const m = Math.ceil((b.until - now) / 60000); return m > 90 ? `${Math.ceil(m / 60)}ชม` : `${m}น`; };
-    const sig = p.buffs.map((b) => `${b.icon}${Math.ceil((b.until - time) / 1000)}`).join('|') + '#' + bless.map((b) => b.icon + mins(b)).join('|');
+    const sig = p.buffs.filter((b) => b.until > time).map((b) => `${b.icon}${Math.ceil((b.until - time) / 1000)}`).join('|') + '#' + bless.map((b) => b.icon + mins(b)).join('|');
     if (sig !== this.buffSig) {
       this.buffSig = sig;
       $('#hud-buffs').innerHTML = p.buffs.filter((b) => b.until > time)
@@ -324,7 +324,7 @@ export class UI {
     // แผนที่โลก (ถ้าเปิดอยู่) อัปเดตทุก 300ms
     if (!$('#map-panel').classList.contains('hidden') && time - (this.wmAt || 0) > 300) { this.wmAt = time; this.updateMap(); }
     // มินิแมป (อัปเดตทุก 200ms)
-    if (this.scene.settings.minimap && time - (this.mmAt || 0) > 200) {
+    if (!this.scene.td && this.scene.settings.minimap && time - (this.mmAt || 0) > 200) {   // โลก top-down ใช้มินิแมพใหม่ (อันนี้ซ่อนอยู่)
       this.mmAt = time;
       const mp = this.scene.map, W = mp.maxX - mp.minX, inMap = (x) => x >= mp.minX && x <= mp.maxX;
       const pct = (x) => `${((x - mp.minX) / W) * 100}%`;
@@ -739,32 +739,55 @@ export class UI {
   // ============================================================
   bindSettings() {
     const st = this.scene.settings;
+    const chk = (id, key, def = true) => { const el = $(id); if (el) el.checked = def ? st[key] !== false : !!st[key]; };
     const sync = () => {
       $('#set-bgm-on').checked = st.bgmOn; $('#set-bgm').value = Math.round(st.bgmVol * 100); $('#set-bgm-v').textContent = `${Math.round(st.bgmVol * 100)}`;
       $('#set-sfx-on').checked = st.sfxOn; $('#set-sfx').value = Math.round(st.sfxVol * 100); $('#set-sfx-v').textContent = `${Math.round(st.sfxVol * 100)}`;
-      $('#set-dmg').checked = st.damageNumbers; $('#set-mm').checked = st.minimap;
-      $('#set-shake').checked = st.fxShake !== false; $('#set-flash').value = st.fxFlash || 'full'; $('#set-othersfx').value = st.otherSfx || 'full';
+      chk('#set-dmg', 'damageNumbers'); chk('#set-mm', 'minimap'); chk('#set-shake', 'fxShake'); chk('#set-other-dmg', 'otherDmg'); chk('#set-other-fx', 'otherFx');
+      chk('#set-names', 'otherNames'); chk('#set-bubble', 'chatBubble'); chk('#set-fps', 'showFps', false); chk('#set-mute-hidden', 'muteHidden', false);
+      $('#set-flash').value = st.fxFlash || 'full'; $('#set-othersfx').value = st.otherSfx || 'full'; $('#set-loot').value = st.lootLog || 'all';
       $('#set-auto-hp').value = String(st.autoHp || 0); $('#set-auto-mp').value = String(st.autoMp || 0);
       $('#set-touch').value = String(st.touchSize || 0);
       if (st.touchSize) document.body.style.setProperty('--ts', String(st.touchSize / 100)); else document.body.style.removeProperty('--ts');   // 0 = ค่าตามอุปกรณ์ (hud.css)
-      document.querySelector('.minimap').classList.toggle('hidden', !st.minimap);
+      document.querySelector('.minimap')?.classList.toggle('hidden', !!this.scene.td || st.minimap === false);   // มินิแมพโลกเก่า
+      for (const id of ['td-minimap', 'mm-zoom']) document.getElementById(id)?.classList.toggle('hidden', st.minimap === false);   // มินิแมพ top-down
+      this.scene.remotes?.forEach?.((r) => r.spr?._nameVis?.());                  // ชื่อผู้เล่นอื่น
+      $('#cb-bub')?.classList.toggle('off', st.chatBubble === false);              // ปุ่มฟองแชทในกล่องแชทให้ตรงกัน
     };
     const apply = () => { this.scene.sfx.applySettings(st); saveSettings(st); sync(); };
-    $('#set-bgm-on').onchange = (e) => { st.bgmOn = e.target.checked; apply(); };
-    $('#set-sfx-on').onchange = (e) => { st.sfxOn = e.target.checked; apply(); };
-    $('#set-bgm').oninput = (e) => { st.bgmVol = e.target.value / 100; apply(); };
-    $('#set-sfx').oninput = (e) => { st.sfxVol = e.target.value / 100; apply(); };
+    this.syncSettings = sync;                                                    // ที่อื่นแก้ค่า (ปุ่มในแชท/มินิแมพเพิ่งสร้าง) → เรียกให้หน้าตั้งค่าตรงกัน
+    const on = (id, ev, fn) => { const el = $(id); if (el) el[ev] = (e) => { fn(e.target); apply(); }; };
+    on('#set-bgm-on', 'onchange', (t) => (st.bgmOn = t.checked));
+    on('#set-sfx-on', 'onchange', (t) => (st.sfxOn = t.checked));
+    on('#set-bgm', 'oninput', (t) => (st.bgmVol = t.value / 100));
+    on('#set-sfx', 'oninput', (t) => (st.sfxVol = t.value / 100));
     $('#set-sfx').onchange = () => this.scene.sfx.play('coin');
-    $('#set-dmg').onchange = (e) => { st.damageNumbers = e.target.checked; apply(); };
-    $('#set-mm').onchange = (e) => { st.minimap = e.target.checked; apply(); };
-    $('#set-shake').onchange = (e) => { st.fxShake = e.target.checked; apply(); };
-    $('#set-flash').onchange = (e) => { st.fxFlash = e.target.value; apply(); };
-    $('#set-othersfx').onchange = (e) => { st.otherSfx = e.target.value; apply(); };
-    $('#set-auto-hp').onchange = (e) => { st.autoHp = +e.target.value; apply(); };
-    $('#set-auto-mp').onchange = (e) => { st.autoMp = +e.target.value; apply(); };
-    $('#set-touch').onchange = (e) => { st.touchSize = +e.target.value; apply(); };
+    for (const [id, key] of [['#set-dmg', 'damageNumbers'], ['#set-mm', 'minimap'], ['#set-shake', 'fxShake'], ['#set-other-dmg', 'otherDmg'], ['#set-other-fx', 'otherFx'],
+      ['#set-names', 'otherNames'], ['#set-bubble', 'chatBubble'], ['#set-fps', 'showFps'], ['#set-mute-hidden', 'muteHidden']]) on(id, 'onchange', (t) => (st[key] = t.checked));
+    on('#set-flash', 'onchange', (t) => (st.fxFlash = t.value));
+    on('#set-othersfx', 'onchange', (t) => (st.otherSfx = t.value));
+    on('#set-loot', 'onchange', (t) => (st.lootLog = t.value));
+    on('#set-auto-hp', 'onchange', (t) => (st.autoHp = +t.value));
+    on('#set-auto-mp', 'onchange', (t) => (st.autoMp = +t.value));
+    on('#set-touch', 'onchange', (t) => (st.touchSize = +t.value));
+    // แท็บ (จำแท็บล่าสุด)
+    const tab = (k) => { document.querySelectorAll('#settings-panel [data-stab]').forEach((b) => b.classList.toggle('on', b.dataset.stab === k));
+      document.querySelectorAll('#settings-panel [data-pane]').forEach((p) => p.classList.toggle('hidden', p.dataset.pane !== k)); try { localStorage.setItem('thainative_settab', k); } catch { /* */ } };
+    document.querySelectorAll('#settings-panel [data-stab]').forEach((b) => (b.onclick = () => { this.scene.sfx.play('click'); tab(b.dataset.stab); }));
+    try { const k = localStorage.getItem('thainative_settab'); if (k) tab(k); } catch { /* */ }
+    // โหมดลื่น / คืนค่าเริ่มต้น (เก็บรายการผีของ Auto ไว้)
+    $('#set-perf').onclick = () => { Object.assign(st, PERF_PRESET); apply(); this.toast('⚡ เปิดโหมดลื่น: ปิดเอฟเฟกต์/ตัวเลขของคนอื่น ลดแสงวาบ ปิดจอสั่น'); };
+    $('#set-reset').onclick = () => { const keep = st.autoMobs; Object.assign(st, DEFAULT_SETTINGS, { autoMobs: keep }); apply(); this.toast('↺ คืนค่าตั้งค่าเริ่มต้นแล้ว'); };
     $('#set-fullscreen').onclick = () => toggleFullscreen();
     $('#set-close').onclick = () => this.toggle('settings-panel', false);
+    // สลับแท็บ/ย่อหน้าต่าง → ปิดเสียงชั่วคราว (ตั้งค่า)
+    if (!this._muteHook) {
+      this._muteHook = true;
+      document.addEventListener('visibilitychange', () => {
+        if (!st.muteHidden) return;
+        this.scene.sfx.applySettings(document.hidden ? { ...st, bgmOn: false, sfxOn: false } : st);
+      });
+    }
     apply();
   }
 
@@ -776,8 +799,8 @@ export class UI {
 
   /** บันทึกของที่ได้ (มุมซ้ายล่าง เหนือแชท) – เก็บ 6 บรรทัดล่าสุด จางหายเอง */
   loot(text, rar = 0) {
-    const box = $('#loot-log');
-    if (!box) return;
+    const box = $('#loot-log'), mode = this.scene.settings?.lootLog || 'all';
+    if (!box || mode === 'off' || (mode === 'rare' && !rar)) return;              // ตั้งค่า: บันทึกของที่ได้ ทั้งหมด/เฉพาะของดี/ปิด
     const el = document.createElement('div');
     el.textContent = text;
     if (rar) el.className = `lr${rar}`;

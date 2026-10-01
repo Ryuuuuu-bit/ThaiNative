@@ -23,6 +23,7 @@ export function toast(msg, kind = '', ms = 2600) {
   msg = String(msg);
   if (!kind) kind = /^(✔|🏆|🎖|🔨 ตีบวกสำเร็จ)/.test(msg) ? 'ok' : /^(🎁|✨|ได้รับ|🎣 ได้)/.test(msg) ? 'loot' : /^(รับเควส|📜)/.test(msg) ? 'quest' : /^👑/.test(msg) ? 'boss' : 'info';
   const hit = live.get(msg);
+  if (hit && !hit.el.isConnected) { clearTimeout(hit.timer); live.delete(msg); }
   if (hit && hit.el.isConnected) {                                   // ข้อความเดิมซ้ำ → นับ ×n แทนเด้งใหม่
     hit.n++; hit.el.querySelector('.t-n').textContent = `×${hit.n}`; hit.el.classList.remove('bump'); void hit.el.offsetWidth; hit.el.classList.add('bump');
     clearTimeout(hit.timer); hit.timer = setTimeout(() => drop(msg), ms);
@@ -37,7 +38,10 @@ export function toast(msg, kind = '', ms = 2600) {
   const rec = { el, n: 1, timer: setTimeout(() => drop(msg), ms) };
   live.set(msg, rec);
   const all = [...box.querySelectorAll('.toast')];
-  for (const old of all.slice(0, Math.max(0, all.length - MAX_TOASTS))) old.remove();
+  for (const old of all.slice(0, Math.max(0, all.length - MAX_TOASTS))) {
+    old.remove();
+    for (const [k, r] of live) if (r.el === old) { clearTimeout(r.timer); live.delete(k); }   // ถูกดันออก → ล้างตัวจับเวลาด้วย (เดิมค้าง แล้วไปซ่อนข้อความเดียวกันอันใหม่ก่อนเวลา)
+  }
 }
 function drop(msg) {
   const r = live.get(msg); if (!r) return;

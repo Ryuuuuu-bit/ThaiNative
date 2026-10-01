@@ -64,7 +64,7 @@ assert.equal(runAction(f, 'fishBite', {}, ctx(-600, { sess })).ok, true);
 assert.equal(runAction(f, 'fishBite', {}, ctx(-600, { sess })).ok, false, 'ถี่เกิน');
 assert.equal(runAction(f, 'fishLand', {}, ctx(-600, { sess, now: Date.now() + 500 })).ok, true);
 assert.equal(f.inventory.some((s) => ITEMS[s.id].type === 'fish' || s.id === 'junk_boot'), true);
-assert.equal(runAction(f, 'chest', {}, ctx(MAPS.m1.minX + 500, { sess: { joinAt: Date.now() } })).ok, false, 'เข้าเกมใหม่ยังไม่มีหีบ');
+assert.equal(runAction(f, 'chest', {}, ctx(MAPS.m1.minX + 500, { sess: { joinAt: Date.now() } })).ok, false, 'หีบสมบัติโลกเก่าปิดแล้ว');
 
 // 7) ฉายา/ย้อมสี/recall
 assert.equal(runAction(f, 'title', { id: 'lv30' }).ok, false);

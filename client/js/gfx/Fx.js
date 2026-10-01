@@ -128,7 +128,9 @@ const NUM = {
   exp:    { color: '#ffe9a6', size: 8, stroke: '#3a2a0a' },
   night:  { color: '#e2c8ff', size: 8, stroke: '#2a0a3a' },
 };
+const DMG_KINDS = new Set(['normal', 'crit', 'miss', 'taken', 'poison']);
 export function popupNumber(scene, x, y, text, kind = 'normal', opts = {}) {
+  if (scene.settings?.damageNumbers === false && DMG_KINDS.has(kind)) return;   // ตั้งค่า: ปิดตัวเลขดาเมจ (EXP/ฮีล ยังแสดง)
   const st = NUM[kind] || NUM.normal;
   const t = makeText(scene, x + (Math.random() * 10 - 5), y, text, { fontSize: `${st.size}px`, color: st.color, stroke: st.stroke, strokeThickness: kind === 'crit' ? 4 : 3, fontStyle: '700' })
     .setOrigin(0.5).setDepth(D(scene, 50));

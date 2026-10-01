@@ -12,7 +12,7 @@ import { JOBS } from './data/classes.js';
 import { MONSTERS } from './data/monsters.js';
 import { WORLD } from './constants.js';
 import { MAPS, mapAt } from './data/maps.js';
-import { rollFish, RECIPES, BREWS, ENHANCE, QUESTS, QUEST_BY_ID, questGiver, GIVER_TH, HERB_RESPAWN_MS, rollChest, dailyBounties } from './data/village.js';
+import { rollFish, RECIPES, BREWS, ENHANCE, QUESTS, QUEST_BY_ID, questGiver, GIVER_TH, HERB_RESPAWN_MS, dailyBounties } from './data/village.js';
 import { FORGE } from './data/crafting.js';
 import { GEAR, GEAR_IDS } from './data/gear.js';
 import { rollAffixes, affixId } from './data/affixes.js';
@@ -546,19 +546,6 @@ function gather(c, { node }, ctx) {
   const quests = questEvent(c, 'herb', n.item);
   return OK('', { item: n.item, qty, quests, life, node: int(node, 0, 999, -1), respawn: HERB_RESPAWN_MS });
 }
-function chest(c, a, ctx) {
-  const S = ctx.sess;
-  if (ctx.td) return NO('');                                           // หีบสมบัติมีเฉพาะโลกเก่า
-  if (ctx.x != null && !mapAt(ctx.x).mon) return NO('');
-  const last = S.chestAt ?? ((S.joinAt || 0) - 105000);           // เข้าเกม 15 วิแรกยังไม่มีหีบ
-  if (ctx.now - last < 120000) return NO('หีบนี้ว่างเปล่า…');
-  S.chestAt = ctx.now;
-  const r = rollChest(c.level, ctx.rnd);
-  c.gold += r.gold;
-  r.items.forEach((it) => addItem(c, it.id, it.qty));
-  return OK('', { gold: r.gold, items: r.items });
-}
-
 // ------------------------------------------------------------
 //  สถานะ / สกิล / Hotbar
 // ------------------------------------------------------------
@@ -788,13 +775,15 @@ function preset(c, { i }, ctx) {
 }
 
 // ------------------------------------------------------------
+/** ทำได้ก่อนเข้าโลก top-down (ไม่อิงตำแหน่ง/ไม่ให้รางวัล) · ที่เหลือ server ปฏิเสธ (กันค้างโลกเก่าแล้วใช้ x ปลอม) */
+export const PRE_TD_ACTIONS = new Set(['use', 'equip', 'unequip', 'cosAck', 'statsAck', 'spAck', 'lock', 'qDrop', 'alloc', 'learn', 'hotbar', 'title', 'friendDel', 'passive', 'flask', 'preset', 'gm']);
 export const ACTIONS = {
   use, equip, unequip, cosAck, statsAck, spAck, buy, sell, sellMany, sellCart, buyback, lock, offer, siamsi, craft, enhance,
-  qAccept, qDrop, qClaim, path, passive, passiveReset, bounty, fishBite, fishLand, fishLose, gather, chest,
+  qAccept, qDrop, qClaim, path, passive, passiveReset, bounty, fishBite, fishLand, fishLose, gather,
   alloc, learn, hotbar, recall, dye, title, friendDel, gm, cardIn, cardOut, cardTrade, flask, preset, demandSell,
 };
 /** ระหว่างเทรด ห้ามทำสิ่งที่แตะกระเป๋า/เงิน (กันของซ้ำ) */
-const TRADE_SAFE = new Set(['flask', 'cosAck', 'statsAck', 'spAck', 'lock', 'qAccept', 'qDrop', 'hotbar', 'title', 'friendDel', 'fishBite', 'fishLand', 'fishLose', 'gather', 'chest', 'learn', 'alloc', 'passive']);
+const TRADE_SAFE = new Set(['flask', 'cosAck', 'statsAck', 'spAck', 'lock', 'qAccept', 'qDrop', 'hotbar', 'title', 'friendDel', 'fishBite', 'fishLand', 'fishLose', 'gather', 'learn', 'alloc', 'passive']);
 
 /**
  * รันคำสั่ง: ctx = { rnd, now, x (ตำแหน่งผู้เล่น · null = ไม่ตรวจ), night, admin, trade, sess }

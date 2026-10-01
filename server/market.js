@@ -15,7 +15,7 @@ const int = (v, lo, hi) => (Number.isFinite(+v) ? Math.max(lo, Math.min(hi, Math
 const rand = (a, b) => a + Math.random() * (b - a);
 const fmt = (n) => Math.round(n).toLocaleString('en-US');
 
-export function setupMarket(io, players, { td, refresh, persist, storeReady, isNearLegacy }) {
+export function setupMarket(io, players, { td, refresh, persist, storeReady }) {
   const S = { seq: 1, listings: [], orders: [], box: {}, hist: {}, travel: { active: false, next: Date.now() + rand(15, 35) * 60e3 } };
   const keyOf = (p) => `${p.acc}:${p.slot || 0}`;
   const online = (k) => [...players.values()].find((p) => keyOf(p) === k);
@@ -43,7 +43,7 @@ export function setupMarket(io, players, { td, refresh, persist, storeReady, isN
   })();
 
   // ---------------- ตรวจตำแหน่ง ----------------
-  const atMarket = (p) => (p.world === 'td' ? td.npcNear(p) === MARKET_NPC : isNearLegacy(p, MARKET_NPC));
+  const atMarket = (p) => p.world === 'td' && td.npcNear(p) === MARKET_NPC;   // เฉพาะโลก top-down (โลกเก่าใช้ x จาก client ปลอมได้)
   const travelPos = () => { const s = TRAVEL_SPOTS[S.travel.spot] || TRAVEL_SPOTS[0]; return { x: (s.x + OX) * TILE + 8, y: s.y * TILE + 8 }; };
   const atTravel = (p) => { if (!S.travel.active || p.world !== 'td' || td.mapOf(p) !== 'ayutthaya') return false; const t = travelPos(); return Math.hypot(t.x - p.tx, t.y - p.ty) <= NPC_R; };
 
@@ -165,7 +165,7 @@ export function setupMarket(io, players, { td, refresh, persist, storeReady, isN
       if (!atTravel(p)) return NO('ต้องยืนคุยกับพ่อค้าเร่ก่อน');
       const s = t.stock.find((x) => x.id === id);
       if (!s || s.qty <= 0) return NO('ของชิ้นนี้หมดแล้ว');
-      const k = keyOf(p), mine = ((t.bought ||= {})[k] ||= {}), lim = Math.min(s.qty, TRAVEL.perChar - (mine[id] || 0));
+      const k = String(p.acc), mine = ((t.bought ||= {})[k] ||= {}), lim = Math.min(s.qty, TRAVEL.perChar - (mine[id] || 0));   // นับต่อบัญชี (เดิมต่อช่องตัวละคร → สลับตัวซื้อได้หลายเท่า)
       if (lim <= 0) return NO(`ซื้อชิ้นนี้ได้คนละ ${TRAVEL.perChar} ชิ้นต่อรอบ`);
       qty = int(qty, 1, lim); if (!qty) return NO('จำนวนไม่ถูกต้อง');
       const cost = s.price * qty;

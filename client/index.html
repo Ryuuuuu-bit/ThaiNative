@@ -412,26 +412,52 @@
 
       <!-- ตั้งค่า (ESC) -->
       <section id="settings-panel" class="panel window hidden">
-        <header>ตั้งค่า <button class="close">✕</button></header>
-        <div class="set-group">
-          <div class="set-row"><label><input type="checkbox" id="set-bgm-on" /> เพลงประกอบ (BGM)</label><input type="range" id="set-bgm" min="0" max="100" /><span id="set-bgm-v"></span></div>
-          <div class="set-row"><label><input type="checkbox" id="set-sfx-on" /> เสียงเอฟเฟกต์ (SFX)</label><input type="range" id="set-sfx" min="0" max="100" /><span id="set-sfx-v"></span></div>
-        </div>
-        <div class="set-group">
-          <div class="set-row"><label><input type="checkbox" id="set-dmg" /> แสดงตัวเลขดาเมจ</label></div>
-          <div class="set-row"><label><input type="checkbox" id="set-mm" /> แสดงมินิแมป</label></div>
-          <div class="set-row set-touch"><span>👆 ขนาดปุ่มจอสัมผัส</span><select id="set-touch"><option value="0">อัตโนมัติ</option><option value="60">เล็กมาก</option><option value="72">เล็ก</option><option value="85">กลาง</option><option value="100">ใหญ่</option></select></div>
-          <div class="set-row"><label><input type="checkbox" id="set-shake" /> จอสั่น (สกิล/โดนตี)</label></div>
-          <div class="set-row"><span>🔊 เสียงผู้เล่นอื่น</span><select id="set-othersfx"><option value="full">ปกติ</option><option value="soft">เบา</option><option value="off">ปิด</option></select></div>
-          <div class="set-row"><span>✨ แสงวาบของสกิล</span><select id="set-flash"><option value="full">เต็ม</option><option value="soft">ลดลง</option><option value="off">ปิด</option></select></div>
-          <div class="set-row"><button id="set-fullscreen" class="btn ghost">⛶ เต็มจอ (Fullscreen)</button> <button class="btn ghost" data-open="donate-panel">💖 สนับสนุนผู้พัฒนา</button></div>
-        </div>
-        <div class="set-group">
-          <div class="set-row"><span>🧪 กินยา HP อัตโนมัติเมื่อต่ำกว่า</span><select id="set-auto-hp"><option value="0">ปิด</option><option value="30">30%</option><option value="50">50%</option><option value="70">70%</option></select></div>
-          <div class="set-row"><span>🧪 กินยา MP อัตโนมัติเมื่อต่ำกว่า</span><select id="set-auto-mp"><option value="0">ปิด</option><option value="20">20%</option><option value="40">40%</option><option value="60">60%</option></select></div>
-          <div class="set-row"><small class="meta">Tab = สลับชุดการเล่น A ⇄ B (อาวุธ · อุปกรณ์ · แต้มสถานะ · สกิล · Hotbar แยกกันต่อชุด)</small></div>
-        </div>
-        <div class="set-group acc-group">
+        <header>⚙️ ตั้งค่า <button class="close">✕</button></header>
+        <nav class="set-tabs">
+          <button data-stab="sound" class="on">🔊 เสียง</button><button data-stab="view">🖥️ ภาพ</button><button data-stab="play">⚔️ การเล่น</button><button data-stab="acc">👤 บัญชี</button>
+        </nav>
+        <div class="set-body">
+          <div class="set-pane" data-pane="sound">
+            <div class="set-group"><h4>ระดับเสียง</h4>
+              <div class="set-row vol"><label><input type="checkbox" id="set-bgm-on" /> 🎵 เพลงประกอบ</label><input type="range" id="set-bgm" min="0" max="100" /><span id="set-bgm-v"></span></div>
+              <div class="set-row vol"><label><input type="checkbox" id="set-sfx-on" /> 💥 เสียงเอฟเฟกต์</label><input type="range" id="set-sfx" min="0" max="100" /><span id="set-sfx-v"></span></div>
+            </div>
+            <div class="set-group"><h4>เพิ่มเติม</h4>
+            <div class="set-row"><span>👥 เสียงผู้เล่นอื่น/ผีรอบตัว<small>ดังเบาตามระยะเสมอ</small></span><select id="set-othersfx"><option value="full">ปกติ</option><option value="soft">เบา</option><option value="off">ปิด</option></select></div>
+            <label class="set-sw"><span>🔕 ปิดเสียงเมื่อสลับไปแท็บอื่น<small>เปิดออโต้ทิ้งไว้แล้วทำอย่างอื่น</small></span><input type="checkbox" id="set-mute-hidden" /><i></i></label>
+            </div>
+          </div>
+          <div class="set-pane hidden" data-pane="view">
+            <div class="set-group"><h4>ตัวเลขและเอฟเฟกต์</h4>
+            <label class="set-sw"><span>🔢 ตัวเลขดาเมจ<small>ของตัวเอง (EXP/ฮีลยังแสดง)</small></span><input type="checkbox" id="set-dmg" /><i></i></label>
+            <label class="set-sw"><span>👥 ตัวเลขดาเมจของคนอื่น<small>ปิดแล้วจอโล่ง เครื่องลื่นขึ้น</small></span><input type="checkbox" id="set-other-dmg" /><i></i></label>
+            <label class="set-sw"><span>✨ เอฟเฟกต์สกิลของคนอื่น<small>ปิดแล้วลื่นขึ้นมากตอนคนเยอะ</small></span><input type="checkbox" id="set-other-fx" /><i></i></label>
+            <label class="set-sw"><span>📳 จอสั่น<small>ตอนใช้สกิลแรง/โดนตี</small></span><input type="checkbox" id="set-shake" /><i></i></label>
+            <div class="set-row"><span>⚡ แสงวาบของสกิล<small>ลดแสงจ้าถนอมสายตา</small></span><select id="set-flash"><option value="full">เต็ม</option><option value="soft">ลดลง</option><option value="off">ปิด</option></select></div>
+            </div>
+            <div class="set-group"><h4>หน้าจอ</h4>
+            <label class="set-sw"><span>🗺️ มินิแมพ</span><input type="checkbox" id="set-mm" /><i></i></label>
+            <label class="set-sw"><span>🏷️ ชื่อ/ฉายาผู้เล่นอื่น<small>หัวแดงยังแสดงเสมอ</small></span><input type="checkbox" id="set-names" /><i></i></label>
+            <label class="set-sw"><span>💬 ฟองแชทเหนือหัว</span><input type="checkbox" id="set-bubble" /><i></i></label>
+            <label class="set-sw"><span>📈 แสดง FPS<small>ดูว่าเครื่องลื่นแค่ไหน</small></span><input type="checkbox" id="set-fps" /><i></i></label>
+            <div class="set-row set-touch"><span>👆 ขนาดปุ่มจอสัมผัส</span><select id="set-touch"><option value="0">อัตโนมัติ</option><option value="60">เล็กมาก</option><option value="72">เล็ก</option><option value="85">กลาง</option><option value="100">ใหญ่</option></select></div>
+              <div class="set-row"><button id="set-fullscreen" class="btn ghost">⛶ เต็มจอ (Fullscreen)</button></div>
+            </div>
+          </div>
+          <div class="set-pane hidden" data-pane="play">
+            <div class="set-group"><h4>ยาอัตโนมัติ</h4>
+            <div class="set-row"><span>🧪 กินยา HP เมื่อต่ำกว่า</span><select id="set-auto-hp"><option value="0">ปิด</option><option value="30">30%</option><option value="50">50%</option><option value="70">70%</option></select></div>
+            <div class="set-row"><span>🫙 กินยา MP เมื่อต่ำกว่า</span><select id="set-auto-mp"><option value="0">ปิด</option><option value="20">20%</option><option value="40">40%</option><option value="60">60%</option></select></div>
+            </div>
+            <div class="set-group"><h4>การแจ้งเตือน</h4>
+            <div class="set-row"><span>🎁 บันทึกของที่ได้ (มุมซ้ายล่าง)<small>ออโต้ทั้งวันแล้วรก → เลือกเฉพาะของดี</small></span><select id="set-loot"><option value="all">ทั้งหมด</option><option value="rare">เฉพาะของดี</option><option value="off">ปิด</option></select></div>
+            </div>
+            <div class="set-group"><h4>ปุ่มลัด</h4>
+              <div class="set-keys"><span><kbd>R</kbd> ออโต้</span><span><kbd>Shift</kbd>+<kbd>R</kbd> เลือกชนิดผี</span><span><kbd>Tab</kbd> สลับชุด A⇄B</span><span><kbd>Q</kbd>/<kbd>E</kbd> ดื่มขวดยา</span><span><kbd>B</kbd> กลับกรุงศรีฯ</span><span><kbd>M</kbd> แผนที่</span><span><kbd>G</kbd> คู่มือ</span><span><kbd>J</kbd> เควส</span><span><kbd>H</kbd> วิธีเล่น</span></div>
+            </div>
+          </div>
+          <div class="set-pane hidden" data-pane="acc">
+            <div class="set-group acc-group">
           <div class="set-row"><span>บัญชี: <b id="acc-name">—</b> <small id="acc-badge" class="acc-badge"></small></span></div>
           <p id="acc-note" class="hint"></p>
           <form id="link-form" class="link-form hidden" autocomplete="on">
@@ -442,7 +468,10 @@
           </form>
           <div class="set-row"><button id="acc-link" class="btn ghost hidden">🔗 เชื่อม ID (บันทึกถาวร)</button><button id="acc-switch" class="btn ghost">👥 เปลี่ยนตัวละคร</button><button id="acc-logout" class="btn ghost">🚪 ออกจากระบบ</button></div>
         </div>
-        <div class="set-row foot"><button id="set-close" class="btn primary">กลับเข้าเกม</button></div>
+            <div class="set-row"><button class="btn ghost" data-open="donate-panel">💖 สนับสนุนผู้พัฒนา</button></div>
+          </div>
+        </div>
+        <div class="set-row foot"><button id="set-perf" class="btn ghost" title="ปิดเอฟเฟกต์/ตัวเลขของคนอื่น ลดแสงวาบ ปิดจอสั่น">⚡ โหมดลื่น</button><button id="set-reset" class="btn ghost">↺ ค่าเริ่มต้น</button><button id="set-close" class="btn primary">กลับเข้าเกม</button></div>
       </section>
 
       <!-- วิธีเล่น -->

@@ -15,7 +15,7 @@ import { sanitizeAppearance } from '../shared/data/appearance.js';
 import { getDerived, combatPower } from '../shared/character.js';
 import { migrate } from '../shared/charmodel.js';
 import { skillCooldown } from '../shared/stats.js';
-import { runAction, packChar, count as invCount, removeItem, addItem } from '../shared/economy.js';
+import { runAction, packChar, count as invCount, removeItem, addItem, PRE_TD_ACTIONS } from '../shared/economy.js';
 import { ITEMS } from '../shared/data/items.js';
 import { checkName, nameKey, nameIdeas } from '../shared/data/names.js';
 import { SKILL_BY_ID, MAX_SKILL_LV, skillStats, skillUsable, skillMastery } from '../shared/data/skills.js';
@@ -27,7 +27,6 @@ import { setupTD } from './td.js';
 import { setupHealer } from './healer.js';
 import { setupWorldBoss } from './worldboss.js';
 import { setupMarket } from './market.js';
-import { nearNpc as nearNpcLegacy } from '../shared/data/npcs.js';
 import { setupAuth, isAdmin } from './auth.js';
 import { setupRanking } from './ranking.js';
 import { MAX_SLOTS } from './store.js';
@@ -171,7 +170,7 @@ healer = setupHealer(io, players, { ...helpers, social, tdSys, onHeal: (c, n) =>
 setInterval(() => healer.tick(), 250);
 /** บอสโลกพระราหู (ลานสุริยคราส) */
 const worldBoss = setupWorldBoss(io, players, { td, hurtPlayer, queueSync, social, refresh, storeReady });
-const market = setupMarket(io, players, { td, refresh, persist, storeReady, isNearLegacy: (p, id) => nearNpcLegacy(p.x, id) });
+const market = setupMarket(io, players, { td, refresh, persist, storeReady });
 
 function publicPlayer(p) {
   return {
@@ -191,6 +190,14 @@ function startPos(d) {
 }
 /** อีเวนต์ของโลกเก่า (side-scroller) — client ปัจจุบันไม่ส่งแล้ว เหลือไว้ให้โกงได้เท่านั้น */
 const LEGACY_EV = new Set(['player:update', 'player:warp', 'mob:hit', 'dg:enter', 'dg:hit', 'dg:leave', 'raid:hit']);
+/** สถานะชั่วคราวต่อตัวละคร (คูลดาวน์สมุนไพร/เก็บของ ฯลฯ) อยู่ข้ามการรีล็อก · เดิมสร้างใหม่ทุกครั้ง → ออก-เข้าใหม่แล้วเก็บสมุนไพรซ้ำได้ทันที */
+const sessKeep = new Map();
+function keepSess(key) {
+  const S = sessKeep.get(key) || {};
+  Object.assign(S, { joinAt: Date.now(), fish: null });                // มินิเกมตกปลาค้างจากรอบก่อน = ยกเลิก
+  sessKeep.set(key, S);
+  return S;
+}
 /** กันเข้าเกมซ้อน (2 socket บัญชีเดียวพร้อมกัน = ตัวละคร 2 ร่าง → ปั๊มของ) */
 const joiningAcc = new Set();
 /** เซฟที่เขียนไม่สำเร็จตอนออกเกม → เก็บไว้ในหน่วยความจำ ใช้แทนข้อมูลในฐานข้อมูลตอนเข้าใหม่ + ลองเซฟซ้ำ */
@@ -258,7 +265,7 @@ io.on('connection', (socket) => {
         id: socket.id, acc: acc.id, slot, admin: isAdmin(acc.username), save, char: save,
         name: save.name, appearance: save.appearance, appKey: JSON.stringify(save.appearance),
         x: WORLD.spawnX, y: WORLD.spawnY, ...startPos(data),
-        anim: 'idle', flipX: false, level: save.level, maxHp: 1, buffs: [], sess: { joinAt: Date.now() },
+        anim: 'idle', flipX: false, level: save.level, maxHp: 1, buffs: [], sess: keepSess(`${acc.id}:${slot}`),
         lastUpdate: Date.now(), lastChat: 0, lastSkill: 0, partyId: null, tradeId: null, dead: false, invulnUntil: Date.now() + 2000,
       };
       Object.defineProperty(p, 'hp', { get() { return this.save.hp; }, set(v) { this.save.hp = v; }, enumerable: true });
@@ -339,6 +346,7 @@ io.on('connection', (socket) => {
     if (now - (p.econT || 0) > 1000) { p.econT = now; p.econN = 0; }
     if (++p.econN > 25) return done({ r: { ok: false, msg: 'ทำรายการถี่เกินไป' } });
     const a = String(d.a || '');
+    if (p.world !== 'td' && !PRE_TD_ACTIONS.has(a)) return done({ r: { ok: false, msg: 'รอเข้าสู่โลกให้เสร็จก่อน' } });   // ค้างโลกเก่า = ใช้ x ปลอมเปิดร้าน/ส่งเควสจากที่ไหนก็ได้
     if ((p.save.karma || 0) > 0 && (['buy', 'buyback', 'recall'].includes(a) || (a === 'craft' && d.list === 'barter') || (a === 'use' && String(d.id || '').startsWith('yant_home'))))   // หัวแดง: ร้านไม่ขาย · วาร์ปกลับเมืองไม่ได้
       return done({ r: { ok: false, msg: `☠️ หัวแดง (บาป ${p.save.karma}): ร้านไม่ขายให้ และวาร์ปกลับเมืองไม่ได้ · บาปลด 5/นาทีที่ออนไลน์` } });
     if (p.dead && !['lock', 'hotbar', 'title', 'qDrop', 'friendDel', 'cosAck', 'statsAck', 'spAck'].includes(a)) return done({ r: { ok: false, msg: 'ตายอยู่ – รอฟื้นก่อน' } });

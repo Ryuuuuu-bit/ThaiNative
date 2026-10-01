@@ -62,6 +62,19 @@ function bakeSheet(scene, key, fw, fh, animSpec, drawFrame) {
 // ------------------------------------------------------------
 /** ภาพตัวละครที่ย้อมสีแล้ว (ใช้ทำรูปโปรไฟล์บน HUD)  key → canvas */
 export const PORTRAITS = new Map();
+/** ตัวละครที่อบไว้ (เก่า → ใหม่) · เกิน BAKE_MAX ลบตัวที่ไม่มีใครในฉากใช้ (ทุกครั้งที่เปลี่ยนอุปกรณ์/ตีบวก = key ใหม่ → เดิมสะสมไม่รู้จบ) */
+const BAKED = [], BAKE_MAX = 24;
+function trimBaked(scene) {
+  if (BAKED.length <= BAKE_MAX) return;
+  const used = new Set((scene.children?.list || []).flatMap((o) => [o.texture?.key, o.legacyKey, o.texKey]).filter(Boolean));   // รวมภาพสำรอง (legacyKey) ของสไปรต์ 8 ทิศ
+  for (let i = 0; i < BAKED.length && BAKED.length > BAKE_MAX; ) {
+    const k = BAKED[i];
+    if (used.has(k)) { i++; continue; }
+    BAKED.splice(i, 1); PORTRAITS.delete(k);
+    for (const a of Object.keys(PLAYER_ANIMS)) scene.anims.remove(`${k}:${a}`);
+    if (scene.textures.exists(k)) scene.textures.remove(k);
+  }
+}
 
 export function bakeCharacter(scene, appearance) {
   const key = appearanceKey(appearance);
@@ -74,7 +87,7 @@ export function bakeCharacter(scene, appearance) {
     if (scene.textures.exists(key)) return key;
     const base = recolorBase(scene.textures.get(bk).getSourceImage(), appearance, legacy);
     base._gender = appearance.gender;
-    PORTRAITS.set(key, base);
+    PORTRAITS.set(key, base); BAKED.push(key); trimBaked(scene);
     const ik = `ico_it_${appearance.weapon}`;
     const held = legacy ? null : heldInfo(appearance, scene.textures.exists(ik) ? scene.textures.get(ik).getSourceImage() : null);
     const { FW: pw, FH: ph } = frameSize(base);

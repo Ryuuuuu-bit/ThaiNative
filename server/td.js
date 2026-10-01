@@ -45,7 +45,7 @@ export function setupTD(io, players, opts = {}) {
   let wb = null;                       // ตัวควบคุมบอสโลก (server/worldboss.js) · setWb()
   const nightNow = () => isNight(dayPhase(Date.now(), dayMs));
   function timeMods(d) {
-    const now = Date.now(), phase = dayPhase(now, dayMs), moon = moonOf(dayIndex(now + dayMs * 0.25, dayMs));
+    const now = Date.now(), phase = dayPhase(now, dayMs), moon = moonOf(dayIndex(now, dayMs));
     const m = nightMods(phase, moon);
     return d.nightBoost && isNight(phase) ? { ...m, atk: m.atk * 1.15, exp: m.exp * 1.2, gold: m.gold * 1.2 } : m;
   }
@@ -100,6 +100,7 @@ export function setupTD(io, players, opts = {}) {
           const P = m.dots[k];
           if (now < P.next) continue;
           const by = players.get(P.by);
+          if (!by || by.dead || !sameMap(by)) { delete m.dots[k]; continue; }   // คนใส่ออกแมพ/ตาย → พิษหมด (เดิมยังนับดาเมจ · ผีตายแล้วของไปเข้าคนที่ตาย)
           m.hp -= P.dmg; P.left--; P.next = now + P.every;
           if (by) m.dmgBy.set(by.id, (m.dmgBy.get(by.id) || 0) + P.dmg);
           if (by && m.wb) wb?.onDmg(m, by, P.dmg);
@@ -118,7 +119,7 @@ export function setupTD(io, players, opts = {}) {
       if (m.boss && m.aoe && now >= m.aoe.at) {
         const a = m.aoe; m.aoe = null;
         for (const p of here) {
-          if (p.dead || Math.hypot(p.tx - a.x, p.ty - a.y) > a.r) continue;
+          if (p.dead || inTown(p.tx, p.ty) || Math.hypot(p.tx - a.x, p.ty - a.y) > a.r) continue;   // เขตปลอดภัย: วงบอสไม่โดน
           const pd = combatDerived(p.char, p.buffs, now);
           const r = rollDamage({ ...mobAtk(d), accuracy: 999 }, { def: pd.def, eva: 0 }, 'physical', d.aoe.mult || 1.3);
           if (now < m.weakUntil) r.dmg = Math.max(1, Math.round(r.dmg * (1 - (m.weakPct || 0))));   // อ่อนแรง (สกิล)
@@ -128,7 +129,7 @@ export function setupTD(io, players, opts = {}) {
       // ท่าตีที่ค้าง → ถึงเวลาลงดาเมจ
       if (m.pending.length && now >= m.pending[0].at) {
         const a = m.pending.shift(), p = players.get(a.pid);
-        if (sameMap(p) && !p.dead && dist(m, { x: p.tx, y: p.ty }) <= (d.attackRange || 16) + 20) {
+        if (sameMap(p) && !p.dead && !inTown(p.tx, p.ty) && dist(m, { x: p.tx, y: p.ty }) <= (d.attackRange || 16) + 20) {   // หนีเข้าเมืองทัน = ไม่โดน
           const pd = combatDerived(p.char, p.buffs, now);
           const r = rollDamage(mobAtk(d), { def: pd.def, eva: pd.eva }, d.projectile ? 'magic' : 'physical', 1);
           if (d.pctDmg && r.hit) r.dmg = Math.max(1, Math.round(p.maxHp * d.pctDmg));   // บริวารราหู: ดูด % HP
@@ -141,6 +142,8 @@ export function setupTD(io, players, opts = {}) {
       for (const p of here) { if (p.dead || inTown(p.tx, p.ty) || now < (p.spawnGuardUntil || 0)) continue; const dd = dist(m, { x: p.tx, y: p.ty }); if (dd < bd) { bd = dd; best = p; } }   // เพิ่งวาร์ป/ฟื้น: ผียังไม่เห็น 3 วิ
       // บอสไล่ต่อคนเดิมที่กำลังตีอยู่ (ไม่สลับเป้าไปมา) ถ้ายังอยู่ในระยะ
       if (m.boss && m.st === 'chase') { const cur = players.get(m.target); if (cur && !cur.dead && sameMap(cur) && now >= (cur.spawnGuardUntil || 0) && dist(m, { x: cur.tx, y: cur.ty }) < BOSS_LEASH) best = cur; }
+      // ผีธรรมดา: ไล่คนที่ตีมันต่อ (เดิมเห็นแค่ระยะ AGGRO 110 → ธนู/เวทย์ยืนยิงจาก 120–260 ฟรี) · เลิกเมื่อพ้น LEASH หรือเข้าเมือง
+      else if (m.st === 'chase') { const cur = players.get(m.target); if (cur && !cur.dead && sameMap(cur) && m.dmgBy.has(cur.id) && !inTown(cur.tx, cur.ty) && now >= (cur.spawnGuardUntil || 0) && dist(m, { x: cur.tx, y: cur.ty }) < LEASH) best = cur; }
       const home = Math.hypot(m.x - m.s.x, m.y - m.s.y);
       if (best && (m.wb || home < (m.boss ? BOSS_LEASH : LEASH))) { m.st = 'chase'; m.target = best.id; }
       else if (m.st === 'chase') { m.st = 'wander'; m.target = null; m.wx = m.s.x; m.wy = m.s.y; }
@@ -171,6 +174,9 @@ export function setupTD(io, players, opts = {}) {
   }
 
   // ---------------- ผู้เล่นตีผี ----------------
+  /** ผีสูงสุดต่อการร่าย 1 ครั้ง: วงกว้าง/ทะลุ/เด้ง/ฟันกวาด (all) = หลายตัว · กระสุน = เท่าจำนวนลูก · ฟัน/ฟ้าผ่า/เมล็ดเป้าเดียว = 1 */
+  const maxTargets = (skb) => (skb.all || skb.pierce || skb.radius || skb.bounces || ['aoe', 'mortar', 'bounce'].includes(skb.type) ? 16
+    : skb.type === 'dash' ? 6 : skb.type === 'projectile' ? Math.max(1, skb.count || 1) : 1);
   function onHit(p, d = {}) {
     const m = mobs[d.mid | 0];
     if (!sameMap(p) || p.dead || !m || m.st === 'dead' || !p.char) return;
@@ -181,6 +187,8 @@ export function setupTD(io, players, opts = {}) {
     const skb = sk ? SKILL_BY_ID[sk] : null;            // สกิลระยะไกล/วงกว้าง/พุ่ง → เอื้อมได้ไกลกว่าตีปกติ
     const range = Math.max(atk?.range || 30, skb ? (skb.range || 0) + (skb.distance || 0) + (skb.offset ? 240 : 0) + (skb.radius || 0) + (skb.hop || 0) * (skb.bounces || 0) : 0) + 30;
     if (dist(m, { x: p.tx, y: p.ty }) > range) return;
+    // คูลดาวน์ตีปกติ (server) ก่อนนับคอมโบ: packet ที่โดนคูลดาวน์ไม่นับเป็นจังหวะ (เดิมส่งขยะ 2 ครั้ง → คอมโบ ×1.8 ทุกหมัด)
+    if (!sk) { if (now - (p.tdAtk || 0) < attackInterval(atk?.cooldown || 500, getDerived(p.char).aspd + buffAspd(p.buffs, now)) * 0.7) return; p.tdAtk = now; }   // AGI เร่งความเร็วตี
     const gate = attackGate(p, sk, !!d.combo, now);
     if (!gate) return;
     if (sk) {                                                                 // ต้องมีการร่ายจริง (skill:cast) · ตีเป้าเดิมได้ไม่เกินจำนวนจังหวะของท่า
@@ -188,11 +196,10 @@ export function setupTD(io, players, opts = {}) {
       if (!t || now - t.at > 1800 + (skb.hits || 1) * (skb.interval || 0) + (skb.delay || 0) + (skb.duration && skb.type === 'aoe' ? skb.duration : 0)) return;
       const per = Math.max((skb.hits || 1) * (skb.count || 1), skb.bounces || 1), n = (t.mobs.get(m.mid) || 0) + 1;
       if (n > per) return;
+      if (!t.mobs.has(m.mid) && t.mobs.size >= maxTargets(skb)) return;              // จำนวนผีต่อการร่าย (กันส่ง mid หลายตัวด้วยสกิลเป้าเดียว)
       t.mobs.set(m.mid, n);
       if (sk === 'heal_mortar') p.mortarHits = { at: t.at, n: t.mobs.size };
     }
-    // คูลดาวน์ตีปกติ (server): เร็วกว่าที่ client ตั้งไว้เล็กน้อยเผื่อ lag
-    if (!sk) { if (now - (p.tdAtk || 0) < attackInterval(atk?.cooldown || 500, getDerived(p.char).aspd + buffAspd(p.buffs, now)) * 0.7) return; p.tdAtk = now; }   // AGI เร่งความเร็วตี
     const spec = attackSpec(p.char, job, sk, gate === 'combo');
     if (!spec) return;
     const r = rollDamage(combatDerived(p.char, p.buffs, now), { def: (m.wbDef ?? m.d.def) * (now < m.defDownUntil ? 1 - (m.defDownPct || 0) : 1), eva: m.d.eva }, spec.kind, spec.mult);   // เกราะแตก: DEF ผีลด

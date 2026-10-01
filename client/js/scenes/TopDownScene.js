@@ -33,7 +33,7 @@ import { nightInfo } from '/shared/data/world.js';
 import { CRYPT_ZONES, lvOf } from '/shared/data/crypt.js';
 import { WorldBossUI } from '../topdown/WorldBoss.js';
 import { hasDir8, resolveAct } from '../topdown/Dir8.js';
-import { dirFromVector, stableDir, playDir, registerDir8, texKey } from '../topdown/Dir8.js';
+import { dirFromVector, stableDir, playDir, registerDir8, texKey, animKey, DIRS as D8_DIRS } from '../topdown/Dir8.js';
 import { TdSkills } from '../topdown/TdSkills.js';
 import { GEAR_TYPES, FLASK_SLOTS } from '/shared/data/slots.js';
 import { SKILL_SLOTS, SLOT_KEYNAME, isItemSlot, slotItemId } from '/shared/data/skills.js';
@@ -147,7 +147,7 @@ export class TopDownScene extends Phaser.Scene {
     this.ui.chatBox?.load(`${account.slot ?? 0}_${char.name}`);
     if (document.body.classList.contains('touch')) this.ui.chatBox?.collapse(true);
     this.weapons.attach(this.player, () => this.player.look(), () => ({ anim: this.player.st }));
-    this.minimap = new TdMinimap(this.groundMini);
+    this.minimap = new TdMinimap(this.groundMini); this.ui.syncSettings?.();   // ซ่อนมินิแมพตามตั้งค่า (สร้างหลัง UI)
     this.zone = null;
     this.ui.updateHud();
     this.setupNetwork();
@@ -251,6 +251,7 @@ export class TopDownScene extends Phaser.Scene {
     this.folk?.clear();
     this.setMapDef(id);
     this.loadMobsFor(id);                                                           // ผีแมพใหม่ที่ยังไม่ได้โหลด (ปกติโหลดเบื้องหลังไว้แล้ว)
+    this.time.delayedCall(4000, () => this.preloadOtherMobs()); this.evictSoon();   // แดนข้างเคียงใหม่ · ปล่อยภาพแดนไกล
     this.mapObjs = this.track(() => { this.buildMap(); this.buildProps(); this.buildNpcs(); this.buildMonsters(); this.buildPortals(); });
     this.folk?.build();
     this.blockCollider?.destroy(); this.blockCollider = this.physics.add.collider(p, this.blocks);
@@ -522,12 +523,33 @@ export class TopDownScene extends Phaser.Scene {
   /** โหลดผีของแมพ (ถ้ายังไม่มี) · ผีที่สร้างไปแล้วเปลี่ยนเป็นภาพจริงเองตอนขยับครั้งถัดไป (playDir เช็คทุกครั้ง) */
   loadMobsFor(mapId) { return Promise.all(this.mobSpriteIds(mapId).map((id) => this.loadHero(id))); }
 
-  /** หลังเข้าเกม: ทยอยโหลดผีแมพอื่นทีละแมพ (แมพที่ใกล้เลเวลก่อน) ไม่แย่งแบนด์วิดท์ตอนเปิดเกม */
-  async preloadOtherMobs() {
+  /** 2 แดนที่ใกล้เลเวลตัวเองที่สุด (นอกจากแมพนี้) = แดนที่น่าจะไปต่อ */
+  nearMaps() {
     const me = this.player?.char?.level || 1, mid = (id) => { const lv = TD_MAPS[id].lv || [1, 1]; return Math.abs((lv[0] + lv[1]) / 2 - me); };
-    const order = Object.keys(TD_MAPS).filter((id) => id !== this.M.id).sort((a, b) => mid(a) - mid(b));   // แมพใกล้เลเวลตัวเองก่อน
-    for (const id of order) { if (!this.scene?.isActive?.()) return; await this.loadMobsFor(id); }
+    return Object.keys(TD_MAPS).filter((id) => id !== this.M.id && !TD_MAPS[id].event).sort((a, b) => mid(a) - mid(b)).slice(0, 2);
   }
+
+  /** หลังเข้าเกม: โหลดผีของแดนข้างเคียงไว้ก่อน (ไม่โหลดทุกแดน → หน่วยความจำไม่บวม) */
+  async preloadOtherMobs() {
+    for (const id of this.nearMaps()) { if (!this.scene?.isActive?.()) return; await this.loadMobsFor(id); }
+  }
+
+  /** ปล่อยภาพ 8 ทิศที่ไม่มีใครใช้: ผีแดนไกล + ชุดเต็มตัวของคนที่ออกไปแล้ว (เปิดออโต้ทั้งวันหน่วยความจำไม่โตเรื่อย ๆ) */
+  evictDir8() {
+    const keep = new Set([...this.mobSpriteIds(this.M.id), ...this.nearMaps().flatMap((id) => this.mobSpriteIds(id))]);
+    const mark = (o) => { if (o?.d8id) keep.add(o.d8id); if (o?._wantHero) keep.add(o._wantHero); };
+    mark(this.player); this.remotes.forEach((r) => mark(r.spr)); (this.mobs || []).forEach(mark);
+    const usedTex = new Set(this.children.list.map((o) => o.texture?.key).filter(Boolean));   // กันพลาด: อะไรในฉากยังใช้ texture อยู่ = ไม่ลบ
+    for (const [id, meta] of Object.entries(this.d8meta || {})) {
+      if (keep.has(id) || !(id.startsWith('mob_') || meta.lazy)) continue;
+      const tks = meta.anims.map((a) => texKey(id, a)).filter((k) => this.textures.exists(k));
+      if (!tks.length || tks.some((k) => usedTex.has(k))) continue;
+      for (const a of meta.anims) for (const dir of D8_DIRS) this.anims.remove(animKey(id, a, dir));
+      tks.forEach((k) => this.textures.remove(k));
+      if (this._heroLoads) delete this._heroLoads[id];                               // ใช้อีกครั้ง = โหลดใหม่ได้
+    }
+  }
+  evictSoon() { this._evictT?.remove(); this._evictT = this.time.delayedCall(15000, () => this.evictDir8()); }
 
   /** ลงทะเบียน animation 8 ทิศของ id จาก manifest (เฉพาะภาพที่โหลดแล้ว) */
   registerHero(id) {
@@ -1062,10 +1084,14 @@ export class TopDownScene extends Phaser.Scene {
     this.tweens.add({ targets: b, x: m.x, y: m.y - m.displayHeight * 0.5, duration: 160, onComplete: () => b.destroy() });
   }
 
+  /** อยู่ในจอ (เผื่อขอบ) — เอฟเฟกต์ของคนอื่นนอกจอไม่ต้องวาด (คนออโต้เยอะ = วัตถุหลักร้อยต่อวินาที) */
+  onScreen(x, y, pad = 120) { const v = this.cameras.main.worldView; return x > v.x - pad && x < v.right + pad && y > v.y - pad && y < v.bottom + pad; }
+
   onMobDamage(m, d) {
     if (!m) return;
     const mine = d.by === 'me' || d.by === this.net?.selfId;
     if (Number.isFinite(d.hp)) m.hp = d.hp;
+    if (!mine && (this.settings?.otherDmg === false || !this.onScreen(m.x, m.y))) return;   // ของคนอื่น: นอกจอ/ปิดในตั้งค่า = อัปเดตเลือดอย่างเดียว
     if (!d.hit) { popupNumber(this, m.x, m.y - m.displayHeight, 'MISS', 'miss'); if (mine) this.sfx.play('miss'); return; }
     if (d.dot) {                                                                         // ดาเมจต่อเนื่อง: พิษ/เลือดไหล/ไฟลุก (สีต่างกัน)
       const [ic, tint] = { bleed: ['🩸', 0xff7a6a], burn: ['🔥', 0xffb35c] }[d.dot] || ['☠', 0x9dff8a];
@@ -1108,6 +1134,7 @@ export class TopDownScene extends Phaser.Scene {
     if (!m || !m.alive) return;
     m.alive = false; m.hp = 0; m.setVelocity(0, 0); m.disableInteractive();
     if (this.player.target === m) this.player.target = null;
+    if (!this.onScreen(m.x, m.y)) { this.setMobVisible(m, false); if (!this.econ.server) this.time.delayedCall(9000, () => this.respawnLocal(m)); return; }   // นอกจอ: ซ่อนเลย ไม่เล่นเอฟเฟกต์
     if (!playDir(m, 'die', m.dir, true)) m.setTint(0x777777);
     this.vfx?.soul(m);
     // เสียงผีตายเฉพาะตัวที่อยู่ใกล้ (ไม่ได้ยินผีที่คนอื่นตีตายไกล ๆ หรือผีกลางคืนสลายตอนเช้า ตอนยืน AFK)
@@ -1421,7 +1448,7 @@ export class TopDownScene extends Phaser.Scene {
       })
       .on('crypt:chest', (c) => this.onCryptChest(c))
       .on('td:left', (id) => this.removeRemote(id))
-      .on('skill', (d) => { const r = this.remotes.get(d.id); if (r) this.skills.remote(d, r); })
+      .on('skill', (d) => { const r = this.remotes.get(d.id); if (r && this.settings?.otherFx !== false && this.onScreen(d.x, d.y, 300)) this.skills.remote(d, r); })   // สกิลคนอื่นไกลนอกจอ: ไม่วาด
       .on('td:state', (s) => this.applyState(s))
       .on('td:dmg', (d) => this.onMobDamage(this.mobs[d.mid], d))
       .on('td:die', ({ mid }) => this.onMobDie(this.mobs[mid]))
@@ -1463,7 +1490,7 @@ export class TopDownScene extends Phaser.Scene {
     for (const [id, x, y, dir, anim, hp, maxHp, level] of ps) if (id !== this.net.selfId) { const r = this.remotes.get(id); if (r) { r.push({ x, y, dir, anim }); r.hp = hp; r.maxHp = maxHp; if (level) r.level = level; } }
   }
 
-  removeRemote(id) { this.remotes.get(id)?.destroy(); this.remotes.delete(id); this.ui.setOnline(this.net.online, this.remotes.size); }
+  removeRemote(id) { this.remotes.get(id)?.destroy(); this.remotes.delete(id); this.ui.setOnline(this.net.online, this.remotes.size); this.evictSoon(); }   // ชุดของคนที่ออกไป → ปล่อยทีหลัง
 
   addRemote(q) {
     if (this.remotes.has(q.id) || q.id === this.net.selfId) return;
@@ -1474,11 +1501,13 @@ export class TopDownScene extends Phaser.Scene {
     const label = (lv) => `${q.gm ? '[GM] ' : ''}${q.name} Lv.${lv}`;
     const tag = makeText(this, q.x, q.y, label(q.level), { fontSize: '7px', color: '#aed6f1', align: 'center' }).setOrigin(0.5, 1);
     if (q.gm) gmStyle(tag);                                                          // GM: ชื่อแดงขอบขาวเรืองแสง
-    const paintPk = (pk) => { if (q.gm) return; tag.setColor(pk === 'red' ? '#ff4a3d' : pk === 'purple' ? '#d38cff' : '#aed6f1'); };   // PK: หัวแดง / ม่วง (ตีคนก่อน)
+    const showN = () => this.settings?.otherNames !== false || q.pk === 'red' || q.gm;   // ตั้งค่าซ่อนชื่อ: หัวแดง/GM ยังเห็นเสมอ
+    const paintPk = (pk) => { s._nameVis?.(); if (q.gm) return; tag.setColor(pk === 'red' ? '#ff4a3d' : pk === 'purple' ? '#d38cff' : '#aed6f1'); };   // PK: หัวแดง / ม่วง (ตีคนก่อน)
     paintPk(q.pk);
     const ttl = makeText(this, q.x, q.y, '', { fontSize: '7px', color: '#ffffff', align: 'center' }).setOrigin(0.5, 1);   // ฉายา (สีตามฉายา) เหนือชื่อ
-    const paintTitle = (t) => { const T = TITLE_BY_ID[t]; ttl.setText(T ? `«${T.nameTh}»` : '').setColor(T?.color || '#ffffff').setVisible(!!T); this.titleFx(ttl, T); };
-    paintTitle(q.title);
+    const paintTitle = (t) => { s._titleId = t; const T = TITLE_BY_ID[t]; ttl.setText(T ? `«${T.nameTh}»` : '').setColor(T?.color || '#ffffff').setVisible(!!T && showN()); this.titleFx(ttl, T); };
+    s._nameVis = () => { tag.setVisible(showN()); paintTitle(s._titleId); };
+    paintTitle(q.title); tag.setVisible(showN());
     s._tags = [tag, ttl];
     s.setInteractive({ useHandCursor: true });                                   // คลิกผู้เล่น → เมนู เชิญ/เทรด/เพื่อน/กระซิบ
     s._remote = true;
@@ -1654,12 +1683,16 @@ export class TopDownScene extends Phaser.Scene {
       if (!best) return []; t[0] = best[0]; t[1] = best[1];
     }
     const key = (x, y) => y * MAP_W + x, h = (x, y) => Math.abs(x - t[0]) + Math.abs(y - t[1]);
-    const open = new Map(), came = new Map(), g = new Map();
-    const sk = key(s[0], s[1]); open.set(sk, h(s[0], s[1])); g.set(sk, 0);
+    // A* ด้วย binary heap + closed set (เดิมสแกน open ทั้งก้อนทุกก้าว → หาทางไม่เจอ = กระตุกหลายสิบ ms)
+    const heap = [], came = new Map(), g = new Map(), closed = new Set();
+    const push = (k, f) => { heap.push([f, k]); let i = heap.length - 1; while (i) { const pi = (i - 1) >> 1; if (heap[pi][0] <= heap[i][0]) break; [heap[pi], heap[i]] = [heap[i], heap[pi]]; i = pi; } };
+    const pop = () => { const top = heap[0], last = heap.pop(); if (heap.length) { heap[0] = last; let i = 0; for (;;) { const l = 2 * i + 1, r = l + 1; let m = i; if (l < heap.length && heap[l][0] < heap[m][0]) m = l; if (r < heap.length && heap[r][0] < heap[m][0]) m = r; if (m === i) break; [heap[m], heap[i]] = [heap[i], heap[m]]; i = m; } } return top; };
+    const sk = key(s[0], s[1]); push(sk, h(s[0], s[1])); g.set(sk, 0);
     let iter = 0;
-    while (open.size && iter++ < 20000) {
-      let ck = null, cf = 1e9; for (const [k, f] of open) if (f < cf) { cf = f; ck = k; }
-      open.delete(ck);
+    while (heap.length && iter++ < 20000) {
+      const ck = pop()[1];
+      if (closed.has(ck)) continue;
+      closed.add(ck);
       const cx = ck % MAP_W, cy = Math.floor(ck / MAP_W);
       if (cx === t[0] && cy === t[1]) {
         const path = []; let k = ck;
@@ -1672,8 +1705,9 @@ export class TopDownScene extends Phaser.Scene {
         const nx = cx + dx, ny = cy + dy;
         if (!inb(nx, ny) || solid[ny][nx]) continue;
         if (dx && dy && (solid[cy][nx] || solid[ny][cx])) continue;
-        const nk = key(nx, ny), ng = g.get(ck) + (dx && dy ? 1.414 : 1);
-        if (ng < (g.get(nk) ?? 1e9)) { g.set(nk, ng); came.set(nk, ck); open.set(nk, ng + h(nx, ny)); }
+        const nk = key(nx, ny); if (closed.has(nk)) continue;
+        const ng = g.get(ck) + (dx && dy ? 1.414 : 1);
+        if (ng < (g.get(nk) ?? 1e9)) { g.set(nk, ng); came.set(nk, ck); push(nk, ng + h(nx, ny)); }
       }
     }
     return [];
@@ -1832,7 +1866,12 @@ export class TopDownScene extends Phaser.Scene {
     this.atmo.update(time, p, this.inTown());
     this.water.update(time);
     this.vfx.update(time, p, p.target, this.hovered);
-    this.minimap.update(time, this);
+    if (this.settings?.minimap !== false) this.minimap.update(time, this);         // ปิดมินิแมพ = ไม่ต้องวาด
+    if (this.settings?.showFps && time - (this._fpsAt || 0) > 500) {                   // ตัวนับ FPS (ตั้งค่า)
+      this._fpsAt = time; let el = document.getElementById('fps-meter');
+      if (!el) { el = document.createElement('div'); el.id = 'fps-meter'; document.body.appendChild(el); }
+      const f = Math.round(this.game.loop.actualFps); el.textContent = `${f} FPS · ${this.remotes.size + 1} คน`; el.className = f < 30 ? 'low' : '';
+    } else if (!this.settings?.showFps && this._fpsAt) { this._fpsAt = 0; document.getElementById('fps-meter')?.remove(); }
   }
 
 }

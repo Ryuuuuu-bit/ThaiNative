@@ -16,7 +16,16 @@ export const DEFAULT_SETTINGS = {
   chatBubble: true,             // ฟองคำพูดเหนือหัวผู้เล่น
   otherSfx: 'full',             // เสียงของผู้เล่นอื่น/ผีตายรอบตัว: full | soft | off (ดังเบาตามระยะเสมอ)
   autoMobs: [],                 // ชนิดผีที่ Auto จะตี (ว่าง = ตีทุกตัว) · เลือกที่ปุ่ม ▾ / Shift+R
+  muteHidden: false,            // สลับไปแท็บ/หน้าต่างอื่น → ปิดเสียงชั่วคราว (เปิดออโต้ทิ้งไว้)
+  otherDmg: true,               // ตัวเลขดาเมจ/ประกายตีของผู้เล่นอื่น
+  otherFx: true,                // เอฟเฟกต์สกิลของผู้เล่นอื่น
+  otherNames: true,             // ชื่อ/ฉายาผู้เล่นอื่นเหนือหัว (หัวแดงยังแสดงเสมอ)
+  showFps: false,               // ตัวนับ FPS มุมจอ
+  lootLog: 'all',               // บันทึกของที่ได้: all | rare (เฉพาะของดี) | off
 };
+
+/** โหมดลื่น: ปิดของหนัก ๆ ที่ไม่จำเป็น (เครื่องสเปกต่ำ/มือถือ/เปิดทิ้งทั้งวัน) */
+export const PERF_PRESET = { otherDmg: false, otherFx: false, fxShake: false, fxFlash: 'soft', otherSfx: 'soft', chatBubble: false };
 
 export function loadSettings() {
   try { return { ...DEFAULT_SETTINGS, ...JSON.parse(localStorage.getItem(KEY) || '{}') }; }

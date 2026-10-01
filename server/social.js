@@ -14,7 +14,7 @@ import { rollDamage, mobExp, attackInterval, expToNext, buffAspd } from '../shar
 import { combatDerived, attackSpec, attackGate, getDerived } from '../shared/character.js';
 import { SKILL_BY_ID } from '../shared/data/skills.js';
 import { JOBS } from '../shared/data/classes.js';
-import { count, addItem, removeItem, grant, presetReserved } from '../shared/economy.js';
+import { count, addItem, removeItem, grant, presetReserved, freeQty } from '../shared/economy.js';
 import { TITLE_BY_ID, checkTitles } from '../shared/data/titles.js';
 import { mapAt } from '../shared/data/maps.js';
 
@@ -103,10 +103,10 @@ export function setupSocial(io, players, H = {}) {
       const ex = items.find((x) => x.id === it.id);
       if (ex) ex.qty = Math.min(9999, ex.qty + qty); else items.push({ id: it.id, qty });
     }
-    for (const it of items) it.qty = Math.min(it.qty, count(save, it.id) - presetReserved(save, it.id));   // เสนอได้ไม่เกินที่มีจริง (ของที่จองไว้ในชุด A/B อีกชุดเทรดไม่ได้)
+    for (const it of items) it.qty = Math.min(it.qty, freeQty(save, it.id));   // ไม่เกินที่ขายได้จริง: ของล็อก/ของชุด A-B เทรดไม่ได้ (เหมือนตลาด)   // เสนอได้ไม่เกินที่มีจริง (ของที่จองไว้ในชุด A/B อีกชุดเทรดไม่ได้)
     return { items: items.filter((it) => it.qty > 0), gold: Math.min(int(o.gold, 0, 1e9), Math.max(0, save.gold)) };
   }
-  const hasOffer = (save, o) => save.gold >= o.gold && o.items.every((it) => count(save, it.id) - presetReserved(save, it.id) >= it.qty);
+  const hasOffer = (save, o) => save.gold >= o.gold && o.items.every((it) => freeQty(save, it.id) >= it.qty);
   /** แลกของจริงที่ server (ทั้งสองฝั่งพร้อมกัน) */
   function executeTrade(t) {
     const A = players.get(t.a), B = players.get(t.b);
@@ -702,7 +702,7 @@ export function setupSocial(io, players, H = {}) {
     addRec(p, 'redKill');
     const c = t.save, lossExp = Math.min(c.exp || 0, Math.round(expToNext(c.level || 1) * 0.05));
     c.exp = Math.max(0, (c.exp || 0) - lossExp);
-    const pool = (c.inventory || []).filter((s) => s && ITEMS[s.id] && s.qty > 0 && count(c, s.id) - presetReserved(c, s.id) > 0);   // หัวแดง: ของล็อกก็หล่นได้ (กันล็อกทั้งกระเป๋าเลี่ยงโทษ)
+    const pool = (c.inventory || []).filter((s) => s && ITEMS[s.id] && tradable(s.id) && s.qty > 0 && count(c, s.id) - presetReserved(c, s.id) > 0);   // ของผูกตัวไม่หล่น   // หัวแดง: ของล็อกก็หล่นได้ (กันล็อกทั้งกระเป๋าเลี่ยงโทษ)
     const got = [];
     for (let n = 1 + Math.floor(Math.random() * 3); n > 0 && pool.length; n--) {
       const s = pool.splice(Math.floor(Math.random() * pool.length), 1)[0];

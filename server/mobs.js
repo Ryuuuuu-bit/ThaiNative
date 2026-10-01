@@ -148,7 +148,7 @@ export function setupMobs(io, players, opts = {}) {
 
   /** ตัวคูณตามเวลาโลก (กลางคืน/เดือนดับ/วันพระ) */
   function timeMods(d) {
-    const now = Date.now(), phase = dayPhase(now, dayMs), moon = moonOf(dayIndex(now + dayMs * 0.25, dayMs));
+    const now = Date.now(), phase = dayPhase(now, dayMs), moon = moonOf(dayIndex(now, dayMs));
     const m = nightMods(phase, moon);
     return d.nightBoost && isNight(phase) ? { ...m, atk: m.atk * 1.15, exp: m.exp * 1.2, gold: m.gold * 1.2 } : m;
   }
