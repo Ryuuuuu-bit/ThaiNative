@@ -143,15 +143,17 @@
       <section id="hud" class="hidden">
         <!-- กรอบผู้เล่น (ซ้ายบน) -->
         <div class="pf">
-          <div class="pf-portrait-wrap"><div class="pf-portrait"><canvas id="hud-portrait" width="44" height="44"></canvas></div><span class="pf-lv" id="hud-lv">1</span></div>
+          <div class="pf-portrait-wrap"><div class="pf-portrait"><canvas id="hud-portrait" width="44" height="44"></canvas></div><span class="pf-lv" id="hud-lv">1</span><span class="pf-badge" id="hud-badge"></span></div>
           <div class="pf-info">
-            <div class="pf-name"><span class="pf-nm"><span class="lv-tag">Lv.<b id="hud-lv2">1</b></span><span id="hud-name"></span></span><span id="hud-job" class="job-tag"></span></div>
+            <div class="pf-name"><span class="pf-nm"><span id="hud-name"></span><span id="hud-job" class="job-tag"></span></span><span class="lv-tag">Lv.<b id="hud-lv2">1</b></span></div>
             <div class="bar hp"><i class="ghost" id="hud-hp-ghost"></i><i id="hud-hp-fill"></i><span id="hud-hp"></span></div>
             <div class="bar mp"><i id="hud-mp-fill"></i><span id="hud-mp"></span></div>
-            <div id="hud-buffs" class="buffs"></div>
+            <div class="pf-stats" id="hud-stats"></div>
+            <div class="pf-cur"><span class="gold">฿ <b id="hud-gold">0</b></span><span class="pf-pot" id="hud-pot-hp"></span><span class="pf-pot" id="hud-pot-mp"></span></div>
           </div>
-          <div class="gold">฿ <b id="hud-gold">0</b></div>
         </div>
+        <!-- บัฟ (ใต้กรอบผู้เล่น · หลายแถว) + ป้าย GM -->
+        <div class="pf-under"><div id="hud-buffs" class="buffs"></div><span class="pf-gm hidden" id="hud-gm">GM</span></div>
 
         <!-- สมาชิกปาร์ตี้ (ใต้กรอบผู้เล่น) -->
         <div id="party-frames" class="party-frames hidden"></div>

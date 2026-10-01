@@ -15,6 +15,7 @@ import { combatPower } from '/shared/character.js';
 import { ask } from '../systems/Dialog.js';
 import { PARTY } from '/shared/constants.js';
 import { PartyWindow } from './PartyWindow.js';
+import { TdPartyWin } from './TdPartyWin.js';
 
 const $ = (s) => document.querySelector(s);
 const TRADE_SLOTS = 10;
@@ -33,6 +34,7 @@ export class TdSocial {
     this.bindDom();
     this.bindNet();
     this.pw = new PartyWindow(this);
+    this.pwin = new TdPartyWin(scene, this);   // หน้าต่างการ์ดเต็มจอ (ปุ่ม T)
   }
 
   get net() { return this.scene.net; }
@@ -323,6 +325,7 @@ export class TdSocial {
         this.party = st;
         if (this.pw?.following && (!st || st.leader !== prevLead)) this.pw.setFollow(false, !st);   // หัวหน้าเปลี่ยน/ปาร์ตี้แตก → เลิกตาม
         this.renderParty();
+        this.pwin?.setState(st);
       })
       .on('party:exp', ({ amount, ups, bonus }) => {
         const t = makeText(this.scene, this.player.x, this.player.y - 44, `+${amount} EXP (ปาร์ตี้${bonus ? ` +${bonus}%` : ''})`, { fontSize: '7px', color: '#aed6f1' }).setOrigin(0.5).setDepth(99990);
@@ -562,6 +565,7 @@ export class TdSocial {
   // ============================================================
   update(time) {
     this.pw?.followTick(time);
+    this.pwin?.update(time);
     // อัปเดตกรอบปาร์ตี้ทุก 0.5 วิ · แผงสังคมทุก 1 วิ (ถ้าเปิดอยู่)
     if (this.party && time - (this.lastPartyDraw || 0) > 500) { this.lastPartyDraw = time; this.renderParty(); }
     if (time - (this.lastSocDraw || 0) > 1000 && !$('#social-panel').classList.contains('hidden')) {

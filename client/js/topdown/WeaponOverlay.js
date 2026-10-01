@@ -40,6 +40,19 @@ export class WeaponOverlay {
     this.items.set(spr, { spr, img, fx, getApp, getState, key: null, info: null, atkAt: -9999, lastAnim: '', wlv: 0, alv: 0, wGlow: null, aGlow: null, nextMote: 0 });
   }
 
+  /** จุดปล่อยลูกธนูจากธนูในมือ (ตรงกับเฟรมปล่อยสายของท่ายิง) · null = ไม่รู้ตำแหน่งธนู → ใช้จุดกลางตัวแบบเดิม */
+  muzzle(spr) {
+    const dir = spr.dir || 'south';
+    if (spr.d8id?.startsWith('hero2_')) {                              // ชุดใหม่: ธนูอยู่ในภาพ · ท่ายิงมีแค่ภาพหันขวา/หันซ้าย (วัดจากเฟรมที่ 5 สเกล 0.54)
+      const side = dir.includes('west') ? -1 : 1, s = (spr.scaleX || 0.54) / 0.54;
+      return { x: spr.x + side * 16 * s, y: spr.y - 33 * s };
+    }
+    const it = this.items.get(spr);
+    if (!it?.img.visible || it.info?.wtype !== 'bow') return null;
+    const h = HAND[dir] || HAND.south, k = (spr.scaleX || 0.667) / 0.667, da = Phaser.Math.DegToRad(DIR_ANGLE[dir] ?? 90);
+    return { x: spr.x + h.x * k + Math.cos(da) * 5, y: spr.y + h.y * k + Math.sin(da) * 3.5 - 8 };   // ตำแหน่งมือตอนยกธนู (เหมือนใน draw)
+  }
+
   detach(spr) { const it = this.items.get(spr); if (it) { if (it.aGlow && spr.preFX) spr.preFX.remove(it.aGlow); it.img.destroy(); it.fx.destroy(); this.items.delete(spr); } }
 
   update(time) {

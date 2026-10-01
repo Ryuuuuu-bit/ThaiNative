@@ -402,7 +402,8 @@ export class TdVfx {
 
   shoot(p, m, kind = 'arrow') {
     const s = this.s, tx = m.x, ty = m.y - m.displayHeight * 0.5, a0 = Math.atan2(ty - (p.y - 14), tx - p.x);
-    const sx = p.x + Math.cos(a0) * 8, sy = p.y - 14 + Math.sin(a0) * 5, a = Math.atan2(ty - sy, tx - sx);
+    const mz = kind === 'arrow' ? s.weapons?.muzzle(p) : null;             // ลูกธนูออกจากธนูในมือ
+    const sx = mz ? mz.x : p.x + Math.cos(a0) * 8, sy = mz ? mz.y : p.y - 14 + Math.sin(a0) * 5, a = Math.atan2(ty - sy, tx - sx);
     const pill = kind === 'pill', orb = kind === 'magic' || pill;           // หมอยา: ลูกกลอนสมุนไพรสีเขียว
     const b = s.add.image(sx, sy, orb ? 'td_orb' : 'td_arrow').setRotation(a).setDepth(99990).setScale(pill ? 0.95 : orb ? 1.2 : 1);
     if (orb) b.setBlendMode(Phaser.BlendModes.ADD);

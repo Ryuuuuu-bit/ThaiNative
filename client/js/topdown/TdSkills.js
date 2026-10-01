@@ -1005,7 +1005,8 @@ export class TdSkills {
 
   /** ยิงกระสุนตามแนว · โดนศัตรูที่อยู่ในแนว (pierce = ทะลุทุกตัว) */
   shot(sk, o, { key, scale = 1, tint, add = true, trail, trailScale, pierce = false, wide = 12, curve = 0, spin = 0, onHit }) {
-    const fx = this.fx, sx = o.x + o.ux * 8, sy = o.y - 16 + o.uy * 8;
+    const mz = key === 'td_arrow' && o.caster ? this.s.weapons?.muzzle(o.caster.spr || o.caster) : null;   // ลูกธนูสกิล: ออกจากธนูในมือ
+    const fx = this.fx, sx = mz ? mz.x : o.x + o.ux * 8, sy = mz ? mz.y : o.y - 16 + o.uy * 8;
     let ex = o.x + o.ux * sk.range, ey = o.y + o.uy * sk.range - 14;
     const along = this.s.mobs.filter((m) => m.alive && m.visible !== false).map((m) => {
       const dx = m.x - o.x, dy = m.y - o.y, t = dx * o.ux + dy * o.uy, off = Math.abs(dx * o.uy - dy * o.ux);
@@ -1124,7 +1125,7 @@ export class TdSkills {
     const s = this.s, p = s.player;
     this.snd('skRise');
     p.buffs = (p.buffs || []).filter((b) => b.until > s.time.now && b.sk !== sk.id);
-    p.buffs.push({ buff: sk.buff, until: s.time.now + sk.duration, sk: sk.id, icon: sk.icon, name: sk.nameTh });
+    p.buffs.push({ buff: sk.buff, until: s.time.now + sk.duration, sk: sk.id, icon: sk.icon, name: sk.nameTh, dur: sk.duration });
     if (sk.mpHeal) { const d = p.derived; p.char.mp = Math.min(d.maxMp, p.char.mp + Math.round(d.maxMp * sk.mpHeal)); }
     if (sk.heal && !s.econ.server) {
       const d = p.derived, heal = Math.round(d.maxHp * sk.heal);

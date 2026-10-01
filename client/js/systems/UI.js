@@ -175,7 +175,7 @@ export class UI {
   updateHud() {
     const c = this.char, d = getDerived(c);
     const need = expToNext(c.level);
-    const sig = [c.hp, c.mp, d.maxHp, d.maxMp, c.exp, c.level, c.gold, c.appearance.job, c.path, c.statPoints, c.sp, JSON.stringify(c.skills), (c.passives || []).length, Inv.count(c, 'hp_s'), Inv.count(c, 'mp_s'), this.scene.player?.d8id, this.scene.textures?.exists(`td:${this.scene.player?.d8id}:idle`)].join('|');
+    const sig = [c.hp, c.mp, d.maxHp, d.maxMp, c.title, d.patk, d.matk, d.def, d.critRate, account.account?.admin, c.exp, c.level, c.gold, c.appearance.job, c.path, c.statPoints, c.sp, JSON.stringify(c.skills), (c.passives || []).length, Inv.count(c, 'hp_s'), Inv.count(c, 'mp_s'), this.scene.player?.d8id, this.scene.textures?.exists(`td:${this.scene.player?.d8id}:idle`)].join('|');
     if (sig === this.hudCache) return;
     this.hudCache = sig;
 
@@ -189,8 +189,16 @@ export class UI {
       $('#hud-lv').textContent = c.level; $('#hud-lv2').textContent = c.level;
       if (up) document.querySelectorAll('.lv-tag').forEach((el) => { el.classList.remove('up'); void el.offsetWidth; el.classList.add('up'); });
     }
-    $('#hud-job').textContent = `${classTitle(c)} · ${JOBS[c.appearance.job].icon}`;
-    $('#hud-job').title = `อาชีพ: ${classTitle(c)} · แนวต่อสู้ตอนนี้: ${JOBS[c.appearance.job].nameTh} (ตามอาวุธที่ถือ)`;
+    const ttl = c.title && TITLE_BY_ID[c.title];                        // ข้างชื่อ: ฉายาที่ใส่อยู่ (ไม่มี = ชื่ออาชีพ)
+    $('#hud-job').textContent = ttl ? ttl.nameTh : classTitle(c);
+    $('#hud-job').style.color = ttl?.color || '';
+    $('#hud-job').title = `อาชีพ: ${classTitle(c)} · แนวต่อสู้ตอนนี้: ${JOBS[c.appearance.job].nameTh} (ตามอาวุธที่ถือ)${ttl ? ` · ฉายา: ${ttl.nameTh}` : ''}`;
+    $('#hud-badge').textContent = JOBS[c.appearance.job].icon;
+    $('#hud-badge').title = JOBS[c.appearance.job].nameTh;
+    $('#hud-gm').classList.toggle('hidden', !account.account?.admin);
+    // แถวค่าพลัง: โจมตี · ป้องกัน · คริ · ค่าพลังรวม
+    const st = [['⚔️', Math.max(d.patk, d.matk), 'พลังโจมตี'], ['🛡️', d.def, 'ป้องกัน'], ['💥', `${Math.round(d.critRate * 100)}%`, 'โอกาสคริติคอล'], ['✦', combatPower(c, d).toLocaleString(), 'ค่าพลังรวม']];
+    $('#hud-stats').innerHTML = st.map(([i, v, tip]) => `<span title="${tip}"><em>${i}</em>${v}</span>`).join('');
     $('#hud-hp').textContent = `HP ${Math.ceil(c.hp)} / ${d.maxHp}`;
     $('#hud-mp').textContent = `MP ${Math.floor(c.mp)} / ${d.maxMp}`;
     $('#hud-hp-fill').style.width = `${(c.hp / d.maxHp) * 100}%`;
@@ -203,6 +211,8 @@ export class UI {
     $('#hud-exp').textContent = maxed ? `EXP MAX · เลเวลตัน Lv.${MAX_LEVEL}` : `EXP ${c.exp} / ${need}  (${((c.exp / need) * 100).toFixed(1)}%)`;
     $('#hud-gold').textContent = c.gold.toLocaleString();
     const hp = Inv.count(c, 'hp_s') + Inv.count(c, 'hp_m'), mp = Inv.count(c, 'mp_s') + Inv.count(c, 'mp_m');
+    $('#hud-pot-hp').innerHTML = `${itemIcon('hp_s', '🧴')}<b>${hp}</b>`; $('#hud-pot-hp').title = 'ยาเพิ่ม HP ในกระเป๋า';
+    $('#hud-pot-mp').innerHTML = `${itemIcon('mp_s', '🥥')}<b>${mp}</b>`; $('#hud-pot-mp').title = 'ยาเพิ่ม MP ในกระเป๋า';
     const qh = $('#quick-hp'), qm = $('#quick-mp');       // (แถบเก่า – ถ้ามี)
     if (qh) { qh.querySelector('.n').textContent = `x${hp}`; qh.classList.toggle('empty', !hp); }
     if (qm) { qm.querySelector('.n').textContent = `x${mp}`; qm.classList.toggle('empty', !mp); }
@@ -296,6 +306,8 @@ export class UI {
           return `<span class="buff${b.from ? ' gift' : ''}${left <= 3 ? ' ending' : ''}" style="--p:${pct.toFixed(0)}%" title="${esc(tip)}">${b.icon}<small>${left}</small>${b.from ? (b.face ? `<img class="bf-face" src="${b.face}" alt="">` : '<i class="bf-face">👤</i>') : ''}</span>`;
         }).join('')
         + bless.map((b) => `<span class="buff bless" title="${esc(b.nameTh)}: ${esc(modsText(b.mods))}">${b.icon}<small>${mins(b)}</small></span>`).join('');
+      const n = $('#hud-buffs').children.length + (account.account?.admin ? 1 : 0);   // บัฟหลายแถว → เลื่อนกรอบปาร์ตี้ลงตามจำนวนแถว
+      document.documentElement.style.setProperty('--buff-rows', n ? Math.ceil(n / 8) : 0);
     }
     // แผนที่โลก (ถ้าเปิดอยู่) อัปเดตทุก 300ms
     if (!$('#map-panel').classList.contains('hidden') && time - (this.wmAt || 0) > 300) { this.wmAt = time; this.updateMap(); }
@@ -1219,8 +1231,12 @@ export class UI {
         <b class="sc-p">฿${(unit * n).toLocaleString()}</b><button class="sc-x" data-sx="${id}" title="เอาออก">✕</button></div>`;
     }).join('');
     // ขายตามประเภท: เลือกได้หลายประเภท → ขายทุกชิ้นของประเภทนั้นทีเดียว · ผู้เล่นเลือกเองจึงรวมของหายาก · ยังข้ามของล็อก/ชุด A-B/ดีกว่าที่ใส่ (▲)
-    const STYPE = [['weapon', 'อาวุธ'], ['armor', 'ชุดเกราะ'], ['helm', 'หมวก'], ['gloves', 'ถุงมือ'], ['boots', 'รองเท้า'], ['belt', 'เข็มขัด'], ['accessory', 'เครื่องประดับ'],
-      ['flask', 'ขวดยา'], ['card', 'การ์ด'], ['mat', 'วัตถุดิบ'], ['fish', 'ปลา'], ['use', 'ของใช้']];
+    // [ประเภท, ชื่อเต็ม, ชื่อสั้นบนปุ่ม, ไอคอน, อีโมจิสำรอง] · 7 อันแรก = อุปกรณ์
+    const STYPE = [['weapon', 'อาวุธ', 'อาวุธ', 'swords', '⚔️'], ['armor', 'ชุดเกราะ', 'เกราะ', 'slot_armor', '🥋'], ['helm', 'หมวก', 'หมวก', 'slot_helm', '⛑️'],
+      ['gloves', 'ถุงมือ', 'ถุงมือ', 'slot_gloves', '🧤'], ['boots', 'รองเท้า', 'รองเท้า', 'slot_boots', '👢'], ['belt', 'เข็มขัด', 'เข็มขัด', 'slot_belt', '🎗️'],
+      ['accessory', 'เครื่องประดับ', 'ประดับ', 'slot_amulet', '📿'], ['flask', 'ขวดยา', 'ขวดยา', 'potion', '🧪'], ['card', 'การ์ด', 'การ์ด', 'menu_card', '🃏'],
+      ['mat', 'วัตถุดิบ', 'วัตถุดิบ', 'rock', '🪨'], ['fish', 'ปลา', 'ปลา', 'fish', '🐟'], ['use', 'ของใช้', 'ของใช้', 'herb', '🌿']];
+    const GEAR_T = STYPE.slice(0, 7).map(([k]) => k);
     const typeOf = (it) => (['material', 'herb'].includes(it.type) ? 'mat' : KINDS.use[1](it) ? 'use' : it.type);
     const types = (this.sellTypes ||= new Set()), byType = {}, typeSkip = [];
     for (const st of sellable) {
@@ -1239,8 +1255,10 @@ export class UI {
           <div class="ro-grid sell-grid">${list.length ? slots : '<div class="empty" style="grid-column:1/-1">ไม่มีของให้ขายในหมวดนี้</div>'}</div></div>
         <div class="sell-cart"><div class="sell-cap">🧺 ตะกร้าขาย <small>${cnt ? `${cnt} ชนิด · ${pcs.toLocaleString()} ชิ้น` : 'ว่าง'}</small>
             <button type="button" class="sc-clear" data-pick="clear" ${cnt ? '' : 'disabled'}>ล้าง</button><button type="button" class="sc-close" data-sheet title="ย่อตะกร้า">▼</button></div>
-          <div class="sc-types"><div class="sct-h">ขายตามประเภท <small>เลือกได้หลายอย่าง · รวมของหายาก</small></div>
-            <div class="sct-chips">${STYPE.filter(([k]) => byType[k]).map(([k, l]) => `<button type="button" class="sct${types.has(k) ? ' on' : ''}" data-stype="${k}" aria-pressed="${types.has(k)}">${l} <small>${byType[k].length}</small></button>`).join('') || '<small class="sct-none">ไม่มีของที่ขายได้</small>'}</div>
+          <div class="sc-types"><div class="sct-h"><b title="เลือกได้หลายอย่าง · รวมของหายาก · ข้ามของล็อก/ชุด A-B/ดีกว่าที่ใส่">ขายตามประเภท</b><small>รวมของหายาก</small>
+              <button type="button" class="sct-link" data-stall ${GEAR_T.some((k) => byType[k]) ? '' : 'disabled'}>อุปกรณ์ทั้งหมด</button><button type="button" class="sct-link" data-stclear ${types.size ? '' : 'disabled'}>ล้าง</button></div>
+            <div class="sct-grid">${STYPE.filter(([k]) => byType[k]).map(([k, full, short, ic, emo]) => `<button type="button" class="sct${types.has(k) ? ' on' : ''}" data-stype="${k}" aria-pressed="${types.has(k)}" title="${full} ${byType[k].length} ชนิด">
+              <span class="sct-ic">${uiIcon(ic, emo)}</span><span class="sct-n">${short}</span><b class="sct-c">${byType[k].length}</b></button>`).join('') || '<small class="sct-none">ไม่มีของที่ขายได้</small>'}</div>
             <button type="button" class="btn sct-go${typeSel.length ? ' primary' : ''}" ${typeSel.length ? '' : 'disabled'}>${typeSel.length ? `ขายที่เลือก ${typeSel.length} ชนิด · ฿${typeGold.toLocaleString()}` : 'แตะประเภทด้านบนเพื่อเลือก'}</button></div>
           <div class="sc-list">${rows || '<p class="empty">ยังไม่ได้เลือกของ<br><small>คลิกของในกระเป๋าเพื่อใส่ตะกร้า · ของล็อก 🔒 และของชุด A/B ขายไม่ได้</small></p>'}</div>
           ${warnN ? `<div class="sc-warn">⚠ ของดี/หายาก ${warnN} ชนิดในตะกร้า · ตอนขายจะถามอีกครั้ง</div>` : ''}</div>
@@ -1324,6 +1342,8 @@ export class UI {
     const typeIds = new Set(typeSel.map(([id]) => id));                    // ไฮไลต์ของในกระเป๋าที่จะถูกขายตามประเภท
     el.querySelectorAll('[data-sslot]').forEach((d) => d.classList.toggle('sell-type', typeIds.has(d.dataset.sslot)));
     el.querySelectorAll('[data-stype]').forEach((b) => (b.onclick = () => { const t = b.dataset.stype; if (types.has(t)) types.delete(t); else types.add(t); click(); redraw(); }));
+    el.querySelector('[data-stall]')?.addEventListener('click', () => { GEAR_T.forEach((k) => byType[k] && types.add(k)); click(); redraw(); });
+    el.querySelector('[data-stclear]')?.addEventListener('click', () => { types.clear(); click(); redraw(); });
     el.querySelector('.sct-go').onclick = async () => {
       if (!typeSel.length) return;
       const pieces = typeSel.reduce((a, [, q]) => a + q, 0), rare = typeSel.filter(([id]) => rarityOf(ITEMS[id]) >= 3).length;

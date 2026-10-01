@@ -433,6 +433,7 @@ export class TopDownScene extends Phaser.Scene {
 
 
   buildProps() {
+    this.fadeTrees = [];
     for (const p of this.layout.props) {
       // ภาพ PixelLab (env/…) ถ้ามี · ไม่มี → ภาพสำรอง (alt) ที่วาดด้วยโค้ด
       let key = p.key, scale = p.scale;
@@ -444,7 +445,11 @@ export class TopDownScene extends Phaser.Scene {
       if (scale) img.setScale(scale);
       if (p.tint) img.setTint(p.tint);
       const env = key.startsWith('env/');
-      if (p.foot?.[0] && key !== 'boat') this.add.ellipse(p.x, p.y - 1, img.displayWidth * (env ? 0.7 : 0.8), env ? Math.min(12, img.displayWidth * 0.18) : 7, 0x000000, 0.22).setDepth(0.6);
+      if (p.tree) {                                                        // ต้นไม้: เงาแนบใต้ราก (ไม่ยื่นลงล่างจนดูลอย) · เดินทะลุได้ แต่จางลงเมื่อผู้เล่นเข้าใกล้
+        const w = img.displayWidth, eh = Math.min(9, w * 0.1);
+        this.add.ellipse(p.x, p.y - eh * 0.45, w * 0.5, eh, 0x000000, 0.24).setDepth(0.6);
+        (this.fadeTrees ||= []).push(img);
+      } else if (p.foot?.[0] && key !== 'boat') this.add.ellipse(p.x, p.y - 1, img.displayWidth * (env ? 0.7 : 0.8), env ? Math.min(12, img.displayWidth * 0.18) : 7, 0x000000, 0.22).setDepth(0.6);
       if (p.label) makeText(this, p.x, p.y - img.displayHeight - 3, p.label, { fontSize: '6px', color: '#f7dc6f' }).setOrigin(0.5, 1).setDepth(p.y + 1);
       if (p.warp) this.warpGate = { x: p.x, y: p.y };
     }
@@ -1298,6 +1303,19 @@ export class TopDownScene extends Phaser.Scene {
     const b = { c, spr, until: this.time.now + life, destroy: () => { c.destroy(); if (this.bubbles.get(spr) === b) this.bubbles.delete(spr); } };
     this.bubbles.set(spr, b);
   }
+  /** ต้นไม้ที่บังผู้เล่น (ผู้เล่นอยู่ในพุ่ม/หลังต้น) → ค่อย ๆ จางเหลือ 40% · ออกมาแล้วกลับทึบ */
+  fadeTreesNear(dt) {
+    const p = this.player, list = this.fadeTrees;
+    if (!p || !list?.length) return;
+    const k = Math.min(1, dt * 8);
+    for (const img of list) {
+      const hw = img.displayWidth * 0.42, top = img.y - img.displayHeight;
+      const cover = Math.abs(p.x - img.x) < hw && p.y > top + 6 && p.y < img.y + 10;
+      const want = cover ? 0.4 : 1;
+      if (img.alpha !== want) img.setAlpha(Math.abs(img.alpha - want) < 0.02 ? want : img.alpha + (want - img.alpha) * k);
+    }
+  }
+
   updateBubbles(time) {
     if (!this.bubbles?.size) return;
     for (const b of [...this.bubbles.values()]) {
@@ -1495,6 +1513,7 @@ export class TopDownScene extends Phaser.Scene {
     });
     for (const k of SKILL_SLOTS) kb.on(`keydown-${SLOT_KEYNAME[k]}`, () => this.useSlot(k));   // Hotbar 1–0 (สกิล/ไอเทม)
     kb.on('keydown-B', () => this.recall());
+    kb.on('keydown-T', () => { if (!this.ui.typing && !document.activeElement?.matches?.('input, textarea, select')) this.social?.pwin?.toggle(); });   // หน้าต่างปาร์ตี้แบบการ์ด (G = สมุดคู่มือ)
     kb.on('keydown-TAB', (e) => { if (this.ui.typing || document.activeElement?.matches?.('input, textarea, select')) return; e?.preventDefault?.(); this.swapPreset(); });
     { const pb = $('#preset-btn'); if (pb) pb.onclick = (e) => { e.stopPropagation(); this.swapPreset(); }; }
     kb.on('keydown-Q', () => { if (!this.ui.typing && !this.ui.anyOpen?.()) this.drinkFlask('flask'); });
@@ -1730,6 +1749,7 @@ export class TopDownScene extends Phaser.Scene {
     this.social?.update(time);
     if (time > (this.tagAt || 0)) { this.tagAt = time + 500; this.refreshNameTag(); }
     this.updateBubbles(time);
+    this.fadeTreesNear(dt);
     this.life?.update(time, dt);
     this.npcLife?.update(time, delta);
     this.autoPotion(time);
