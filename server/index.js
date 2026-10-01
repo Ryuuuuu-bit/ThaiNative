@@ -4,6 +4,7 @@
 //  ▸ server เป็นเจ้าของข้อมูลตัวละคร (ของ/เงิน/ตีบวก/เควส/เลเวล/HP) → client ส่งแค่คำสั่ง
 // ============================================================
 import express from 'express';
+import compression from 'compression';
 import { createServer } from 'node:http';
 import { Server } from 'socket.io';
 import path from 'node:path';
@@ -54,10 +55,12 @@ const storeReady = setupAuth(app, {
   charDeleted: (acc, slot, name) => { social?.friendGone(acc, name); worldBoss?.forget?.(`${acc}:${slot || 0}`); ranking?.refresh(); },
 });
 // no-cache = เบราว์เซอร์ถามทุกครั้ง (ETag → 304 ถ้าไม่เปลี่ยน) · อัปแพตช์แล้วรีโหลดได้ของใหม่แน่นอน
-const NOCACHE = { setHeaders: (res) => res.setHeader('Cache-Control', 'no-cache') };
+// ภาพ/เสียงใน /assets: ใช้ของในเครื่องได้ 1 ชม. แล้วเช็คใหม่เบื้องหลัง (เปิดเกมซ้ำไม่ต้องถาม server ทีละพันไฟล์) · manifest/โค้ดยัง no-cache
+const NOCACHE = { setHeaders: (res, file) => res.setHeader('Cache-Control', /[\\/]assets[\\/].+\.(png|webp|jpe?g|gif|mp3|ogg|wav)$/i.test(file) ? 'public, max-age=3600, stale-while-revalidate=604800' : 'no-cache') };
+app.use(compression());                                                        // gzip โค้ด/JSON (~1.9MB → ราว 1/4) · ภาพ PNG ข้ามเอง
 app.use(express.static(path.join(ROOT, 'client'), NOCACHE));
 app.use('/shared', express.static(path.join(ROOT, 'shared'), NOCACHE));
-app.use('/vendor', express.static(path.join(ROOT, 'node_modules/phaser/dist')));
+app.use('/vendor', express.static(path.join(ROOT, 'node_modules/phaser/dist'), { maxAge: '1d' }));   // Phaser เปลี่ยนเฉพาะตอนอัปเวอร์ชัน
 
 const httpServer = createServer(app);
 const io = new Server(httpServer, { cors: { origin: '*' } });

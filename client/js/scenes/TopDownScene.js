@@ -81,10 +81,13 @@ export class TopDownScene extends Phaser.Scene {
     this.load.json('td_manifest', '/assets/td/manifest.json');
     this.load.once('filecomplete-json-td_manifest', (_k, _t, data) => {
       this.d8meta = {};
-      for (const [id, ent] of Object.entries(data?.sprites || {})) {
-        const meta = Array.isArray(ent) ? { anims: ent } : ent;
-        this.d8meta[id] = meta;
-        if (!meta.lazy) for (const anim of meta.anims) this.load.image(texKey(id, anim), `/assets/td/${id}/${anim}.png`);   // ชุดเต็มตัว: โหลดเมื่อมีคนสวม
+      // ผี: โหลดเฉพาะของแมพที่เกิด (แมพอื่นทยอยโหลดเบื้องหลังหลังเข้าเกม · ~30MB → ไม่กี่ MB ตอนเปิด)
+      const startMap = validMap(this.sys.settings.data?.char?.tdMap);
+      for (const [id, ent] of Object.entries(data?.sprites || {})) this.d8meta[id] = Array.isArray(ent) ? { anims: ent } : ent;
+      const needMobs = new Set(this.mobSpriteIds(startMap));
+      for (const [id, meta] of Object.entries(this.d8meta)) {
+        if (meta.lazy || (id.startsWith('mob_') && !needMobs.has(id))) continue;    // ชุดเต็มตัว: โหลดเมื่อมีคนสวม · ผีแมพอื่น: โหลดทีหลัง
+        for (const anim of meta.anims) this.load.image(texKey(id, anim), `/assets/td/${id}/${anim}.png`);
       }
       for (const id of data?.images || []) this.load.image(id, `/assets/td/${id}.png`);
       for (const id of data?.tilesets || []) this.load.image(`ts_${id}`, `/assets/td/tiles/${id}.png`);
@@ -138,6 +141,7 @@ export class TopDownScene extends Phaser.Scene {
     this.life.setMap(this.M);
     this.vfx = new TdVfx(this);
     this.skills = new TdSkills(this);
+    this.time.delayedCall(4000, () => this.preloadOtherMobs());                     // ผีแมพอื่น: โหลดเบื้องหลังหลังเข้าเกม
     this.weapons = new WeaponOverlay(this);
     this.touch = new TouchControls(this);
     this.ui.chatBox?.load(`${account.slot ?? 0}_${char.name}`);
@@ -246,6 +250,7 @@ export class TopDownScene extends Phaser.Scene {
     this.remotes.forEach((r) => r.destroy()); this.remotes.clear();
     this.folk?.clear();
     this.setMapDef(id);
+    this.loadMobsFor(id);                                                           // ผีแมพใหม่ที่ยังไม่ได้โหลด (ปกติโหลดเบื้องหลังไว้แล้ว)
     this.mapObjs = this.track(() => { this.buildMap(); this.buildProps(); this.buildNpcs(); this.buildMonsters(); this.buildPortals(); });
     this.folk?.build();
     this.blockCollider?.destroy(); this.blockCollider = this.physics.add.collider(p, this.blocks);
@@ -505,6 +510,25 @@ export class TopDownScene extends Phaser.Scene {
     this.playerAnim('idle');
   }
 
+  /** สไปรต์ 8 ทิศของผีในแมพหนึ่ง (รวมตัวที่ยืมภาพ def.d8) ที่มีใน manifest */
+  mobSpriteIds(mapId) {
+    const ids = new Set();
+    let spawns = [];
+    try { spawns = getMap(mapId).layout().spawns || []; } catch { /* แมพพิเศษ: ข้าม */ }
+    for (const sp of spawns) { const d = MONSTERS[sp.id]; if (!d) continue; ids.add(`mob_${sp.id}`); if (d.d8) ids.add(`mob_${d.d8}`); }
+    return [...ids].filter((k) => this.d8meta?.[k]);
+  }
+
+  /** โหลดผีของแมพ (ถ้ายังไม่มี) · ผีที่สร้างไปแล้วเปลี่ยนเป็นภาพจริงเองตอนขยับครั้งถัดไป (playDir เช็คทุกครั้ง) */
+  loadMobsFor(mapId) { return Promise.all(this.mobSpriteIds(mapId).map((id) => this.loadHero(id))); }
+
+  /** หลังเข้าเกม: ทยอยโหลดผีแมพอื่นทีละแมพ (แมพที่ใกล้เลเวลก่อน) ไม่แย่งแบนด์วิดท์ตอนเปิดเกม */
+  async preloadOtherMobs() {
+    const me = this.player?.char?.level || 1, mid = (id) => { const lv = TD_MAPS[id].lv || [1, 1]; return Math.abs((lv[0] + lv[1]) / 2 - me); };
+    const order = Object.keys(TD_MAPS).filter((id) => id !== this.M.id).sort((a, b) => mid(a) - mid(b));   // แมพใกล้เลเวลตัวเองก่อน
+    for (const id of order) { if (!this.scene?.isActive?.()) return; await this.loadMobsFor(id); }
+  }
+
   /** ลงทะเบียน animation 8 ทิศของ id จาก manifest (เฉพาะภาพที่โหลดแล้ว) */
   registerHero(id) {
     const m = this.d8meta?.[id]; if (!m) return false;
@@ -527,8 +551,9 @@ export class TopDownScene extends Phaser.Scene {
       for (const a of todo) {
         const k = texKey(id, a);
         this.load.image(k, `/assets/td/${id}/${a}.png`);
-        this.load.once(`filecomplete-image-${k}`, done);
-        this.load.once(`loaderror`, (f) => { if (f.key === k) done(); });
+        const onErr = (f) => { if (f.key !== k) return; this.load.off('loaderror', onErr); done(); };   // ฟังจนกว่าจะเป็นไฟล์ตัวเอง (once เดิมโดนไฟล์อื่นกินไป → ค้าง)
+        this.load.once(`filecomplete-image-${k}`, () => { this.load.off('loaderror', onErr); done(); });
+        this.load.on('loaderror', onErr);
       }
       if (!this.load.isLoading()) this.load.start();
     }));
@@ -756,7 +781,7 @@ export class TopDownScene extends Phaser.Scene {
   spawnMonster(s, mid) {
     const def = MONSTERS[s.id];
     // ผีแมพต่างแดนที่ยังไม่มีภาพจริง → ยืมสไปรต์ 8 ทิศของผีเดิม (def.d8) + ย้อมสี (def.tint)
-    const own = hasDir8(this, `mob_${s.id}`, 'idle'), art = own ? s.id : def.d8 || s.id, key = `mon_${def.art || art}`;
+    const own = hasDir8(this, `mob_${s.id}`, 'idle') || !!this.d8meta?.[`mob_${s.id}`], art = own ? s.id : def.d8 || s.id, key = `mon_${def.art || art}`;   // มีใน manifest = ภาพตัวเอง (ยังโหลดไม่เสร็จก็ใช้ภาพเดิมชั่วคราว)
     const m = this.physics.add.sprite(s.x, s.y, this.textures.exists(key) ? key : 'npc_maekha', 'walk_0').setOrigin(0.5, 1);
     if (!own && def.tint) { const ct = m.clearTint.bind(m); m.clearTint = () => { ct(); m.setTint(def.tint); return m; }; m.setTint(def.tint); }
     this.monsters.add(m);
