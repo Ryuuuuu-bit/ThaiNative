@@ -1039,10 +1039,22 @@ export class TopDownScene extends Phaser.Scene {
       ? `<div class="ev on" title="กลางคืน: ผีแรงขึ้น แต่ได้ EXP/เงินมากขึ้น${N.moon.nameTh ? ` · ${N.moon.nameTh}` : ''}">🌙 กลางคืน${moon} <b>EXP ×${N.exp}</b> <small>สว่างใน ${mmss(N.msLeft)}</small></div>`
       : `<div class="ev" title="กลางคืนผีแรงขึ้น แต่ได้ EXP/เงินมากขึ้น${N.moon.nameTh ? ` · คืนนี้${N.moon.nameTh}` : ''}">${N.period.icon} ${N.period.nameTh} ${N.clock} <small>🌙 EXP ×${N.nightExp}${moon} ใน ${mmss(N.msLeft)}</small></div>`];
     const S = this.wb?.st, now = this.wb?.now ?? Date.now();
-    if (S && (S.state === 'open' || S.state === 'idle') && S.at > now) rows.push(`<div class="ev${S.state === 'open' ? ' hot' : ''}">🌑 พระราหู <small>${S.state === 'open' ? 'ประกาศแล้ว · ลงใน' : 'ลงใน'} ${mmss(S.at - now)}</small></div>`);
-    else if (S?.state === 'fight') rows.push(`<div class="ev hot">🌑 พระราหูกำลังสู้ <small>${S.maxHp ? Math.round(S.hp / S.maxHp * 100) : 100}% · เหลือ ${mmss(S.fightEnd - now)}</small></div>`);
+    if (S && (S.state === 'open' || S.state === 'idle') && S.at > now) {        // พระราหู: ใกล้ลง (≤ 2 นาที) = แดงกะพริบ · กำลังสู้ = ม่วง + หลอดเลือด
+      const soon = S.at - now <= 120000;
+      rows.push(`<div class="ev boss${soon ? ' soon' : ''}">🌑 ${soon ? '<b>พระราหูใกล้ลง!</b>' : 'พระราหู ลงมาใน'}<span class="t">${mmss(S.at - now)}</span></div>`);
+    } else if (S?.state === 'fight') {
+      const pct = S.maxHp ? Math.round(S.hp / S.maxHp * 100) : 100;
+      rows.push(`<div class="ev boss fight">🌑 ราหูกำลังสู้<span class="hp"><i style="width:${pct}%"></i></span><span class="t">${pct}% · ${mmss(S.fightEnd - now)}</span></div>`);
+    }
     const html = rows.join('');
     if (el._html !== html) { el._html = html; el.innerHTML = html; }
+    // กรอบมินิแมพรวม: สูงถึงแถวสุดท้ายของอีเวนต์ · กล่องเควสวางต่อใต้กรอบ (ไม่ทับกัน)
+    const fr = document.getElementById('mm-frame'), base = document.getElementById('td-hud');
+    if (fr && base && el.offsetHeight) {
+      const top = fr.getBoundingClientRect().top, bottom = el.getBoundingClientRect().bottom + 6;
+      fr.style.height = `${Math.round(bottom - top)}px`;
+      document.documentElement.style.setProperty('--mm-bottom', `${Math.round(bottom - base.getBoundingClientRect().top)}px`);
+    }
   }
 
   /** ดาเมจที่เราทำใส่คู่ดวล (server แจ้งกลับ) → ตัวเลขลอยบนหัวอีกฝ่าย */

@@ -91,6 +91,11 @@ export function rollAffixes(baseIt, monLv = 1, grade = 'normal', rnd = Math.rand
   const odds = { normal: [0.45, 0.15, 0.03], elite: [0.7, 0.35, 0.1], boss: [1, 0.7, 0.3] }[grade] || [0.45, 0.15, 0.03];
   let n = 0;
   for (const p of odds) { if (rnd() < p) n++; else break; }
+  return rollAffixLines(baseIt, n, monLv, grade, rnd);
+}
+/** ทอยค่าสุ่ม n บรรทัดพอดี (ไม่ซ้ำชนิด) · ขั้นตามเลเวลผี/เกรด แบบเดียวกับ rollAffixes · ของแดงราหูใช้ 3 บรรทัดเสมอ */
+export function rollAffixLines(baseIt, n, monLv = 1, grade = 'normal', rnd = Math.random) {
+  if (!baseIt) return [];
   const pool = AFFIX_KEYS.filter((k) => AFFIX[k].on.includes(baseIt.type));
   const out = [];
   while (out.length < n && pool.length) {

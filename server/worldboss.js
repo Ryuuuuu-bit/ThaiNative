@@ -15,6 +15,7 @@ import { gainExp } from '../shared/charmodel.js';
 import { mobExp } from '../shared/stats.js';
 import { ITEMS } from '../shared/data/items.js';
 import { RED_GEAR } from '../shared/data/gear.js';
+import { affixId, rollAffixLines } from '../shared/data/affixes.js';
 import { checkTitles } from '../shared/data/titles.js';
 
 const rand = (a, b) => a + Math.random() * (b - a);
@@ -216,8 +217,9 @@ export function setupWorldBoss(io, players, { td, hurtPlayer, queueSync, social,
         const job = c.appearance?.job, lvl = r.redLv || 140, tierPool = RED_GEAR.filter((id) => ITEMS[id].lv === lvl);   // ของแดงขั้นเดียวกับราหูรอบนั้น
         const pool = tierPool.filter((id) => ITEMS[id].job === job);
         const id = pick(pool.length ? pool : tierPool.length ? tierPool : RED_GEAR);
-        addItem(c, id, 1); out.items.push({ id, qty: 1, red: true });
-        say(`✨ ${p.name} ได้ ${ITEMS[id].nameTh} (อุปกรณ์ขอบแดง)!`, '✨ ของหายาก');
+        const rid = affixId(id, rollAffixLines(ITEMS[id], 3, lvl, 'boss'));   // ของแดงราหู: ค่าสุ่ม 3 บรรทัดเสมอ (เกรดบอส)
+        addItem(c, rid, 1); out.items.push({ id: rid, qty: 1, red: true });
+        say(`✨ ${p.name} ได้ ${ITEMS[rid].nameTh} (อุปกรณ์ขอบแดง)!`, '✨ ของหายาก');
       }
       out.red = false; out.rounds = null;
       c.rec ||= {}; c.rec.wbJoin = (c.rec.wbJoin || 0) + 1;

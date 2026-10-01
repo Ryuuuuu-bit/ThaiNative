@@ -874,3 +874,64 @@ body:not(.td-mode) .pf-under { display: none; }
 /* ของที่ต่อใต้กรอบ: เลื่อนลงตามจำนวนแถวบัฟ */
 body.td-mode .party-frames { top: calc(var(--pf-bottom, calc(var(--hud-pad) + 18.5cqh)) + 2cqh + var(--buff-rows, 0) * 4.9cqh) !important; }
 body.td-mode:not(.m-hud) #ui #party-win.window { top: calc(var(--pf-bottom, calc(var(--hud-pad, 1.6cqh) + 18.5cqh)) + 2.5cqh + var(--buff-rows, 0) * 4.9cqh) !important; height: min(calc(100cqh - var(--pf-bottom, 20cqh) - 4.5cqh - var(--buff-rows, 0) * 4.9cqh), 40em); }
+
+/* ================= มุมขวาบน: กรอบมินิแมพรวม (ชื่อแมพ · แมพ · เขต · เวลา/ราหู) + กล่องเควสต่อใต้กรอบ ================= */
+body.td-mode { --mm-w: 28cqh; --mm-in: calc(var(--mm-w) - 1.2cqh); --mm-h: calc(var(--mm-in) * 82 / 150); }
+body.td-mode #mm-frame { position: absolute; top: var(--hud-pad); right: var(--hud-pad); width: var(--mm-w); height: calc(10cqh + var(--mm-h)); pointer-events: none;
+  background: var(--hud-bg); border: .25cqh solid var(--hud-line); border-radius: var(--hud-r); box-shadow: var(--hud-shadow); }
+body:not(.td-mode) #mm-frame { display: none; }
+body.td-mode .hud-right { width: var(--mm-w) !important; }
+body.td-mode .hud-right .zone { height: 4.4cqh; background: none !important; border: 0 !important; box-shadow: none !important; padding: 0 1.1cqh !important; font-size: 2cqh !important; }
+body.td-mode .hud-right .net { font-size: 1.6cqh; }
+body.td-mode .hud-right .clock { top: 5.3cqh; right: 1.1cqh; z-index: 2; padding: 0 .8cqh; border-radius: 1.2cqh; background: rgba(28,18,12,.82); border: 1px solid rgba(212,175,55,.35); font-size: 1.6cqh !important; line-height: 2.4cqh; }
+body.td-mode #td-minimap, body.td-mode.touch #td-minimap { top: calc(var(--hud-pad) + 4.6cqh) !important; right: calc(var(--hud-pad) + .6cqh) !important; width: var(--mm-in) !important;
+  height: var(--mm-h) !important; border: 1px solid rgba(0,0,0,.6) !important; border-radius: .9cqh !important; box-shadow: none !important; }
+body.td-mode #td-hud .td-zone, body.td-mode.touch #td-hud .td-zone { top: calc(var(--hud-pad) + 5.1cqh + var(--mm-h)) !important; right: calc(var(--hud-pad) + .6cqh) !important; width: var(--mm-in) !important;
+  height: 3cqh; line-height: 2.7cqh; font-size: 1.45cqh !important; padding: 0 .6cqh !important; border: 1px solid rgba(212,175,55,.35) !important; border-radius: .8cqh !important; box-shadow: none !important; }
+body.td-mode #mm-zoom, body.td-mode.touch #mm-zoom { top: calc(var(--hud-pad) + 4.6cqh + var(--mm-h) - 7.6cqh); right: calc(var(--hud-pad) + var(--mm-w) - 4.4cqh); gap: .4cqh; }
+body.td-mode #mm-zoom button, body.td-mode.touch #mm-zoom button { width: 3.2cqh; height: 3.2cqh; font-size: 2cqh; }
+body.td-mode #td-hud .td-events { top: calc(var(--hud-pad) + 8.6cqh + var(--mm-h)); right: calc(var(--hud-pad) + .6cqh); width: var(--mm-in); gap: .4cqh; font-size: 1.5cqh; }
+body.td-mode #td-hud .td-events .ev { background: none; border: 0; padding: 0 .3cqh; }
+body.td-mode #td-hud .td-events .ev.boss { display: flex; align-items: center; gap: .6cqh; padding: .25cqh .8cqh; border-radius: .7cqh; background: rgba(0,0,0,.3); border: 1px solid rgba(212,175,55,.35); color: #efe3cc; }
+body.td-mode #td-hud .td-events .ev.boss .t { margin-left: auto; font-variant-numeric: tabular-nums; }
+body.td-mode #td-hud .td-events .ev.boss.soon { background: rgba(140,20,30,.55); border-color: #ff6b5a; color: #ffd0c8; }
+body.td-mode #td-hud .td-events .ev.boss.soon b { color: #fff; }
+body.td-mode #td-hud .td-events .ev.boss.fight { background: rgba(90,30,120,.5); border-color: #b57dff; color: #f1e2ff; }
+body.td-mode #td-hud .td-events .ev.boss .hp { flex: 1; height: .6cqh; border-radius: .3cqh; background: rgba(0,0,0,.5); overflow: hidden; }
+body.td-mode #td-hud .td-events .ev.boss .hp i { display: block; height: 100%; background: linear-gradient(90deg, #7a3cff, #d3a6ff); }
+@media (prefers-reduced-motion: no-preference) { body.td-mode #td-hud .td-events .ev.boss.soon { animation: mmBoss 1.2s ease-in-out infinite; } }
+@keyframes mmBoss { 50% { box-shadow: 0 0 1.2cqh rgba(255,90,70,.75); } }
+/* กล่องเควส: แยกเหมือนเดิม วางต่อใต้กรอบตามความสูงจริง */
+body.td-mode .quest-track { top: calc(var(--mm-bottom, calc(var(--hud-pad) + 14cqh + var(--mm-h))) + 1cqh) !important; width: var(--mm-w) !important; }
+
+/* ================= กระดานข่าว: ซ้าย = หัวข้อแบ่งตามวัน (New!) · ขวา = รายละเอียด ================= */
+#news-panel .news-tabs { align-items: center; }
+#news-panel .news-tabs button { display: inline-flex; align-items: center; gap: 6px; border-radius: 999px; }
+#news-panel .news-tabs button i { width: 8px; height: 8px; border-radius: 50%; background: var(--nc); }
+#news-panel .news-tabs button small { font-size: .78em; opacity: .75; }
+#news-panel .news-tabs .nt-readall { margin-left: auto; background: none; border: 0; color: #a894b8; text-decoration: underline; text-underline-offset: 3px; font-size: .85em; }
+#news-panel .news-body { display: grid; grid-template-columns: minmax(15em, 42%) 1fr; height: min(62vh, 520px); border: 1px solid #4a3a2a; border-radius: 10px; overflow: hidden; background: rgba(14,8,20,.45); }
+#news-panel .news-list { display: block; max-height: none; height: 100%; overflow-y: auto; padding: 4px 0 8px; border-right: 1px solid #4a3a2a; gap: 0; }
+#news-panel .nd-day { position: sticky; top: 0; z-index: 1; padding: 6px 12px 3px; font-size: .74em; letter-spacing: .04em; color: #a894b8; background: linear-gradient(#22152e 70%, rgba(34,21,46,0)); }
+#news-panel .nd-item { width: 100%; display: grid; grid-template-columns: 1.7em 1fr auto; align-items: center; gap: 8px; padding: 7px 10px 7px 8px; border: 0; border-left: 4px solid var(--nc);
+  background: none; color: inherit; font: inherit; text-align: left; cursor: pointer; }
+#news-panel .nd-item:hover { background: rgba(255,255,255,.04); }
+#news-panel .nd-item[aria-current="true"] { background: rgba(212,175,55,.14); }
+#news-panel .nd-ic { font-size: 1.1em; text-align: center; } #news-panel .nd-ic .px-ico { width: 1.4em; height: 1.4em; image-rendering: pixelated; }
+#news-panel .nd-t { min-width: 0; display: grid; gap: 1px; }
+#news-panel .nd-t b { font-weight: 600; font-size: .92em; color: #ffe7a8; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+#news-panel .nd-t small { font-size: .72em; color: var(--nc); }
+#news-panel .nd-item.read .nd-t b { color: #b9a88a; font-weight: 400; }
+.nd-new { font-style: normal; font-size: .7em; font-weight: 700; letter-spacing: .02em; padding: 1px 7px; border-radius: 999px; color: #fff; background: linear-gradient(180deg, #ff6b5a, #c92a1e); box-shadow: 0 0 8px rgba(255,90,70,.5); }
+#news-panel .nd-item.read .nd-new { visibility: hidden; }
+#news-panel .news-detail { height: 100%; overflow-y: auto; padding: 14px 18px 18px; display: grid; align-content: start; gap: 10px; min-width: 0; }
+#news-panel .nd-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; font-size: .8em; color: #9d8a70; }
+#news-panel .nd-meta .nt-tag { font-size: .95em; padding: 1px 9px; border-radius: 10px; background: var(--nc); color: #140a1c; font-weight: 700; }
+#news-panel .news-detail h3 { margin: 0; padding: 0; border: 0; background: none; font-size: 1.15em; line-height: 1.4; color: #ffe7a8; text-wrap: balance; }
+#news-panel .news-detail ul { margin: 0; padding: 0; list-style: none; display: grid; gap: 8px; }
+#news-panel .news-detail li { position: relative; padding: 8px 10px 8px 26px; border-radius: 8px; background: rgba(0,0,0,.25); border: 1px solid rgba(255,255,255,.05); color: #e8d6b4; font-size: .92em; line-height: 1.55; }
+#news-panel .news-detail li::before { content: ''; position: absolute; left: 10px; top: .95em; width: 6px; height: 6px; border-radius: 1px; transform: rotate(45deg); background: var(--nc); }
+#news-panel .news-detail .n-link { margin: 0; justify-self: start; }
+#news-panel .nd-nav { display: flex; justify-content: space-between; gap: 8px; margin-top: 4px; }
+#news-panel .nd-nav button { padding: 4px 12px; border-radius: 999px; border: 1px solid #5a4630; background: #2a1c34; color: #e8d6b4; font: inherit; font-size: .85em; cursor: pointer; }
+#news-panel .nd-nav button:disabled { opacity: .35; cursor: default; }

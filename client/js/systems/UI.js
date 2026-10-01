@@ -85,6 +85,17 @@ export function npcPortrait(key) {
   return p;
 }
 
+/** ภาพตอนลากช่องแถบลัด: โคลนเฉพาะไอคอน (ตัดกล่องคำอธิบาย ปุ่ม ✕ และคูลดาวน์ออก) · ไม่งั้นเบราว์เซอร์ถ่ายติดกล่อง tip ที่เปิดค้างไปด้วย */
+function dragGhost(e, el) {
+  if (!e.dataTransfer?.setDragImage) return;
+  const r = el.getBoundingClientRect(), g = el.cloneNode(true);
+  g.querySelectorAll('.tip, .hb-x, .cd, .cdt').forEach((x) => x.remove());
+  Object.assign(g.style, { position: 'absolute', left: '-9999px', top: '0', width: `${r.width}px`, height: `${r.height}px`, margin: '0', pointerEvents: 'none' });
+  el.parentElement.appendChild(g);                                   // วางในแถบเดิม ให้สไตล์ช่องเหมือนของจริง
+  e.dataTransfer.setDragImage(g, r.width / 2, r.height / 2);
+  setTimeout(() => g.remove(), 0);
+}
+
 export class UI {
   /** @param {Phaser.Scene} scene GameScene */
   constructor(scene) {
@@ -463,7 +474,7 @@ export class UI {
     });
     this.skillEls.forEach((el) => {
       this.makeDropSlot(el, el.dataset.key);
-      el.addEventListener('dragstart', (e) => { const v = this.char.hotbar[el.dataset.key]; if (!v) return e.preventDefault(); e.dataTransfer.setData('text/slot', v); e.dataTransfer.effectAllowed = 'move'; });
+      el.addEventListener('dragstart', (e) => { const v = this.char.hotbar[el.dataset.key]; if (!v) return e.preventDefault(); e.dataTransfer.setData('text/slot', v); e.dataTransfer.effectAllowed = 'move'; dragGhost(e, el); });
     });
   }
 

@@ -466,7 +466,8 @@ export class TdMinimap {
     this.base = miniCanvas;
     let el = document.getElementById('td-minimap');
     if (!el) { el = document.createElement('canvas'); el.id = 'td-minimap'; document.getElementById('td-hud').appendChild(el); }
-    el.width = 150; el.height = 110; this.el = el; this.ctx = el.getContext('2d'); this.ctx.imageSmoothingEnabled = false;
+    el.width = 150; el.height = 82; this.el = el; this.ctx = el.getContext('2d'); this.ctx.imageSmoothingEnabled = false;   // แมพแบนลง (กรอบมินิแมพรวมเล็กลง)
+    if (!document.getElementById('mm-frame')) { const fr = document.createElement('div'); fr.id = 'mm-frame'; document.getElementById('td-hud').prepend(fr); }   // พื้นกรอบเดียวหลังชื่อแมพ/แมพ/เขต/เวลา this.ctx = el.getContext('2d'); this.ctx.imageSmoothingEnabled = false;
     this.at = 0;
     // ซูมมินิแมพ: ปุ่ม ＋/－ (มือถือ) · ลูกกลิ้งเมาส์บนแมพ (คอม) · จำค่าไว้ในเครื่อง
     try { this.zoom = ZOOMS.includes(+localStorage.getItem('tn_mm_zoom')) ? +localStorage.getItem('tn_mm_zoom') : 1; } catch { this.zoom = 1; }
