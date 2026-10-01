@@ -2009,7 +2009,14 @@
   "vfx_tiger",
   "vfx_posop",
   "vfx_amrita",
-  "vfx_herbburst"
+  "vfx_herbburst",
+  "env/o_junk",
+  "env/o_pier",
+  "env/o_banyan",
+  "env/o_muaythai",
+  "env/o_archery",
+  "env/o_scarecrow",
+  "env/o_lotuspond"
  ],
  "tilesets": [
   "water__grass",

@@ -11,6 +11,8 @@ export const MAP_W = OX + LW + 56, MAP_H = LH + 60;          // 232 × 200
 // ดัชนีไทล์
 export const T = { GRASS: 0, GRASS2: 1, GRASS3: 2, ROAD: 3, BRICK: 4, SAND: 5, WATER: 6, WATER2: 7, WALL: 8, PADDY: 9, STONE: 10, TALL: 11, WOOD: 12, WALLTOP: 13 };
 export const SOLID = new Set([T.WATER, T.WATER2, T.WALL, T.WALLTOP]);
+/** แม่น้ำเจ้าพระยาเลียบใต้เกาะเมือง (แถวไทล์ทั้งแมพ) */
+export const RIVER = { y0: 92, y1: 100 };
 
 // ---- ผังเกาะเมือง (แบบเมือง RO: เกาะแปดเหลี่ยม คูน้ำรอบ ประตู 3 ทิศ ถนนแผ่จากลานน้ำพุกลางเมือง) ----
 const LC = { x: 60, y: 50 };                                  // ศูนย์กลางเมือง (พิกัดท้องถิ่นของผังเดิม)
@@ -192,7 +194,8 @@ function buildTown() {
   P('env/b_sala', 29, 69, { foot: [6, 3], scale: 0.95, alt: 'sala', altScale: 1, label: 'สำนักดาบ & ค่ายมวยโบราณ', glow: [-30, 60, 0xffe1a0, 0.6] });
   for (let x = 21; x <= 37; x += 2) if (x < 27 || x > 31) deco('p_fence', x, 53);                             // รั้วไม้ไผ่ด้านบน (เว้นทางเข้า)
   for (let y = 55; y <= 63; y += 2) { deco('p_fence', 20, y); deco('p_fence', 38, y); }
-  for (const [x, y] of [[23, 56], [23, 61], [36, 56], [36, 61], [31, 62]]) small('p_haystack', x, y, { scale: 0.9 });   // หุ่นฟางซ้อม
+  for (const [x, y] of [[23, 56], [23, 62], [36, 56], [36, 62]]) small('p_haystack', x, y, { scale: 0.9 });   // หุ่นฟางซ้อม
+  P('env/o_muaythai', 29, 62, { foot: [5, 3], scale: 0.62, alt: 'env/p_haystack', altScale: 0.6, label: 'สังเวียนมวยไทย', glow: [-30, 50, 0xffe1a0, 0.5] });   // สังเวียนกลางสนามประลอง
   // ธงสำนัก 5 สาย (สีประจำอาชีพ) รอบสนาม
   for (const [x, y, c] of [[21, 52, 'red'], [25, 52, 'yellow'], [33, 52, 'blue'], [37, 52, 'green'], [38, 65, 'purple']]) small(`p_tent_${c}`, x, y, { scale: 0.55, alt: 'env/p_banner' });
   for (const [x, y] of [[21, 64], [37, 64]]) small('p_torch', x, y, { glow: TORCH });
@@ -200,7 +203,7 @@ function buildTown() {
   for (const y of [55, 59, 63]) small('p_bench', 18, y, { scale: 0.9 });
   small('p_drum', 24, 65, { scale: 1.1 }); small('p_table', 34, 65, { alt: 'env/p_bench' }); small('p_sign', 26, 52, { alt: 'env/p_bench' });
   // ลานยิงธนู: เป้าฟางด้านตะวันตก ยิงจากเส้นรั้วตะวันออก
-  for (const y of [42, 44]) small('p_haystack', 25, y, { scale: 0.85 });
+  P('env/o_archery', 26, 44, { foot: [4, 1], scale: 0.6, alt: 'env/p_haystack', altScale: 0.5 });
   for (const y of [41, 43, 45]) deco('p_fence', 37, y);
   small('p_banner', 24, 40, { alt: 'env/p_lantern' });
   // ศาลอาคมหลวงตาเผือก (ข้างลานยิงธนู)
@@ -216,7 +219,7 @@ function buildTown() {
 
   // === สวนหลวง: สระบัว 2 สระ ===
   for (const cx of [45.5, 74.5]) {
-    for (let i = 0; i < 6; i++) { const a = i * 1.05, d = 1 + (i % 3) * 0.8; deco(i % 2 ? 'p_lotus' : 'p_lotus2', Math.round(cx + Math.cos(a) * d), Math.round(43.5 + Math.sin(a) * d * 0.8), { depth: 1 }); }
+    P('env/o_lotuspond', cx, 48.4, { foot: [0, 0], depth: 0.9, scale: 1.12, alt: 'env/p_lotus', altScale: 1 });   // ภาพสระบัวทับสระน้ำเดิม
     for (const [dx, dy] of [[-5, -4], [5, -4], [-5, 5], [5, 5]]) small('p_stonelantern', Math.round(cx + dx), Math.round(43.5 + dy), { glow: [-10, 18, 0xffd27a, 0.45] });
   }
   reserve(40, 38, 51, 49); reserve(69, 38, 80, 49);
@@ -337,6 +340,10 @@ function buildTown() {
   // มุมเหนือ (หลังวัด/วัง): เรือนเล็กของข้าหลวง
   for (const [x, y] of [[20, 44], [100, 40]]) home(x, y, false);
 
+  // === ต้นไทรใหญ่ + สระบัว (ร่มรื่นแบบภาพอ้างอิง) — วางก่อนต้นไม้แถว/สุ่ม เพื่อจองพื้นที่ ===
+  const banyan = (x, y, sc = 1) => { P('env/o_banyan', x, y, { foot: [0, 0], tree: true, scale: 0.9 * sc, alt: 'env/t_tamarind', altScale: 1.1 * sc, flip: rnd() < 0.5 }); reserve(x - 3, y - 3, x + 3, y); };
+  for (const [x, y] of [[34, 88], [73, 88]]) if (free(x - 3, y - 2, x + 3, y)) { P('env/o_lotuspond', x, y, { foot: [5, 2], scale: 0.62, alt: 'env/p_lotus', altScale: 1 }); reserve(x - 3, y - 3, x + 3, y); }
+
   // === ต้นไม้เรียงสองข้างถนนหลวง (ถนนร่มรื่นแบบเมือง RO) ===
   for (let x = 22; x <= 100; x += 5) for (const y of [47, 53]) if (free(x, y - 1, x, y)) { tree(x, y, (x / 5) % 2 ? 'palm' : 'tamarind', 0.8); reserve(x - 1, y - 2, x + 1, y); }
   for (let y = 42; y <= 88; y += 5) for (const x of [56, 63]) if (free(x, y - 1, x, y)) { tree(x, y, (y / 5) % 2 ? 'golden' : 'tamarind', 0.8); reserve(x - 1, y - 2, x + 1, y); }
@@ -347,7 +354,7 @@ function buildTown() {
   for (let y = 12; y <= 90; y += 2) for (let x = 16; x <= 104; x += 2) {
     const tx = x + (y % 4 ? 1 : 0), ty = y;
     if (!free(tx - 1, ty - 1, tx + 1, ty)) continue;
-    if (nearWall(tx, ty, 5)) { if (rnd() < 0.7) { tree(tx, ty, ty > 60 ? 'bamboo' : ['tamarind', 'bamboo', 'palm'][Math.floor(rnd() * 3)], 0.85 + rnd() * 0.2); reserve(tx - 1, ty - 2, tx + 1, ty); } }
+    if (nearWall(tx, ty, 5)) { if (rnd() < 0.7) { if (rnd() < 0.15) { banyan(tx, ty, 0.8); continue; } tree(tx, ty, ty > 60 ? 'bamboo' : ['tamarind', 'bamboo', 'palm'][Math.floor(rnd() * 3)], 0.85 + rnd() * 0.2); reserve(tx - 1, ty - 2, tx + 1, ty); } }
     else if (rnd() < 0.18) { deco(['p_shrub', 'p_frangipani', 'p_plants', 'p_shrub2'][Math.floor(rnd() * 4)], tx, ty); reserve(tx - 1, ty - 1, tx + 1, ty); }
   }
   // === นอกเกาะ: ริมคูเมือง ท่าเรือ ต้นไม้ ===
@@ -358,13 +365,15 @@ function buildTown() {
     const x = Math.floor(rnd() * MAP_W), y = Math.floor(rnd() * 100);
     if (isIsland(x, y) || isMoat(x, y) || isMoat(x, y + 1) || !isGrass(get(x, y))) continue;
     const dx = Math.abs(x - C.x), dy = Math.abs(y - C.y); if (dx <= MOAT.rx + 1 && dy <= MOAT.ry + 1 && dx + dy <= MOAT.d + 2) continue;
-    tree(x, y, ['tamarind', 'palm', 'bamboo', 'golden', 'palm'][i % 5], 1);
+    if (i % 6 === 0) P('env/o_banyan', x, y, { foot: [0, 0], tree: true, scale: 1, flip: i % 4 === 0, alt: 'env/t_tamarind', altScale: 1.1 }); else tree(x, y, ['tamarind', 'palm', 'bamboo', 'golden', 'palm'][i % 5], 1);
   }
 
   // === ทุ่งนาบางปะอิน (ต้นตาลริมคันนา · ฟาง · วัดร้าง) ===
-  for (let x = 8; x <= 44; x += 5) tree(x, 103, 'palm', 1 + (x % 3) * 0.08);
-  for (let x = 76; x <= 112; x += 5) tree(x, 103, 'palm', 1 + (x % 3) * 0.08);
+  for (let x = 8; x <= 44; x += 5) if (Math.abs(x - 36) > 4) tree(x, 103, 'palm', 1 + (x % 3) * 0.08);
+  for (let x = 76; x <= 112; x += 5) if (Math.abs(x - 84) > 4) tree(x, 103, 'palm', 1 + (x % 3) * 0.08);
   for (const [x, y] of [[16, 110], [30, 116], [40, 108], [82, 112], [96, 118], [106, 108]]) small('p_haystack', x, y);
+  for (const [x, y, f] of [[12, 106, 0], [24, 112, 1], [36, 118, 0], [44, 113, 1], [86, 107, 1], [100, 113, 0], [110, 119, 1], [78, 118, 0]]) P('env/o_scarecrow', x, y, { foot: [1, 1], scale: 0.62, flip: !!f, alt: 'env/p_haystack', altScale: 0.6 });   // หุ่นไล่กากลางนา
+  P('env/o_banyan', 48, 104, { foot: [0, 0], tree: true, scale: 1.05, alt: 'env/t_tamarind', altScale: 1.2 }); P('env/o_banyan', 112, 128, { foot: [0, 0], tree: true, scale: 1.1, flip: true, alt: 'env/t_tamarind', altScale: 1.2 });
   P('env/p_campfire', 60, 112, { foot: [1, 1], scale: 0.8, alt: 'campfire', altScale: 1, label: 'ค่ายพัก', glow: [-10, 80, 0xff8a3c, 1.3] });
   small('p_torch', 57, 110, { glow: TORCH }); small('p_torch', 63, 110, { glow: TORCH }); small('p_cart', 64, 114); small('p_haystack', 56, 115);
   small('p_spirit', 52, 102, { label: 'ศาลตายาย' });
@@ -574,6 +583,28 @@ export function buildLayout() {
     reserve(tx - 1, ty - 1, tx + 1, ty);
   }
   P('env/p_arch', OX + 59, SY - 1, { foot: [0, 0], scale: 1.4, label: '↓ บึงผีพราย' });
+
+  // ================= แม่น้ำเจ้าพระยา: แถบน้ำกว้างเลียบใต้เกาะเมือง (ไหลข้ามทั้งแมพ ต่อกับคูเมือง) =================
+  //  ทาง/ถนนที่ตัดผ่าน → สะพานไม้ · ของที่ตกน้ำ (ต้นไม้/ฟาง) ถูกถอดออก · จุดเกิดผีในน้ำ → ย้ายขึ้นฝั่ง
+  {
+    const isPathT = (t) => t === T.ROAD || t === T.STONE || t === T.SAND || t === T.BRICK || t === T.WOOD;
+    for (let y = RIVER.y0; y <= RIVER.y1; y++) for (let x = 0; x < MAP_W; x++) {
+      if (isIsland(x, y)) continue;
+      const t = ground[y][x];
+      if (t === T.WALL || t === T.WALLTOP) continue;
+      ground[y][x] = isPathT(t) ? T.WOOD : (x + y) % 3 ? T.WATER : T.WATER2;
+    }
+    const inRiver = (px, py) => { const tx = Math.round(px / TILE), ty = Math.round(py / TILE); return ty >= RIVER.y0 - 1 && ty <= RIVER.y1 + 1 && tx >= 0 && tx < MAP_W && (ground[ty]?.[tx] === T.WATER || ground[ty]?.[tx] === T.WATER2); };
+    for (let i = props.length - 1; i >= 0; i--) { const p = props[i]; if (p.depth === 1 || /boat|junk|pier/.test(p.key)) continue; if (inRiver(p.x, p.y)) props.splice(i, 1); }
+    for (const s of spawns) while (inRiver(s.x, s.y)) s.y -= TILE;
+  }
+  // ท่าเรือพาณิชย์ริมแม่น้ำ: สะพานท่าเรือ + เรือสำเภา (ฝั่งตะวันตก/ตะวันออกของสะพานประตูใต้) · ท่าน้ำศาลาฝั่งใต้
+  for (const [x, f] of [[OX + 36, false], [OX + 84, true]]) {
+    P('env/o_pier', x, RIVER.y1 + 0.6, { foot: [0, 0], depth: 1, scale: 0.7, flip: f, alt: 'env/p_boat' });
+    P('env/o_junk', x + (f ? 9 : -9), RIVER.y0 + 5, { foot: [0, 0], depth: 1, scale: 0.62, flip: f, alt: 'env/p_boat' });
+  }
+  P('env/o_landing', OX + 68, RIVER.y1 + 3, { foot: [0, 0], scale: 0.6, alt: 'env/b_sala2', altScale: 0.85, label: 'ท่าน้ำ', glow: [-30, 50, 0xffe1a0, 0.6] });
+  for (const x of [OX + 56, OX + 63]) small('p_torch', x, RIVER.y1 + 2, { glow: TORCH });
 
   // ---- ตารางชน ----
   const solid = ground.map((row) => row.map((t) => SOLID.has(t)));
