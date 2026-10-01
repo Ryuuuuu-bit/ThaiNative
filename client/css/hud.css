@@ -849,7 +849,8 @@ body.td-mode .pf .pf-nm #hud-name { font-weight: 700; color: #fff4dc; }
 body.td-mode .pf .job-tag { max-width: none; flex: 1; min-width: 0; font-size: 1.6cqh; color: var(--gold-soft); background: none !important; border: 0 !important; padding: 0 !important; }
 body.td-mode .pf .lv-tag { flex: none; font-size: 1.7cqh; padding: .1cqh .9cqh; border-radius: 1.2cqh; border: .2cqh solid var(--gold); background: linear-gradient(180deg, #6b4a17, #3a250b); color: #ffe7a8; }
 body.td-mode .pf .pf-stats, body.td-mode .pf .pf-cur { display: flex; flex-wrap: wrap; gap: .2cqh 1.1cqh; font-size: 1.65cqh; line-height: 2.3cqh; color: #f3e6cf; font-variant-numeric: tabular-nums; white-space: nowrap; }
-body.td-mode .pf .pf-stats span { display: inline-flex; align-items: center; gap: .4cqh; }
+body.td-mode .pf .pf-stats { flex-wrap: nowrap; gap: .9cqh; }
+body.td-mode .pf .pf-stats span { display: inline-flex; align-items: center; gap: .3cqh; }
 body.td-mode .pf .pf-stats em { font-style: normal; font-size: 1.45cqh; opacity: .9; }
 body.td-mode .pf .pf-stats span:last-child { color: #ffd76a; font-weight: 700; }
 body.td-mode .pf .pf-cur { border-top: .15cqh solid rgba(255,215,140,.18); padding-top: .3cqh; }
@@ -858,7 +859,7 @@ body.td-mode .pf .pf-cur .px-ico { width: 2cqh; height: 2cqh; margin: 0; }
 /* เงิน: เข้าแถวในกรอบแล้ว (ยกเลิกป้ายห้อยแบบเดิม) */
 body.td-mode .pf .gold { position: static !important; font-size: inherit !important; line-height: inherit !important; padding: 0 !important; border: 0 !important; background: none !important; box-shadow: none !important; color: #ffd76a; border-radius: 0 !important; }
 /* บัฟ: ใต้กรอบ กล่องใหญ่ขอบเขียว เวลาเหลือกลางล่าง · แถวละ 9 */
-body.td-mode .pf-under { position: absolute; top: calc(var(--hud-pad) + 19.5cqh); left: var(--hud-pad); width: 41cqh; display: flex; flex-wrap: wrap; gap: .8cqh; pointer-events: auto; }
+body.td-mode .pf-under { position: absolute; top: calc(var(--pf-bottom, calc(var(--hud-pad) + 18.5cqh)) + 1cqh); left: var(--hud-pad); width: 41cqh; display: flex; flex-wrap: wrap; gap: .8cqh; pointer-events: auto; }
 body.td-mode #hud-buffs { display: contents; }
 body.td-mode #hud-buffs .buff { flex: none; width: 4cqh; height: 4cqh; padding: 0 !important; display: grid; place-items: center; font-size: 2.2cqh; line-height: 1;
   border-radius: .9cqh; border: .25cqh solid #6fdc6f; background: radial-gradient(circle at 50% 35%, #2f4a35, #142217); box-shadow: 0 .3cqh .6cqh rgba(0,0,0,.55); }
@@ -871,5 +872,5 @@ body.td-mode .pf-gm { flex: none; height: 4cqh; padding: 0 1cqh; display: grid; 
   border-radius: 1cqh; border: .3cqh solid var(--gold); background: linear-gradient(180deg, #6b4a17, #3a250b); box-shadow: 0 .3cqh .6cqh rgba(0,0,0,.55); }
 body:not(.td-mode) .pf-under { display: none; }
 /* ของที่ต่อใต้กรอบ: เลื่อนลงตามจำนวนแถวบัฟ */
-body.td-mode .party-frames { top: calc(var(--hud-pad) + 20.5cqh + var(--buff-rows, 0) * 4.9cqh) !important; }
-body.td-mode:not(.m-hud) #ui #party-win.window { top: calc(var(--hud-pad, 1.6cqh) + 21cqh + var(--buff-rows, 0) * 4.9cqh) !important; height: min(calc(100cqh - var(--hud-pad, 1.6cqh) - 23cqh - var(--buff-rows, 0) * 4.9cqh), 40em); }
+body.td-mode .party-frames { top: calc(var(--pf-bottom, calc(var(--hud-pad) + 18.5cqh)) + 2cqh + var(--buff-rows, 0) * 4.9cqh) !important; }
+body.td-mode:not(.m-hud) #ui #party-win.window { top: calc(var(--pf-bottom, calc(var(--hud-pad, 1.6cqh) + 18.5cqh)) + 2.5cqh + var(--buff-rows, 0) * 4.9cqh) !important; height: min(calc(100cqh - var(--pf-bottom, 20cqh) - 4.5cqh - var(--buff-rows, 0) * 4.9cqh), 40em); }

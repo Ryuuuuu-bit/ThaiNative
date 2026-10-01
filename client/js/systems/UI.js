@@ -197,7 +197,9 @@ export class UI {
     $('#hud-badge').title = JOBS[c.appearance.job].nameTh;
     $('#hud-gm').classList.toggle('hidden', !account.account?.admin);
     // แถวค่าพลัง: โจมตี · ป้องกัน · คริ · ค่าพลังรวม
-    const st = [['⚔️', Math.max(d.patk, d.matk), 'พลังโจมตี'], ['🛡️', d.def, 'ป้องกัน'], ['💥', `${Math.round(d.critRate * 100)}%`, 'โอกาสคริติคอล'], ['✦', combatPower(c, d).toLocaleString(), 'ค่าพลังรวม']];
+    const big = (v) => (v >= 1e6 ? `${+(v / 1e6).toFixed(1)}M` : v >= 1e4 ? `${+(v / 1e3).toFixed(1)}k` : String(v));
+    const atk = Math.max(d.patk, d.matk), cp = combatPower(c, d);
+    const st = [['⚔️', big(atk), `พลังโจมตี ${atk.toLocaleString()}`], ['🛡️', big(d.def), `ป้องกัน ${d.def.toLocaleString()}`], ['💥', `${Math.round(d.critRate * 100)}%`, 'โอกาสคริติคอล'], ['✦', big(cp), `ค่าพลังรวม ${cp.toLocaleString()}`]];
     $('#hud-stats').innerHTML = st.map(([i, v, tip]) => `<span title="${tip}"><em>${i}</em>${v}</span>`).join('');
     $('#hud-hp').textContent = `HP ${Math.ceil(c.hp)} / ${d.maxHp}`;
     $('#hud-mp').textContent = `MP ${Math.floor(c.mp)} / ${d.maxMp}`;
@@ -218,6 +220,16 @@ export class UI {
     if (qm) { qm.querySelector('.n').textContent = `x${mp}`; qm.classList.toggle('empty', !mp); }
     this.updateFlasks(c);
     this.drawPortrait();
+    this.layoutPf();
+  }
+
+  /** แถวบัฟ/กรอบปาร์ตี้วางต่อใต้กรอบโปรไฟล์ตามความสูงจริง (ตัวเลข/ชื่อยาวทำให้กรอบสูงขึ้นได้) */
+  layoutPf() {
+    const pf = document.querySelector('.pf'), hud = $('#hud');
+    if (!pf || !hud || !pf.offsetHeight) return;
+    const y = pf.getBoundingClientRect().bottom - hud.getBoundingClientRect().top;
+    document.documentElement.style.setProperty('--pf-bottom', `${Math.round(y)}px`);
+    if (!this.pfResize) { this.pfResize = () => requestAnimationFrame(() => this.layoutPf()); addEventListener('resize', this.pfResize); }
   }
 
   /** ปุ่มขวดยา Q/E บน HUD (อัปเดตเฉพาะตอนค่าเปลี่ยน) */
