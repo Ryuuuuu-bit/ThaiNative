@@ -62,7 +62,7 @@ app.use('/shared', express.static(path.join(ROOT, 'shared'), NOCACHE));
 app.use('/vendor', express.static(path.join(ROOT, 'node_modules/phaser/dist'), { maxAge: '1d' }));   // Phaser เปลี่ยนเฉพาะตอนอัปเวอร์ชัน
 
 const httpServer = createServer(app);
-const io = new Server(httpServer, { cors: { origin: '*' } });
+const io = new Server(httpServer, { cors: { origin: '*' }, perMessageDeflate: { threshold: 512 } });   // บีบอัดแพ็กเก็ตใหญ่ (td:state) ลด egress
 { const emit0 = io.emit.bind(io); io.emit = (ev, ...a) => { if (ev === 'chat') relayChat(a[0]); return emit0(ev, ...a); }; }   // ข่าวระบบ → Discord webhook
 
 const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
@@ -545,7 +545,7 @@ setInterval(() => {
     id: p.id, x: Math.round(p.x), y: Math.round(p.y), anim: p.anim, flipX: p.flipX,
     hp: Math.round(p.hp), maxHp: p.maxHp, level: p.level, party: p.partyId, wp: p.wp || 0, inst: p.inst || 0,
   }));
-  io.volatile.emit('world:snapshot', { t: Date.now(), players: snapshot, boss: social.bossPublic() });
+  if (snapshot.length) io.except('td').volatile.emit('world:snapshot', { t: Date.now(), players: snapshot, boss: social.bossPublic() });   // โลก TD ไม่ใช้ snapshot นี้ → ไม่ส่ง (ลด egress)
   for (const p of players.values()) {
     flushSync(p);
     if (p.hpDirty) { p.hpDirty = false; io.to(p.id).emit('pl:hp', { hp: Math.round(p.hp), maxHp: p.maxHp }); }

@@ -22,6 +22,8 @@ import { TILE, T, OX } from '../shared/td/ayutthaya.js';
 import { TD_MAPS, TD_MAP_IDS, EVENT_MAPS, DEFAULT_MAP, getMap, validMap, arrivalPoint, RESPAWN_WAIT_MS } from '../shared/td/maps.js';
 import { MAX_LEVEL, mobExp, mobAtkMul, attackInterval, buffAspd } from '../shared/stats.js';
 import { PARTY } from '../shared/constants.js';
+/** ระยะส่งสถานะผีรอบตัวผู้เล่น (px โลก) — ใหญ่กว่าจอ (zoom 1.5 · จอ 2048×1152 ≈ ครึ่ง 683×384) ให้ผีโผล่/หายนอกจอ */
+const VIEW_RX = 780, VIEW_RY = 540;
 
 export const TD_SPAWN = { ...TD_MAPS.ayutthaya.spawn };
 const SPEED = 92;                   // ความเร็วเดินผู้เล่น (ตรงกับ client)
@@ -322,11 +324,13 @@ export function setupTD(io, players, opts = {}) {
     const here = tdPlayers(mapId);
     if (!here.length) return;
     tickMobs(dt, now, here);
-    io.to(room).volatile.emit('td:state', {
-      t: now, map: mapId,
-      p: here.map((p) => [p.id, Math.round(p.tx), Math.round(p.ty), p.tdir, p.tanim, Math.round(p.hp), p.maxHp, p.level]),
-      m: mobs.map((m) => [m.mid, Math.round(m.x), Math.round(m.y), m.dir, m.st === 'dead' ? 0 : Math.max(1, Math.round(m.hp)), m.st === 'chase' ? 1 : 0]),
-    });
+    // ส่งเฉพาะผีที่อยู่รอบตัวผู้เล่นแต่ละคน (เกินจอไปพอสมควร) — เดิมส่งผีทั้งแมพ ~7KB × 10 ครั้ง/วิ ต่อคน = egress หลัก
+    const P = here.map((p) => [p.id, Math.round(p.tx), Math.round(p.ty), p.tdir, p.tanim, Math.round(p.hp), p.maxHp, p.level]);
+    const M = mobs.map((m) => [m.mid, Math.round(m.x), Math.round(m.y), m.dir, m.st === 'dead' ? 0 : Math.max(1, Math.round(m.hp)), m.st === 'chase' ? 1 : 0]);
+    for (const p of here) {
+      const near = M.filter((r) => Math.abs(r[1] - p.tx) < VIEW_RX && Math.abs(r[2] - p.ty) < VIEW_RY);
+      io.to(p.id).volatile.emit('td:state', { t: now, map: mapId, p: P, m: near });
+    }
   }
   /** ผู้เล่นออกจากแมพนี้ → ผีที่ไล่อยู่เลิกไล่/ท่าที่ค้างยกเลิก */
   function forget(p) {
