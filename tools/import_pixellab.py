@@ -22,7 +22,7 @@ NEAR = {'north-west': ['north', 'west'], 'south-west': ['south', 'west'], 'west'
 # ชื่อท่า PixelLab → ชื่อท่าในเกม
 ANIM_MAP = [(r'^walk', 'walk'), (r'sword|slash', 'slash'), (r'bow|arrow|shoot', 'shoot'), (r'punch|jab|uppercut|kick|attack|strike', 'attack'), (r'fireball|cast|spell|staff|magic', 'cast'),
             (r'death|die|dying', 'die'), (r'taking|hurt|hit', 'hit'), (r'^idle|breath', 'idle_anim')]
-OUT = int(os.environ.get('PL_OUT', 72))   # ขนาดช่องเฟรม (ผีตัวใหญ่ เช่นกระหัง 128 = ไม่ตัดปีก)
+OUT = 72
 ROOT = os.path.join(os.path.dirname(__file__), '..', 'client', 'assets', 'td')
 
 

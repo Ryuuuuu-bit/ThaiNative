@@ -227,7 +227,7 @@ export const TD_LEVELS = {
 /** ผีที่ยังไม่มีภาพ 8 ทิศของตัวเอง → ยืมภาพผีอื่น + ย้อมสี */
 Object.assign(MONSTERS.kong_koi, { d8: 'phi_pob', tint: 0x9ccc65 });
 Object.assign(MONSTERS.phi_phong, { d8: 'phi_dip', tint: 0xffb74d });
-// krahang: ใช้สไปรต์ของตัวเอง mob_krahang (PixelLab v2 กระด้งเป็นปีก · เฟรม 128 scale 0.42)
+Object.assign(MONSTERS.krahang, { d8: 'khamot', tint: 0xd7a86e });
 // เขี้ยวพญายักษ์ (ตีบวก +16 ขึ้นไป / หลอม Lv.30): ดรอปจากบอสประจำโซนแทนเรดบอสเดิม
 MONSTERS.chalawan.drops.push({ item: 'yak_fang', chance: 0.35 });
 MONSTERS.pret_asura.drops.push({ item: 'yak_fang', chance: 0.2 });
