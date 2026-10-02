@@ -12,6 +12,7 @@
   <link rel="icon" type="image/png" sizes="192x192" href="assets/ui/icon-192.png" />
   <link rel="apple-touch-icon" sizes="180x180" href="assets/ui/icon-180.png" />
   <meta name="theme-color" content="#5a1611" />
+  <link rel="manifest" href="/manifest.webmanifest" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link href="https://fonts.googleapis.com/css2?family=Mitr:wght@400;500;600&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="css/style.css?v=hud17" />
@@ -24,6 +25,12 @@
   <button id="title-sound" class="hidden" title="เปิด/ปิดเสียง">🔊</button>
   <div id="title-credit" class="hidden">Game Director · <b>Ryuu</b> &nbsp;|&nbsp; Art Director · <b>Joker</b></div>
   <a id="title-discord" class="discord-btn hidden" href="https://discord.gg/x9schPHqqX" target="_blank" rel="noopener noreferrer" title="เข้าร่วม Discord ThaiNative">💬 <span class="td-lb">Discord ชุมชนผู้เล่น</span></a>
+  <button id="title-install" class="hidden" title="ติดตั้งเกมลงหน้าจอ เปิดเต็มจอเหมือนแอป">📲 <span class="td-lb">ติดตั้งเกม</span></button>
+  <div id="ios-install" class="hidden" onclick="this.classList.add('hidden')">
+    <div class="ios-box"><b>ติดตั้ง ThaiNative บน iPhone / iPad</b>
+      <ol><li>แตะปุ่ม <b>แชร์</b> (สี่เหลี่ยมมีลูกศรขึ้น) ของ Safari</li><li>เลือก <b>เพิ่มไปยังหน้าจอโฮม</b></li><li>เปิดเกมจากไอคอนใหม่ จะเล่นเต็มจอเหมือนแอป</li></ol>
+      <small>แตะที่ใดก็ได้เพื่อปิด</small></div>
+  </div>
   <div id="game-wrap">
     <!-- HUD โหมดทดลอง top-down อยุธยา -->
     <div id="td-hud" class="hidden">

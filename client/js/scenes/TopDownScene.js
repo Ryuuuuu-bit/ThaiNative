@@ -1490,14 +1490,24 @@ export class TopDownScene extends Phaser.Scene {
 
   applyState({ map, p: ps, m: ms }) {
     if (map && map !== this.M.id) return;                          // แพ็กเก็ตค้างจากแมพเก่า (ระหว่างวาร์ป)
+    const got = new Set();
     for (const [mid, x, y, dirI, hp] of ms) {
       const m = this.mobs[mid];
       if (!m) continue;
+      got.add(mid);
       m.sx = x; m.sy = y; m.dir = dirOfIndex(dirI);
+      if (m._stale) { m._stale = false; m.setPosition(x, y); if (m.alive) this.setMobVisible(m, true); }
       if (hp > 0) {
         m.hp = hp;
         if (!m.alive) { m.alive = true; m.setPosition(x, y); this.setMobVisible(m, true); playDir(m, 'walk', m.dir, true); }
       } else if (m.alive) this.onMobDie(m);
+    }
+    // server ส่งเฉพาะผีรอบตัว (±780×540) → ผีที่ไม่ได้รับ แต่ภาพค้างอยู่ใกล้เรา = ตำแหน่งเก่า ซ่อนไว้จนกว่าจะได้ข้อมูลใหม่
+    const me = this.player;
+    if (me) for (const mid in this.mobs) {
+      const m = this.mobs[mid];
+      if (got.has(+mid) || got.has(mid) || m._stale || !m.alive) continue;
+      if (Math.abs(m.x - me.x) < 720 && Math.abs(m.y - me.y) < 490) { m._stale = true; this.setMobVisible(m, false); }
     }
     for (const [id, x, y, dir, anim, hp, maxHp, level] of ps) if (id !== this.net.selfId) { const r = this.remotes.get(id); if (r) { r.push({ x, y, dir, anim }); r.hp = hp; r.maxHp = maxHp; if (level) r.level = level; } }
   }

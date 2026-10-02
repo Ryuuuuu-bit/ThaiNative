@@ -8,6 +8,7 @@ import compression from 'compression';
 import { createServer } from 'node:http';
 import { Server } from 'socket.io';
 import path from 'node:path';
+import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { WORLD } from '../shared/constants.js';
 import { MAPS, mapAt, gateNear, canTravelFrom } from '../shared/data/maps.js';
@@ -56,13 +57,17 @@ const storeReady = setupAuth(app, {
 // no-cache = เบราว์เซอร์ถามทุกครั้ง (ETag → 304 ถ้าไม่เปลี่ยน) · อัปแพตช์แล้วรีโหลดได้ของใหม่แน่นอน
 // ภาพ/เสียงใน /assets: ใช้ของในเครื่องได้ 1 ชม. แล้วเช็คใหม่เบื้องหลัง (เปิดเกมซ้ำไม่ต้องถาม server ทีละพันไฟล์) · manifest/โค้ดยัง no-cache
 const NOCACHE = { setHeaders: (res, file) => res.setHeader('Cache-Control', /[\\/]assets[\\/].+\.(png|webp|jpe?g|gif|mp3|ogg|wav)$/i.test(file) ? 'public, max-age=3600, stale-while-revalidate=604800' : 'no-cache') };
+// PWA: service worker รุ่นละ 1 ไฟล์ (เปลี่ยนตาม commit ที่ deploy → แคชเก่าล้างเอง) · ห้ามแคชตัว sw.js
+const SW_VERSION = (process.env.RAILWAY_GIT_COMMIT_SHA || '').slice(0, 12) || `dev${Date.now()}`;
+const SW_JS = readFileSync(path.join(ROOT, 'server/pwa-sw.js'), 'utf8').replaceAll('__VERSION__', SW_VERSION);
+app.get('/sw.js', (_req, res) => { res.set({ 'Content-Type': 'application/javascript; charset=utf-8', 'Cache-Control': 'no-cache', 'Service-Worker-Allowed': '/' }); res.send(SW_JS); });
 app.use(compression());                                                        // gzip โค้ด/JSON (~1.9MB → ราว 1/4) · ภาพ PNG ข้ามเอง
 app.use(express.static(path.join(ROOT, 'client'), NOCACHE));
 app.use('/shared', express.static(path.join(ROOT, 'shared'), NOCACHE));
 app.use('/vendor', express.static(path.join(ROOT, 'node_modules/phaser/dist'), { maxAge: '1d' }));   // Phaser เปลี่ยนเฉพาะตอนอัปเวอร์ชัน
 
 const httpServer = createServer(app);
-const io = new Server(httpServer, { cors: { origin: '*' } });
+const io = new Server(httpServer, { cors: { origin: '*' }, perMessageDeflate: { threshold: 512 } });   // บีบอัดแพ็กเก็ตใหญ่ (td:state) ลด egress
 { const emit0 = io.emit.bind(io); io.emit = (ev, ...a) => { if (ev === 'chat') relayChat(a[0]); return emit0(ev, ...a); }; }   // ข่าวระบบ → Discord webhook
 
 const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
@@ -545,7 +550,7 @@ setInterval(() => {
     id: p.id, x: Math.round(p.x), y: Math.round(p.y), anim: p.anim, flipX: p.flipX,
     hp: Math.round(p.hp), maxHp: p.maxHp, level: p.level, party: p.partyId, wp: p.wp || 0, inst: p.inst || 0,
   }));
-  io.volatile.emit('world:snapshot', { t: Date.now(), players: snapshot, boss: social.bossPublic() });
+  if (snapshot.length) io.except('td').volatile.emit('world:snapshot', { t: Date.now(), players: snapshot, boss: social.bossPublic() });   // โลก TD ไม่ใช้ snapshot นี้ → ไม่ส่ง (ลด egress)
   for (const p of players.values()) {
     flushSync(p);
     if (p.hpDirty) { p.hpDirty = false; io.to(p.id).emit('pl:hp', { hp: Math.round(p.hp), maxHp: p.maxHp }); }
