@@ -8,6 +8,7 @@ import compression from 'compression';
 import { createServer } from 'node:http';
 import { Server } from 'socket.io';
 import path from 'node:path';
+import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { WORLD } from '../shared/constants.js';
 import { MAPS, mapAt, gateNear, canTravelFrom } from '../shared/data/maps.js';
@@ -56,6 +57,10 @@ const storeReady = setupAuth(app, {
 // no-cache = เบราว์เซอร์ถามทุกครั้ง (ETag → 304 ถ้าไม่เปลี่ยน) · อัปแพตช์แล้วรีโหลดได้ของใหม่แน่นอน
 // ภาพ/เสียงใน /assets: ใช้ของในเครื่องได้ 1 ชม. แล้วเช็คใหม่เบื้องหลัง (เปิดเกมซ้ำไม่ต้องถาม server ทีละพันไฟล์) · manifest/โค้ดยัง no-cache
 const NOCACHE = { setHeaders: (res, file) => res.setHeader('Cache-Control', /[\\/]assets[\\/].+\.(png|webp|jpe?g|gif|mp3|ogg|wav)$/i.test(file) ? 'public, max-age=3600, stale-while-revalidate=604800' : 'no-cache') };
+// PWA: service worker รุ่นละ 1 ไฟล์ (เปลี่ยนตาม commit ที่ deploy → แคชเก่าล้างเอง) · ห้ามแคชตัว sw.js
+const SW_VERSION = (process.env.RAILWAY_GIT_COMMIT_SHA || '').slice(0, 12) || `dev${Date.now()}`;
+const SW_JS = readFileSync(path.join(ROOT, 'server/pwa-sw.js'), 'utf8').replaceAll('__VERSION__', SW_VERSION);
+app.get('/sw.js', (_req, res) => { res.set({ 'Content-Type': 'application/javascript; charset=utf-8', 'Cache-Control': 'no-cache', 'Service-Worker-Allowed': '/' }); res.send(SW_JS); });
 app.use(compression());                                                        // gzip โค้ด/JSON (~1.9MB → ราว 1/4) · ภาพ PNG ข้ามเอง
 app.use(express.static(path.join(ROOT, 'client'), NOCACHE));
 app.use('/shared', express.static(path.join(ROOT, 'shared'), NOCACHE));

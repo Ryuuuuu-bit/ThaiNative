@@ -9,6 +9,8 @@ import { TopDownScene } from './scenes/TopDownScene.js';
 import { setupOrientationHint } from './systems/Orientation.js';
 import { applyDeviceClass } from './systems/Screen.js';
 import { setupTrailer } from './systems/Trailer.js';
+import { registerPwa } from './systems/Pwa.js';
+registerPwa();   // PWA: ติดตั้งเป็นแอป + แคชภาพไว้ในเครื่อง
 
 setupTrailer();                               // ตัวอย่างเรื่องราวบนหน้าเข้าสู่ระบบ
 applyDeviceClass();                           // จัดกลุ่มเครื่อง pc / phone / tablet → body.dev-*

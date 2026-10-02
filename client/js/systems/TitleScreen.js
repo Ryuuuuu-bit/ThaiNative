@@ -6,6 +6,7 @@
 // ============================================================
 import { sound } from './Sound.js';
 import { startDiscordLink } from './DiscordLink.js';
+import { refreshInstallButton } from './Pwa.js';
 
 const IW = 384, IH = 216;
 const LAST_KEY = 'thainative_title_last';
@@ -63,7 +64,7 @@ class TitleScreen {
     this.t0 = performance.now();
     const cap = document.getElementById('title-caption');
     if (cap) { cap.textContent = `📍 ${this.scene.nameTh}`; cap.classList.remove('hidden'); }
-    document.getElementById('title-credit')?.classList.remove('hidden'); document.getElementById('title-discord')?.classList.remove('hidden'); startDiscordLink();
+    document.getElementById('title-credit')?.classList.remove('hidden'); document.getElementById('title-discord')?.classList.remove('hidden'); startDiscordLink(); refreshInstallButton(true);
     sound.music(this.scene.music);
     if (!this.running) {
       this.running = true;
@@ -87,7 +88,7 @@ class TitleScreen {
     this.cv.classList.add('fade-out');
     setTimeout(() => { if (!this.running) this.cv.classList.add('hidden'); }, 600);
     document.getElementById('title-caption')?.classList.add('hidden');
-    document.getElementById('title-credit')?.classList.add('hidden'); document.getElementById('title-discord')?.classList.add('hidden');
+    document.getElementById('title-credit')?.classList.add('hidden'); document.getElementById('title-discord')?.classList.add('hidden'); refreshInstallButton(false);
     this.onStop?.();
   }
 

@@ -1,0 +1,20 @@
+{
+  "name": "ThaiNative Online – ตำนานผีไทย",
+  "short_name": "ThaiNative",
+  "description": "เกม MMORPG ผีไทย เล่นบนเว็บ ทั้งคอมและมือถือ",
+  "id": "/",
+  "start_url": "/?source=pwa",
+  "scope": "/",
+  "display": "fullscreen",
+  "display_override": ["fullscreen", "standalone"],
+  "orientation": "landscape",
+  "background_color": "#1a0907",
+  "theme_color": "#5a1611",
+  "lang": "th",
+  "categories": ["games"],
+  "icons": [
+    { "src": "/assets/ui/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/assets/ui/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/assets/ui/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}

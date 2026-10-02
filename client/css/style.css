@@ -2400,3 +2400,15 @@ body.td-mode.m-hud .npc-dlg { font-size: 3.1cqh; bottom: 24cqh; }
 .set-keys kbd { font: inherit; font-size: .9em; padding: .05em .4em; border-radius: 4px; background: rgba(255,255,255,.08); border: 1px solid rgba(255,255,255,.18); color: var(--text); }
 #fps-meter { position: fixed; left: 50%; top: 4px; transform: translateX(-50%); z-index: 60; font: 600 11px/1.4 system-ui, sans-serif; color: #b8f5c4; background: rgba(0,0,0,.55); padding: 1px 8px; border-radius: 8px; pointer-events: none; }
 #fps-meter.low { color: #ff9a8a; }
+
+/* ปุ่มติดตั้งเกม (PWA) หน้าแรก — อยู่เหนือปุ่ม Discord */
+#title-install { position: fixed; left: 1.2vw; bottom: calc(1.4vh + 2.9em); z-index: 5; display: inline-flex; align-items: center; gap: .45em; padding: .45em .9em; border-radius: 999px;
+  font: 500 clamp(12px, 1.7vh, 17px) 'Mitr', sans-serif; color: #fff; cursor: pointer; background: linear-gradient(180deg, #a8322a, #5a1611);
+  border: 1px solid rgba(255,225,160,.7); box-shadow: 0 2px 10px rgba(0,0,0,.45); }
+#title-install:hover { filter: brightness(1.15); }
+#title-install.hidden, #ios-install.hidden { display: none; }
+body.touch-dev #title-install .td-lb { display: none; }
+body.touch-dev #title-install { padding: 8px 12px; bottom: calc(1.4vh + 46px); }
+#ios-install { position: fixed; inset: 0; z-index: 9999; background: rgba(0,0,0,.6); display: flex; align-items: center; justify-content: center; }
+#ios-install .ios-box { max-width: min(92vw, 420px); background: #2a1210; color: #ffe7a8; border: 1px solid #c9a24a; border-radius: 12px; padding: 16px 18px; font: 400 15px 'Mitr', sans-serif; line-height: 1.5; }
+#ios-install ol { margin: 8px 0; padding-left: 1.3em; } #ios-install small { opacity: .7; }
