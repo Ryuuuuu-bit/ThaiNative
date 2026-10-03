@@ -10,6 +10,7 @@ for(const source of [...meta.anims,...meta.sources]){
   const image={width:png.readUInt32BE(16),height:png.readUInt32BE(20)},frames=new Map();
   textures.set(texKey(id,source),{
     getSourceImage:()=>image,has:name=>frames.has(name),frames,
+    setFilter(mode){this.filterMode=mode;},
     add(name,sourceIndex,x,y,w,h){
       assert.ok(x>=0&&y>=0&&x+w<=image.width&&y+h<=image.height,'source crop is inside the loaded texture');
       const frame={x,y,w,h,setTrim(cw,ch,tx,ty,tw,th){
@@ -35,4 +36,5 @@ for(const clip of meta.anims)for(const [row,dir] of DIRS.entries()){
     assert.equal(frame.trim.ty+cut.h*(cut.foot??1),frame.trim.ch-32,'feet keep a common baseline in Phaser');
   }
 }
+for(const animation of animations.values())for(const frame of animation.frames)assert.equal(textures.get(frame.key).filterMode,0,'every rendered boxer sheet uses nearest filtering');
 console.log('Phaser registers every boxer source frame with an unclipped canvas and common foot baseline.');

@@ -139,7 +139,7 @@ export class TopDownScene extends Phaser.Scene {
     $('#td-hud').classList.remove('hidden');
 
     const cam = this.cameras.main;
-    cam.setBounds(0, 0, this.mapW * TILE, this.mapH * TILE).setZoom(1.5 * RENDER_SCALE).startFollow(this.player, false, 0.14, 0.14).setRoundPixels(false);
+    cam.setBounds(0, 0, this.mapW * TILE, this.mapH * TILE).setZoom(1.5 * RENDER_SCALE).startFollow(this.player, false, 0.14, 0.14).setRoundPixels(true);
     this.atmo = new TdAtmosphere(this, this.layout); this.atmo.setLayout(this.layout, this.M.style);
     this.folk = new Townsfolk(this); this.folk.build();                                  // ชาวกรุงเดินไปมาในเมือง (ตกแต่ง)
     this.life.setMap(this.M);

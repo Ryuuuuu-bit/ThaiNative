@@ -34,6 +34,7 @@ export const animKey = (id, anim, dir) => `td:${id}:${anim}:${dir}`;
  * @param spec { id, anims: { walk: { frames: 6, rate: 10, loop: true }, ... }, frame: { w, h } }
  */
 export function registerDir8(scene, spec) {
+  const filtered = new Set();
   let ok = false;
   for (const [anim, a] of Object.entries(spec.anims)) {
     const tk = texKey(spec.id, anim);
@@ -48,6 +49,11 @@ export function registerDir8(scene, spec) {
         const cut=spec.cuts?.[anim]?.[row]?.[k];
         const frameKey=cut?.source?texKey(spec.id,cut.source):tk;
         const target=cut?.source?scene.textures.get(frameKey):tex;
+        // Keep authored pixel art sharp when scaled, including separate motion sheets.
+        if (spec.cuts && !filtered.has(frameKey)) {
+          target.setFilter(0); // Phaser.Textures.FilterMode.NEAREST
+          filtered.add(frameKey);
+        }
         if (!target.has(name)) {
           if(cut){
             const frame=target.add(name,0,cut.x,cut.y,cut.w,cut.h);
