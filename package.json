@@ -6,7 +6,8 @@
   "scripts": {
     "start": "node server/index.js",
     "dev": "node --watch server/index.js",
-    "test": "node tests/combat.test.mjs && node tests/economy.test.mjs"
+    "test": "node tests/combat.test.mjs && node tests/economy.test.mjs",
+    "test:world": "node tests/three-world.test.mjs"
   },
   "license": "UNLICENSED",
   "dependencies": {

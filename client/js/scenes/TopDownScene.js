@@ -53,6 +53,7 @@ import { notice } from '../systems/Dialog.js';
 import { NpcLife, SERVICE } from '../topdown/NpcLife.js';
 import { heroId, baseHeroId } from '../systems/HeroPreview.js';
 import { Townsfolk } from '../topdown/Townsfolk.js';
+import { ThreeWorld } from '../topdown/ThreeWorld.js';
 const NONE = '__none';                                  // autoMobs: ยกเลิกทั้งหมด (Auto ไม่ไล่ตีผี)
 
 const $ = (s) => document.querySelector(s);
@@ -152,6 +153,8 @@ export class TopDownScene extends Phaser.Scene {
     if (document.body.classList.contains('touch')) this.ui.chatBox?.collapse(true);
     this.weapons.attach(this.player, () => this.player.look(), () => ({ anim: this.player.st }));
     this.minimap = new TdMinimap(this.groundMini); this.ui.syncSettings?.();   // ซ่อนมินิแมพตามตั้งค่า (สร้างหลัง UI)
+    try { this.threeWorld = new ThreeWorld(this); }
+    catch (error) { console.error('Three.js world initialization failed', error); this.ui.toast('เปิดฉาก 2.5D ไม่สำเร็จ กรุณาตรวจ WebGL แล้วรีเฟรช', 'warn'); }
     this.zone = null;
     this.ui.updateHud();
     this.setupNetwork();
