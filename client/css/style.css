@@ -433,6 +433,12 @@ kbd { display: inline-block; min-width: 1.6em; text-align: center; padding: 0 .3
 .quest button.gold { background: linear-gradient(180deg,#f4d03f,#b7950b); color: #2b1a05; font-weight: 600; }
 .quest button.ghost { border-color: #7f8c8d; color: var(--muted); }
 .quest button:disabled { opacity: .4; }
+.quest-actions { display: flex; flex-direction: column; gap: .4em; flex-shrink: 0; }
+.quest-navigate { pointer-events: auto; cursor: pointer; padding: .35em .6em; margin-top: .35em; border: 1px solid var(--gold); border-radius: 5px; color: var(--gold-soft); background: rgba(20,12,30,.9); font: inherit; }
+#quest-nav { position: absolute; left: 50%; top: 12%; transform: translateX(-50%); width: min(390px, 65vw); padding: .6em .8em; border: 1px solid var(--gold); border-radius: 8px; background: rgba(20,12,30,.92); color: var(--gold-soft); font-size: .82em; z-index: 20; }
+#quest-nav strong, #quest-nav span { display: block; }
+#quest-nav span { color: #eaecee; margin: .3em 0; }
+#quest-nav button { pointer-events: auto; cursor: pointer; border: 1px solid #a88e62; border-radius: 5px; background: #302537; color: #fff; padding: .35em .7em; }
 .px-ico { width: 1.6em; height: 1.6em; image-rendering: pixelated; vertical-align: middle; object-fit: contain; }
 .skill .px-ico, .sk-icon .px-ico, .hb-slot .px-ico { width: 1.9em; height: 1.9em; }
 .need .px-ico { width: 1.2em; height: 1.2em; }

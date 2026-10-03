@@ -19,6 +19,7 @@ import { loadSettings, saveSettings } from '../systems/Settings.js';
 import { saveCharacter } from '../systems/Character.js';
 import { UI, rarityOf, npcPortrait } from '../systems/UI.js';
 import { Village } from '../systems/Village.js';
+import { QuestNavigator } from '../topdown/QuestNavigator.js';
 import { TdLife } from '../topdown/TdLife.js';
 import { Econ } from '../net/Econ.js';
 import { Network } from '../net/Network.js';
@@ -120,6 +121,8 @@ export class TopDownScene extends Phaser.Scene {
     this.econ = new Econ(this);
     this.ui = new UI(this);
     this.village = new Village(this);
+    this.questNav = new QuestNavigator(this);
+    this.village.renderTracker();
     this.life = new TdLife(this);
     // HUD: ย้ายปุ่มเมนูลงมุมขวาล่าง (ข้าง Hotbar) · ซ่อนแถบคำแนะนำหลัง 15 วิ
     { const hb = document.querySelector('.hud-buttons'); if (hb) { hb.classList.add('dock'); $('#hud').appendChild(hb);
@@ -825,6 +828,7 @@ export class TopDownScene extends Phaser.Scene {
   }
 
   setTarget(m, auto = false) {
+    if (!auto && this.questNav?.travelling) this.questNav.stop();
     if (!m.alive) return;
     this.player.target = m; this.player.path = [];
     if (!auto) { this.player.autoTarget = null; this.pendingTalk = null; this.social?.pw?.stopFollow(); }   // เลือกเองด้วยมือ → ไม่ยอมแพ้ไล่เป้าอัตโนมัติ · เลิกติดตามหัวหน้า
@@ -1374,8 +1378,9 @@ export class TopDownScene extends Phaser.Scene {
     const k = Math.min(1, dt * 8);
     for (const img of list) {
       const hw = img.displayWidth * 0.42, top = img.y - img.displayHeight;
-      const cover = Math.abs(p.x - img.x) < hw && p.y > top + 6 && p.y < img.y + 10;
-      const want = cover ? 0.4 : 1;
+      const playerHalf = Math.min(12, p.displayWidth * 0.25);
+      const cover = img.depth >= p.depth && p.x + playerHalf > img.x - hw && p.x - playerHalf < img.x + hw && p.y - 6 > top + 6 && p.y - p.displayHeight < img.y;
+      const want = cover ? 0.28 : 1;
       if (img.alpha !== want) img.setAlpha(Math.abs(img.alpha - want) < 0.02 ? want : img.alpha + (want - img.alpha) * k);
     }
   }
@@ -1449,7 +1454,7 @@ export class TopDownScene extends Phaser.Scene {
         this.ui.setOnline(true, this.remotes.size);
         if (how === 'portal' && maps?.length && this.M.realm) this.ui.toast(`🌀 ปลดล็อกวาร์ป: ${this.M.nameTh} (คุยกับฤๅษีเฝ้าประตูมิติเพื่อกลับมาได้ทันที)`, 'ok', 3200);
       })
-      .on('td:warpFail', ({ msg }) => { this.warping = false; this.ui.toast(msg || 'วาร์ปไม่สำเร็จ', 'warn', 2400); })
+      .on('td:warpFail', ({ msg }) => { this.warping = false; this.questNav?.stop(); this.ui.toast(msg || 'วาร์ปไม่สำเร็จ', 'warn', 2400); })
       .on('crypt:info', (d) => this.showCrypt(d))
       .on('crypt:fail', ({ msg }) => { this.warping = false; this.ui.toast(msg || 'เข้าไม่ได้', 'warn', 2600); })
       .on('crypt:left', ({ left }) => { if (left <= 3 || left % 5 === 0) this.ui.toast(`💀 เหลือผีอีก ${left} ตัว`, '', 1600); })
@@ -1735,7 +1740,7 @@ export class TopDownScene extends Phaser.Scene {
     return [];
   }
 
-  moveTo(x, y) { const p = this.player; this.pendingTalk = null; if (this.social && !this._pkChase) this.social.pkTarget = null; if (p.alive) p.path = this.findPath(p.x, p.y - 2, x, y); }   // สั่งเดินที่ใหม่ = เลิกเดินไปคุย NPC ที่ค้างอยู่ (talk() ตั้งกลับเองหลังเรียก)
+  moveTo(x, y, navigation = false) { if (!navigation) this.questNav?.stop(); const p = this.player; this.pendingTalk = null; if (this.social && !this._pkChase) this.social.pkTarget = null; if (p.alive) p.path = this.findPath(p.x, p.y - 2, x, y); }   // สั่งเดินที่ใหม่ = เลิกเดินไปคุย NPC ที่ค้างอยู่ (talk() ตั้งกลับเองหลังเรียก)
 
   /**
    * กันติดสิ่งก่อสร้าง: เดินตามทาง (คลิก/Auto) แต่ตำแหน่งไม่ขยับเกิน 0.45 วิ
@@ -1765,13 +1770,14 @@ export class TopDownScene extends Phaser.Scene {
   // ------------------------------------------------------------
   update(time, delta) {
     const p = this.player, k = this.keys, dt = delta / 1000;
+    this.questNav?.update(time);
     const typing = this.ui.typing;
     if (p.alive) {
       const kR = k.RIGHT.isDown || k.D.isDown, kL = k.LEFT.isDown || k.A.isDown, kD = k.DOWN.isDown || k.S.isDown, kU = k.UP.isDown || k.W.isDown;
       let vx = typing ? 0 : kR - kL;
       let vy = typing ? 0 : kD - kU;
       if (this.touch?.vec) { vx += this.touch.vec.x; vy += this.touch.vec.y; }   // จอยสติ๊กบนมือถือ
-      if (vx || vy) { p.path = []; p.target = null; this.pendingTalk = null; this.social?.pw?.stopFollow(); if (this.social) this.social.pkTarget = null; }   // เดินเอง = เลิกติดตามหัวหน้า
+      if (vx || vy) { this.questNav?.stop(); p.path = []; p.target = null; this.pendingTalk = null; this.social?.pw?.stopFollow(); if (this.social) this.social.pkTarget = null; }   // เดินเอง = เลิกติดตามหัวหน้า
       else if (p.target) {
         const m = p.target;
         if (!m.alive) p.target = null;
@@ -1798,7 +1804,7 @@ export class TopDownScene extends Phaser.Scene {
           this.sfx.play(this.attackRange() > 40 ? 'arrow' : 'swing');
           this.net?.send(pk ? 'pk:hit' : 'pvp:hit', pk ? { id: foe.id } : {});
         }
-      } else if (this.settings.autoSkill && !p.path.length && !this.recalling && !this.social?.pw?.following && time > (p.nextAuto || 0)) {
+      } else if (this.settings.autoSkill && !this.questNav?.travelling && !p.path.length && !this.recalling && !this.social?.pw?.following && time > (p.nextAuto || 0)) {
         // Auto: ไม่มีเป้า/ไม่ได้สั่งเดิน → ล็อกผีที่ใกล้ที่สุดในหน้าจอ (ตามชนิดที่เลือก) แล้วเดินไปตีเอง
         p.nextAuto = time + 300;
         const m = this.autoPick(time);
