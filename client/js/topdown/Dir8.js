@@ -87,6 +87,11 @@ const ACT_FALLBACK = { heal: 'cast' };
 export function resolveAct(scene, id, act) { return act && !hasDir8(scene, id, act) && ACT_FALLBACK[act] ? ACT_FALLBACK[act] : act; }
 export function playDir(sprite, anim, dir, restart = false) {
   const scene = sprite.scene;
+  // A pending fallback attack must never complete a different animation.
+  if (sprite._holdTimer && (restart || anim !== sprite._holdAnim)) {
+    sprite._holdTimer.remove(); sprite._holdTimer = null; sprite._holdUntil = 0;
+  }
+  if (anim !== 'walk') sprite.anims.timeScale = 1;
   sprite.dir = dir;
   if (sprite.d8id && hasDir8(scene, sprite.d8id, 'idle')) {
     // ท่าโจมตีที่ไม่มีภาพจริง (หรืออาวุธไม่ใช่หมัด) → ยืนนิ่งท่าเตรียม + อาวุธในมือเหวี่ยงแทน (ไม่เอาท่าเดินมาแทนแล้ว ดูสะดุด)
@@ -114,7 +119,11 @@ export function playDir(sprite, anim, dir, restart = false) {
       setLook(sprite, true);
       sprite._holdUntil = now + 300;
       const k = `${animKey(sprite.d8id, 'idle', dir)}:attack`;
-      scene.time.delayedCall(300, () => { if (sprite.active) { sprite._holdUntil = 0; sprite.emit('animationcomplete', { key: k }); } });
+      sprite._holdAnim = anim;
+      sprite._holdTimer = scene.time.delayedCall(300, () => {
+        sprite._holdTimer = null;
+        if (sprite.active) { sprite._holdUntil = 0; sprite.emit('animationcomplete', { key: k }); }
+      });
       return true;
     }
     sprite._holdUntil = 0;

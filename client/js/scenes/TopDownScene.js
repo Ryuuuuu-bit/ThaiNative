@@ -191,7 +191,7 @@ export class TopDownScene extends Phaser.Scene {
     this.onAppearanceChanged = () => {
       const p = this.player, key = bakeCharacter(this, p.char.appearance);
       p.texKey = p.legacyKey = key; p.setTexture(key, 'idle_0');
-      this.applyHero(p, p.char.appearance, () => this.playerAnim('idle', true));
+      this.applyHero(p, p.char.appearance, () => this.refreshPlayerAnimation());
       this.playerAnim('idle', true);
       this.updateQuestMark();                                         // เปลี่ยนอาวุธ → ป้าย ! ของครูอาชีพเปลี่ยนตาม
     };
@@ -499,11 +499,11 @@ export class TopDownScene extends Phaser.Scene {
     p.look = () => p._previewApp || p.char.appearance;                 // appearance ที่แสดงอยู่ (รวมลองชุดในร้าน)
     p.previewAppearance = (app, ms = 6000) => {                         // ลองชุดก่อนซื้อ: แค่ภาพ กลับเป็นชุดจริงเมื่อหมดเวลา
       clearTimeout(p._pvT); p._previewApp = app;
-      this.applyHero(p, app, () => this.playerAnim('idle', true)); this.playerAnim('idle', true);
-      p._pvT = setTimeout(() => { p._previewApp = null; if (p.active) { this.applyHero(p, p.char.appearance, () => this.playerAnim('idle', true)); this.playerAnim('idle', true); } }, ms);
+      this.applyHero(p, app, () => this.refreshPlayerAnimation()); this.playerAnim('idle', true);
+      p._pvT = setTimeout(() => { p._previewApp = null; if (p.active) { this.applyHero(p, p.char.appearance, () => this.refreshPlayerAnimation()); this.playerAnim('idle', true); } }, ms);
     };      // ดาบ/ไม้เท้า/ธนู ใช้ท่ายืน + อาวุธเหวี่ยง · มวยใช้ท่าต่อยจริง (ถ้ามี)
     this.player = p;
-    this.applyHero(p, char.appearance, () => this.playerAnim('idle', true));
+    this.applyHero(p, char.appearance, () => this.refreshPlayerAnimation());
     this.blockCollider = this.physics.add.collider(p, this.blocks);
     this.nameTag = makeText(this, 0, 0, char.name, { fontSize: '7px', color: '#fff3c4', align: 'center' }).setOrigin(0.5, 1).setDepth(99999);
     this.selfGm = () => !!account.account?.admin;                                      // ทุกตัวละครของบัญชีแอดมิน = GM
@@ -594,6 +594,12 @@ export class TopDownScene extends Phaser.Scene {
   }
 
   playerAnim(name, restart = false) { const p = this.player; return playDir(p, name, p.dir || 'south', restart); }
+
+  refreshPlayerAnimation() {
+    const p = this.player;
+    const anim = !p.alive ? 'die' : p.st === 'attack' ? 'attack' : p.st === 'walk' ? 'walk' : 'idle';
+    return this.playerAnim(anim, true);
+  }
 
   // ------------------------------------------------------------
   //  NPC
@@ -1077,7 +1083,7 @@ export class TopDownScene extends Phaser.Scene {
     // จังหวะ: ง้าง/รวมพลังก่อน แล้วค่อยปล่อย (ธนู ~170ms · เวท ~150ms · ดาบฟันตอน ~110ms)
     const act = resolveAct(this, p.d8id, ACTION_ANIM[p.char.appearance.job]), real = act && this.anims.exists(`td:${p.d8id}:${act}:south`);
     const fireAt = real ? ({ slash: 170, shoot: 300, cast: 260, heal: 260, attack: 150 }[act] || 150) : ranged ? (magic ? 150 : 170) : 110;
-    if (!ranged) { const k = Math.min(1, 4 / Math.max(1, dist(p, m))); this.tweens.add({ targets: p, x: p.x + (m.x - p.x) * k, y: p.y + (m.y - p.y) * k, duration: 90, yoyo: true, ease: 'Quad.easeOut' }); }
+    // Keep the physics feet planted; the sprite and slash effect supply the swing.
     this.time.delayedCall(ranged ? fireAt - 40 : 0, () => this.sfx.play(ranged ? 'arrow' : 'swing'));
     if (ranged) this.time.delayedCall(fireAt, () => m.alive && p.alive && this.vfx.shoot(p, m, JOBS[p.char.appearance.job]?.attack?.projectile === 'pill' ? 'pill' : magic ? 'magic' : 'arrow'));
     else this.time.delayedCall(fireAt, () => m.alive && this.vfx.slash(p, m, false));
@@ -1823,6 +1829,7 @@ export class TopDownScene extends Phaser.Scene {
         const now = this.time.now, sp = SPEED * (1 + Math.min(0.4, (p.buffs || []).reduce((a, b) => a + (b.until > now && b.buff?.speed || 0), 0))) * (this.wb?.speedMul(p) ?? 1);   // ยาต้มพยัคฆ์เหิน: วิ่งเร็วขึ้น
         p.setVelocity(vx / len * sp, vy / len * sp);
         p.dir = stableDir(vx, vy, p.dir); p.st = 'walk'; this.playerAnim('walk');
+        p.anims.timeScale = sp / SPEED;
       } else { p.setVelocity(0, 0); p.st = 'idle'; this.playerAnim('idle'); }
       this.unstick(p, time, !!(!typing && (kR || kL || kD || kU) || this.touch?.vec));
       if (!this.econ.server && this.inTown() && p.char.hp < p.derived.maxHp) p.char.hp = Math.min(p.derived.maxHp, p.char.hp + p.derived.maxHp * 0.04 * dt);
