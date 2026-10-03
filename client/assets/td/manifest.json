@@ -1976,6 +1976,7 @@
    "scale": 0.5
   },
   "hero2_female_boxer_t1": {
+   "renderScale": 0.85,
    "anims": [
     "idle",
     "walk",
