@@ -1049,11 +1049,10 @@ export class TdSkills {
         const nx = from.x + (tx - from.x) * st.k, ny = from.y + (ty - from.y) * st.k;
         if (this.solidAt(nx, ny - 2)) return;
         p.setPosition(nx, ny);
-        if (leap) { const k = 1 + Math.sin(st.k * Math.PI) * 0.35; p.setScale(p._d8 ? (s.d8meta?.[p.d8id]?.scale || 2 / 3) * k : k); }
         if (s.time.now - lastSend > 30) { lastSend = s.time.now; fx.afterimage(p, tint); if (s.econ.server) s.net.send('td:move', { x: Math.round(p.x), y: Math.round(p.y), dir: p.dir, anim: 'walk' }); }
         if (onPath) for (const m of this.mobsNear(p.x, p.y, 22)) if (!hitSet.has(m)) { hitSet.add(m); onPath(m); fx.slash(m.x, m.y - 14, Math.atan2(o.uy, o.ux), { size: 1, tint }); }
       },
-      onComplete: () => { p.dashing = false; if (leap) p.setScale(p._d8 ? (s.d8meta?.[p.d8id]?.scale || 2 / 3) : (p.baseScale || 1)); p.st = 'idle'; if (s.econ.server) s.net.send('td:move', { x: Math.round(p.x), y: Math.round(p.y), dir: p.dir, anim: 'idle' }); onLand?.(p.x, p.y); if (!leap) fx.shock(p.x, p.y, { r: 30, tint }); } });
+      onComplete: () => { p.dashing = false; p.st = 'idle'; if (s.econ.server) s.net.send('td:move', { x: Math.round(p.x), y: Math.round(p.y), dir: p.dir, anim: 'idle' }); onLand?.(p.x, p.y); if (!leap) fx.shock(p.x, p.y, { r: 30, tint }); } });
   }
 
   /** ตัวละครที่โดนสกิลปาร์ตี้ (ตัวเรา/ผู้ร่าย + เพื่อนร่วมปาร์ตี้ในรัศมี) — ใช้แสดงภาพ */
