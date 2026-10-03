@@ -1588,20 +1588,20 @@
   },
   "hero2_male_mage_t1": {
    "anims": [
+    "idle",
     "walk",
     "cast",
     "spell",
-    "idle",
     "die"
    ],
    "frames": {
+    "idle": 4,
     "walk": 6,
     "cast": 8,
     "spell": 8,
-    "idle": 4,
     "die": 7
    },
-   "frame": 104,
+   "frame": 136,
    "scale": 0.54,
    "lazy": true
   },
@@ -1664,18 +1664,18 @@
   },
   "hero2_male_archer_t1": {
    "anims": [
+    "idle",
     "walk",
     "shoot",
-    "idle",
     "die"
    ],
    "frames": {
+    "idle": 4,
     "walk": 6,
     "shoot": 8,
-    "idle": 4,
     "die": 7
    },
-   "frame": 104,
+   "frame": 136,
    "scale": 0.54,
    "lazy": true
   },
@@ -1732,18 +1732,18 @@
   },
   "hero2_male_boxer_t1": {
    "anims": [
+    "idle",
     "walk",
     "attack",
-    "idle",
     "die"
    ],
    "frames": {
+    "idle": 4,
     "walk": 6,
     "attack": 8,
-    "idle": 4,
     "die": 7
    },
-   "frame": 104,
+   "frame": 136,
    "scale": 0.54,
    "lazy": true
   },
@@ -1800,20 +1800,20 @@
   },
   "hero2_male_healer_t1": {
    "anims": [
+    "idle",
     "walk",
     "heal",
     "cast",
-    "idle",
     "die"
    ],
    "frames": {
+    "idle": 4,
     "walk": 6,
     "heal": 8,
     "cast": 8,
-    "idle": 4,
     "die": 7
    },
-   "frame": 104,
+   "frame": 136,
    "scale": 0.54,
    "lazy": true
   },
@@ -1873,6 +1873,107 @@
    "frame": 104,
    "scale": 0.54,
    "lazy": true
+  },
+  "hero2_male_swordman_bl": {
+   "anims": [
+    "idle",
+    "walk",
+    "slash",
+    "die"
+   ],
+   "frames": {
+    "idle": 4,
+    "walk": 6,
+    "slash": 6,
+    "die": 7
+   },
+   "frame": 112,
+   "scale": 0.54,
+   "lazy": true
+  },
+  "mob_gd_hung": {
+   "anims": [
+    "idle",
+    "walk",
+    "attack",
+    "cast",
+    "die",
+    "execute",
+    "noose"
+   ],
+   "frames": {
+    "idle": 9,
+    "walk": 9,
+    "attack": 9,
+    "cast": 9,
+    "die": 9,
+    "execute": 9,
+    "noose": 9
+   },
+   "frame": 176,
+   "scale": 0.5
+  },
+  "mob_gd_krasue": {
+   "anims": [
+    "idle",
+    "walk",
+    "attack",
+    "cast",
+    "die",
+    "lash"
+   ],
+   "frames": {
+    "idle": 9,
+    "walk": 9,
+    "attack": 9,
+    "cast": 9,
+    "die": 9,
+    "lash": 9
+   },
+   "frame": 160,
+   "scale": 0.5
+  },
+  "mob_gd_yat": {
+   "anims": [
+    "idle",
+    "walk",
+    "attack",
+    "cast",
+    "die",
+    "crawl",
+    "stare"
+   ],
+   "frames": {
+    "idle": 9,
+    "walk": 9,
+    "attack": 9,
+    "cast": 9,
+    "die": 9,
+    "crawl": 9,
+    "stare": 9
+   },
+   "frame": 168,
+   "scale": 0.5
+  },
+  "mob_gd_pob": {
+   "anims": [
+    "idle",
+    "walk",
+    "attack",
+    "cast",
+    "die",
+    "tongue"
+   ],
+   "frames": {
+    "idle": 9,
+    "walk": 9,
+    "attack": 9,
+    "cast": 9,
+    "die": 9,
+    "tongue": 9
+   },
+   "frame": 176,
+   "scale": 0.5
   }
  },
  "images": [

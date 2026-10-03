@@ -33,6 +33,7 @@ import { TD_MAPS, EVENT_MAPS, getMap, validMap, arrivalPoint, RESPAWN_WAIT_MS } 
 import { nightInfo } from '/shared/data/world.js';
 import { CRYPT_ZONES, lvOf } from '/shared/data/crypt.js';
 import { WorldBossUI } from '../topdown/WorldBoss.js';
+import { GhostDungeonUI } from '../topdown/GhostDungeon.js';
 import { hasDir8, resolveAct } from '../topdown/Dir8.js';
 import { dirFromVector, stableDir, playDir, registerDir8, texKey, animKey, DIRS as D8_DIRS } from '../topdown/Dir8.js';
 import { TdSkills } from '../topdown/TdSkills.js';
@@ -68,7 +69,7 @@ const HP_POTS = ['hp_s', 'hp_m', 'pot_aloe', 'pot_turmeric'];
 const MP_POTS = ['mp_s', 'mp_m', 'pot_anchan'];
 /** NPC → หน้าต่างบริการ (ชุดเดียวกับโลกเดิม) */
 const NPC_OPEN = { market: 'market', travel: 'travel', shop: 'mae_kha', smith: 'lung_dam', cook: 'pa_sa', tailor: 'tailor', kru_sword: 'kru_sword', kru_mage: 'kru_mage', kru_archer: 'kru_archer', kru_boxer: 'kru_boxer', kru_healer: 'kru_healer' };
-const NPC_ICON = { market: '⚓', travel: '🎁', shop: '🧪', quest: '❗', smith: '🔨', tailor: '👘', cook: '🍲', kru_sword: '⚔️', kru_mage: '🔮', kru_archer: '🏹', kru_boxer: '🥊', kru_healer: '🌿', crypt: '💀' };
+const NPC_ICON = { market: '⚓', travel: '🎁', shop: '🧪', quest: '❗', smith: '🔨', tailor: '👘', cook: '🍲', kru_sword: '⚔️', kru_mage: '🔮', kru_archer: '🏹', kru_boxer: '🥊', kru_healer: '🌿', crypt: '💀', ghostdg: '☠️' };
 const rand = (a, b) => a + Math.random() * (b - a);
 const dist = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
 const DIRS = ['east', 'south-east', 'south', 'south-west', 'west', 'north-west', 'north', 'north-east'];
@@ -156,7 +157,7 @@ export class TopDownScene extends Phaser.Scene {
     this.setupNetwork();
     this.time.delayedCall(2500, () => this.cosRefundNotice());          // เคยมีชุดแต่งตัว → แจ้งยอดเงินที่คืน
     if ((this.player?.char?.level || 1) > 3) this.ui.news?.autoOpen();   // มีข่าวใหม่ → เปิดกระดานข่าวครั้งเดียว · ตัวใหม่ (Lv.1–3) ให้เห็นการแนะนำก่อน
-    if (this.econ.server) { this.social = new TdSocial(this); this.wb = new WorldBossUI(this); this.wb.bind(this.net); }   // บอสโลกพระราหู           // ปาร์ตี้ · เทรด · เพื่อน · อันดับ · ฉายา (ต้องออนไลน์)
+    if (this.econ.server) { this.social = new TdSocial(this); this.wb = new WorldBossUI(this); this.wb.bind(this.net); this.gd = new GhostDungeonUI(this); this.gd.bind(this.net); }   // บอสโลกพระราหู           // ปาร์ตี้ · เทรด · เพื่อน · อันดับ · ฉายา (ต้องออนไลน์)
     this.ui.toast(this.M.realm ? `${this.M.icon} ${this.M.nameTh} · ${this.M.sub}` : '🏯 ยินดีต้อนรับสู่กรุงศรีอยุธยา · คลิกพื้นเพื่อเดิน คลิกผีเพื่อโจมตี · คลิก NPC เพื่อเปิดร้าน', '', 6000);
     if (!this.econ.server) this.time.addEvent({ delay: 5000, loop: true, callback: () => this.saveSoon() });
     // ฟื้น MP ทุกวินาที (ในเมืองเร็วกว่า) – MP เป็นของ client ทั้งออนไลน์/ออฟไลน์ · HP ออนไลน์ server ฟื้นให้
@@ -273,13 +274,14 @@ export class TopDownScene extends Phaser.Scene {
     this.cameras.main.flash(260, 200, 170, 255);
     if (!this.econ.server) this.saveSoon();
     this.wb?.onMap();
+    this.gd?.onMap();
   }
 
   /** ประตูมิติ: วงแสงหมุน + ป้ายปลายทาง · เดินเข้า = วาร์ป */
   buildPortals() {
     this.portals = (this.layout.portals || []).map((pt) => {
-      const cr = pt.to.startsWith('crypt_'), T2 = TD_MAPS[pt.to];
-      const col = cr ? (pt.to === 'crypt_exit' ? 0xffd27a : pt.boss ? 0xff5a4a : 0x8fd0ff) : pt.to === 'ayutthaya' ? 0xffd27a : T2.style?.waterTint || 0xc39bd3;
+      const cr = pt.to.startsWith('crypt_') || pt.to === 'gd_exit', T2 = TD_MAPS[pt.to];
+      const col = cr ? (pt.to === 'crypt_exit' || pt.to === 'gd_exit' ? 0xffd27a : pt.boss ? 0xff5a4a : 0x8fd0ff) : pt.to === 'ayutthaya' ? 0xffd27a : T2.style?.waterTint || 0xc39bd3;
       const base = this.add.ellipse(pt.x, pt.y, 60, 26, col, 0.25).setDepth(0.8).setStrokeStyle(2, col, 0.9);
       const ring = this.add.image(pt.x, pt.y - 22, 'fx_ring').setDepth(pt.y - 1).setTint(col).setScale(0.9, 1.3).setAlpha(0.85).setBlendMode(Phaser.BlendModes.ADD);
       const core = this.add.image(pt.x, pt.y - 22, 'fx_glow').setDepth(pt.y - 2).setTint(col).setDisplaySize(46, 64).setAlpha(0.55).setBlendMode(Phaser.BlendModes.ADD);
@@ -297,6 +299,7 @@ export class TopDownScene extends Phaser.Scene {
 
   /** ขอวาร์ป (ผ่านประตู หรือ NPC) · ออฟไลน์ = ย้ายเองทันที */
   warpTo(to, via = 'portal') {
+    if (to === 'gd_exit') { if (!this.warping) { this.warping = true; this.time.delayedCall(3000, () => { this.warping = false; }); this.net.send('gd:leave', {}); } return true; }
     if (to.startsWith('crypt_')) return this.cryptGo(to);
     const T2 = TD_MAPS[to], p = this.player;
     if (!T2 || this.warping || !p.alive) return;
@@ -322,6 +325,7 @@ export class TopDownScene extends Phaser.Scene {
   //  สุสานใต้ดิน: หน้าต่างเลือกชั้น (สัปเหร่อเฒ่า) · บันไดขึ้น/ลง
   // ------------------------------------------------------------
   cryptLabel(pt) {
+    if (pt.to === 'gd_exit') return '🕯️ ออกจากลาน\n(กลับหน้าหลวงตา)';
     if (pt.to === 'crypt_exit') return pt.final ? `🏯 กลับกรุงศรีฯ${this.cryptOpen ? '' : ' 🔒'}` : '▲ บันไดขึ้น\n(กลับกรุงศรีฯ)';
     const f = this.M.crypt?.f || 0;
     return `${pt.boss ? '☠ ห้องบอส' : '▼ บันไดลง'} ชั้น ${f + 1}${this.cryptOpen ? '' : ' 🔒'}`;
@@ -409,7 +413,7 @@ export class TopDownScene extends Phaser.Scene {
     // ใบเสมาเรียงบนกำแพงเมือง: บนขอบหน้ากำแพงทุกช่วง + ด้านนอกของกำแพงข้าง (ตกแต่ง ไม่ชนกัน)
     const gt = (x, y) => ground[y]?.[x], isW = (t) => t === T.WALL || t === T.WALLTOP;
     const sema = (x, y) => this.add.image(x, y, 'td_sema').setOrigin(0.5, 1).setDepth(y);
-    if (this.M.crypt) {                                                        // สุสานใต้ดิน: หินทึบสีมืด + ขอบหินจาง · หน้าผนังอิฐหรี่ลง (ไม่มีใบเสมา)
+    if (this.M.crypt || this.M.gd) {                                          // สุสานใต้ดิน/ห้องบอสผี: หินทึบสีมืด + ขอบหินจาง · หน้าผนังอิฐหรี่ลง (ไม่มีใบเสมา)
       const rock = this.add.graphics().setDepth(0.28);
       for (let y = 0; y < MAP_H; y++) for (let x = 0; x < MAP_W; x++) {
         const t = gt(x, y), X = x * TILE, Y = y * TILE;
@@ -422,7 +426,7 @@ export class TopDownScene extends Phaser.Scene {
         if (!isW(gt(x + 1, y)) && gt(x + 1, y) != null) rock.fillRect(X + TILE - 2, Y, 2, TILE);
       }
     }
-    if (!this.M.crypt) for (let y = 0; y < MAP_H; y++) for (let x = 0; x < MAP_W; x++) {
+    if (!this.M.crypt && !this.M.gd) for (let y = 0; y < MAP_H; y++) for (let x = 0; x < MAP_W; x++) {
       const t = gt(x, y); if (!isW(t)) continue;
       if (t === T.WALL) sema(x * TILE + 8, y * TILE + 2);
       else if (!isIsland(x - 1, y) || !isIsland(x + 1, y)) sema(x * TILE + 8, (y + 1) * TILE);
@@ -790,12 +794,14 @@ export class TopDownScene extends Phaser.Scene {
       if (n.id === 'quest') return this.village.openQuests();
       if (n.id === 'warp') return this.openWarp();
       if (n.id === 'crypt') return this.openCrypt();
+      if (n.id === 'ghostdg') return this.gd?.open();
     }
     // NPC อื่น: กล่องคุยด้านล่าง (ปุ่มหลักพาไปหน้าต่างของ NPC นั้น)
     const dlg = (this.npcDlg ||= new NpcDialog(this));
     const act = n.id === 'quest' ? { label: '📋 ดูกระดานเควส', run: () => this.village.openQuests() }
       : n.id === 'warp' ? { label: '🌀 เปิดประตูมิติ', run: () => this.openWarp() }
-      : n.id === 'crypt' ? { label: '💀 ลงสุสานใต้ดิน', run: () => this.openCrypt() } : null;
+      : n.id === 'crypt' ? { label: '💀 ลงสุสานใต้ดิน', run: () => this.openCrypt() }
+      : n.id === 'ghostdg' ? { label: '☠️ ดันเจี้ยนสี่ผีป่าช้า', run: () => this.gd?.open() } : null;
     if (!act && !(Array.isArray(n.lines) && n.lines.length)) return;
     dlg.show({ ...n, icon: NPC_ICON[n.id], lines: n.lines?.length ? n.lines : [n.role || 'ว่าไงพ่อหนุ่มแม่หนู'], get line() { return n.line; }, set line(v) { n.line = v; } }, act);
   }
@@ -838,7 +844,7 @@ export class TopDownScene extends Phaser.Scene {
     if (!m.alive) return;
     this.player.target = m; this.player.path = [];
     if (!auto) { this.player.autoTarget = null; this.pendingTalk = null; this.social?.pw?.stopFollow(); }   // เลือกเองด้วยมือ → ไม่ยอมแพ้ไล่เป้าอัตโนมัติ · เลิกติดตามหัวหน้า
-    this.ui.setTarget({ def: { ...m.def, hp: m.maxHp }, get hp() { return m.hp; }, get alive() { return m.alive; } });
+    this.ui.setTarget({ def: { ...m.def, hp: m.maxHp }, isBoss: !!(this.M.gd && m.def?.boss), get hp() { return m.hp; }, get alive() { return m.alive; } });
     if (!auto) this.sfx.play('target');
   }
 
@@ -942,16 +948,16 @@ export class TopDownScene extends Phaser.Scene {
   }
 
   /** บอสใช้ท่าวงกว้าง: วงแดงขยายเตือนก่อน แล้วระเบิด */
-  bossAoe({ mid, x, y, r, ms = 1000, name }) {
+  bossAoe({ mid, x, y, r, ms = 1000, name, col }) {
     const m = this.mobs[mid];
     if (m?.alive) playDir(m, 'attack', m.dir, true);
-    const edge = this.add.ellipse(x, y, r * 2, r * 1.3).setStrokeStyle(2, 0xff5b4f, 0.9).setDepth(2);
-    const ring = this.add.ellipse(x, y, r * 2, r * 1.3, 0xff3b30, 0.22).setDepth(2).setScale(0.05);
+    const edge = this.add.ellipse(x, y, r * 2, r * 1.3).setStrokeStyle(2, col ?? 0xff5b4f, 0.9).setDepth(2);   // col = สีตามท่า (ห้องบอสผี)
+    const ring = this.add.ellipse(x, y, r * 2, r * 1.3, col ?? 0xff3b30, 0.22).setDepth(2).setScale(0.05);
     this.tweens.add({ targets: ring, scale: 1, duration: ms * 0.9, ease: 'Cubic.Out' });
     const warn = name && dist(this.player, { x, y }) < r + 120 ? makeText(this, x, y - (m?.displayHeight || 40) - 18, `⚠ ${name}`, { fontSize: '8px', color: '#ff8a80' }).setOrigin(0.5).setDepth(99990) : null;
     this.time.delayedCall(ms, () => {
       ring.destroy(); edge.destroy(); warn?.destroy();
-      const boom = this.add.ellipse(x, y, r * 2, r * 1.3, 0xff6b3d, 0.45).setDepth(2);
+      const boom = this.add.ellipse(x, y, r * 2, r * 1.3, col ?? 0xff6b3d, 0.45).setDepth(2);
       this.tweens.add({ targets: boom, alpha: 0, scale: 1.12, duration: 380, onComplete: () => boom.destroy() });
       if (dist(this.player, { x, y }) < r + 60) { this.cameras.main.shake(180, 0.006); this.sfx.play('skBoom'); }
     });
@@ -986,7 +992,7 @@ export class TopDownScene extends Phaser.Scene {
     const dx = m.sx - m.x, dy = m.sy - m.y, d = Math.hypot(dx, dy);
     if (d > 80) m.setPosition(m.sx, m.sy);
     else if (d > 0.5) { const k = Math.min(1, dt * 10); m.x += dx * k; m.y += dy * k; }
-    const busy = m.anims.currentAnim?.key.includes(':attack') && m.anims.isPlaying;
+    const ca = m.anims.currentAnim, busy = m.anims.isPlaying && ca && ca.repeat !== -1 && !/:(walk|idle)(:|$)/.test(ca.key);   // ท่าตี/ร่าย/ท่าสกิลบอส (ไม่วนซ้ำ) เล่นให้จบก่อน
     if (!busy) playDir(m, d > 1 ? 'walk' : 'idle', m.dir) || playDir(m, 'walk', m.dir);
   }
 
@@ -1039,7 +1045,10 @@ export class TopDownScene extends Phaser.Scene {
   /** ใต้มินิแมพ: กลางวัน/กลางคืน (ตัวคูณ EXP · ดวงจันทร์ · เวลาถึงช่วงถัดไป) + พระราหูรอบถัดไป */
   updateEventInfo() {
     let el = document.getElementById('td-events');
-    if (!el) { el = document.createElement('div'); el.id = 'td-events'; el.className = 'td-events'; document.getElementById('td-hud')?.appendChild(el); }
+    if (!el) {
+      el = document.createElement('div'); el.id = 'td-events'; el.className = 'td-events'; document.getElementById('td-hud')?.appendChild(el);
+      el.addEventListener('click', (e) => { if (e.target.closest('.ev.boss') && this.wb) { this.wb.minAt = null; this.wb.forceAnn = true; this.wb.refresh(); this.sfx.play('click'); } });   // แตะแถวราหู = เปิดประกาศเต็ม
+    }
     const a = this.atmo; if (!a) return;
     const mmss = (ms) => { const s = Math.max(0, Math.ceil(ms / 1000)); return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`; };
     const N = nightInfo(Date.now() + (a.offset || 0), a.dayMs), moon = N.moon.id !== 'normal' ? ` ${N.moon.icon}` : '';
@@ -1214,7 +1223,7 @@ export class TopDownScene extends Phaser.Scene {
     p.dead = true; p.char.hp = 0; p.target = null; p.path = []; p.setVelocity(0, 0);
     this.playerAnim('die', true); this.sfx.play('die');
     const doc = (this.social?.party?.members || []).some((m) => m.id !== this.net?.selfId && m.wj === 'healer' && !m.dead);
-    const wait = RESPAWN_WAIT_MS, where = this.M.realm ? `ฟื้นที่${this.M.ZONES.hub.nameTh}` : 'ฟื้นที่ประตูเมือง';   // รอ 10 วิเสมอ (หมอยาชุบได้ก่อน)
+    const wait = this.gd?.respawnWait ?? RESPAWN_WAIT_MS, where = this.M.realm ? `ฟื้นที่${this.M.ZONES.hub.nameTh}` : 'ฟื้นที่ประตูเมือง';   // รอ 10 วิเสมอ (หมอยาชุบได้ก่อน)
     this.ui.showDeath(wait, { where, doc });                                     // จอตาย + นับถอยหลังสด
     this.social && (this.social.pkTarget = null);                              // ตาย = เลิกไล่เป้า PK
     const tryRespawn = () => {                                                  // ส่งซ้ำทุก 3 วิจนกว่าจะฟื้น (เน็ตหลุด/ต่อใหม่ช่วงรอ ไม่ค้างเป็นศพ)
@@ -1680,7 +1689,7 @@ export class TopDownScene extends Phaser.Scene {
     if (!n || this.talkNpc === n) return;
     this.talkNpc = n;
     const verb = NPC_OPEN[n.id] ? 'เปิดร้าน' : n.id === 'quest' ? 'รับเควส' : n.id === 'warp' ? 'วาร์ป' : 'คุยกับ';
-    el.querySelector('b').textContent = n.id === 'crypt' ? '💀 ลงสุสานใต้ดิน' : `${verb} ${n.nameTh}`;
+    el.querySelector('b').textContent = n.id === 'crypt' ? '💀 ลงสุสานใต้ดิน' : n.id === 'ghostdg' ? '☠️ ดันเจี้ยนสี่ผีป่าช้า' : `${verb} ${n.nameTh}`;
     el.querySelector('small').textContent = n.id === 'crypt' ? `${n.nameTh} · 100 ชั้น` : n.role || '';
     const img = el.querySelector('img'), ic = el.querySelector('i');
     img.style.display = 'none'; ic.textContent = NPC_ICON[n.id] || '💬';
@@ -1823,10 +1832,11 @@ export class TopDownScene extends Phaser.Scene {
         if (d < 5) p.path.shift(); else { vx = dx / d; vy = dy / d; }
         if (!p.path.length && this.pendingTalk) { const n2 = this.pendingTalk, q2 = this.pendingQuick; this.pendingTalk = null; if (this.talkRetry) this.talkRetry.t = performance.now(); this.talk(n2, q2); }
       }
+      if (this.gd?.here) { if (this.gd.rooted) vx = vy = 0; else if (this.gd.reversed) { vx = -vx; vy = -vy; } }   // ดันเจี้ยนสี่ผี: บ่วงแขวนคอ (ขยับไม่ได้) · วิญญาณสับสน (เดินกลับด้าน)
       if (p.st === 'attack') p.setVelocity(0, 0);
       else if (vx || vy) {
         const len = Math.hypot(vx, vy) || 1;
-        const now = this.time.now, sp = SPEED * (1 + Math.min(0.4, (p.buffs || []).reduce((a, b) => a + (b.until > now && b.buff?.speed || 0), 0))) * (this.wb?.speedMul(p) ?? 1);   // ยาต้มพยัคฆ์เหิน: วิ่งเร็วขึ้น
+        const now = this.time.now, sp = SPEED * (1 + Math.min(0.4, (p.buffs || []).reduce((a, b) => a + (b.until > now && b.buff?.speed || 0), 0))) * (this.wb?.speedMul(p) ?? 1) * (this.gd?.speedMul?.() ?? 1);   // ยาต้มพยัคฆ์เหิน: วิ่งเร็วขึ้น
         p.setVelocity(vx / len * sp, vy / len * sp);
         p.dir = stableDir(vx, vy, p.dir); p.st = 'walk'; this.playerAnim('walk');
         p.anims.timeScale = sp / SPEED;
@@ -1847,6 +1857,7 @@ export class TopDownScene extends Phaser.Scene {
     if (time > (this.nextDeclutter || 0)) { this.nextDeclutter = time + 200; this.declutterMobLabels(); }
     this.remotes.forEach((r) => r.update(dt));
     this.wb?.update();
+    this.gd?.update(delta);
     this.weapons?.update(time);
     this.skills?.autoTick(time);
     this.social?.update(time);

@@ -8,7 +8,9 @@ import { REALMS, buildRealm, realmZoneAt } from './realms.js';
 import { MONSTERS } from '../data/monsters.js';
 import { ARENA_DEF, buildArena, arenaZoneAt } from './arena.js';
 import { cryptMap } from './crypt.js';
+import { gdMap } from './ghostdg.js';
 export { isCrypt } from '../data/crypt.js';
+export { isGd } from '../data/ghostdg.js';
 
 /**
  * ความหนาแน่นผี: จำนวนผีรวมต่อชนิด × ตัวคูณ · แต่ละกองไม่เกิน CAMP_MAX ตัว
@@ -113,8 +115,8 @@ export const TD_MAPS = {
 };
 
 /** สุสานใต้ดิน: รหัส crypt:<ชั้น>:<คน>:<ห้อง> สร้างรายการแมพตามชั้น (ไม่อยู่ใน TD_MAPS) */
-export const getMap = (id) => TD_MAPS[id] || cryptMap(id) || TD_MAPS[DEFAULT_MAP];
-export const validMap = (id) => (TD_MAPS[id] || cryptMap(id) ? id : DEFAULT_MAP);
+export const getMap = (id) => TD_MAPS[id] || cryptMap(id) || gdMap(id) || TD_MAPS[DEFAULT_MAP];   // + ดันเจี้ยนสี่ผีป่าช้า (gd:…)
+export const validMap = (id) => (TD_MAPS[id] || cryptMap(id) || gdMap(id) ? id : DEFAULT_MAP);
 
 /** จุดโผล่เมื่อผ่านประตูมิติจาก from → to (หน้าประตูฝั่งตรงข้าม) · ไม่มีคู่ = จุดเกิดของแมพ */
 export function arrivalPoint(from, to) {

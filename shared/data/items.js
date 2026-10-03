@@ -5,6 +5,7 @@
 // ============================================================
 import { GEAR, gearShopStock } from './gear.js';
 import { CARD_ITEMS } from './cards.js';
+import { GD_ITEMS } from './ghostgear.js';
 import { parseAffixId, makeVariant } from './affixes.js';
 export { baseItemId } from './affixes.js';
 
@@ -199,6 +200,8 @@ FLASK_DEF.forEach(([kind, lv, nameTh, heal, max, price]) => {
 Object.assign(ITEMS, GEAR);
 // การ์ดผี 20 ใบ (shared/data/cards.js)
 Object.assign(ITEMS, CARD_ITEMS);
+// ชุดประจำบอสดันเจี้ยนสี่ผีป่าช้า + แก่นผี (shared/data/ghostgear.js)
+Object.assign(ITEMS, GD_ITEMS);
 
 export function sellPrice(id) {
   const it = ITEMS[id];

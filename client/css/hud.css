@@ -955,3 +955,107 @@ body.td-mode .quest-track { top: calc(var(--mm-bottom, calc(var(--hud-pad) + 14c
 #news-panel .nd-nav { display: flex; justify-content: space-between; gap: 8px; margin-top: 4px; }
 #news-panel .nd-nav button { padding: 4px 12px; border-radius: 999px; border: 1px solid #5a4630; background: #2a1c34; color: #e8d6b4; font: inherit; font-size: .85em; cursor: pointer; }
 #news-panel .nd-nav button:disabled { opacity: .35; cursor: default; }
+
+/* ============================================================
+   ดันเจี้ยนสี่ผีป่าช้า: หน้าต่างเลือกห้อง (หลวงตาเฝ้าป่าช้า) + HUD ในลาน
+   ============================================================ */
+#gd-panel.window { width: 118cqh !important; }
+#gd-body { display: grid; grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr); gap: 1.6cqh; }
+.gd-rooms { display: grid; grid-template-columns: 1fr 1fr; gap: 1.1cqh; align-content: start; }
+.gd-room { position: relative; display: grid; padding: 0; border: .3cqh solid #4a3560; border-radius: 1.4cqh; overflow: hidden; background: #120b18; color: inherit; font: inherit; text-align: left; cursor: pointer; }
+.gd-room canvas { width: 100%; aspect-ratio: 16 / 10; display: block; }
+.gd-room img { position: absolute; left: 50%; bottom: 5.4cqh; transform: translateX(-50%); width: 42%; image-rendering: pixelated; filter: drop-shadow(0 .5cqh .6cqh rgba(0,0,0,.7)); }
+.gd-room .gd-cap { display: grid; padding: .6cqh 1cqh .8cqh; background: linear-gradient(0deg, rgba(10,6,14,.95), rgba(10,6,14,.75)); border-top: 1px solid #4a3560; }
+.gd-room .gd-cap b { font-size: 1.8cqh; color: var(--c); font-weight: 500; } .gd-room .gd-cap small { font-size: 1.35cqh; color: #a894b8; }
+.gd-room[aria-pressed="true"] { border-color: var(--c); box-shadow: 0 0 1.4cqh color-mix(in srgb, var(--c) 55%, transparent); }
+.gd-room.locked img { filter: grayscale(1) brightness(.35); } .gd-room.locked canvas { filter: grayscale(.8) brightness(.45); }
+.gd-room .gd-lock, .gd-room .gd-open { position: absolute; top: .8cqh; right: .8cqh; font-size: 1.3cqh; padding: .2cqh .8cqh; border-radius: 99px; background: rgba(0,0,0,.7); border: 1px solid #4a3560; color: #a894b8; }
+.gd-room .gd-open { background: rgba(20,60,35,.85); border-color: #58d68d; color: #bff5cf; }
+.gd-detail { display: grid; gap: 1.1cqh; align-content: start; min-width: 0; }
+.gd-dh { display: flex; gap: 1.2cqh; align-items: center; }
+.gd-dh img { width: 8cqh; height: 8cqh; image-rendering: pixelated; border-radius: 1.1cqh; border: .25cqh solid var(--c); background: radial-gradient(circle at 50% 35%, #3b2950, #160d1e); }
+.gd-dh h3 { margin: 0; font-size: 2.3cqh; font-weight: 500; color: var(--c); } .gd-dh p { margin: 0; font-size: 1.45cqh; color: #a894b8; }
+.gd-gim { margin: 0; font-size: 1.55cqh; line-height: 1.5; padding: .8cqh 1.2cqh; border-radius: .9cqh; background: rgba(0,0,0,.25); border-left: .35cqh solid var(--c); }
+.gd-diff, .gd-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: .7cqh; }
+.gd-diff button { font: inherit; padding: .8cqh .5cqh; border-radius: 1.1cqh; border: 1px solid #4a3560; background: rgba(0,0,0,.25); color: #f3e6cf; cursor: pointer; display: grid; text-align: center; }
+.gd-diff button b { font-size: 1.75cqh; font-weight: 500; } .gd-diff button small { font-size: 1.3cqh; color: #a894b8; }
+.gd-diff button[aria-pressed="true"] { border-color: #d4af37; background: linear-gradient(180deg, rgba(212,175,55,.28), rgba(212,175,55,.08)); }
+.gd-diff button.no { opacity: .45; }
+.gd-stats > div { border: 1px solid #4a3560; border-radius: 1.1cqh; padding: .7cqh 1cqh; background: rgba(0,0,0,.2); display: grid; }
+.gd-stats small { font-size: 1.3cqh; color: #a894b8; } .gd-stats b { font-size: 1.6cqh; font-weight: 500; }
+.gd-party { display: grid; gap: .45cqh; }
+.gd-p { display: grid; grid-template-columns: 2.6cqh 1fr auto; gap: .9cqh; align-items: center; font-size: 1.5cqh; padding: .45cqh .9cqh; border-radius: .9cqh; background: rgba(0,0,0,.2); }
+.gd-p .ok { color: #58d68d; } .gd-p .bad { color: #ff6b5a; } .gd-p .warn { color: #f7dc6f; }
+.gd-go { font: inherit; font-size: 1.85cqh; font-weight: 500; padding: 1.1cqh 1.4cqh; border-radius: 1.3cqh; border: .25cqh solid #d4af37; color: #241406; background: linear-gradient(180deg, #f6dc8a, #c8952b); cursor: pointer; }
+.gd-go:disabled { cursor: default; color: #a894b8; background: rgba(0,0,0,.3); border-color: #4a3560; }
+.gd-hint { margin: 0; font-size: 1.35cqh; color: #a894b8; text-align: center; }
+
+#gd-hud { position: absolute; inset: 0; pointer-events: none; font-size: 1.75cqh; z-index: 6; }
+#gd-hud.hidden, #gd-hud .hidden { display: none !important; }
+#gd-hud button { pointer-events: auto; font: inherit; cursor: pointer; }
+#gd-hud .gd-bar { position: absolute; top: 1.2%; left: 50%; transform: translateX(-50%); width: min(44%, 30em); padding: .35em .7em .4em; background: rgba(14,8,20,.72); border: 1px solid rgba(199,208,226,.45); border-radius: 9px; pointer-events: auto; transition: border-color .2s, box-shadow .2s; }
+#gd-hud .gd-bar.bind { border-color: #7dffb0; box-shadow: 0 0 .9em rgba(125,255,176,.4); }
+#gd-hud .gd-top, #gd-hud .gd-mid { display: flex; align-items: center; gap: .6em; }
+#gd-hud .gd-top b { color: #f3d98b; font-weight: 500; font-size: .95em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+#gd-hud .gd-time { margin-left: auto; color: #fff; font-size: .9em; font-variant-numeric: tabular-nums; }
+#gd-hud .gd-leave { background: none; border: 1px solid rgba(255,138,122,.6); color: #ffb3a8; border-radius: 5px; padding: 0 .35em; font-size: .8em; line-height: 1.4; }
+#gd-hud .gd-leave:hover { background: rgba(120,30,30,.6); }
+#gd-hud .gd-hp { position: relative; height: 1.15em; margin: .25em 0 .2em; background: rgba(0,0,0,.55); border-radius: 4px; overflow: hidden; border: 1px solid rgba(255,255,255,.12); }
+#gd-hud .gd-hp i { position: absolute; inset: 0 auto 0 0; background: linear-gradient(180deg, #e0584a, #9b1f1a); transition: width .25s; }
+#gd-hud .gd-bar.bind .gd-hp i { background: linear-gradient(180deg, #8affc0, #2f9e63); }
+#gd-hud .gd-hp span { position: relative; display: block; text-align: center; font-size: .66em; line-height: 1.45em; color: #fff; text-shadow: 0 1px 2px #000; font-variant-numeric: tabular-nums; }
+#gd-hud .gd-mid { font-size: .78em; color: #e9dcc0; justify-content: space-between; }
+#gd-hud .gd-candles.low { color: #ff8a7a; }
+#gd-hud .gd-posts em { font-style: normal; color: #a894b8; }
+#gd-hud .gd-posts i { display: inline-block; width: .62em; height: .62em; margin-left: .2em; border-radius: 50%; background: #3a3348; border: 1px solid #fff1c0; vertical-align: middle; }
+#gd-hud .gd-posts i.on { background: #7dffb0; box-shadow: 0 0 .45em #7dffb0; }
+#gd-hud .gd-tip { display: block; color: #9dffc6; font-size: .74em; text-align: center; margin-top: .1em; }
+#gd-hud .gd-cast { position: absolute; top: 16%; left: 50%; transform: translateX(-50%); text-align: center; padding: .25em .9em .3em; background: rgba(40,6,10,.78); border: 1px solid rgba(255,107,90,.7); border-radius: 8px; animation: gdcast .25s ease-out; }
+#gd-hud .gd-cast b { display: block; color: #ff9b8a; font-weight: 500; font-size: 1.05em; } #gd-hud .gd-cast small { color: #ffe3d6; font-size: .8em; }
+@keyframes gdcast { from { transform: translateX(-50%) scale(.85); opacity: 0; } }
+#gd-hud .gd-res { position: absolute; top: 22%; left: 50%; transform: translateX(-50%); min-width: 22em; max-width: 34em; padding: .9em 1.2em; background: rgba(16,10,24,.95); border: 2px solid #d4af37; border-radius: 14px; text-align: center; pointer-events: auto; }
+#gd-hud .gd-res h3 { margin: 0 0 .3em; color: #ffd35c; font-weight: 500; } #gd-hud .gd-res p { margin: .2em 0; color: #e3d4ff; font-size: .9em; }
+#gd-hud .gd-res ul { list-style: none; padding: 0; margin: .4em 0; text-align: left; display: grid; gap: .2em; font-size: .9em; }
+#gd-hud .gd-res em { font-style: normal; color: #f7dc6f; font-size: .85em; } #gd-hud .gd-res small { color: #a894b8; display: block; margin: .3em 0; }
+#gd-hud .gd-close { background: linear-gradient(180deg, #f6dc8a, #c8952b); color: #241406; border: 1px solid #fff3c4; padding: .25em 1.4em; }
+body.td-mode #td-hud .td-events .ev.boss { pointer-events: auto; cursor: pointer; }   /* แตะแถวราหู = เปิดประกาศเต็ม */
+body.gd-on #boss-bar { display: none !important; }   /* ห้องบอสผี: ใช้กรอบลานแทนแถบบอสเกม */
+#gd-hud .gd-top em { font-style: normal; color: #ff6b5b; font-size: .85em; }
+#gd-hud .gd-top .gd-dtag { color: #ff9b8a; font-size: .75em; padding: 0 .45em; border: 1px solid rgba(255,107,90,.5); border-radius: .5em; white-space: nowrap; }
+/* กรอบบอสห้องผี = แบบเดียวกับแถบบอสโลก (ราหู) */
+#gd-hud { font-size: 2.3cqh; }
+#gd-hud .gd-bar { top: 2%; width: min(44%, 36em); padding: .4em .7em .45em; background: rgba(18,8,38,.9); border: 2px solid #8f6cf0; border-radius: 12px; }
+#gd-hud .gd-bar.bind { border-color: #7dffb0; box-shadow: 0 0 1em rgba(125,255,176,.45); }
+#gd-hud .gd-top { display: flex; align-items: baseline; gap: .8em; }
+#gd-hud .gd-top b { color: #ffd35c; font-weight: 700; font-size: 1em; }
+#gd-hud .gd-top em { color: #ff6b5b; font-size: .85em; }
+#gd-hud .gd-top .gd-dtag { font-size: .75em; }
+#gd-hud .gd-ph { color: #d2b4ff; font-size: .85em; white-space: nowrap; }
+#gd-hud .gd-time { margin-left: auto; color: #fff; font-size: 1em; }
+#gd-hud .gd-hp { height: 1.25em; margin: .3em 0 0; background: #1a0c2e; border: 1px solid #5b3fa0; border-radius: 6px; }
+#gd-hud .gd-hp i { background: linear-gradient(90deg, #5a2fd0, #b57dff 70%, #e8dcff); transition: width .4s; }
+#gd-hud .gd-bar.bind .gd-hp i { background: linear-gradient(90deg, #2f9e63, #8affc0 70%, #e0fff0); }
+#gd-hud .gd-hp span { font-size: .78em; line-height: 1.6em; }
+#gd-hud .gd-btm { display: flex; align-items: center; gap: .6em; margin-top: .25em; font-size: .8em; color: #e9dcc0; }
+#gd-hud .gd-btm .gd-tip { color: #cbb8f2; font-size: .92em; flex: 1; text-align: right; display: inline; margin: 0; }
+#gd-hud .gd-btm .gd-leave { background: rgba(60,30,90,.9); color: #e3d4ff; border: 1px solid #8f6cf0; border-radius: 8px; padding: .15em .7em; font-size: .92em; line-height: 1.3; }
+#gd-hud .gd-cast { top: 18%; }
+#gd-hud .gd-dark { position: absolute; inset: 0; pointer-events: none; z-index: -1; display: none; }
+#gd-hud .gd-carry { color: #ffd76a; font-weight: 600; animation: gdcast .6s ease-in-out infinite alternate; }
+/* กรอบบอสห้องผี: ย่อให้เล็ก (ข้อมูลเท่าเดิม) */
+#gd-hud .gd-bar { width: min(30%, 21em); padding: .25em .55em .3em; border-width: 1.5px; border-radius: 9px; font-size: .72em; background: rgba(18,8,38,.78); }
+#gd-hud .gd-top { gap: .45em; }
+#gd-hud .gd-top b { font-size: .95em; white-space: nowrap; }
+#gd-hud .gd-top em, #gd-hud .gd-ph { font-size: .82em; }
+#gd-hud .gd-top .gd-dtag { flex: none; font-size: .72em; padding: 0 .35em; }
+#gd-hud .gd-time { font-size: .9em; }
+#gd-hud .gd-hp { height: .95em; margin-top: .2em; }
+#gd-hud .gd-hp span { font-size: .72em; line-height: 1.35em; }
+#gd-hud .gd-btm { margin-top: .15em; font-size: .78em; gap: .45em; }
+#gd-hud .gd-btm .gd-tip { font-size: .88em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+#gd-hud .gd-btm .gd-leave { padding: 0 .45em; font-size: .85em; border-radius: 6px; }
+/* กรอบบอสห้องผี: ขนาดกลาง */
+#gd-hud .gd-bar { width: min(38%, 27em); font-size: .86em; padding: .3em .65em .35em; }
+#gd-hud .gd-top b { flex: 0 1 auto; min-width: 3em; }
+#gd-hud .gd-hp { height: 1.15em; }
+#gd-hud .gd-hp span { font-size: .78em; line-height: 1.5em; }
