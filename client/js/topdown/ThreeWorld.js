@@ -1,6 +1,7 @@
 import * as THREE from '/vendor/three/three.module.js';
 import { TILE, T } from '/shared/td/ayutthaya.js';
 import { WORLD_TILT, frameQuad, graphicsBounds } from './ThreeWorldMath.js';
+import { buildAyutthayaCity, cityPropKind, disposeTerrain } from './AyutthayaCity.js';
 
 /** Three.js presentation of the live game scene, shared by every map.
  * Phaser still owns simulation, animation, multiplayer and the existing UI.
@@ -18,14 +19,17 @@ export class ThreeWorld {
     this.renderer=new THREE.WebGLRenderer({alpha:false,antialias:false,powerPreference:'high-performance'});
     this.renderer.setPixelRatio(1); this.renderer.outputColorSpace=THREE.SRGBColorSpace;
     this.renderer.autoClear=false;
+    this.renderer.shadowMap.enabled=true;this.renderer.shadowMap.type=THREE.PCFShadowMap;
     this.canvas=this.renderer.domElement; this.canvas.dataset.renderer='three-world';
     Object.assign(this.canvas.style,{position:'absolute',pointerEvents:'none',imageRendering:'pixelated'});
     this.gameCanvas=gameScene.game.canvas; this.oldOpacity=this.gameCanvas.style.opacity;
     this.gameCanvas.parentElement.appendChild(this.canvas);
     this.raycaster=new THREE.Raycaster(); this.ground=new THREE.Plane(new THREE.Vector3(0,1,0),0);
     this.hit=new THREE.Vector3(); this.pointer=new THREE.Vector2(); this.rotation=new THREE.Quaternion();
-    this.world.add(new THREE.HemisphereLight(0xffefda,0x303346,2));
-    const sun=new THREE.DirectionalLight(0xffd6a0,1.5); sun.position.set(-600,1000,500);this.world.add(sun);
+    this.sky=new THREE.HemisphereLight(0xffefda,0x465b78,2);this.world.add(this.sky);
+    const sun=this.sun=new THREE.DirectionalLight(0xffd6a0,1.5);sun.position.set(-600,1000,500);this.world.add(sun,sun.target);
+    sun.shadow.mapSize.set(2048,2048);Object.assign(sun.shadow.camera,{left:-650,right:650,top:650,bottom:-650,near:1,far:2200});
+    sun.shadow.bias=-.0002;sun.shadow.normalBias=.5;
     this.terrain=new THREE.Group();this.world.add(this.terrain);
     this.rasterCamera=new Phaser.Cameras.Scene2D.Camera(0,0,1,1);
     this.rasterCamera.matrix.loadIdentity();this.rasterCamera.alpha=1;
@@ -57,10 +61,13 @@ export class ThreeWorld {
     const rect=this.gameCanvas.getBoundingClientRect(),parent=this.gameCanvas.parentElement.getBoundingClientRect();
     Object.assign(this.canvas.style,{left:`${rect.left-parent.left}px`,top:`${rect.top-parent.top}px`,width:`${rect.width}px`,height:`${rect.height}px`});
     const cx=cam.scrollX+w/2,cz=cam.scrollY+h/2;
+    this.tilt=this.s.M.id==='ayutthaya'?Math.PI/3:WORLD_TILT;
     this.camera.left=-w/(2*cam.zoom);this.camera.right=w/(2*cam.zoom);
     this.camera.top=h/(2*cam.zoom);this.camera.bottom=-h/(2*cam.zoom);
-    this.camera.position.set(cx,Math.sin(WORLD_TILT)*1800,cz+Math.cos(WORLD_TILT)*1800);
+    this.camera.position.set(cx,Math.sin(this.tilt)*1800,cz+Math.cos(this.tilt??WORLD_TILT)*1800);
     this.camera.lookAt(cx,0,cz);this.camera.updateProjectionMatrix();this.camera.updateMatrixWorld();
+    this.sun.position.set(cx-500,1000,cz+350);this.sun.target.position.set(cx,0,cz);this.sun.target.updateMatrixWorld();
+    if(this.city)for(const model of this.city.children){model.visible=Math.abs(model.position.x-cx)<this.camera.right+180&&Math.abs(model.position.z-cz)<this.camera.top/Math.sin(this.tilt??WORLD_TILT)+230;}
   }
 
   worldPoint(x,y,out={}) {
@@ -89,7 +96,7 @@ export class ThreeWorld {
   }
 
   rebuildTerrain() {
-    for(const child of [...this.terrain.children]){child.geometry.dispose();child.material.dispose();this.terrain.remove(child);}
+    disposeTerrain(this.terrain);this.city=null;
     const s=this.s,w=s.mapW*TILE,h=s.mapH*TILE;
     this.world.background.set(s.M.crypt||s.M.gd?'#100d18':'#1b2c30');
     const base=new THREE.Mesh(new THREE.BoxGeometry(w,8,h),new THREE.MeshLambertMaterial({color:s.M.crypt||s.M.gd?0x272231:0x574637}));
@@ -103,6 +110,13 @@ export class ThreeWorld {
       const matrix=new THREE.Matrix4();tiles.forEach(([x,y],i)=>{matrix.makeTranslation((x+.5)*TILE,height/2,(y+.5)*TILE);wall.setMatrixAt(i,matrix);});
       this.terrain.add(wall);
     }
+    if(s.M.id==='ayutthaya'){
+      this.city=buildAyutthayaCity(s.layout.props);this.terrain.add(this.city);
+      const shadow=new THREE.Mesh(new THREE.PlaneGeometry(w,h),new THREE.ShadowMaterial({color:0x25313b,opacity:.36,depthWrite:false}));
+      shadow.rotation.x=-Math.PI/2;shadow.position.set(w/2,.07,h/2);shadow.receiveShadow=true;shadow.renderOrder=.95;this.terrain.add(shadow);
+    }
+    if(this.sun){this.sun.castShadow=s.M.id==='ayutthaya';this.sun.intensity=this.sun.castShadow?2.1:1.5;}
+    if(this.sky)this.sky.intensity=s.M.id==='ayutthaya'?1.25:2;
     this.mapId=s.M.id;
   }
 
@@ -148,11 +162,12 @@ export class ThreeWorld {
 
   draw(o,seen,parentAlpha=1,root=o) {
     if(!o.visible||o.alpha===0)return;
+    if(this.s.M.id==='ayutthaya'&&o.cityProp&&cityPropKind(o.cityProp))return;
     // Cull distant map decorations before allocating/updating GPU objects.
     if(root.scrollFactorX!==0&&o.type!=='Graphics'&&o.type!=='ParticleEmitter'){
-      const centerX=this.camera.position.x,centerY=this.camera.position.z-Math.cos(WORLD_TILT)*1800;
+      const centerX=this.camera.position.x,centerY=this.camera.position.z-Math.cos(this.tilt??WORLD_TILT)*1800;
       const marginX=Math.abs(root.displayWidth||root.width||64)+96,marginY=Math.abs(root.displayHeight||root.height||64)+160;
-      if(Math.abs(root.x-centerX)>this.camera.right+marginX||Math.abs(root.y-centerY)>this.camera.top/Math.sin(WORLD_TILT)+marginY){
+      if(Math.abs(root.x-centerX)>this.camera.right+marginX||Math.abs(root.y-centerY)>this.camera.top/Math.sin(this.tilt??WORLD_TILT)+marginY){
         const existing=this.entries.get(o);if(existing){existing.mesh.visible=false;seen.add(o);}return;
       }
     }
@@ -243,7 +258,7 @@ export class ThreeWorld {
     this.gameCanvas.style.opacity=this.oldOpacity;this.canvas.remove();
     for(const e of this.entries.values()){e.geometry.dispose();e.material.dispose();}
     for(const r of this.textures.values())r.texture.dispose();
-    for(const mesh of this.terrain.children){mesh.geometry.dispose();mesh.material.dispose();}
+    disposeTerrain(this.terrain);this.sun.shadow.dispose();
     this.entries.clear();this.textures.clear();this.rasterCamera.destroy();this.renderer.dispose();
   }
 }

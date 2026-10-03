@@ -457,6 +457,7 @@ export class TopDownScene extends Phaser.Scene {
       if (!key || !this.textures.exists(key)) continue;
       p.drawn = true;
       const img = this.add.image(p.x, p.y, key).setOrigin(0.5, 1).setDepth(p.depth ?? p.y);
+      img.cityProp = p;
       if (p.flip) img.setFlipX(true);
       if (scale) img.setScale(scale);
       if (p.tint) img.setTint(p.tint);

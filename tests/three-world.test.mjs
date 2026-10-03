@@ -8,9 +8,12 @@ import {GD_BOSSES,GD_DIFFS} from '../shared/data/ghostdg.js';
 
 // Import the browser module with the same Three build, resolving its URL imports.
 const url=new URL('../client/js/topdown/ThreeWorld.js',import.meta.url);
+const citySource=(await readFile(new URL('../client/js/topdown/AyutthayaCity.js',import.meta.url),'utf8')).replace('/vendor/three/three.module.js',new URL('../node_modules/three/build/three.module.js',import.meta.url).href);
+const cityURL='data:text/javascript;base64,'+Buffer.from(citySource).toString('base64');
 const source=(await readFile(url,'utf8'))
   .replace('/vendor/three/three.module.js',new URL('../node_modules/three/build/three.module.js',import.meta.url).href)
   .replace('/shared/td/ayutthaya.js',new URL('../shared/td/ayutthaya.js',import.meta.url).href)
+  .replace('./AyutthayaCity.js',cityURL)
   .replace('./ThreeWorldMath.js',new URL('../client/js/topdown/ThreeWorldMath.js',import.meta.url).href);
 const {ThreeWorld}=await import('data:text/javascript;base64,'+Buffer.from(source).toString('base64'));
 globalThis.Phaser={BlendModes:{ADD:1,MULTIPLY:2}};
@@ -42,9 +45,10 @@ for(const id of [...TD_MAP_IDS,...Array.from({length:100},(_,i)=>`crypt:${i+1}:$
   view.rebuildTerrain();assert.equal(view.mapId,M.id);assert.ok(view.terrain.children.length>=1);
   const base=view.terrain.children[0];assert.equal(base.geometry.parameters.width,M.W*TILE);
   assert.equal(base.geometry.parameters.depth,M.H*TILE);
-  const old=[...view.terrain.children];let disposed=0;
-  for(const mesh of old)mesh.geometry.addEventListener('dispose',()=>disposed++);
-  view.rebuildTerrain();assert.equal(disposed,old.length,'map switching frees every old terrain geometry');
+  const old=[...view.terrain.children],geometries=new Set();let disposed=0;
+  view.terrain.traverse(mesh=>{if(mesh.geometry)geometries.add(mesh.geometry);});
+  for(const geometry of geometries)geometry.addEventListener('dispose',()=>disposed++);
+  view.rebuildTerrain();assert.equal(disposed,geometries.size,'map switching frees every old terrain geometry');
   assert.equal(view.terrain.children.length,old.length,'map switching does not accumulate terrain');
 }
 
