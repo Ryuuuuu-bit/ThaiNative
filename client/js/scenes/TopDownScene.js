@@ -1555,7 +1555,7 @@ export class TopDownScene extends Phaser.Scene {
         const dx = this.tx - s.x, dy = this.ty - s.y;
         if (Math.hypot(dx, dy) > 120) s.setPosition(this.tx, this.ty); else { const k = Math.min(1, dt * 12); s.x += dx * k; s.y += dy * k; }
         if (this._lv !== this.level) { this._lv = this.level; tag.setText(label(this.level)); }
-        s.setDepth(s.y); tag.setPosition(s.x, Math.min(s.y - s.displayHeight - 3, s._cosTop ?? Infinity)).setDepth(s.y + 1); if (ttl.visible) ttl.setPosition(s.x, tag.y - tag.displayHeight).setDepth(s.y + 1);
+        s.setDepth(s.y); tag.setPosition(s.x, s.y - s.displayHeight - 3).setDepth(s.y + 1); if (ttl.visible) ttl.setPosition(s.x, tag.y - tag.displayHeight).setDepth(s.y + 1);
         playDir(s, this.anim, this.dir);
       },
       destroy: () => { this.weapons?.detach(s); s.destroy(); tag.destroy(); ttl.destroy(); sh.destroy(); this.shadows = this.shadows.filter((x) => x.obj !== s); },
@@ -1828,7 +1828,7 @@ export class TopDownScene extends Phaser.Scene {
       if (!this.econ.server && this.inTown() && p.char.hp < p.derived.maxHp) p.char.hp = Math.min(p.derived.maxHp, p.char.hp + p.derived.maxHp * 0.04 * dt);
     } else p.setVelocity(0, 0);
     p.setDepth(p.y);
-    this.nameTag.setPosition(p.x, Math.min(p.y - p.displayHeight - 3, p._cosTop ?? Infinity));   // สวมหมวก/มงกุฎสูง → ยกป้ายชื่อขึ้น
+    this.nameTag.setPosition(p.x, p.y - p.displayHeight - 3);
     if (this.titleTag?.visible) this.titleTag.setPosition(p.x, this.nameTag.y - this.nameTag.displayHeight);
     if (time > (this.nextAutoMenu || 0)) { this.nextAutoMenu = time + 1000; this.refreshAutoMenuCounts(); }
     if (time > (this.nextTalkPill || 0)) { this.nextTalkPill = time + 150; this.updateTalkPill(); this.refreshPresetBtn(); this.npcDlg?.update(); }

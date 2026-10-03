@@ -397,8 +397,8 @@ export class Village {
       if (!q) return '';
       const n = Math.min(Q.active[id], q.goal.n), done = n >= q.goal.n;
       const running = this.scene.questNav?.id === id;
-      const nav = this.scene.questNav ? `<button type="button" data-q="${running ? 'stop' : 'navigate'}:${id}" class="quest-navigate">${running ? '■ หยุด' : done ? '➤ ไปส่งเควส' : '➤ นำทาง'}</button>` : '';
-      return `<div class="${done ? 'done' : ''}"><b>${esc(q.nameTh)}</b><span>${esc(this.goalText(q))} ${n}/${q.goal.n}${done ? ' ✔' : ''}</span>${nav}</div>`;
+      const nav = this.scene.questNav ? `<button type="button" data-q="${running ? 'stop' : 'navigate'}:${id}" class="quest-navigate" aria-pressed="${running}">${running ? '■ หยุด' : done ? '➤ ไปส่งเควส' : '➤ นำทาง'}</button>` : '';
+      return `<div class="quest-card${done ? ' done' : ''}${running ? ' navigating' : ''}"><b>${esc(q.nameTh)}</b><span class="quest-goal">${esc(this.goalText(q))}</span><progress class="quest-progress" value="${n}" max="${q.goal.n}" aria-label="ความคืบหน้า ${esc(q.nameTh)}"></progress><footer class="quest-footer"><span class="quest-count">${n}/${q.goal.n}${done ? ' ✔' : ''}</span>${nav}</footer></div>`;
     }).join('');
     $('#quest-track').onclick = (e) => { const b = e.target.closest('button[data-q]'); if (!b) return; e.stopPropagation(); const [act,id] = b.dataset.q.split(':'); if (act === 'stop') this.scene.questNav?.stop(); else this.scene.questNav?.start(id); };
   }

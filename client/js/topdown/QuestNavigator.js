@@ -175,8 +175,25 @@ export class QuestNavigator {
     if (!p.path.length || this.stuck === 6) s.moveTo(target.x,target.y,true);
     if (!p.path.length) return this.stop('หาทางเดินไปเป้าหมายไม่พบ');
     this.status(`${portal ? 'เดินผ่านประตูไป' : 'กำลังเดินไปเป้าหมายใน'} ${TD_MAPS[portal?.to || dest.map]?.nameTh} · ${Math.round(distance(p,target)/TILE)} ช่อง`);
-    this.line.clear().lineStyle(2,0xffdc73,0.65).beginPath().moveTo(p.x,p.y);
-    for (const point of p.path) this.line.lineTo(point.x,point.y);
+    this.line.clear().lineStyle(2,0xffdc73,0.85).beginPath();
+    // Carry the dash phase across corners so short path segments still have gaps.
+    let from = p, phase = 0;
+    const dash = 10, cycle = 17;
+    for (const point of p.path) {
+      const length = distance(from,point);
+      let offset = 0;
+      while (offset < length) {
+        const drawing = phase < dash;
+        const step = Math.min((drawing ? dash : cycle) - phase,length - offset);
+        if (drawing) {
+          this.line.moveTo(from.x + (point.x-from.x)*offset/length,from.y + (point.y-from.y)*offset/length);
+          this.line.lineTo(from.x + (point.x-from.x)*(offset+step)/length,from.y + (point.y-from.y)*(offset+step)/length);
+        }
+        offset += step;
+        phase = (phase + step) % cycle;
+      }
+      from = point;
+    }
     this.line.strokePath();
   }
 }

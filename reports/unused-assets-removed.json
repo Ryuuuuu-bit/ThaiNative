@@ -1,0 +1,282 @@
+[
+  {
+    "file": "client/assets/icons/it_cs_back_bat.png",
+    "bytes": 2349,
+    "reason": "Removed costume system: item absent from ITEMS, asset absent from manifest"
+  },
+  {
+    "file": "client/assets/icons/it_cs_back_flag.png",
+    "bytes": 1057,
+    "reason": "Removed costume system: item absent from ITEMS, asset absent from manifest"
+  },
+  {
+    "file": "client/assets/icons/it_cs_back_kinnari.png",
+    "bytes": 3802,
+    "reason": "Removed costume system: item absent from ITEMS, asset absent from manifest"
+  },
+  {
+    "file": "client/assets/icons/it_cs_back_umbrella.png",
+    "bytes": 1277,
+    "reason": "Removed costume system: item absent from ITEMS, asset absent from manifest"
+  },
+  {
+    "file": "client/assets/icons/it_cs_face_khon.png",
+    "bytes": 1594,
+    "reason": "Removed costume system: item absent from ITEMS, asset absent from manifest"
+  },
+  {
+    "file": "client/assets/icons/it_cs_face_skull.png",
+    "bytes": 1701,
+    "reason": "Removed costume system: item absent from ITEMS, asset absent from manifest"
+  },
+  {
+    "file": "client/assets/icons/it_cs_face_takhon.png",
+    "bytes": 1504,
+    "reason": "Removed costume system: item absent from ITEMS, asset absent from manifest"
+  },
+  {
+    "file": "client/assets/icons/it_cs_head_asura.png",
+    "bytes": 1464,
+    "reason": "Removed costume system: item absent from ITEMS, asset absent from manifest"
+  },
+  {
+    "file": "client/assets/icons/it_cs_head_chada.png",
+    "bytes": 1406,
+    "reason": "Removed costume system: item absent from ITEMS, asset absent from manifest"
+  },
+  {
+    "file": "client/assets/icons/it_cs_head_emperor.png",
+    "bytes": 1619,
+    "reason": "Removed costume system: item absent from ITEMS, asset absent from manifest"
+  },
+  {
+    "file": "client/assets/icons/it_cs_head_flower.png",
+    "bytes": 1451,
+    "reason": "Removed costume system: item absent from ITEMS, asset absent from manifest"
+  },
+  {
+    "file": "client/assets/icons/it_cs_head_jade.png",
+    "bytes": 1463,
+    "reason": "Removed costume system: item absent from ITEMS, asset absent from manifest"
+  },
+  {
+    "file": "client/assets/icons/it_cs_head_mongkol.png",
+    "bytes": 1267,
+    "reason": "Removed costume system: item absent from ITEMS, asset absent from manifest"
+  },
+  {
+    "file": "client/assets/icons/it_cs_head_naga.png",
+    "bytes": 1589,
+    "reason": "Removed costume system: item absent from ITEMS, asset absent from manifest"
+  },
+  {
+    "file": "client/assets/icons/it_cs_head_ngob.png",
+    "bytes": 1469,
+    "reason": "Removed costume system: item absent from ITEMS, asset absent from manifest"
+  },
+  {
+    "file": "client/assets/icons/it_cs_head_peacock.png",
+    "bytes": 1738,
+    "reason": "Removed costume system: item absent from ITEMS, asset absent from manifest"
+  },
+  {
+    "file": "client/assets/icons/it_cs_outfit_chaona.png",
+    "bytes": 3772,
+    "reason": "Removed costume system: item absent from ITEMS, asset absent from manifest"
+  },
+  {
+    "file": "client/assets/icons/it_cs_outfit_hunter.png",
+    "bytes": 3683,
+    "reason": "Removed costume system: item absent from ITEMS, asset absent from manifest"
+  },
+  {
+    "file": "client/assets/icons/it_cs_outfit_isan.png",
+    "bytes": 3136,
+    "reason": "Removed costume system: item absent from ITEMS, asset absent from manifest"
+  },
+  {
+    "file": "client/assets/icons/it_cs_outfit_jongkraben.png",
+    "bytes": 3352,
+    "reason": "Removed costume system: item absent from ITEMS, asset absent from manifest"
+  },
+  {
+    "file": "client/assets/icons/it_cs_outfit_mahadlek.png",
+    "bytes": 3201,
+    "reason": "Removed costume system: item absent from ITEMS, asset absent from manifest"
+  },
+  {
+    "file": "client/assets/icons/it_cs_outfit_mohom.png",
+    "bytes": 2949,
+    "reason": "Removed costume system: item absent from ITEMS, asset absent from manifest"
+  },
+  {
+    "file": "client/assets/icons/it_cs_outfit_rajpatan.png",
+    "bytes": 3235,
+    "reason": "Removed costume system: item absent from ITEMS, asset absent from manifest"
+  },
+  {
+    "file": "client/assets/icons/it_cs_outfit_ruenton.png",
+    "bytes": 2698,
+    "reason": "Removed costume system: item absent from ITEMS, asset absent from manifest"
+  },
+  {
+    "file": "client/assets/icons/it_cs_outfit_silk.png",
+    "bytes": 2893,
+    "reason": "Removed costume system: item absent from ITEMS, asset absent from manifest"
+  },
+  {
+    "file": "client/assets/icons/it_cs_outfit_warrior.png",
+    "bytes": 3221,
+    "reason": "Removed costume system: item absent from ITEMS, asset absent from manifest"
+  },
+  {
+    "file": "client/assets/td/cos/cs_back_bat.png",
+    "bytes": 3381,
+    "reason": "Removed costume system: item absent from ITEMS, asset absent from manifest"
+  },
+  {
+    "file": "client/assets/td/cos/cs_back_flag.png",
+    "bytes": 2468,
+    "reason": "Removed costume system: item absent from ITEMS, asset absent from manifest"
+  },
+  {
+    "file": "client/assets/td/cos/cs_back_kinnari.png",
+    "bytes": 5041,
+    "reason": "Removed costume system: item absent from ITEMS, asset absent from manifest"
+  },
+  {
+    "file": "client/assets/td/cos/cs_back_umbrella.png",
+    "bytes": 3168,
+    "reason": "Removed costume system: item absent from ITEMS, asset absent from manifest"
+  },
+  {
+    "file": "client/assets/td/cos/cs_face_khon.png",
+    "bytes": 4295,
+    "reason": "Removed costume system: item absent from ITEMS, asset absent from manifest"
+  },
+  {
+    "file": "client/assets/td/cos/cs_face_skull.png",
+    "bytes": 5508,
+    "reason": "Removed costume system: item absent from ITEMS, asset absent from manifest"
+  },
+  {
+    "file": "client/assets/td/cos/cs_face_takhon.png",
+    "bytes": 4328,
+    "reason": "Removed costume system: item absent from ITEMS, asset absent from manifest"
+  },
+  {
+    "file": "client/assets/td/cos/cs_head_asura.png",
+    "bytes": 4022,
+    "reason": "Removed costume system: item absent from ITEMS, asset absent from manifest"
+  },
+  {
+    "file": "client/assets/td/cos/cs_head_chada.png",
+    "bytes": 4041,
+    "reason": "Removed costume system: item absent from ITEMS, asset absent from manifest"
+  },
+  {
+    "file": "client/assets/td/cos/cs_head_emperor.png",
+    "bytes": 4706,
+    "reason": "Removed costume system: item absent from ITEMS, asset absent from manifest"
+  },
+  {
+    "file": "client/assets/td/cos/cs_head_flower.png",
+    "bytes": 3836,
+    "reason": "Removed costume system: item absent from ITEMS, asset absent from manifest"
+  },
+  {
+    "file": "client/assets/td/cos/cs_head_jade.png",
+    "bytes": 4154,
+    "reason": "Removed costume system: item absent from ITEMS, asset absent from manifest"
+  },
+  {
+    "file": "client/assets/td/cos/cs_head_mongkol.png",
+    "bytes": 3112,
+    "reason": "Removed costume system: item absent from ITEMS, asset absent from manifest"
+  },
+  {
+    "file": "client/assets/td/cos/cs_head_naga.png",
+    "bytes": 5012,
+    "reason": "Removed costume system: item absent from ITEMS, asset absent from manifest"
+  },
+  {
+    "file": "client/assets/td/cos/cs_head_ngob.png",
+    "bytes": 4600,
+    "reason": "Removed costume system: item absent from ITEMS, asset absent from manifest"
+  },
+  {
+    "file": "client/assets/td/cos/cs_head_peacock.png",
+    "bytes": 4994,
+    "reason": "Removed costume system: item absent from ITEMS, asset absent from manifest"
+  },
+  {
+    "file": "client/assets/env/pr_banyan.png",
+    "bytes": 7046,
+    "reason": "Unregistered scene asset with no code reference"
+  },
+  {
+    "file": "client/assets/env/pr_grave.png",
+    "bytes": 5851,
+    "reason": "Unregistered scene asset with no code reference"
+  },
+  {
+    "file": "client/assets/env/pr_hut.png",
+    "bytes": 6514,
+    "reason": "Unregistered scene asset with no code reference"
+  },
+  {
+    "file": "client/assets/env/pr_pillar.png",
+    "bytes": 1876,
+    "reason": "Unregistered scene asset with no code reference"
+  },
+  {
+    "file": "client/assets/env/pr_reeds.png",
+    "bytes": 1870,
+    "reason": "Unregistered scene asset with no code reference"
+  },
+  {
+    "file": "client/assets/env/pr_scarecrow.png",
+    "bytes": 1703,
+    "reason": "Unregistered scene asset with no code reference"
+  },
+  {
+    "file": "client/assets/env/pr_spike.png",
+    "bytes": 3533,
+    "reason": "Unregistered scene asset with no code reference"
+  },
+  {
+    "file": "assets_src/pixellab/env/pr_banyan.png",
+    "bytes": 22767,
+    "reason": "Unregistered scene asset with no code reference"
+  },
+  {
+    "file": "assets_src/pixellab/env/pr_grave.png",
+    "bytes": 20174,
+    "reason": "Unregistered scene asset with no code reference"
+  },
+  {
+    "file": "assets_src/pixellab/env/pr_hut.png",
+    "bytes": 23983,
+    "reason": "Unregistered scene asset with no code reference"
+  },
+  {
+    "file": "assets_src/pixellab/env/pr_pillar.png",
+    "bytes": 9240,
+    "reason": "Unregistered scene asset with no code reference"
+  },
+  {
+    "file": "assets_src/pixellab/env/pr_reeds.png",
+    "bytes": 8923,
+    "reason": "Unregistered scene asset with no code reference"
+  },
+  {
+    "file": "assets_src/pixellab/env/pr_scarecrow.png",
+    "bytes": 8278,
+    "reason": "Unregistered scene asset with no code reference"
+  },
+  {
+    "file": "assets_src/pixellab/env/pr_spike.png",
+    "bytes": 12998,
+    "reason": "Unregistered scene asset with no code reference"
+  }
+]

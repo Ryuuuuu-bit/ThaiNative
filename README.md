@@ -143,7 +143,7 @@ ProjectX/
 │   ├── ranking.js      # อันดับ + ฉายาไดนามิก
 │   ├── store.js        # PostgreSQL / in-memory (บัญชี, 3 ตัวละครต่อบัญชี)
 │   ├── auth.js · discord.js
-│   └── mobs.js · dungeon.js · events.js   # ระบบโลกด้านข้างเดิม (ไม่มีทางเข้าแล้ว)
+│   └── mobs.js · dungeon.js   # ระบบโลกด้านข้างเดิม (ไม่มีทางเข้าแล้ว)
 ├── shared/             # ใช้ร่วม client + server
 │   ├── stats.js · charmodel.js · character.js · economy.js · constants.js
 │   ├── data/           # อาชีพ สกิล ไอเทม อุปกรณ์ การ์ด เควส ฉายา ข่าว บอสโลก สุสาน ฯลฯ
@@ -172,7 +172,7 @@ Client รับเฉพาะ event ที่อยู่ในรายกา
 - ตัวละคร ผี NPC บอส ไอคอน สร้างด้วย [PixelLab](https://pixellab.ai) ต้นฉบับอยู่ `assets_src/pixellab/`
 - สไปรต์ 8 ทิศอยู่ `client/assets/td/<id>/<anim>.png` (1 แถวต่อทิศ) โหลดตาม `client/assets/td/manifest.json`
 - เครื่องมือใน `tools/`: `import_pixellab.py`, `add_anim.py` (เพิ่มท่า), `make_cards.py` (ภาพการ์ด), `gear_art.py` (ไอคอนอุปกรณ์), `import_tileset.py`
-- ตัวละครผู้เล่น 2 เพศ × หลายชุด ย้อมสีผม/ชุดด้วยโค้ด · อาวุธ/ชุดเสริมเป็น overlay (`WeaponOverlay.js`, `CostumeOverlay.js`)
+- ตัวละครผู้เล่น 2 เพศ × หลายชุด ย้อมสีผม/ชุดด้วยโค้ด · อาวุธเสริมเป็น overlay (`WeaponOverlay.js`)
 
 ## เสียง
 

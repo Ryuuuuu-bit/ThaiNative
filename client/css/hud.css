@@ -78,7 +78,27 @@ body.td-mode #td-hud .td-zone { top: calc(var(--hud-pad) + 8.6cqh + var(--hud-co
 /* เควสที่ติดตาม: ใต้ป้ายพื้นที่ */
 body.td-mode .quest-track { top: calc(var(--hud-pad) + 14cqh + var(--hud-col) * 110 / 150) !important; right: var(--hud-pad) !important;
   width: var(--hud-col) !important; max-height: 23cqh; overflow: hidden; font-size: 1.9cqh !important; }
-body.td-mode .quest-track div { padding: .5cqh 1cqh !important; margin-bottom: .6cqh !important; border-left: .6cqh solid var(--gold) !important; }
+body.td-mode .quest-track div { padding: 1cqh 1.3cqh !important; margin-bottom: 1.2cqh !important; border-left: .4cqh solid var(--gold) !important; }
+body.td-mode .quest-track .quest-card { background: linear-gradient(135deg, rgba(43,30,54,.96), rgba(16,13,25,.94)) !important; border-color: rgba(232,199,102,.4) !important; }
+body.td-mode .quest-track .quest-card.navigating { border-color: var(--gold) !important; }
+body.td-mode .quest-track .quest-card.done { border-left-color: #58d68d !important; }
+.quest-card b { line-height: 1.4; margin-bottom: .3em; }
+.quest-card .quest-goal { display: block; font-size: .9em; line-height: 1.5; color: #c9bfd4; }
+.quest-progress { display: block; appearance: none; width: 100%; height: .28em; margin: .6em 0; border: 0; border-radius: 99px; overflow: hidden; background: #ffffff12; color: var(--gold); }
+.quest-progress::-webkit-progress-bar { background: #ffffff12; border-radius: 99px; }
+.quest-progress::-webkit-progress-value { background: linear-gradient(90deg, #aa803c, #f4d982); border-radius: 99px; }
+.quest-progress::-moz-progress-bar { background: #f4d982; border-radius: 99px; }
+.quest-card.done .quest-progress { color: #58d68d; }
+.quest-card.done .quest-progress::-webkit-progress-value { background: #58d68d; }
+.quest-card.done .quest-progress::-moz-progress-bar { background: #58d68d; }
+.quest-footer { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: .6em 1em; }
+.quest-count { font-variant-numeric: tabular-nums; font-size: .9em; font-weight: 700; }
+.quest-footer .quest-navigate { margin: 0; min-height: 2.3em; padding: .45em .85em; border-color: #b99a55; border-radius: .6em; background: linear-gradient(#493627, #2b211f); font-size: .9em; white-space: nowrap; transition: background .15s, border-color .15s; }
+.quest-footer .quest-navigate:hover { background: #57422c; border-color: #ffe49a; }
+.quest-navigate:focus-visible, #quest-nav button:focus-visible { outline: 2px solid #ffe49a; outline-offset: 3px; }
+.quest-footer .quest-navigate[aria-pressed="true"] { background: #46323b; border-color: #e7b2a0; color: #ffd6c8; }
+#quest-nav { box-shadow: 0 6px 24px #0006; }
+#quest-nav button { margin-top: .4em; min-height: 2.5em; }
 
 /* ---------- ขวาล่าง: เมนู (2 แถว x 5) + ของที่ได้ ---------- */
 body.td-mode:not(.touch) #hud > .hud-buttons.dock { top: auto !important; bottom: calc(2.6cqh + var(--hud-pad)) !important; right: var(--hud-pad) !important;
