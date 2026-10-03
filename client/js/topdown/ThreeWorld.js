@@ -24,6 +24,7 @@ export class ThreeWorld {
     Object.assign(this.canvas.style,{position:'absolute',pointerEvents:'none',imageRendering:'pixelated'});
     this.gameCanvas=gameScene.game.canvas; this.oldOpacity=this.gameCanvas.style.opacity;
     this.gameCanvas.parentElement.appendChild(this.canvas);
+    this.installOrbitInput();
     this.raycaster=new THREE.Raycaster(); this.ground=new THREE.Plane(new THREE.Vector3(0,1,0),0);
     this.hit=new THREE.Vector3(); this.pointer=new THREE.Vector2(); this.rotation=new THREE.Quaternion();
     this.sky=new THREE.HemisphereLight(0xffefda,0x465b78,2);this.world.add(this.sky);
@@ -52,6 +53,29 @@ export class ThreeWorld {
     try {this.render();}catch(error){this.dispose();throw error;}
   }
 
+  installOrbitInput() {
+    this.yaw=0;this.pitchOffset=0;
+    this.orbitDown=event=>{
+      if(event.button!==2)return;
+      event.preventDefault();event.stopImmediatePropagation();
+      this.orbitDrag={x:event.clientX,y:event.clientY};
+    };
+    this.orbitMove=event=>{
+      if(!this.orbitDrag)return;
+      if(!(event.buttons&2)){this.orbitDrag=null;return;}
+      const dx=event.clientX-this.orbitDrag.x,dy=event.clientY-this.orbitDrag.y;
+      this.yaw=(this.yaw-dx*.006)%(Math.PI*2);
+      this.pitchOffset=THREE.MathUtils.clamp(this.pitchOffset+dy*.004,-.25,.2);
+      this.orbitDrag={x:event.clientX,y:event.clientY};event.preventDefault();
+    };
+    this.orbitUp=()=>{this.orbitDrag=null;};
+    this.orbitMenu=event=>event.preventDefault();
+    this.gameCanvas.addEventListener('mousedown',this.orbitDown,true);
+    this.gameCanvas.addEventListener('contextmenu',this.orbitMenu);
+    window.addEventListener('mousemove',this.orbitMove);
+    window.addEventListener('mouseup',this.orbitUp);window.addEventListener('blur',this.orbitUp);
+  }
+
   updateCamera() {
     const cam=this.s.cameras.main,w=cam.width,h=cam.height;
     if (this.width!==w||this.height!==h) {
@@ -61,13 +85,16 @@ export class ThreeWorld {
     const rect=this.gameCanvas.getBoundingClientRect(),parent=this.gameCanvas.parentElement.getBoundingClientRect();
     Object.assign(this.canvas.style,{left:`${rect.left-parent.left}px`,top:`${rect.top-parent.top}px`,width:`${rect.width}px`,height:`${rect.height}px`});
     const cx=cam.scrollX+w/2,cz=cam.scrollY+h/2;
-    this.tilt=this.s.M.id==='ayutthaya'?Math.PI/3:WORLD_TILT;
+    this.centerX=cx;this.centerZ=cz;
+    this.tilt=(this.s.M.id==='ayutthaya'?Math.PI/3:WORLD_TILT)+(this.pitchOffset||0);
     this.camera.left=-w/(2*cam.zoom);this.camera.right=w/(2*cam.zoom);
     this.camera.top=h/(2*cam.zoom);this.camera.bottom=-h/(2*cam.zoom);
-    this.camera.position.set(cx,Math.sin(this.tilt)*1800,cz+Math.cos(this.tilt??WORLD_TILT)*1800);
+    const radius=Math.cos(this.tilt)*1800,yaw=this.yaw||0;
+    this.camera.position.set(cx+Math.sin(yaw)*radius,Math.sin(this.tilt)*1800,cz+Math.cos(yaw)*radius);
     this.camera.lookAt(cx,0,cz);this.camera.updateProjectionMatrix();this.camera.updateMatrixWorld();
     this.sun.position.set(cx-500,1000,cz+350);this.sun.target.position.set(cx,0,cz);this.sun.target.updateMatrixWorld();
-    if(this.city)for(const model of this.city.children){model.visible=Math.abs(model.position.x-cx)<this.camera.right+180&&Math.abs(model.position.z-cz)<this.camera.top/Math.sin(this.tilt??WORLD_TILT)+230;}
+    this.viewRadius=Math.hypot(this.camera.right,this.camera.top/Math.sin(this.tilt));
+    if(this.city)for(const model of this.city.children){model.visible=Math.hypot(model.position.x-cx,model.position.z-cz)<this.viewRadius+230;}
   }
 
   worldPoint(x,y,out={}) {
@@ -165,9 +192,9 @@ export class ThreeWorld {
     if(this.s.M.id==='ayutthaya'&&o.cityProp&&cityPropKind(o.cityProp))return;
     // Cull distant map decorations before allocating/updating GPU objects.
     if(root.scrollFactorX!==0&&o.type!=='Graphics'&&o.type!=='ParticleEmitter'){
-      const centerX=this.camera.position.x,centerY=this.camera.position.z-Math.cos(this.tilt??WORLD_TILT)*1800;
+      const centerX=this.centerX??this.camera.position.x,centerY=this.centerZ??this.camera.position.z-Math.cos(this.tilt??WORLD_TILT)*1800;
       const marginX=Math.abs(root.displayWidth||root.width||64)+96,marginY=Math.abs(root.displayHeight||root.height||64)+160;
-      if(Math.abs(root.x-centerX)>this.camera.right+marginX||Math.abs(root.y-centerY)>this.camera.top/Math.sin(this.tilt??WORLD_TILT)+marginY){
+      if(Math.hypot(root.x-centerX,root.y-centerY)>(this.viewRadius??Math.hypot(this.camera.right,this.camera.top/Math.sin(this.tilt??WORLD_TILT)))+Math.max(marginX,marginY)){
         const existing=this.entries.get(o);if(existing){existing.mesh.visible=false;seen.add(o);}return;
       }
     }
@@ -256,6 +283,9 @@ export class ThreeWorld {
     this.s.events.off('postupdate',this.render);this.s.cameras.main.getWorldPoint=this.oldWorldPoint;
     if(this.manager.hitTest===this.hitTest)this.manager.hitTest=this.oldHitTest;
     this.gameCanvas.style.opacity=this.oldOpacity;this.canvas.remove();
+    this.gameCanvas.removeEventListener('mousedown',this.orbitDown,true);
+    this.gameCanvas.removeEventListener('contextmenu',this.orbitMenu);
+    window.removeEventListener('mousemove',this.orbitMove);window.removeEventListener('mouseup',this.orbitUp);window.removeEventListener('blur',this.orbitUp);
     for(const e of this.entries.values()){e.geometry.dispose();e.material.dispose();}
     for(const r of this.textures.values())r.texture.dispose();
     disposeTerrain(this.terrain);this.sun.shadow.dispose();
