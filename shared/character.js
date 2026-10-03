@@ -9,6 +9,7 @@ import { computeDerived, skillCooldown, STAT_KEYS, MAX_LEVEL, STAT_CAP, STAT_STA
 import { SKILL_BY_ID, MAX_SKILL_LV, spAt, skillStats, skillUsable, masteryOf } from './data/skills.js';
 import { combineBlessings } from './data/blessings.js';
 import { setInfo } from './data/gear.js';
+import { gdSetInfo } from './data/ghostgear.js';
 import { passiveBonus } from './data/passives.js';
 import { masteryLevel } from './data/life.js';
 import { cardBonus } from './data/cards.js';
@@ -28,6 +29,7 @@ export function equipmentBonus(c) {
     if (lv && ENHANCE.bonus[slot]) add(ENHANCE.bonus[slot](lv));
   }
   add(setInfo(c.equipment)?.bonus);                     // โบนัสชุดประจำสาย (2/3/4 ชิ้น)
+  add(gdSetInfo(c.equipment).bonus);                    // โบนัสชุดบอสดันเจี้ยนสี่ผี (2/4/5 ชิ้น)
   return bonus;
 }
 

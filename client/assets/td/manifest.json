@@ -1890,6 +1890,90 @@
    "frame": 112,
    "scale": 0.54,
    "lazy": true
+  },
+  "mob_gd_hung": {
+   "anims": [
+    "idle",
+    "walk",
+    "attack",
+    "cast",
+    "die",
+    "execute",
+    "noose"
+   ],
+   "frames": {
+    "idle": 9,
+    "walk": 9,
+    "attack": 9,
+    "cast": 9,
+    "die": 9,
+    "execute": 9,
+    "noose": 9
+   },
+   "frame": 176,
+   "scale": 0.5
+  },
+  "mob_gd_krasue": {
+   "anims": [
+    "idle",
+    "walk",
+    "attack",
+    "cast",
+    "die",
+    "lash"
+   ],
+   "frames": {
+    "idle": 9,
+    "walk": 9,
+    "attack": 9,
+    "cast": 9,
+    "die": 9,
+    "lash": 9
+   },
+   "frame": 160,
+   "scale": 0.5
+  },
+  "mob_gd_yat": {
+   "anims": [
+    "idle",
+    "walk",
+    "attack",
+    "cast",
+    "die",
+    "crawl",
+    "stare"
+   ],
+   "frames": {
+    "idle": 9,
+    "walk": 9,
+    "attack": 9,
+    "cast": 9,
+    "die": 9,
+    "crawl": 9,
+    "stare": 9
+   },
+   "frame": 168,
+   "scale": 0.5
+  },
+  "mob_gd_pob": {
+   "anims": [
+    "idle",
+    "walk",
+    "attack",
+    "cast",
+    "die",
+    "tongue"
+   ],
+   "frames": {
+    "idle": 9,
+    "walk": 9,
+    "attack": 9,
+    "cast": 9,
+    "die": 9,
+    "tongue": 9
+   },
+   "frame": 176,
+   "scale": 0.5
   }
  },
  "images": [

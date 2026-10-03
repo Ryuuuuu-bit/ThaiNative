@@ -572,6 +572,7 @@ export function buildLayout() {
   P('env/b_prang_l', 198, 146, { foot: [2, 2], scale: 1.1, tint: 0x6b5a7a, label: 'ประตูสุสานใต้ดิน', glow: [-40, 70, 0xb266ff, 1] });
   for (const x of [195, 201]) small('p_torch2', x, 146, { glow: [-22, 46, 0xb266ff, 1.1] });
   deco('p_campfire', 201, 151, { scale: 1.1, glow: [-10, 70, 0xff8a3c, 1.1] });
+  npcs.push({ id: 'ghostdg', key: 'npc_horluang', x: 205 * TILE, y: 152 * TILE, nameTh: 'หลวงตาเฝ้าป่าช้า', role: 'ดันเจี้ยนสี่ผีป่าช้า · ปาร์ตี้ 1–6 คน', color: '#e8c38a', lines: ['ผีสี่ตนนี้ร้ายนัก เตรียมเทียนนำวิญญาณให้พร้อมก่อนลงลาน', 'ผีตายโหงกลัวสายสิญจน์ ยืนให้ครบทุกหลักไม้แล้วมันจะขยับไม่ได้', 'ห้องอื่นอาตมายังสวดเตรียมลานไม่เสร็จ รออีกหน่อยนะโยม'] });
   npcs.push({ id: 'crypt', key: 'npc_sapparer', x: 195 * TILE, y: 149 * TILE, nameTh: 'สัปเหร่อเฒ่า', role: 'สุสานใต้ดิน 100 ชั้น', color: '#c39bd3', lines: ['ข้างล่างนั่นลึกร้อยชั้น ลงเป็นปาร์ตี้จะรอดกว่านะ', 'ฆ่าผีให้หมดชั้น บันไดลงถึงจะเปิด', 'ทุกสิบชั้นมีเจ้าที่เฝ้าอยู่ ผ่านได้ก็จำทางไว้เริ่มใหม่ได้'] });
   // บัว/เรือ/ต้นไม้ริมบึง
   for (const [cx, cy, r] of ponds) for (let i = 0; i < r; i++) { const a = rnd() * 6.28, d = rnd() * (r - 1); deco(rnd() < 0.5 ? 'p_lotus' : 'p_lotus2', Math.round(cx + Math.cos(a) * d), Math.round(cy + Math.sin(a) * d), { depth: 1 }); }
