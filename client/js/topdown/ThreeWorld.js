@@ -1,4 +1,5 @@
 import * as THREE from '/vendor/three/three.module.js';
+import { createMonsterMaterial, updateMonsterMaterial, createMonsterAura } from './MonsterLook.js';
 import { TILE, T } from '/shared/td/ayutthaya.js';
 import { WORLD_TILT, frameQuad, graphicsBounds } from './ThreeWorldMath.js';
 import { buildAyutthayaCity, buildWaterSurface, cityPropKind, disposeTerrain } from './AyutthayaCity.js';
@@ -147,10 +148,13 @@ export class ThreeWorld {
     geometry.setAttribute('position',new THREE.Float32BufferAttribute(new Array(12).fill(0),3));
     geometry.setAttribute('uv',new THREE.Float32BufferAttribute(new Array(8).fill(0),2));
     const isGround=object.texture?.key?.startsWith('td_ground_');
-    const material=isGround?new THREE.MeshStandardMaterial({transparent:true,alphaTest:.12,side:THREE.DoubleSide,roughness:1,metalness:0}):new THREE.MeshBasicMaterial({transparent:true,alphaTest:.12,side:THREE.DoubleSide,toneMapped:false});
+    const isMonster=object.def&&object.spawn&&object.d8id?.startsWith('mob_');
+    const material=isMonster?createMonsterMaterial(object.def):isGround?new THREE.MeshStandardMaterial({transparent:true,alphaTest:.12,side:THREE.DoubleSide,roughness:1,metalness:0}):new THREE.MeshBasicMaterial({transparent:true,alphaTest:.12,side:THREE.DoubleSide,toneMapped:false});
     geometry.computeVertexNormals();
     const mesh=new THREE.Mesh(geometry,material);mesh.frustumCulled=true;mesh.userData.object=object;
-    e={mesh,geometry,material};this.world.add(mesh);this.entries.set(object,e);return e;
+    e={mesh,geometry,material};this.world.add(mesh);
+    if(isMonster){e.aura=createMonsterAura(object.def);this.world.add(e.aura);mesh.castShadow=true;}
+    this.entries.set(object,e);return e;
   }
 
   raster(o,e) {
@@ -180,7 +184,7 @@ export class ThreeWorld {
       const centerX=this.centerX??this.camera.position.x,centerY=this.centerZ??this.camera.position.z-Math.cos(this.tilt??WORLD_TILT)*1800;
       const marginX=Math.abs(root.displayWidth||root.width||64)+96,marginY=Math.abs(root.displayHeight||root.height||64)+160;
       if(Math.hypot(root.x-centerX,root.y-centerY)>(this.viewRadius??Math.hypot(this.camera.right,this.camera.top/Math.sin(this.tilt??WORLD_TILT)))+Math.max(marginX,marginY)){
-        const existing=this.entries.get(o);if(existing){existing.mesh.visible=false;seen.add(o);}return;
+        const existing=this.entries.get(o);if(existing){existing.mesh.visible=false;if(existing.aura)existing.aura.visible=false;seen.add(o);}return;
       }
     }
     if(o.type==='Container'){for(const child of o.list)this.draw(child,seen,parentAlpha*o.alpha,root);return;}
@@ -222,6 +226,12 @@ export class ThreeWorld {
     e.material.color.setHex(o.type==='Rectangle'&&!o.isStroked?o.fillColor:o.tintTopLeft??0xffffff);
     e.material.premultipliedAlpha=o.blendMode===Phaser.BlendModes.MULTIPLY;
     e.material.blending=o.blendMode===Phaser.BlendModes.ADD?THREE.AdditiveBlending:o.blendMode===Phaser.BlendModes.MULTIPLY?THREE.MultiplyBlending:THREE.NormalBlending;
+    if(e.material.userData.monster){
+      updateMonsterMaterial(e.material,texture,f,o,this.s.atmo?.light??1,o===this.s.player?.target||o===this.s.hovered);
+      e.aura.visible=!!o.alive&&o.visible!==false;e.aura.position.set(o.x,.16,o.y);
+      const diameter=Math.max(18,Math.min(95,Math.abs(o.displayWidth||f.width*(o.scaleX??1))*(o.def.boss?1.25:.85)));
+      e.aura.scale.set(diameter,diameter,1);e.aura.material.uniforms.time.value=performance.now()/1000;
+    }
     const flat=(root.depth??0)<1 || this.s.shadows?.some(sh=>sh.img===o);
     const screen=root.scrollFactorX===0&&root.scrollFactorY===0;
     const overlay=o.type==='Text'||(root.depth??0)>=99980;
@@ -256,7 +266,7 @@ export class ThreeWorld {
     for(const ripple of this.city?.userData.ripples||[]){const phase=(performance.now()/1800+ripple.userData.phase)%1;ripple.scale.setScalar(.7+phase*.5);}
     const seen=new Set();this.s.children.depthSort();for(const o of this.s.children.list)this.draw(o,seen);
     for(const [o,e] of this.entries)if(!seen.has(o)){
-      e.mesh.removeFromParent();e.geometry.dispose();e.material.dispose();this.entries.delete(o);
+      e.mesh.removeFromParent();e.geometry.dispose();e.material.dispose();if(e.aura){e.aura.removeFromParent();e.aura.geometry.dispose();e.aura.material.dispose();}this.entries.delete(o);
       if(e.rasterCanvas){this.textures.get(e.rasterCanvas)?.texture.dispose();this.textures.delete(e.rasterCanvas);}
     }
     if(this.frameNumber%120===0)for(const [source,record] of this.textures)if(this.frameNumber-record.lastUsed>120){record.texture.dispose();this.textures.delete(source);}
@@ -270,7 +280,7 @@ export class ThreeWorld {
     this.s.events.off('postupdate',this.render);this.s.cameras.main.getWorldPoint=this.oldWorldPoint;
     if(this.manager.hitTest===this.hitTest)this.manager.hitTest=this.oldHitTest;
     this.gameCanvas.style.opacity=this.oldOpacity;this.canvas.remove();
-    for(const e of this.entries.values()){e.geometry.dispose();e.material.dispose();}
+    for(const e of this.entries.values()){e.geometry.dispose();e.material.dispose();if(e.aura){e.aura.geometry.dispose();e.aura.material.dispose();}}
     for(const r of this.textures.values())r.texture.dispose();
     disposeTerrain(this.terrain);this.sun.shadow.dispose();
     this.entries.clear();this.textures.clear();this.rasterCamera.destroy();this.renderer.dispose();

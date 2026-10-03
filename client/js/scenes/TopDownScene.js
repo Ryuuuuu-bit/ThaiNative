@@ -831,9 +831,9 @@ export class TopDownScene extends Phaser.Scene {
     Object.assign(m, { mid, def, spawn: s, hp: def.hp, maxHp: def.hp, alive: true, mode: 'wander', nextThink: 0, nextAtk: 0, dir: 'south', sx: s.x, sy: s.y });
     m.legacyKey = m.texture.key; m.d8id = `mob_${art}`; playDir(m, 'walk', 'south');
     this.addShadow(m, Math.max(14, m.displayWidth * 0.7));
-    m.label = makeText(this, m.x, m.y, `${def.boss ? '👑 ' : ''}Lv.${def.level} ${def.nameTh}`, { fontSize: def.boss ? '8px' : '6px', color: def.boss ? '#ffd76a' : '#f5b7b1' }).setOrigin(0.5, 1);
+    m.label = makeText(this, m.x, m.y, `${def.boss ? '👑 ' : ''}Lv.${def.level} ${def.nameTh}`, { fontSize: def.boss ? '8px' : '6px', color: def.boss ? '#edd6a3' : def.elite ? '#cec1e6' : '#e0d9cc' }).setOrigin(0.5, 1);
     m.barW = def.boss ? 48 : 22;
-    m.hpBg = this.add.rectangle(0, 0, m.barW, def.boss ? 5 : 3, 0x000000, 0.7); m.hpBar = this.add.rectangle(0, 0, m.barW, def.boss ? 5 : 3, def.boss ? 0xc0392b : 0xe74c3c).setOrigin(0, 0.5);
+    m.hpBg = this.add.rectangle(0, 0, m.barW, def.boss ? 5 : 3, 0x15252a, 0.85).setStrokeStyle(def.boss ? .8 : .4, def.boss ? 0xd8b578 : 0x7e938d, .8); m.hpBar = this.add.rectangle(0, 0, m.barW, def.boss ? 5 : 3, def.boss ? 0xbd7458 : 0xb86058).setOrigin(0, 0.5);
     m.setInteractive({ useHandCursor: true });
     m.on('pointerdown', (ptr) => { if (uiBlocked(ptr)) return; ptr.event.stopPropagation(); this.setTarget(m); });
     m.on('pointerover', () => { this.hovered = m; document.body.dataset.cursor = 'attack'; });

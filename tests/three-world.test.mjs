@@ -10,9 +10,12 @@ import {GD_BOSSES,GD_DIFFS} from '../shared/data/ghostdg.js';
 const url=new URL('../client/js/topdown/ThreeWorld.js',import.meta.url);
 const citySource=(await readFile(new URL('../client/js/topdown/AyutthayaCity.js',import.meta.url),'utf8')).replace('/vendor/three/three.module.js',new URL('../node_modules/three/build/three.module.js',import.meta.url).href);
 const cityURL='data:text/javascript;base64,'+Buffer.from(citySource).toString('base64');
+const monsterSource=(await readFile(new URL('../client/js/topdown/MonsterLook.js',import.meta.url),'utf8')).replace('/vendor/three/three.module.js',new URL('../node_modules/three/build/three.module.js',import.meta.url).href);
+const monsterURL='data:text/javascript;base64,'+Buffer.from(monsterSource).toString('base64');
 const source=(await readFile(url,'utf8'))
   .replace('/vendor/three/three.module.js',new URL('../node_modules/three/build/three.module.js',import.meta.url).href)
   .replace('/shared/td/ayutthaya.js',new URL('../shared/td/ayutthaya.js',import.meta.url).href)
+  .replace('./MonsterLook.js',monsterURL)
   .replace('./AyutthayaCity.js',cityURL)
   .replace('./ThreeWorldMath.js',new URL('../client/js/topdown/ThreeWorldMath.js',import.meta.url).href);
 const {ThreeWorld}=await import('data:text/javascript;base64,'+Buffer.from(source).toString('base64'));
@@ -73,3 +76,12 @@ assert.equal(view.entries.get(actor).mesh,mesh,'animation reuses its mesh');
 assert.equal(mesh.geometry.attributes.uv.array[0],Math.fround(.4),'atlas UVs change with the current attack frame');
 assert.equal(view.textures.size,1,'characters share their source texture rather than copying each atlas frame');
 console.log('Three.js world: frame trims, pixel scales, pointer projection, all map families, transitions and GPU cleanup passed.');
+
+const ghost={...actor,def:{behavior:'flyer',palette:{glow:'#58d68d'}},spawn:{id:'krasue'},d8id:'mob_krasue',alive:true,mid:0};
+view.draw(ghost,new Set());const monsterEntry=view.entries.get(ghost);
+assert.ok(monsterEntry.material.isShaderMaterial);assert.equal(monsterEntry.mesh.scale.x,actor.scaleX);
+assert.equal(monsterEntry.material.uniforms.atlas.value,view.entries.get(actor).material.map,'monster rendering shares the original animation atlas');
+assert.equal(monsterEntry.mesh.castShadow,true);assert.equal(monsterEntry.aura.visible,true);
+ghost.alive=false;view.draw(ghost,new Set());assert.equal(monsterEntry.aura.visible,false,'death disables the living aura while preserving the death animation');
+ghost.tintFill=true;view.draw(ghost,new Set());assert.equal(monsterEntry.material.uniforms.fillTint.value,1,'hit flashes remain visible');
+console.log('Monster presentation: lighting, original size/atlas, alpha shadows, death and hit flash passed.');
