@@ -101,7 +101,7 @@ export class HeroView {
       if(cut){
         const source=cut.source?heroImg(id,cut.source):im;
         if(!source.complete||!source.naturalWidth)return null;
-        return {src:source,sx:cut.x,sy:cut.y,sw:cut.w,sh:cut.h,hero:true,authored:true,pivot:cut.pivot,artScale:(cut.scale||m.clipScales[anim])*(m.renderScale??1),flip:m.mirrors[anim][row]};
+        return {src:source,sx:cut.x,sy:cut.y,sw:cut.w,sh:cut.h,hero:true,authored:true,pivot:cut.pivot,artScale:(cut.scale||m.clipScales[anim])*(m.renderScale??1)*(m.clipRenderScales?.[anim]??1),flip:m.mirrors[anim][row]};
       }
       return { src: im, sx: i * fw, sy: row * fh, sw: fw, sh: fh, hero: true, glow, v2: isHeroV2(id) };
     }
