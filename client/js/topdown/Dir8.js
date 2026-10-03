@@ -81,7 +81,7 @@ function setLook(sprite, d8) {
   const artMeta=d8?sprite.scene.d8meta?.[sprite.d8id]:null;
   const clip=sprite.anims.currentAnim?.key?.split(':')[2]||'idle';
   if(artMeta?.mirrors)sprite.setFlipX(!!artMeta.mirrors[clip]?.[DIRS.indexOf(sprite.dir)]);
-  const clipScale=artMeta?.cuts?.[clip]?.[DIRS.indexOf(sprite.dir)]?.[0]?.scale||artMeta?.clipScales?.[clip];
+  const clipScale=(artMeta?.cuts?.[clip]?.[DIRS.indexOf(sprite.dir)]?.[0]?.scale||artMeta?.clipScales?.[clip])*(artMeta?.directionRenderScales?.[clip]?.[DIRS.indexOf(sprite.dir)]??1);
   if(clipScale&&sprite._artScale!==clipScale){sprite._look=null;sprite._artScale=clipScale;}
   const look = d8 ? sprite.d8id : false;                                     // เปลี่ยนโมเดล (เช่น สลับอาชีพ/ขั้นอาวุธ) ขนาดเฟรมต่างกัน → คิดสเกล/กล่องชนใหม่ด้วย
   if (sprite._d8 === d8 && sprite._look === look) return;
