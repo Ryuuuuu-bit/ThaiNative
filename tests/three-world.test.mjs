@@ -38,27 +38,14 @@ for(const [x,z] of [[800,600],[620,490],[960,710]]){
   assert.ok(Math.abs(point.x-x)<1e-6&&Math.abs(point.y-z)<1e-6,'click projection round-trips to the simulation map');
 }
 
-// Exercise the actual drag handler and camera update at several rotated angles.
-const orbit=Object.create(ThreeWorld.prototype);globalThis.window=new EventTarget();
-orbit.gameCanvas=new EventTarget();orbit.gameCanvas.getBoundingClientRect=()=>({left:0,top:0,width:960,height:540});
-orbit.gameCanvas.parentElement={getBoundingClientRect:()=>({left:0,top:0})};
-orbit.canvas={style:{}};orbit.renderer={setSize(){}};orbit.camera=new THREE.OrthographicCamera();orbit.overlayCamera=new THREE.OrthographicCamera();
-orbit.sun=new THREE.DirectionalLight();orbit.s={M:{id:'ayutthaya'},cameras:{main:{width:960,height:540,zoom:1.5,scrollX:320,scrollY:330}}};
-orbit.installOrbitInput();let stopped=false;
-orbit.orbitDown({button:0});assert.equal(orbit.orbitDrag,undefined,'left click remains available to gameplay');
-orbit.orbitDown({button:2,clientX:100,clientY:100,preventDefault(){},stopImmediatePropagation(){stopped=true;}});
-assert.ok(stopped,'right drag is intercepted before NPC and combat commands');
-orbit.orbitMove({buttons:2,clientX:300,clientY:150,preventDefault(){}});assert.equal(orbit.yaw,-1.2);assert.equal(orbit.pitchOffset,.2);
-orbit.orbitUp();assert.equal(orbit.orbitDrag,null);
-orbit.raycaster=view.raycaster;orbit.pointer=view.pointer;orbit.hit=view.hit;orbit.ground=view.ground;
-for(const yaw of [0,Math.PI/2,Math.PI,Math.PI*1.5]){
-  orbit.yaw=yaw;orbit.updateCamera();
-  for(const [x,z] of [[800,600],[620,490],[960,710]]){
-    const projected=new THREE.Vector3(x,0,z).project(orbit.camera);
-    const point=orbit.worldPoint((projected.x+1)*480,(1-projected.y)*270);
-    assert.ok(Math.abs(point.x-x)<1e-6&&Math.abs(point.y-z)<1e-6,'click-to-move remains accurate after rotating the actual camera');
-  }
-}
+// The production camera always returns to its fixed high angle, regardless of stale orbit values.
+const fixed=Object.create(ThreeWorld.prototype);fixed.yaw=2;fixed.pitchOffset=.2;
+fixed.gameCanvas={getBoundingClientRect:()=>({left:0,top:0,width:960,height:540}),parentElement:{getBoundingClientRect:()=>({left:0,top:0})}};
+fixed.canvas={style:{}};fixed.renderer={setSize(){}};fixed.camera=new THREE.OrthographicCamera();fixed.overlayCamera=new THREE.OrthographicCamera();
+fixed.sun=new THREE.DirectionalLight();fixed.sky=new THREE.HemisphereLight();fixed.s={M:{id:'ayutthaya'},cameras:{main:{width:960,height:540,zoom:1.5,scrollX:320,scrollY:330}}};
+fixed.updateCamera();assert.equal(fixed.tilt,Math.PI/3);assert.equal(fixed.camera.position.x,800,'the camera stays at its original azimuth');
+fixed.raycaster=view.raycaster;fixed.pointer=view.pointer;fixed.hit=view.hit;fixed.ground=view.ground;
+for(const [x,z] of [[800,600],[620,490],[960,710]]){const projected=new THREE.Vector3(x,0,z).project(fixed.camera);const point=fixed.worldPoint((projected.x+1)*480,(1-projected.y)*270);assert.ok(Math.abs(point.x-x)<1e-6&&Math.abs(point.y-z)<1e-6);}
 view.world=new THREE.Scene();view.terrain=new THREE.Group();view.world.add(view.terrain);
 view.world.background=new THREE.Color();
 for(const id of [...TD_MAP_IDS,...Array.from({length:100},(_,i)=>`crypt:${i+1}:${i%2?6:1}:test`),...Object.keys(GD_BOSSES).flatMap(boss=>Object.keys(GD_DIFFS).map(diff=>`gd:${boss}:${diff}:6:test`))]){

@@ -1059,3 +1059,30 @@ body.gd-on #boss-bar { display: none !important; }   /* ห้องบอสผ
 #gd-hud .gd-top b { flex: 0 1 auto; min-width: 3em; }
 #gd-hud .gd-hp { height: 1.15em; }
 #gd-hud .gd-hp span { font-size: .78em; line-height: 1.5em; }
+/* Jade, warm ivory and aged gold: shared visual treatment for the game HUD. */
+body.td-mode {
+  --hud-bg: linear-gradient(155deg,rgba(22,43,45,.95),rgba(12,23,29,.94));
+  --hud-line: rgba(204,174,110,.7);
+  --hud-shadow: 0 .3cqh 1.6cqh rgba(5,12,16,.42), inset 0 .15cqh 0 rgba(255,238,190,.1);
+  --hud-r: 1.05cqh;
+  --gold: #cba768; --gold-soft: #ecd9a8; --text: #f0e9d8;
+}
+body.td-mode #chat .cb-frame, body.td-mode .quest-track, body.td-mode .tut-card,
+body.td-mode #wb-hud .wb-bar, body.td-mode .npc-talk, body.td-mode #banner {
+  background: var(--hud-bg) !important;
+  border-color: var(--hud-line) !important;
+  box-shadow: var(--hud-shadow) !important;
+}
+body.td-mode .hud-buttons button, body.td-mode #skillbar > div,
+body.td-mode .skill-slot, body.td-mode #auto-skill, body.td-mode #preset-btn {
+  background: linear-gradient(160deg,#30464a,#15252d) !important;
+  border-color: rgba(204,174,110,.7) !important;
+  box-shadow: inset 0 .15cqh 0 rgba(243,224,176,.14),0 .2cqh .5cqh rgba(0,0,0,.32) !important;
+}
+body.td-mode button:hover {filter: brightness(1.12);}
+body.td-mode .bar {border-color:rgba(211,198,161,.38);box-shadow:inset 0 1px 4px #071015;}
+body.td-mode .bar.hp > div, body.td-mode .hp .fill {background:linear-gradient(180deg,#d87569,#a84645);}
+body.td-mode .bar.mp > div, body.td-mode .mp .fill {background:linear-gradient(180deg,#73bbc7,#347586);}
+@media (prefers-reduced-motion:no-preference) {
+  body.td-mode .hud-buttons button {transition:filter .15s,border-color .15s;}
+}

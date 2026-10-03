@@ -5,6 +5,7 @@
 //  ▸ TdVfx: วงเป้าหมาย, รอยฟัน, กระสุน, ฝุ่นเท้า, วิญญาณลอยตอนผีตาย, ไฮไลต์ตอนชี้
 //  ▸ TdMinimap: มินิแมพ 2 มิติ (ภาพพื้น + จุดผู้เล่น/ผี/NPC)
 // ============================================================
+import { paintGround } from './ArtGround.js';
 import { TILE, MAP_W, MAP_H, T } from '/shared/td/ayutthaya.js';
 
 /** รายการไทล์น้ำทั้งแมพ [[x,y],...] */
@@ -15,7 +16,7 @@ let seed = 99;
 const rnd = () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
 const CLASS = (t) => (t === T.GRASS || t === T.GRASS2 || t === T.GRASS3 || t === T.TALL ? 'g'
   : t === T.WATER || t === T.WATER2 ? 'w' : t === T.WALL || t === T.WALLTOP ? 'x' : t === T.PADDY ? 'p' : 'd');
-const WATER_COLS = ['#3f7fb5', '#4a8cc2', '#3a74a6'];
+const WATER_COLS = ['#327783', '#398592', '#286b78'];
 
 // ------------------------------------------------------------
 //  พื้น: วาดทั้งแมพเป็นภาพ (แบ่งก้อน 960×896)
@@ -26,131 +27,7 @@ export function bakeGround(scene, ground, tilesets = [], style = {}) {
   const W = MAP_W * TILE, H = MAP_H * TILE;
   const big = document.createElement('canvas'); big.width = W; big.height = H;
   const ctx = big.getContext('2d');
-  const px = (x, y, w, h, c) => { ctx.fillStyle = c; ctx.fillRect(x, y, w, h); };
-  const at = (x, y) => (x < 0 || y < 0 || x >= MAP_W || y >= MAP_H ? null : ground[y][x]);
-  seed = 99;
-  // 1) ไทล์ฐาน (น้ำวาดสีพื้นเรียบ – ชั้นน้ำเคลื่อนไหวอยู่ด้านบน)
-  for (let y = 0; y < MAP_H; y++) for (let x = 0; x < MAP_W; x++) {
-    const t = ground[y][x];
-    if (CLASS(t) === 'w') { px(x * TILE, y * TILE, TILE, TILE, '#3a76ab'); continue; }
-    ctx.drawImage(src, t * TILE, 0, TILE, TILE, x * TILE, y * TILE, TILE, TILE);
-  }
-  // 2) โทนสีต่างกันเล็กน้อยเป็นหย่อม ๆ (ไม่ให้พื้นซ้ำเป็นตาราง)
-  for (let i = 0; i < 260; i++) {
-    const cx = rnd() * W, cy = rnd() * H, r = 20 + rnd() * 60;
-    const g = ctx.createRadialGradient(cx, cy, 0, cx, cy, r);
-    const warm = rnd() < 0.5;
-    g.addColorStop(0, warm ? 'rgba(255,230,140,0.10)' : 'rgba(20,60,20,0.10)'); g.addColorStop(1, 'rgba(0,0,0,0)');
-    ctx.fillStyle = g; ctx.fillRect(cx - r, cy - r, r * 2, r * 2);
-  }
-  // 3) ขอบรอยต่อ
-  for (let y = 0; y < MAP_H; y++) for (let x = 0; x < MAP_W; x++) {
-    const t = ground[y][x], c = CLASS(t), X = x * TILE, Y = y * TILE;
-    const nb = [[0, -1, 'n'], [0, 1, 's'], [-1, 0, 'w'], [1, 0, 'e']];
-    for (const [dx, dy, side] of nb) {
-      const o = at(x + dx, y + dy); if (o == null) continue;
-      const oc = CLASS(o);
-      // หญ้าล้ำเข้าถนน/ลานอิฐ/ทราย: ขอบหยัก + เงาบาง
-      if (c === 'd' && oc === 'g') {
-        for (let k = 0; k < TILE; k++) {
-          const d = 1 + Math.floor(rnd() * 3);
-          const [ax, ay, w, h] = side === 'n' ? [X + k, Y, 1, d] : side === 's' ? [X + k, Y + TILE - d, 1, d] : side === 'w' ? [X, Y + k, d, 1] : [X + TILE - d, Y + k, d, 1];
-          px(ax, ay, w, h, rnd() < 0.5 ? '#5f9e4a' : '#6aa851');
-        }
-        const [sx, sy, sw, sh] = side === 'n' ? [X, Y + 3, TILE, 1] : side === 's' ? [X, Y + TILE - 4, TILE, 1] : side === 'w' ? [X + 3, Y, 1, TILE] : [X + TILE - 4, Y, 1, TILE];
-        px(sx, sy, sw, sh, 'rgba(60,40,20,0.18)');
-      }
-      // ริมน้ำ: ตลิ่งเปียกเข้มขึ้น + ฟองขาวในน้ำ
-      if (c !== 'w' && oc === 'w') {
-        const [sx, sy, sw, sh] = side === 's' ? [X, Y + TILE - 3, TILE, 3] : side === 'n' ? [X, Y, TILE, 3] : side === 'e' ? [X + TILE - 3, Y, 3, TILE] : [X, Y, 3, TILE];
-        px(sx, sy, sw, sh, 'rgba(70,50,20,0.28)');
-      }
-      if (c === 'w' && oc !== 'w' && oc !== 'x') {
-        for (let k = 0; k < TILE; k += 2) {
-          if (rnd() < 0.35) continue;
-          const [ax, ay] = side === 'n' ? [X + k, Y + 1] : side === 's' ? [X + k, Y + TILE - 2] : side === 'w' ? [X + 1, Y + k] : [X + TILE - 2, Y + k];
-          px(ax, ay, 2, 1, 'rgba(230,248,255,0.75)');
-        }
-      }
-      // นาข้าว: คันนาดินรอบแปลง
-      if (c === 'p' && oc !== 'p') {
-        const [sx, sy, sw, sh] = side === 'n' ? [X, Y, TILE, 2] : side === 's' ? [X, Y + TILE - 2, TILE, 2] : side === 'w' ? [X, Y, 2, TILE] : [X + TILE - 2, Y, 2, TILE];
-        px(sx, sy, sw, sh, '#8a6a3c');
-      }
-    }
-    // เงากำแพงทอดลงพื้นด้านล่าง
-    if (c !== 'x' && CLASS(at(x, y - 1)) === 'x') { px(X, Y, TILE, 5, 'rgba(0,0,0,0.22)'); px(X, Y + 5, TILE, 3, 'rgba(0,0,0,0.1)'); }
-  }
-  // 4) ของตกแต่งเล็กบนหญ้า: ดอกไม้เป็นกอ, ก้อนหิน, ใบไม้ร่วง
-  for (let y = 0; y < MAP_H; y++) for (let x = 0; x < MAP_W; x++) {
-    if (CLASS(ground[y][x]) !== 'g') continue;
-    const r = rnd(), X = x * TILE, Y = y * TILE;
-    if (r < 0.05) {                                                    // กอดอกไม้
-      const col = ['#f7d154', '#f59ec3', '#ffffff', '#c39bd3'][Math.floor(rnd() * 4)];
-      for (let k = 0; k < 4; k++) { const fx = X + 3 + rnd() * 10, fy = Y + 3 + rnd() * 10; px(fx, fy + 1, 1, 2, '#3f7a32'); px(fx - 1, fy, 3, 1, col); px(fx, fy - 1, 1, 3, col); px(fx, fy, 1, 1, '#fff3a0'); }
-    } else if (r < 0.07) {                                             // ก้อนหิน
-      const sx = X + 4 + rnd() * 6, sy = Y + 6 + rnd() * 6;
-      px(sx, sy, 4, 3, '#8f8c80'); px(sx, sy, 3, 1, '#b8b4a6'); px(sx, sy + 3, 4, 1, 'rgba(0,0,0,0.25)');
-    } else if (r < 0.09) {                                             // ใบไม้แห้ง
-      px(X + rnd() * 12, Y + rnd() * 12, 2, 1, '#c98a3a'); px(X + rnd() * 12, Y + rnd() * 12, 1, 2, '#a86a2a');
-    }
-  }
-  // 4.5) พื้นจาก tileset ของ PixelLab (Wang 16 ไทล์ วาดแบบ dual-grid: ไทล์แสดงผลเลื่อนครึ่งช่อง มุมทั้ง 4 = ไทล์ในผัง 4 ช่องรอบจุดนั้น)
-  if (tilesets.length) {
-    const sets = new Map(); const full = new Map();
-    for (const id of tilesets) {
-      const key = `ts_${id}`; if (!scene.textures.exists(key)) continue;
-      const [lo, up] = id.split('__'); const img = scene.textures.get(key).getSourceImage();
-      sets.set(`${lo}|${up}`, { img, lo, up });
-      if (!full.has(lo)) full.set(lo, { img, m: 0 }); if (!full.has(up)) full.set(up, { img, m: 15 });
-    }
-    const PRI = { water: 8, stone: 7, brick: 6, road: 5, sand: 4, paddy: 3, tall: 2, grass: 1 };
-    const isWaterT = (t) => t === T.WATER || t === T.WATER2;
-    const terr = (x, y) => {
-      const t = at(Math.max(0, Math.min(MAP_W - 1, x)), Math.max(0, Math.min(MAP_H - 1, y)));
-      if (isWaterT(t)) return 'water';
-      if (style.wallAs && (t === T.WALL || t === T.WALLTOP)) return style.wallAs;   // สุสาน: ผนังกลืนกับพื้นหิน (ไม่มีขอบหญ้า)
-      if (t === T.WOOD) return [[1, 0], [-1, 0], [0, 1], [0, -1]].some(([dx, dy]) => isWaterT(at(x + dx, y + dy))) ? 'water' : 'stone';
-      return { [T.STONE]: 'stone', [T.BRICK]: 'brick', [T.ROAD]: 'road', [T.PADDY]: 'paddy', [T.TALL]: 'tall', [T.SAND]: 'sand' }[t] || 'grass';
-    };
-    const drawFull = (name, X, Y) => { const f = full.get(name); if (!f) return false; ctx.drawImage(f.img, f.m * TILE, 0, TILE, TILE, X, Y, TILE, TILE); return true; };
-    for (let y = 0; y <= MAP_H; y++) for (let x = 0; x <= MAP_W; x++) {
-      const c = [terr(x - 1, y - 1), terr(x, y - 1), terr(x - 1, y), terr(x, y)];
-      const X = x * TILE - TILE / 2, Y = y * TILE - TILE / 2;
-      const kinds = [...new Set(c)];
-      if (kinds.length === 1) { drawFull(kinds[0], X, Y); continue; }
-      // เลือกคู่ที่มี tileset: สองชนิดที่พบบ่อยสุด (เสมอกัน → ความสำคัญสูงกว่า) ที่เหลือแทนด้วยชนิดที่พบบ่อยสุด
-      const cnt = {}; for (const k of c) cnt[k] = (cnt[k] || 0) + 1;
-      kinds.sort((p, q) => cnt[q] - cnt[p] || PRI[q] - PRI[p]);
-      let [p1, p2] = kinds; const cc = c.map((k) => (k === p1 || k === p2 ? k : p1));
-      let set = sets.get(`${p1}|${p2}`) || sets.get(`${p2}|${p1}`);
-      if (!set) { if (!drawFull(p1, X, Y)) continue; continue; }
-      const m = cc.reduce((acc, k, i) => acc | (k === set.up ? 1 << i : 0), 0);
-      ctx.drawImage(set.img, m * TILE, 0, TILE, TILE, X, Y, TILE, TILE);
-    }
-    // กำแพง/สะพานไม้ วาดทับด้วยไทล์เดิม
-    for (let y = 0; y < MAP_H; y++) for (let x = 0; x < MAP_W; x++) {
-      const t = ground[y][x];
-      if (t === T.WALL || t === T.WALLTOP || t === T.WOOD) ctx.drawImage(src, t * TILE, 0, TILE, TILE, x * TILE, y * TILE, TILE, TILE);
-    }
-  }
-  // 5) บัวในแม่น้ำ
-  const wt = waterTiles(ground);
-  for (let i = 0; i < 60 && wt.length; i++) {
-    const [x, y] = wt[Math.floor(rnd() * wt.length)];
-    if (at(x, y - 1) === T.WOOD || at(x, y + 1) === T.WOOD || at(x - 1, y) === T.WOOD || at(x + 1, y) === T.WOOD) continue;
-    const X = x * TILE + rnd() * 8, Y = y * TILE + rnd() * 8;
-    px(X, Y, 6, 4, '#2f8a4a'); px(X + 1, Y, 4, 1, '#56b86c'); px(X + 3, Y + 1, 1, 2, '#1f6a3a');
-    if (rnd() < 0.4) { px(X + 2, Y - 2, 3, 2, '#f7a8c8'); px(X + 3, Y - 3, 1, 1, '#ffe0ee'); }
-  }
-  // 6) โทนสีประจำแมพ (ใต้บาดาล = ฟ้า · นรก = แดงหม่น) + น้ำเป็นลาวา
-  if (style.overlay) { ctx.fillStyle = style.overlay; ctx.fillRect(0, 0, W, H); }
-  if (style.water) {
-    ctx.fillStyle = style.water;
-    for (const [x, y] of waterTiles(ground)) ctx.fillRect(x * TILE, y * TILE, TILE, TILE);
-    if (style.lava) for (const [x, y] of waterTiles(ground)) if (rnd() < 0.3) { ctx.fillStyle = rnd() < 0.5 ? 'rgba(255,220,120,0.8)' : 'rgba(90,10,0,0.45)'; ctx.fillRect(x * TILE + rnd() * 10, y * TILE + rnd() * 12, 3 + rnd() * 4, 2); }
-  }
-  // → texture ก้อนละ 960×896
+  paintGround(ctx, ground, TILE, T, style);
   const CW = 960, CH = 896, parts = [];
   for (let cy = 0; cy < H; cy += CH) for (let cx = 0; cx < W; cx += CW) {
     const key = `td_ground_${cx}_${cy}`;
@@ -208,7 +85,7 @@ function flatMini(mini, ground) {
 export function makeWater(scene, ground, style = {}) {
   if (!scene.textures.exists('td_water')) {
     const c = document.createElement('canvas'); c.width = 64; c.height = 32; const g = c.getContext('2d');
-    g.fillStyle = '#3f7fb5'; g.fillRect(0, 0, 64, 32);
+    g.fillStyle = '#2b7381'; g.fillRect(0, 0, 64, 32);
     seed = 5;
     for (let i = 0; i < 40; i++) { g.fillStyle = WATER_COLS[Math.floor(rnd() * 3)]; g.fillRect(Math.floor(rnd() * 64), Math.floor(rnd() * 32), 2 + Math.floor(rnd() * 4), 1); }
     for (let i = 0; i < 7; i++) { g.fillStyle = 'rgba(190,230,255,0.7)'; g.fillRect(Math.floor(rnd() * 60), Math.floor(rnd() * 32), 4 + Math.floor(rnd() * 5), 1); }
@@ -309,7 +186,7 @@ export class TdAtmosphere {
   update(time, player, inTown) {
     const s = this.s, cam = s.cameras.main, L = this.light, h = this.hour;
     const dark = 1 - L;
-    this.night.setAlpha(dark * 0.78);
+    this.night.setAlpha(dark * 0.62);
     const glow = h >= 16 && h < 20 ? Math.sin(((h - 16) / 4) * Math.PI) : h >= 5 && h < 8 ? Math.sin(((h - 5) / 3) * Math.PI) * 0.7 : 0;
     this.dusk.setAlpha(glow * 0.12);
     for (const l of this.lights) l.img.setAlpha(Math.min(1, dark * 1.2) * l.k * (0.85 + Math.sin(time / 170 + l.ph) * 0.15));
