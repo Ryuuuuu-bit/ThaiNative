@@ -89,7 +89,7 @@ export class TopDownScene extends Phaser.Scene {
       const needMobs = new Set(this.mobSpriteIds(startMap));
       for (const [id, meta] of Object.entries(this.d8meta)) {
         if (meta.lazy || (id.startsWith('mob_') && !needMobs.has(id))) continue;    // ชุดเต็มตัว: โหลดเมื่อมีคนสวม · ผีแมพอื่น: โหลดทีหลัง
-        for (const anim of meta.anims) this.load.image(texKey(id, anim), `/assets/td/${id}/${anim}.png`);
+        for (const anim of [...meta.anims,...(meta.sources||[])]) this.load.image(texKey(id, anim), `/assets/td/${id}/${anim}.png`);
       }
       for (const id of data?.images || []) this.load.image(id, `/assets/td/${id}.png`);
       for (const id of data?.tilesets || []) this.load.image(`ts_${id}`, `/assets/td/tiles/${id}.png`);
@@ -562,8 +562,8 @@ export class TopDownScene extends Phaser.Scene {
   registerHero(id) {
     const m = this.d8meta?.[id]; if (!m) return false;
     const anims = {};
-    for (const a of m.anims) { const [rate, loop] = D8_RATE[a] || [10, false]; anims[a] = { frames: m.frames?.[a] || (a === 'idle' ? 4 : 6), rate, loop }; }
-    return registerDir8(this, { id, anims });
+    for (const a of m.anims) { const [rate, loop] = D8_RATE[a] || [10, false]; anims[a] = { frames: m.frames?.[a] || (a === 'idle' ? 4 : 6), rate:m.rates?.[a]||rate, directionRates:m.directionRates?.[a], loop }; }
+    return registerDir8(this, { id, anims, cuts:m.cuts });
   }
 
   /** โหลดโมเดลชุดเต็มตัวแบบ lazy → Promise<boolean> */
@@ -573,7 +573,7 @@ export class TopDownScene extends Phaser.Scene {
     if (hasDir8(this, id)) return Promise.resolve(true);
     this._heroLoads ||= {};
     return (this._heroLoads[id] ||= new Promise((res) => {
-      const todo = m.anims.filter((a) => !this.textures.exists(texKey(id, a)));
+      const todo = [...m.anims,...(m.sources||[])].filter((a) => !this.textures.exists(texKey(id, a)));
       if (!todo.length) return res(this.registerHero(id));
       let left = todo.length;
       const done = () => { if (--left === 0) res(this.registerHero(id)); };

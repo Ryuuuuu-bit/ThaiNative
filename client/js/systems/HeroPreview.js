@@ -14,7 +14,7 @@ export const baseHeroId = (a) => `hero_${a.gender}_${OUTFIT_IDS[a.outfit] || 'mo
 export const HERO_V2 = { male: ['swordman', 'mage', 'archer', 'boxer', 'healer'] };
 export const isHeroV2 = (id) => typeof id === 'string' && id.startsWith('hero2_');
 /** โมเดลที่แสดง: มีชุดใหม่ของเพศ/อาชีพนี้ → hero2_<เพศ>_<อาชีพ>_t<ขั้น> · ไม่งั้นโมเดลพื้นฐานเดิม */
-export const heroId = (a) => (HERO_V2[a.gender]?.includes(a.job) ? `hero2_${a.gender}_${a.job}_t${a.wtier || weaponTier(a.weapon)}` : baseHeroId(a));
+export const heroId = (a) => a.gender==='female'&&a.job==='boxer'?'hero2_female_boxer_t1':(HERO_V2[a.gender]?.includes(a.job) ? `hero2_${a.gender}_${a.job}_t${a.wtier || weaponTier(a.weapon)}` : baseHeroId(a));
 /** ลำดับแถวในภาพ PixelLab */
 export const DIRS = ['south', 'south-east', 'east', 'north-east', 'north', 'north-west', 'west', 'south-west'];
 /** ลำดับหมุนตัวตามเข็มนาฬิกา (มองจากบน) */
@@ -90,13 +90,20 @@ export class HeroView {
       if (!anim || !m.anims.includes(anim)) anim = 'idle';
       const im = heroImg(id, anim);
       if (!im.complete || !im.naturalWidth) return null;
-      const n = m.frames?.[anim] || 4, fw = im.naturalWidth / n, fh = im.naturalHeight / DIRS.length;
+      const row = DIRS.indexOf(this.dir);
+      const n = m.cuts?.[anim]?.[row]?.length || m.frames?.[anim] || 4, fw = im.naturalWidth / n, fh = im.naturalHeight / DIRS.length;
       const loopable = anim === 'idle' || anim === 'walk';
-      const ms0 = 1000 / (RATE[anim] || 8);
+      const ms0 = 1000 / (m.directionRates?.[anim]?.[row] || m.rates?.[anim] || RATE[anim] || 8);
       const ms = ms0, el = now - this.t0;
       let i = Math.floor(el / ms);
       i = loopable ? i % n : (i % (n + 6) >= n ? n - 1 : i % (n + 6));      // ท่าไม่วน: เล่นจบแล้วค้างครู่หนึ่งก่อนเล่นซ้ำ
-      return { src: im, sx: i * fw, sy: DIRS.indexOf(this.dir) * fh, sw: fw, sh: fh, hero: true, glow, v2: isHeroV2(id) };
+      const cut=m.cuts?.[anim]?.[row]?.[i];
+      if(cut){
+        const source=cut.source?heroImg(id,cut.source):im;
+        if(!source.complete||!source.naturalWidth)return null;
+        return {src:source,sx:cut.x,sy:cut.y,sw:cut.w,sh:cut.h,hero:true,authored:true,pivot:cut.pivot,artScale:cut.scale||m.clipScales[anim],flip:m.mirrors[anim][row]};
+      }
+      return { src: im, sx: i * fw, sy: row * fh, sw: fw, sh: fh, hero: true, glow, v2: isHeroV2(id) };
     }
     // สำรอง: สไปรต์ด้านข้าง (พลิกซ้าย/ขวาตามทิศ)
     if (!this.scene) return null;
@@ -134,6 +141,12 @@ export class HeroView {
       ctx.beginPath(); ctx.ellipse(W / 2, H * 0.9, W * 0.2, H * 0.05, 0, 0, Math.PI * 2); ctx.fill();
     }
     if (f.hero) {
+      if(f.authored){
+        const s=this.scale*f.artScale;ctx.save();
+        ctx.translate(W/2,H*.90);if(f.flip)ctx.scale(-1,1);
+        ctx.drawImage(f.src,f.sx,f.sy,f.sw,f.sh,-f.pivot*s,-f.sh*s,f.sw*s,f.sh*s);
+        ctx.restore();return;
+      }
       const s = this.scale * 72 / (f.v2 ? 96 : f.sw), el = (now - this.t0) / 1000;
       if (f.glow) (f.glow === 'heal' ? healFx : spellFx)(ctx, W, H, el, false);
       ctx.drawImage(f.src, f.sx, f.sy, f.sw, f.sh, (W - f.sw * s) / 2, H * 0.97 - f.sh * s, f.sw * s, f.sh * s);
@@ -227,13 +240,19 @@ export function heroFace(app) {
   if (faces.has(id)) return faces.get(id);
   const m = meta[id];
   if (!m) { loadHeroMeta(); return null; }
-  const im = heroImg(id, 'idle');
+  const cut = m.cuts?.idle?.['0']?.[0];
+  const im = heroImg(id, cut?.source || 'idle');
   if (!im.complete || !im.naturalWidth) { im.addEventListener('load', () => faces.delete(id), { once: true }); return null; }
   const n = m.frames?.idle || 4, fw = im.naturalWidth / n, fh = im.naturalHeight / DIRS.length;
   const cv = document.createElement('canvas'); cv.width = cv.height = 40;
   const g = cv.getContext('2d'); g.imageSmoothingEnabled = false;
-  const v2 = isHeroV2(id), sz = v2 ? 34 : fw * 0.44;
-  g.drawImage(im, (fw - sz) / 2, v2 ? Math.max(14, Math.round(fh * 0.92) - 86) : fh * 0.06, sz, sz, 0, 0, 40, 40);   // v2: เท้าอยู่ที่ 92% ของช่อง → หัวอยู่เหนือเท้า ~86px (ช่องสูงขึ้นสำหรับดาบใหญ่)
+  if(cut){
+    const sz=cut.h*.3;
+    g.drawImage(im,cut.x+cut.pivot-sz/2,cut.y,sz,sz,0,0,40,40);
+  } else {
+    const v2 = isHeroV2(id), sz = v2 ? 34 : fw * 0.44;
+    g.drawImage(im, (fw - sz) / 2, v2 ? Math.max(14, Math.round(fh * 0.92) - 86) : fh * 0.06, sz, sz, 0, 0, 40, 40);
+  }
   let url = null; try { url = cv.toDataURL(); } catch { url = null; }
   faces.set(id, url);
   return url;

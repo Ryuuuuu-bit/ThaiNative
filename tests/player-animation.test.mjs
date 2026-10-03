@@ -34,4 +34,16 @@ sprite.anims.currentFrame={index:4}; sprite.anims.accumulator=27; sprite.anims.i
 playDir(sprite,'walk','east');
 assert.deepEqual(played.at(-1),{key:'td:hero:walk:east',startFrame:3});
 assert.equal(sprite.anims.accumulator,27,'turning must preserve gait phase');
+sprite.anims.currentAnim={key:'td:hero:walk:south',frames:Array(8),msPerFrame:125};
+sprite.anims.currentFrame={index:4};sprite.anims.accumulator=62.5;
+scene.anims.get=()=>({frames:Array(16),msPerFrame:62.5});
+playDir(sprite,'walk','south-east');
+assert.deepEqual(played.at(-1),{key:'td:hero:walk:south-east',startFrame:7},'8-to-16 frame turn preserves the same point in the stride');
+assert.equal(sprite.anims.accumulator,0);
+sprite.anims.currentAnim={key:'td:hero:walk:south-east',frames:Array(16),msPerFrame:62.5};
+sprite.anims.currentFrame={index:8};sprite.anims.accumulator=31.25;
+scene.anims.get=()=>({frames:Array(8),msPerFrame:125});
+playDir(sprite,'walk','south');
+assert.deepEqual(played.at(-1),{key:'td:hero:walk:south',startFrame:3});
+assert.equal(sprite.anims.accumulator,93.75,'16-to-8 frame turn preserves fractional gait time');
 console.log('Player animation regression checks passed');

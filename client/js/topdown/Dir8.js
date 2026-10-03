@@ -42,13 +42,23 @@ export function registerDir8(scene, spec) {
     const fw = spec.frame?.w || Math.floor(src.width / a.frames), fh = spec.frame?.h || Math.floor(src.height / DIRS.length);
     DIRS.forEach((dir, row) => {
       const frames = [];
-      for (let k = 0; k < a.frames; k++) {
+      const count=spec.cuts?.[anim]?.[row]?.length||a.frames;
+      for (let k = 0; k < count; k++) {
         const name = `${dir}_${k}`;
-        if (!tex.has(name)) tex.add(name, 0, k * fw, row * fh, fw, fh);
-        frames.push({ key: tk, frame: name });
+        const cut=spec.cuts?.[anim]?.[row]?.[k];
+        const frameKey=cut?.source?texKey(spec.id,cut.source):tk;
+        const target=cut?.source?scene.textures.get(frameKey):tex;
+        if (!target.has(name)) {
+          if(cut){
+            const frame=target.add(name,0,cut.x,cut.y,cut.w,cut.h);
+            const canvas=cut.canvas||384;
+            frame.setTrim(canvas,canvas,canvas/2-cut.pivot,canvas-32-cut.h*(cut.foot??1),cut.w,cut.h);
+          } else target.add(name, 0, k * fw, row * fh, fw, fh);
+        }
+        frames.push({ key: frameKey, frame: name });
       }
       const ak = animKey(spec.id, anim, dir);
-      if (!scene.anims.exists(ak)) scene.anims.create({ key: ak, frames, frameRate: a.rate || 8, repeat: a.loop ? -1 : 0 });
+      if (!scene.anims.exists(ak)) scene.anims.create({ key: ak, frames, frameRate: a.directionRates?.[row] || a.rate || 8, repeat: a.loop ? -1 : 0 });
     });
     ok = true;
   }
@@ -68,12 +78,17 @@ const BORROW = { attack: 'walk', cast: 'idle', hit: 'idle', run: 'walk' };
 
 /** ปรับขนาด/กล่องชนเมื่อสลับระหว่างภาพ 8 ทิศ ↔ สไปรต์เดิม */
 function setLook(sprite, d8) {
+  const artMeta=d8?sprite.scene.d8meta?.[sprite.d8id]:null;
+  const clip=sprite.anims.currentAnim?.key?.split(':')[2]||'idle';
+  if(artMeta?.mirrors)sprite.setFlipX(!!artMeta.mirrors[clip]?.[DIRS.indexOf(sprite.dir)]);
+  const clipScale=artMeta?.cuts?.[clip]?.[DIRS.indexOf(sprite.dir)]?.[0]?.scale||artMeta?.clipScales?.[clip];
+  if(clipScale&&sprite._artScale!==clipScale){sprite._look=null;sprite._artScale=clipScale;}
   const look = d8 ? sprite.d8id : false;                                     // เปลี่ยนโมเดล (เช่น สลับอาชีพ/ขั้นอาวุธ) ขนาดเฟรมต่างกัน → คิดสเกล/กล่องชนใหม่ด้วย
   if (sprite._d8 === d8 && sprite._look === look) return;
   sprite._d8 = d8; sprite._look = look;
   if (sprite.baseScale == null) sprite.baseScale = sprite.scaleX || 1;
   const meta = d8 ? sprite.scene.d8meta?.[sprite.d8id] : null;
-  const sc = d8 ? (meta?.scale || 2 / 3) * (sprite.scaleMul || 1) : sprite.baseScale;
+  const sc = d8 ? (clipScale || meta?.scale || 2 / 3) * (sprite.scaleMul || 1) : sprite.baseScale;
   sprite.setScale(sc);
   if (sprite.body && sprite.bodyFoot) {
     const [w, h] = sprite.bodyFoot, fw = sprite.frame.realWidth, fh = sprite.frame.realHeight;
@@ -137,8 +152,16 @@ export function playDir(sprite, anim, dir, restart = false) {
       const sameLoop = !restart && cur && sprite.anims.isPlaying && cur.key.startsWith(`td:${sprite.d8id}:${use}:`);
       if (sameLoop) {
         const idx = sprite.anims.currentFrame?.index ?? 0, prog = sprite.anims.accumulator || 0;
-        sprite.play({ key: k, startFrame: Math.max(0, idx - 1) });
-        sprite.anims.accumulator = prog;
+        const next=scene.anims.get?.(k);
+        if(cur.frames?.length&&next?.frames?.length&&cur.msPerFrame&&next.msPerFrame){
+          const phase=((Math.max(0,idx-1)+prog/cur.msPerFrame)/cur.frames.length)%1;
+          const position=phase*next.frames.length,start=Math.floor(position);
+          sprite.play({key:k,startFrame:start});
+          sprite.anims.accumulator=(position-start)*next.msPerFrame;
+        } else {
+          sprite.play({ key: k, startFrame: Math.max(0, idx - 1) });
+          sprite.anims.accumulator = prog;
+        }
       } else sprite.play(k, !restart);
     }
     setLook(sprite, true);
