@@ -26,6 +26,8 @@ export const TITLE_SCENES = [
   { id: 'd', img: 'assets/title/wall_d.png', nameTh: 'บางผียามโพล้เพล้', music: 'title_d',
     fx: { fireflies: '255,230,120', clouds: 1, lamps: [[33, 128], [217, 128], [284, 128]], moon: [175, 108, 50, '255,190,120'] },
     ghost: { id: 'kong_koi', h: 26, y: [132, 142], glow: '255,170,120', path: 'peek', x: [300, 360] } },
+  { id: 'jade', img: 'assets/title/ayutthaya-jade-v1.png', nameTh: 'กรุงศรีฯ ใต้แสงโคม', music: 'title_a',
+    highResolution: true, fx: { fireflies: '238,211,149' }, ghost: null },
 ];
 
 const rnd = (a, b) => a + Math.random() * (b - a);
@@ -49,17 +51,26 @@ class TitleScreen {
 
   start(index = null) {
     if (this.running && index === null) { sound.music(this.scene.music); return; }
-    const i = index ?? this.pick();
+    this.retiringDepth?.dispose(); this.retiringDepth = null;
+    const i = index ?? TITLE_SCENES.findIndex(scene => scene.id === 'jade');
     this.scene = TITLE_SCENES[i];
     this.index = i;
+    this.depth?.setScene(i);
     this.cv = document.getElementById('title-bg');
     this.cv.classList.remove('hidden', 'fade-out');
+    this.cv.classList.toggle('painted', !!this.scene.highResolution);
     this.ctx = this.cv.getContext('2d');
     this.img = new Image();
     this.img.src = this.scene.img;
+    const background = this.img;
+    background.onerror = () => {
+      background.onerror = null;
+      if (background === this.img && this.scene.highResolution) background.src = 'assets/title/wall_a.png';
+    };
     this.ghostImg = this.ghostImage(this.scene.ghost?.id);
     this.parts = [];
     this.flash = 0;
+    this.g = null;
     this.ghostT = rnd(3, 7);
     this.t0 = performance.now();
     const cap = document.getElementById('title-caption');
@@ -72,9 +83,37 @@ class TitleScreen {
       window.addEventListener('resize', this.onResize);
       this.resize();
       this.last = performance.now();
-      const loop = (now) => { if (!this.running) return; this.frame(now); this.raf = requestAnimationFrame(loop); };
+      const loop = (now) => {
+        if (!this.running) return;
+        // The menu needs only 30 fps; never spend GPU time in a hidden tab.
+        if (!document.hidden && now - this.last >= 1000 / 30) this.frame(now);
+        this.raf = requestAnimationFrame(loop);
+      };
       this.raf = requestAnimationFrame(loop);
+      this.startDepth();
     }
+    this.resize();
+  }
+
+  async startDepth() {
+    const token = this.depthToken = (this.depthToken || 0) + 1;
+    try {
+      const { TitleDepth } = await import('./TitleDepth.js');
+      if (!this.running || token !== this.depthToken) return;
+      this.depth = new TitleDepth(this.cv);
+      this.depth.setScene(this.index);
+      if (this.characterFocus) this.depth.select(...this.characterFocus);
+    } catch (error) {
+      // The original animated Canvas scene remains usable without WebGL.
+      this.depth?.dispose();
+      this.depth = null;
+      console.info('Title uses Canvas fallback:', error.message);
+    }
+  }
+
+  selectCharacter(index, count) {
+    this.characterFocus = [index, count];
+    this.depth?.select(index, count);
   }
 
   /** ฉากถัดไป (คลิกที่ชื่อฉาก) */
@@ -83,6 +122,15 @@ class TitleScreen {
   stop() {
     if (!this.running) return;
     this.running = false;
+    this.depthToken = (this.depthToken || 0) + 1;
+    const depth = this.depth;
+    this.depth = null;
+    this.characterFocus = null;
+    if (depth) {
+      this.retiringDepth = depth;
+      depth.canvas.classList.add('fade-out');
+      setTimeout(() => { depth.dispose(); if (this.retiringDepth === depth) this.retiringDepth = null; }, 600);
+    }
     cancelAnimationFrame(this.raf);
     window.removeEventListener('resize', this.onResize);
     this.cv.classList.add('fade-out');
@@ -102,15 +150,19 @@ class TitleScreen {
   }
 
   resize() {
-    this.cv.width = Math.ceil(window.innerWidth / 2);   // วาดครึ่งความละเอียด แล้วขยายแบบพิกเซล (เบาเครื่อง)
-    this.cv.height = Math.ceil(window.innerHeight / 2);
-    this.ctx.imageSmoothingEnabled = false;
+    const ratio = this.scene.highResolution ? Math.min(devicePixelRatio || 1, 1.5) : .5;
+    this.cv.width = Math.ceil(window.innerWidth * ratio);
+    this.cv.height = Math.ceil(window.innerHeight * ratio);
+    this.ctx.imageSmoothingEnabled = !!this.scene.highResolution;
+    this.ctx.imageSmoothingQuality = 'high';
+    this.depth?.resize();
   }
 
   // ------------------------------------------------------------
   frame(now) {
-    const dt = Math.min(0.05, (now - this.last) / 1000); this.last = now;
-    const t = (now - this.t0) / 1000;
+    const reduced = this.reducedMotion ??= matchMedia('(prefers-reduced-motion: reduce)');
+    const dt = reduced.matches ? 0 : Math.min(0.05, (now - this.last) / 1000); this.last = now;
+    const t = reduced.matches ? 0 : (now - this.t0) / 1000;
     const { ctx, cv } = this, S = this.scene;
     const W = cv.width, H = cv.height;
     // กล้อง: cover + ซูม/แพนช้าๆ (Ken Burns)
@@ -139,6 +191,11 @@ class TitleScreen {
     const g = ctx.createRadialGradient(W / 2, H / 2, Math.min(W, H) * 0.35, W / 2, H / 2, Math.max(W, H) * 0.75);
     g.addColorStop(0, 'rgba(0,0,0,0)'); g.addColorStop(1, 'rgba(5,2,12,0.7)');
     ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
+    try { this.depth?.frame(t); }
+    catch (error) {
+      this.depth?.dispose(); this.depth = null;
+      console.info('Title returned to Canvas:', error.message);
+    }
   }
 
   // ---------------- เอฟเฟกต์ ----------------

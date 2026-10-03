@@ -88,13 +88,13 @@ export class LobbyScene extends Phaser.Scene {
     this.views = [];
     const box = $('#lb-slots');
     box.innerHTML = this.chars.map((c, i) => c
-      ? `<div class="lb-card" data-i="${i}">
+      ? `<div class="lb-card" data-i="${i}" role="button" tabindex="0" aria-label="${esc(c.name)}">
            <span class="lb-no">${i + 1}</span>
            <div class="lb-stage"><canvas class="px"></canvas></div>
            <div class="lb-name">${esc(c.name)}</div>
            <div class="lb-sub">Lv.${c.level} · ${esc(pathName(c))}</div>
          </div>`
-      : `<div class="lb-card empty" data-i="${i}">
+      : `<div class="lb-card empty" data-i="${i}" role="button" tabindex="0" aria-label="สร้างตัวละครช่องที่ ${i + 1}">
            <span class="lb-no">${i + 1}</span>
            <div class="lb-stage"><div class="lb-plus">＋</div></div>
            <div class="lb-name">ช่องว่าง</div>
@@ -102,8 +102,13 @@ export class LobbyScene extends Phaser.Scene {
          </div>`).join('');
     box.querySelectorAll('.lb-card').forEach((el) => {
       const i = +el.dataset.i, c = this.chars[i];
-      if (c) this.views[i] = new HeroView(el.querySelector('canvas'), this, { scale: 2 }).set(c.appearance, 'idle', 'south');
+      if (c) this.views[i] = new HeroView(el.querySelector('canvas'), this, { scale: 2, fitHeight: .72 }).set(c.appearance, 'idle', 'south');
       el.onclick = () => { if (this.sel !== i) { sound.play('click'); this.select(i); } };
+      el.onkeydown = (event) => {
+        if (event.key !== ' ' && event.key !== 'Enter') return;
+        event.preventDefault(); event.stopPropagation();
+        if (this.sel !== i) this.select(i); else this.enter(i);
+      };
       el.ondblclick = () => this.enter(i);
     });
     this.select(this.sel, true);
@@ -111,8 +116,13 @@ export class LobbyScene extends Phaser.Scene {
 
   select(i, silent = false) {
     this.sel = i;
+    titleScreen.selectCharacter(i, this.chars.length);
     const c = this.chars[i];
-    document.querySelectorAll('.lb-card').forEach((el) => el.classList.toggle('sel', +el.dataset.i === i));
+    document.querySelectorAll('.lb-card').forEach((el) => {
+      const selected = +el.dataset.i === i;
+      el.classList.toggle('sel', selected);
+      el.setAttribute('aria-pressed', String(selected));
+    });
     this.views.forEach((v, k) => {
       if (!v) return;
       if (k === i) v.set(this.chars[k].appearance, 'idle', 'south').setShowcase(true);

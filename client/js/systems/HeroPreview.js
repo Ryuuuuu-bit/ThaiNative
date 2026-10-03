@@ -57,6 +57,8 @@ export class HeroView {
   constructor(canvas, scene, opts = {}) {
     this.cv = canvas; this.ctx = canvas.getContext('2d'); this.scene = scene;
     this.scale = opts.scale || 2;
+    this.fitHeight = opts.fitHeight || 0;
+    this.fitReferences = new Map();
     this.shadow = opts.shadow !== false;
     this.anim = 'idle'; this.dir = 'south'; this.t0 = performance.now();
     this.spin = 0;            // > 0 = หมุนตัวเองทุก n ms
@@ -122,6 +124,31 @@ export class HeroView {
   /** โชว์ท่าวนอัตโนมัติ: ยืนหันหน้า → ท่าโจมตีตามอาวุธ → เดินหมุนรอบตัว */
   setShowcase(on) { this.showcase = !!on; this.sc0 = performance.now(); if (!on) this.spin = 0; return this; }
 
+  // Menu portraits share a display height. Use one idle reference per model,
+  // so switching attack/walk frames never stretches the character to fit.
+  portraitFactor(f) {
+    if (!this.fitHeight || !f.hero) return 1;
+    const id = heroId(this.a), m = meta[id];
+    let reference = this.fitReferences.get(id);
+    if (!reference && m.cuts?.idle?.[0]?.length) {
+      const heights = m.cuts.idle[0].map(c => c.h * (c.scale || m.clipScales.idle) * (m.renderScale ?? 1) * (m.clipRenderScales?.idle ?? 1)).sort((a,b) => a-b);
+      reference = heights[Math.floor(heights.length / 2)];
+    } else if (!reference) {
+      const idle = heroImg(id, 'idle');
+      if (!idle.complete || !idle.naturalWidth) return 1;
+      const w = idle.naturalWidth / (m.frames.idle || 4), h = idle.naturalHeight / DIRS.length;
+      const canvas = document.createElement('canvas'); canvas.width = w; canvas.height = h;
+      const ctx = canvas.getContext('2d', { willReadFrequently: true });
+      ctx.drawImage(idle, 0, 0, w, h, 0, 0, w, h);
+      const pixels = ctx.getImageData(0, 0, w, h).data;
+      let top = h, bottom = 0;
+      for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) if (pixels[(y*w+x)*4+3] > 32) { top = Math.min(top, y); bottom = Math.max(bottom, y+1); }
+      reference = Math.max(1, bottom-top) * 72 / (f.v2 ? 96 : w);
+    }
+    this.fitReferences.set(id, reference);
+    return 72 * this.fitHeight / reference;
+  }
+
   draw(now) {
     if (!this.a) return;
     if (this.showcase) {
@@ -134,6 +161,7 @@ export class HeroView {
     ctx.clearRect(0, 0, W, H);
     const f = this.frame(now);
     if (!f) return;
+    const portraitScale = this.portraitFactor(f);
     ctx.imageSmoothingEnabled = false;
     // เงาใต้เท้า
     if (this.shadow) {
@@ -142,12 +170,12 @@ export class HeroView {
     }
     if (f.hero) {
       if(f.authored){
-        const s=this.scale*f.artScale;ctx.save();
+        const s=this.scale*f.artScale*portraitScale;ctx.save();
         ctx.translate(W/2,H*.90);if(f.flip)ctx.scale(-1,1);
         ctx.drawImage(f.src,f.sx,f.sy,f.sw,f.sh,-f.pivot*s,-f.sh*s,f.sw*s,f.sh*s);
         ctx.restore();return;
       }
-      const s = this.scale * 72 / (f.v2 ? 96 : f.sw), el = (now - this.t0) / 1000;
+      const s = this.scale * 72 / (f.v2 ? 96 : f.sw) * portraitScale, el = (now - this.t0) / 1000;
       if (f.glow) (f.glow === 'heal' ? healFx : spellFx)(ctx, W, H, el, false);
       ctx.drawImage(f.src, f.sx, f.sy, f.sw, f.sh, (W - f.sw * s) / 2, H * 0.97 - f.sh * s, f.sw * s, f.sh * s);
       if (f.glow) (f.glow === 'heal' ? healFx : spellFx)(ctx, W, H, el, true);

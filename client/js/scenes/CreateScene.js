@@ -42,11 +42,11 @@ export class CreateScene extends Phaser.Scene {
     await loadHeroMeta();
     if (!this.sys.isActive()) return;
 
-    this.preview = new HeroView($('#cc-preview'), this, { scale: 4 });
+    this.preview = new HeroView($('#cc-preview'), this, { scale: 4, fitHeight: .72 });
     this.bindDom();
     this.buildGenders();
     this.refresh();
-    setTimeout(() => $('#cc-name').focus(), 60);
+    if (matchMedia('(min-width: 761px)').matches) setTimeout(() => $('#cc-name').focus(), 60);
   }
 
   bindDom() {
@@ -136,7 +136,7 @@ export class CreateScene extends Phaser.Scene {
   /** การ์ดเลือกเพศ (ชุดลายขิดอีสาน) */
   buildGenders() {
     this.gviews = [...document.querySelectorAll('#cc-genders .cc-gcard')].map((b) =>
-      new HeroView(b.querySelector('canvas'), this, { scale: 2, shadow: true }).set({ ...this.a, gender: b.dataset.v, outfit: startOutfit(b.dataset.v), weapon: null }, 'idle', 'south'));
+      new HeroView(b.querySelector('canvas'), this, { scale: 2, shadow: true, fitHeight: .72 }).set({ ...this.a, gender: b.dataset.v, outfit: startOutfit(b.dataset.v), weapon: null }, 'idle', 'south'));
   }
 
   refresh() {

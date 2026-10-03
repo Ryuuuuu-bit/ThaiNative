@@ -11,12 +11,14 @@
   <link rel="icon" type="image/png" sizes="16x16" href="assets/ui/icon-16.png" />
   <link rel="icon" type="image/png" sizes="192x192" href="assets/ui/icon-192.png" />
   <link rel="apple-touch-icon" sizes="180x180" href="assets/ui/icon-180.png" />
-  <meta name="theme-color" content="#5a1611" />
+  <meta name="theme-color" content="#102b2d" />
   <link rel="manifest" href="/manifest.webmanifest" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link href="https://fonts.googleapis.com/css2?family=Mitr:wght@400;500;600&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="css/style.css?v=hud17" />
   <link rel="stylesheet" href="css/hud.css?v=jade14" />
+  <link rel="stylesheet" href="css/jade-theme.css?v=1" />
+  <link rel="preload" href="assets/title/ayutthaya-jade-v1.png" as="image" />
 </head>
 <body>
   <!-- วอลเปเปอร์หน้าเข้าเกม (สุ่มฉาก + เอฟเฟกต์ขยับได้) -->
@@ -53,9 +55,11 @@
       <!-- หน้าเข้าสู่ระบบ -->
       <section id="auth-screen" class="hidden">
         <div class="auth-brand">
+          <p class="entrance-eyebrow">AYUTTHAYA · AFTER DARK</p>
           <img class="emblem" src="assets/ui/icon-192.png" alt="" />
           <h1 class="logo big">ThaiNative <span class="logo-online">Online</span><small>ไทยเนทีฟ ออนไลน์ · ตำนานผีไทย</small></h1>
           <p class="tagline">ท่องกรุงศรีอยุธยา ปราบภูตผี สร้างตำนานของเจ้า</p>
+          <div class="entrance-divider" aria-hidden="true">◆</div>
           <!-- ตัวอย่างเรื่องราว (animatic) · กด ⛶ = ขยายจอ · เข้าเกมแล้วหยุดเอง -->
           <figure class="trailer" id="trailer">
             <figcaption class="tr-head">
@@ -68,7 +72,9 @@
         </div>
         <div class="tr-backdrop hidden" id="tr-backdrop"></div>
         <div class="auth-box panel thai-frame">
-          <div class="plaque">ประตูเข้าสู่กรุงศรีฯ</div>
+          <p class="auth-kicker">ยินดีต้อนรับสู่ ThaiNative</p>
+          <div class="plaque">เปิดประตูสู่กรุงศรีฯ</div>
+          <p class="auth-intro">การผจญภัยครั้งใหม่ รอเจ้าอยู่</p>
           <div class="tabs auth-tabs"><button data-mode="login" class="active">เข้าสู่ระบบ</button><button data-mode="register">สมัครสมาชิก</button></div>
           <form id="auth-form" autocomplete="on">
             <label class="field ico-field"><span>ชื่อผู้ใช้</span><i>👤</i><input id="auth-user" name="username" maxlength="20" autocomplete="username" placeholder="3–20 ตัว (ไทย/อังกฤษ/ตัวเลข/_)" /></label>
@@ -90,7 +96,7 @@
           <h1 class="logo"><img class="emblem-sm" src="assets/ui/icon-192.png" alt="" />ThaiNative <span class="logo-online">Online</span></h1>
           <div class="lb-acc"><span id="lb-acc"></span><button id="lb-logout" class="btn ghost sm">🚪 ออกจากระบบ</button></div>
         </header>
-        <div class="plaque lb-plaque">เลือกตัวละคร</div>
+        <div class="lb-heading"><p class="entrance-eyebrow">YOUR JOURNEY BEGINS</p><div class="plaque lb-plaque">เลือกตัวละคร</div><p>กลับสู่กรุงศรีฯ แล้วเขียนตำนานบทต่อไป</p></div>
         <div class="lb-slots" id="lb-slots"></div>
         <div class="lb-bottom">
           <div class="lb-info panel thai-frame" id="lb-info"></div>
@@ -128,6 +134,7 @@
           </div>
         </div>
         <div class="create-panel panel thai-frame">
+          <div class="cc-heading"><p class="entrance-eyebrow">A NEW LEGEND</p><h2>ตำนานเริ่มที่ตัวเจ้า</h2><p>เลือกตัวตนและอาวุธคู่ใจ ก่อนออกเดินทาง</p></div>
           <label class="field">ชื่อตัวละคร <input id="cc-name" maxlength="16" placeholder="เช่น ขุนแผน · ไอ้ขวัญ" /><small class="cc-hint" id="cc-name-st">ชื่อต้องไม่ซ้ำใคร · ไทย/อังกฤษ/ตัวเลข/_ · 2–16 ตัว</small><span class="cc-ideas" id="cc-ideas"></span></label>
           <div class="label">เลือกเพศ</div>
           <div class="cc-genders" id="cc-genders">
