@@ -1,5 +1,5 @@
 import * as THREE from '/vendor/three/three.module.js';
-import { createMonsterMaterial, updateMonsterMaterial, createMonsterAura } from './MonsterLook.js';
+import { createMonsterMaterial, createNpcMaterial, updateMonsterMaterial, createMonsterAura } from './MonsterLook.js';
 import { TILE, T } from '/shared/td/ayutthaya.js';
 import { WORLD_TILT, frameQuad, graphicsBounds } from './ThreeWorldMath.js';
 import { buildAyutthayaCity, buildWaterSurface, cityPropKind, disposeTerrain } from './AyutthayaCity.js';
@@ -149,10 +149,12 @@ export class ThreeWorld {
     geometry.setAttribute('uv',new THREE.Float32BufferAttribute(new Array(8).fill(0),2));
     const isGround=object.texture?.key?.startsWith('td_ground_');
     const isMonster=object.def&&object.spawn&&object.d8id?.startsWith('mob_');
-    const material=isMonster?createMonsterMaterial(object.def):isGround?new THREE.MeshStandardMaterial({transparent:true,alphaTest:.12,side:THREE.DoubleSide,roughness:1,metalness:0}):new THREE.MeshBasicMaterial({transparent:true,alphaTest:.12,side:THREE.DoubleSide,toneMapped:false});
+    const isNpc=!!object.npcVisual||object.d8id?.startsWith('npc_');
+    const material=isMonster?createMonsterMaterial(object.def):isNpc?createNpcMaterial(object.npcVisual):isGround?new THREE.MeshStandardMaterial({transparent:true,alphaTest:.12,side:THREE.DoubleSide,roughness:1,metalness:0}):new THREE.MeshBasicMaterial({transparent:true,alphaTest:.12,side:THREE.DoubleSide,toneMapped:false});
     geometry.computeVertexNormals();
     const mesh=new THREE.Mesh(geometry,material);mesh.frustumCulled=true;mesh.userData.object=object;
     e={mesh,geometry,material};this.world.add(mesh);
+    if(isNpc)mesh.castShadow=true;
     if(isMonster){e.aura=createMonsterAura(object.def);this.world.add(e.aura);mesh.castShadow=true;}
     this.entries.set(object,e);return e;
   }
@@ -226,8 +228,10 @@ export class ThreeWorld {
     e.material.color.setHex(o.type==='Rectangle'&&!o.isStroked?o.fillColor:o.tintTopLeft??0xffffff);
     e.material.premultipliedAlpha=o.blendMode===Phaser.BlendModes.MULTIPLY;
     e.material.blending=o.blendMode===Phaser.BlendModes.ADD?THREE.AdditiveBlending:o.blendMode===Phaser.BlendModes.MULTIPLY?THREE.MultiplyBlending:THREE.NormalBlending;
-    if(e.material.userData.monster){
+    if(e.material.userData.monster||e.material.userData.npc){
       updateMonsterMaterial(e.material,texture,f,o,this.s.atmo?.light??1,o===this.s.player?.target||o===this.s.hovered);
+    }
+    if(e.aura){
       e.aura.visible=!!o.alive&&o.visible!==false;e.aura.position.set(o.x,.16,o.y);
       const diameter=Math.max(18,Math.min(95,Math.abs(o.displayWidth||f.width*(o.scaleX??1))*(o.def.boss?1.25:.85)));
       e.aura.scale.set(diameter,diameter,1);e.aura.material.uniforms.time.value=performance.now()/1000;

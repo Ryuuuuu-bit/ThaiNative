@@ -42,10 +42,10 @@ export class Townsfolk {
     for (let i = 0; i < this.count; i++) {
       const at = keys[(i * 7 + 3) % keys.length], p = px(at);
       const spr = this.s.add.sprite(p.x + rnd(-6, 6), p.y + rnd(-4, 4), 'npc_maekha', 'idle_0').setOrigin(0.5, 1).setDepth(p.y);
-      spr.legacyKey = 'npc_maekha'; spr.d8id = BASE[i % 2]; spr.scaleMul = 0.95;
+      spr.npcVisual = { color: '#c7dacb' }; spr.legacyKey = 'npc_maekha'; spr.d8id = BASE[i % 2]; spr.scaleMul = 0.95;
       playDir(spr, 'idle', 'south');
       const shadow = this.s.addShadow(spr, 18);
-      const tag = makeText(this.s, p.x, p.y, NAMES[i % NAMES.length], { fontSize: '6px', color: '#d5d8dc' }).setOrigin(0.5, 1).setAlpha(0.75);
+      const tag = makeText(this.s, p.x, p.y, NAMES[i % NAMES.length], { fontSize: '6px', color: '#d7e4dd' }).setOrigin(0.5, 1).setAlpha(0.75);
       this.folk.push({ spr, shadow, tag, node: at, prev: null, to: null, wait: rnd(0, 4000), speed: rnd(26, 36), night: i % 2 === 1, want: i >= 2 && i < 8 ? EXTRA[(i - 2) % EXTRA.length] : null });
     }
     // ชุดอื่นๆ (โหลดทีหลัง เฉพาะเครื่องที่ไม่ใช่มือถือ) → ชาวบ้านหน้าตาไม่ซ้ำกัน

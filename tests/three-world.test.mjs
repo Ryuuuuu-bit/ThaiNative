@@ -85,3 +85,13 @@ assert.equal(monsterEntry.mesh.castShadow,true);assert.equal(monsterEntry.aura.v
 ghost.alive=false;view.draw(ghost,new Set());assert.equal(monsterEntry.aura.visible,false,'death disables the living aura while preserving the death animation');
 ghost.tintFill=true;view.draw(ghost,new Set());assert.equal(monsterEntry.material.uniforms.fillTint.value,1,'hit flashes remain visible');
 console.log('Monster presentation: lighting, original size/atlas, alpha shadows, death and hit flash passed.');
+
+for(const d8id of ['npc_ruesi','hero_female_silk']){
+  const npc={...actor,d8id,npcVisual:{color:'#ead8b0'}};view.draw(npc,new Set());const e=view.entries.get(npc);
+  assert.equal(e.material.userData.npc,true,'service NPCs and walking townsfolk receive the same presentation');
+  assert.equal(e.mesh.castShadow,true);assert.equal(e.aura,undefined,'NPCs do not receive hostile monster auras');
+  assert.equal(e.mesh.scale.x,actor.scaleX);assert.equal(e.material.uniforms.atlas.value,view.entries.get(actor).material.map);
+  assert.ok(e.material.uniforms.rim.value<monsterEntry.material.uniforms.rim.value);
+}
+assert.equal(view.entries.get(actor).material.isMeshBasicMaterial,true,'player sprites keep their existing appearance');
+console.log('NPC presentation: service NPCs, walking townsfolk, original scale and atlas, soft lighting and shadows passed.');

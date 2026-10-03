@@ -624,7 +624,7 @@ export class TopDownScene extends Phaser.Scene {
       let o = null;                                                                     // ตัว NPC (สร้างท้ายฟังก์ชัน)
       const real = this.textures.exists(n.key), key = real ? n.key : 'npc_maekha';
       const spr = this.add.sprite(n.x, n.y, key, 'idle_0').setOrigin(0.5, 1).setDepth(n.y);
-      spr.legacyKey = key; spr.d8id = n.key; playDir(spr, 'idle', 'south');
+      spr.legacyKey = key; spr.d8id = n.key; spr.npcVisual = { color: n.color || '#ead8b0' }; playDir(spr, 'idle', 'south');
       this.addShadow(spr, 20);
       const plateTop = this.npcPlate(n, spr);
       spr.setInteractive({ useHandCursor: true });
@@ -703,16 +703,16 @@ export class TopDownScene extends Phaser.Scene {
     const top = n.y - spr.displayHeight - 2;
     // ไอคอนหน้าที่: ภาพพิกเซล (PixelLab ui_*) ถ้ามี · ไม่มีไฟล์ = ใช้อีโมจิเดิม
     const emo = NPC_ICON[n.id] || '💬', ik = EMO_ICON[emo.replace(/\uFE0F/g, '')], url = ik && ICONS[`ui_${ik}`];
-    const role = makeText(this, 0, 0, url ? n.role : `${emo} ${n.role}`, { fontSize: '6px', color: '#f7dc6f' }).setOrigin(0.5, 1);
+    const role = makeText(this, 0, 0, url ? n.role : `${emo} ${n.role}`, { fontSize: '6px', color: '#dccb9b' }).setOrigin(0.5, 1);
     const name = makeText(this, 0, 0, n.nameTh, { fontSize: '7px', color: n.color || '#ffffff' }).setOrigin(0.5, 1);
     const IC = url ? 8 : 0, rowW = role.width + (IC ? IC + 1 : 0);
     const w = Math.max(rowW, name.width) / 1 + 8, h = role.height + name.height - 2;
     name.setY(0); role.setY(-name.height + 3);
     if (IC) role.setX((IC + 1) / 2);
     const g = this.add.graphics();
-    g.fillStyle(0x140a1c, 0.78).fillRoundedRect(-w / 2, -h - 1, w, h + 2, 3);
-    g.lineStyle(1, 0xd4af37, 0.85).strokeRoundedRect(-w / 2, -h - 1, w, h + 2, 3);
-    g.fillStyle(0xd4af37, 1).fillTriangle(-2, 1, 2, 1, 0, 3);
+    g.fillStyle(0x152e30, 0.9).fillRoundedRect(-w / 2, -h - 1, w, h + 2, 3);
+    g.lineStyle(.7, 0xc4aa74, 0.8).strokeRoundedRect(-w / 2, -h - 1, w, h + 2, 3);
+    g.fillStyle(0xc4aa74, 1).fillTriangle(-2, 1, 2, 1, 0, 3);
     const box = this.add.container(n.x, top - 2, [g, role, name]).setDepth(n.y + 2);
     if (IC) {
       const tk = `ui_${ik}`, put = () => { if (!box.scene) return; const im = this.add.image(-rowW / 2 + IC / 2, role.y - role.height / 2 + .5, tk).setDisplaySize(IC, IC); box.add(im); };

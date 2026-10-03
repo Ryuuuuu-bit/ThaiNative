@@ -43,3 +43,10 @@ export function createMonsterAura(def) {
     fragmentShader:`uniform vec3 glow;uniform float strength,time,boss;varying vec2 p;void main(){float r=length(p);if(r>1.0)discard;float mist=pow(1.0-r,2.0);float ring=(1.0-smoothstep(.014,.04,abs(r-(.65+sin(time)*.015))))*boss*.38;float a=(mist+ring)*strength*(.9+.1*sin(time*1.8));gl_FragColor=vec4(glow,a);\n#include <colorspace_fragment>\n}`});
   const mesh=new THREE.Mesh(new THREE.PlaneGeometry(1,1),material);mesh.rotation.x=-Math.PI/2;mesh.renderOrder=.8;return mesh;
 }
+
+// NPCs share sprite relief lighting, with a softer warm rim and no hostile aura.
+export function createNpcMaterial(visual={}) {
+  const material=createMonsterMaterial({palette:{glow:visual.color||'#ead8b0'}});
+  material.userData.monster=false;material.userData.npc=true;material.uniforms.rim.value=.035;
+  return material;
+}
