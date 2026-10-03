@@ -1976,7 +1976,7 @@
    "scale": 0.5
   },
   "hero2_female_boxer_t1": {
-   "directionRenderScales": { "walk": { "0": 1.06 } },
+   "directionRenderScales": { "walk": { "0": 1.06, "4": 1.06 } },
    "clipRenderScales": { "attack": 0.94 },
    "renderScale": 0.85,
    "anims": [
