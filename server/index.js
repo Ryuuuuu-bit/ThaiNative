@@ -64,6 +64,7 @@ app.get('/sw.js', (_req, res) => { res.set({ 'Content-Type': 'application/javasc
 app.use(compression());                                                        // gzip โค้ด/JSON (~1.9MB → ราว 1/4) · ภาพ PNG ข้ามเอง
 app.use(express.static(path.join(ROOT, 'client'), NOCACHE));
 app.use('/shared', express.static(path.join(ROOT, 'shared'), NOCACHE));
+app.use('/vendor/three', express.static(path.join(ROOT, 'node_modules/three/build'), NOCACHE));
 app.use('/vendor', express.static(path.join(ROOT, 'node_modules/phaser/dist'), { maxAge: '1d' }));   // Phaser เปลี่ยนเฉพาะตอนอัปเวอร์ชัน
 
 const httpServer = createServer(app);

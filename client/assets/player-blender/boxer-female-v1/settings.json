@@ -1,0 +1,25 @@
+{
+  "foot": 0.6991848945617676,
+  "clips": {
+    "idle": {
+      "frames": 4,
+      "fps": 4,
+      "loop": true
+    },
+    "walk": {
+      "frames": 8,
+      "fps": 8,
+      "loop": true
+    },
+    "attack": {
+      "frames": 8,
+      "fps": 8,
+      "loop": false
+    },
+    "die": {
+      "frames": 8,
+      "fps": 6,
+      "loop": false
+    }
+  }
+}

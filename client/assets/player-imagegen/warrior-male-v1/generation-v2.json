@@ -1,0 +1,35 @@
+{
+  "tool": "built-in image_gen",
+  "references": [
+    "https://treeofsavior.com/page/class/view.php?c=Swordsman",
+    "https://ragnarokonline.gungho.jp/gameguide/character/swordman/swordman.html"
+  ],
+  "actions": [
+    {
+      "clip": "walk",
+      "frames": 6,
+      "cols": 3,
+      "rows": 2,
+      "action": "SIX successive natural walking phases facing straight SOUTH toward viewer. Left contact, passing right foot forward, left push off, right contact, passing left foot forward, right push off. Low-amplitude opposite arm swing, balanced weight, one foot supports body each phase. Sword remains safely carried low in right hand, away from legs, blade never intersects limbs. No running, no hopping.",
+      "prompt": "Create a SMALL, carefully aligned pixel-art game animation atlas using the reference male Thai warrior identity. Exactly 3 columns by 2 rows, equal SQUARE cells, 6 poses in reading order left to right then next row. SIX successive natural walking phases facing straight SOUTH toward viewer. Left contact, passing right foot forward, left push off, right contact, passing left foot forward, right push off. Low-amplitude opposite arm swing, balanced weight, one foot supports body each phase. Sword remains safely carried low in right hand, away from legs, blade never intersects limbs. No running, no hopping. ONE character per cell, same face, indigo Thai clothes, red sash, brass shoulder/forearm armor, dark boots, same short black hair and daab sword. Low top-down camera same as reference. Keep all head, elbows, fingers, knees, feet and entire sword well INSIDE each cell with at least 12% clear transparent padding on ALL sides. Character standing height is ONLY 55% of cell height to leave room for sword swing. Standing sole ground line at 78% cell height, pelvis x at50%, same scale across cells. Do NOT enlarge individual poses to fill their cell. Transparent background, no shadows, no lines, labels, text or scenery. Accurate joints, no duplicate limbs, no extra swords. Crisp pixel art matching reference. Canvas ratio 3:2. Natural animation and generous padding are more important than fine ornament."
+    },
+    {
+      "clip": "attack",
+      "frames": 6,
+      "cols": 3,
+      "rows": 2,
+      "action": "SIX successive natural Thai sword cutting phases, south facing. Ready stance, small right-side backswing, controlled raised anticipation, diagonal downward cut toward front, relaxed follow-through, recovery to ready. Feet remain grounded, torso rotates only slightly, shoulders and hips coherent. Sword held by same right hand with anatomically valid wrist, blade never passes through body. Do not rotate to side profile. Clear action with no spinning.",
+      "prompt": "Create a SMALL, carefully aligned pixel-art game animation atlas using the reference male Thai warrior identity. Exactly 3 columns by 2 rows, equal SQUARE cells, 6 poses in reading order left to right then next row. SIX successive natural Thai sword cutting phases, south facing. Ready stance, small right-side backswing, controlled raised anticipation, diagonal downward cut toward front, relaxed follow-through, recovery to ready. Feet remain grounded, torso rotates only slightly, shoulders and hips coherent. Sword held by same right hand with anatomically valid wrist, blade never passes through body. Do not rotate to side profile. Clear action with no spinning. ONE character per cell, same face, indigo Thai clothes, red sash, brass shoulder/forearm armor, dark boots, same short black hair and daab sword. Low top-down camera same as reference. Keep all head, elbows, fingers, knees, feet and entire sword well INSIDE each cell with at least 12% clear transparent padding on ALL sides. Character standing height is ONLY 55% of cell height to leave room for sword swing. Standing sole ground line at 78% cell height, pelvis x at50%, same scale across cells. Do NOT enlarge individual poses to fill their cell. Transparent background, no shadows, no lines, labels, text or scenery. Accurate joints, no duplicate limbs, no extra swords. Crisp pixel art matching reference. Canvas ratio 3:2. Natural animation and generous padding are more important than fine ornament."
+    },
+    {
+      "clip": "die",
+      "frames": 7,
+      "cols": 4,
+      "rows": 2,
+      "action": "SEVEN successive south-facing death phases: standing recoil, weakened stance, knees buckle, kneel, lower onto side with supporting hand, lie on side, same resting pose. Use first seven cells, leave eighth cell completely transparent. No gore. Sword lowers outside body and rests alongside character. Believable continuous collapse, no sudden change in proportions.",
+      "prompt": "Create a SMALL, carefully aligned pixel-art game animation atlas using the reference male Thai warrior identity. Exactly 4 columns by 2 rows, equal SQUARE cells, 7 poses in reading order left to right then next row. SEVEN successive south-facing death phases: standing recoil, weakened stance, knees buckle, kneel, lower onto side with supporting hand, lie on side, same resting pose. Use first seven cells, leave eighth cell completely transparent. No gore. Sword lowers outside body and rests alongside character. Believable continuous collapse, no sudden change in proportions. ONE character per cell, same face, indigo Thai clothes, red sash, brass shoulder/forearm armor, dark boots, same short black hair and daab sword. Low top-down camera same as reference. Keep all head, elbows, fingers, knees, feet and entire sword well INSIDE each cell with at least 12% clear transparent padding on ALL sides. Character standing height is ONLY 55% of cell height to leave room for sword swing. Standing sole ground line at 78% cell height, pelvis x at50%, same scale across cells. Do NOT enlarge individual poses to fill their cell. Transparent background, no shadows, no lines, labels, text or scenery. Accurate joints, no duplicate limbs, no extra swords. Crisp pixel art matching reference. Canvas ratio 4:2. Natural animation and generous padding are more important than fine ornament."
+    }
+  ],
+  "rejected": "walk-south-v2: poses do not convincingly alternate legs; not loaded",
+  "scope": "south attack/death replacement only; existing 7-direction walk uses explicit rectangles"
+}

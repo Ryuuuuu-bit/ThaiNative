@@ -1,0 +1,12 @@
+import assert from 'node:assert/strict';
+import { CLIPS, frameAt, viewDirection, atlasCell } from '../client/js/player-lab/animation.js';
+for(let i=0;i<8;i++) assert.equal(viewDirection(i*Math.PI/4,0),i);
+assert.equal(viewDirection(0,Math.PI/2),6,'orbiting the camera must change the visible side');
+assert.equal(viewDirection(-Math.PI/4,0),7);
+assert.equal(viewDirection(2*Math.PI,0),0);
+assert.equal(frameAt(.65,CLIPS.walk),0,'walk wraps at the loop boundary');
+assert.equal(frameAt(12,CLIPS.attack),5,'attack holds its final frame');
+assert.equal(frameAt(12,CLIPS.die),6,'death must not repeat');
+assert.deepEqual(atlasCell(2,0,4),{x:.5,y:.875,w:.25,h:.125});
+assert.equal(atlasCell(0,7,6).y,0,'last direction is at the bottom of the texture');
+console.log('Billboard direction, animation timing and atlas coordinates passed');

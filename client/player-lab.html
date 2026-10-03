@@ -1,0 +1,20 @@
+<!doctype html>
+<html lang="th"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Player Atelier • ThaiNative</title><link rel="stylesheet" href="/css/player-lab.css"></head>
+<body><main>
+<header><a href="/">← ThaiNative</a><span>CHARACTER LAB / 01</span><h1>ตัวละครเดิม<br><em>มิติใหม่</em></h1><p>ImageGen / PixelLab sprites × Three.js · ห้องทดลองตัวละครและอุปกรณ์</p></header>
+<div class="workspace"><section class="stage"><div id="viewport" tabindex="0" aria-label="ฉากทดลองตัวละคร ใช้ปุ่ม WASD เพื่อเดิน"></div><div class="stage-top"><span class="pill">2.5D BILLBOARD</span><span id="readout" aria-live="off">กำลังโหลด…</span></div><p class="stage-hint">WASD / ลูกศร: เดิน · Space: โจมตี · ลากฉาก: หมุนกล้อง</p><div class="camera"><button id="orbit-left" aria-label="หมุนกล้องซ้าย">↶</button><button id="reset">คืนมุมกล้อง</button><button id="orbit-right" aria-label="หมุนกล้องขวา">↷</button></div></section>
+<aside><span class="eyebrow">YOUR CHARACTER</span><h2>แต่งตัวและลองท่า</h2>
+<label>ตัวละคร<select id="body"><option value="hero_male_mohom">ชาย · ม่อฮ่อม</option><option value="hero_female_ruenton">หญิง · เรือนต้น</option><option value="imagegen_warrior_male">ขุนศึกชายใหม่ · ImageGen ฉบับร่าง</option><option value="pixel_boxer_female">นักมวยหญิง · Pixel v2</option><option value="blender_boxer_female">นักมวยหญิง · Blender</option><option value="blender_warrior_male">ขุนศึกชาย · Blender ต้นแบบ</option></select></label>
+<label>อาวุธ<select id="weapon"><option value="none">มือเปล่า</option><option value="iron">ดาบเหล็ก</option><option value="gold">ดาบทอง</option></select></label>
+<label>หมวก<select id="head"><option value="none">ไม่สวม</option><option value="guard">หมวกนักรบ</option><option value="mage">หมวกอาคม</option></select></label>
+<h3>ท่าทาง</h3><div class="clips" id="clips"><button data-clip="idle" class="selected">ยืน</button><button data-clip="walk">เดิน</button><button data-clip="attack">โจมตี</button><button data-clip="die">ล้ม</button></div>
+<h3>ทิศที่มองจากกล้อง</h3><div id="directions" class="directions"></div>
+<label>ความเร็ว <output id="speed-value">1×</output><input id="speed" type="range" min="0.25" max="2" step="0.25" value="1"></label>
+<div class="transport"><button id="pause">หยุดภาพ</button><button id="replay">เล่นท่าซ้ำ</button></div>
+<div class="transport"><button id="frame-prev">เฟรมก่อนหน้า</button><button id="frame-next">เฟรมถัดไป</button></div>
+<p id="status" role="status">กำลังเตรียมภาพตัวละคร…</p><p class="note"><span id="model-note">เลือกท่าทางและทิศทางเพื่อตรวจตัวละคร</span><br>Reference: <a href="https://treeofsavior.com/page/class/view.php?c=Swordsman" target="_blank" rel="noopener">Tree of Savior</a> · <a href="https://ragnarokonline.gungho.jp/gameguide/character/swordman/swordman.html" target="_blank" rel="noopener">Ragnarok Online</a></p>
+</aside></div><section class="frame-review"><h2>จังหวะการเคลื่อนไหว</h2><p>กดภาพเพื่อดูแต่ละเฟรม · เส้นใต้เท้าช่วยเทียบระดับพื้น</p><div id="frame-strip" class="frame-strip"></div></section><footer>คงรายละเอียดพิกเซล · แยกอุปกรณ์ · ใช้จังหวะเฟรมร่วมกัน</footer></main><script type="module" src="/js/player-lab/main.js"></script></body></html>
+
+
+
+
