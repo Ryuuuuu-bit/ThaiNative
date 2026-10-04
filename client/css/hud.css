@@ -1086,3 +1086,18 @@ body.td-mode .bar.mp > div, body.td-mode .mp .fill {background:linear-gradient(1
 @media (prefers-reduced-motion:no-preference) {
   body.td-mode .hud-buttons button {transition:filter .15s,border-color .15s;}
 }
+
+/* Compact city HUD: keep the central movement area clear. */
+body.td-mode { --hud-bg: linear-gradient(180deg, #142a2ef5, #09171bf5); --mm-w: 25cqh; }
+body.td-mode .pf { width: 35cqh !important; gap: .8cqh !important; }
+body.td-mode .pf-portrait { width: 8cqh; height: 8cqh; }
+body.td-mode .pf-under { width: 35cqh; }
+body.td-mode .quest-track { max-height: 25cqh !important; overflow-y: auto !important; font-size: 1.7cqh !important; }
+body.td-mode .quest-track .quest-card { background: #10252bf5 !important; padding: .7cqh 1cqh !important; margin-bottom: .6cqh !important; }
+body.td-mode #banner { top: 2cqh !important; max-width: 48cqh; font-size: 2cqh !important; background: #0b1b20f2; padding: .6cqh 1.2cqh; border-radius: .8cqh; }
+body.td-mode .boss-bar { width: 42cqh !important; }
+body.td-mode #td-hud .td-events .ev.boss { font-size: 1.5cqh; background: #10252bf2; }
+body.td-mode .pf, body.td-mode .quest-track, body.td-mode #td-hud .td-events { text-shadow: 0 1px 1px #000; }
+
+body.td-mode #wb-hud .wb-pill { top: calc(var(--pf-bottom, 20cqh) + 8cqh); left: var(--hud-pad); transform: none; max-width: 35cqh; font-size: 1.7cqh; background: #10252bf5; }
+body.td-mode #wb-hud .wb-ann { top: calc(var(--pf-bottom, 20cqh) + 8cqh); left: var(--hud-pad); transform: none; width: 35cqh; box-sizing: border-box; flex-wrap: wrap; font-size: 1.7cqh; background: #10252bf5; }

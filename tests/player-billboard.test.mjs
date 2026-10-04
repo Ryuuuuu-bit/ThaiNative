@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { CLIPS, frameAt, viewDirection, atlasCell } from '../client/js/player-lab/animation.js';
+import { CLIPS, frameAt, directionClip, viewDirection, atlasCell } from '../client/js/player-lab/animation.js';
 for(let i=0;i<8;i++) assert.equal(viewDirection(i*Math.PI/4,0),i);
 assert.equal(viewDirection(0,Math.PI/2),6,'orbiting the camera must change the visible side');
 assert.equal(viewDirection(-Math.PI/4,0),7);
@@ -7,6 +7,11 @@ assert.equal(viewDirection(2*Math.PI,0),0);
 assert.equal(frameAt(.65,CLIPS.walk),0,'walk wraps at the loop boundary');
 assert.equal(frameAt(12,CLIPS.attack),5,'attack holds its final frame');
 assert.equal(frameAt(12,CLIPS.die),6,'death must not repeat');
+const timed=directionClip({frames:3,fps:10,loop:true,directionDurations:{south:[80,200,120]}},'south');
+assert.equal(frameAt(.1,timed),1,'preview respects authored holds instead of uniform FPS');
+assert.equal(frameAt(.27,timed),1);
+assert.equal(frameAt(.3,timed),2);
+assert.equal(frameAt(.4,timed),0,'authored-duration loop returns to its first frame');
 assert.deepEqual(atlasCell(2,0,4),{x:.5,y:.875,w:.25,h:.125});
 assert.equal(atlasCell(0,7,6).y,0,'last direction is at the bottom of the texture');
 console.log('Billboard direction, animation timing and atlas coordinates passed');

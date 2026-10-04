@@ -80,7 +80,7 @@ export class TdPartyWin {
   }
 
   // ---------------- ภาพหน้า/ตัวละคร (จากโมเดล 8 ทิศ) ----------------
-  heroOf(ap) { const id = heroId(ap || {}); return this.s.d8meta?.[id] ? id : null; }
+  heroOf(ap) { const id = heroId(ap || {}, this.s.d8meta); return this.s.d8meta?.[id] ? id : null; }
   sheet(id) { const k = texKey(id, 'idle'); return this.s.textures.exists(k) ? this.s.textures.get(k).getSourceImage() : null; }
   ensureHero(id) {
     if (!id || this.sheet(id) || this._loading?.has(id)) return;

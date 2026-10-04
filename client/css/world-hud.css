@@ -1,0 +1,39 @@
+/* World art refresh: quiet jade frames with comfortable readable controls. */
+body.td-mode { --hud-col: 27cqh; --mm-w: 25cqh; --hud-r: .8cqh; }
+body.td-mode .pf { width: 34cqh !important; padding: .8cqh !important; border-width: 1px !important; }
+body.td-mode .pf-portrait { width: 7.5cqh; height: 8.5cqh; border-width: 1px; background: #183036; }
+body.td-mode .pf-name { font-size: 1.9cqh; min-width: 0; }
+body.td-mode .pf-info { min-width: 0; gap: .3cqh; }
+body.td-mode .pf .bar { height: 2cqh; border-width: 1px; border-radius: .45cqh; }
+body.td-mode .pf .bar span { font-size: 1.45cqh; line-height: 2cqh; }
+body.td-mode .pf .pf-stats, body.td-mode .pf .pf-cur { font-size: 1.45cqh; line-height: 1.9cqh; gap: .15cqh .7cqh; }
+body.td-mode .pf-under { width: 34cqh; gap: .5cqh; }
+body.td-mode #mm-frame { border-width: 1px; }
+body.td-mode .quest-track { max-height: 26cqh !important; overflow-y: auto !important; scrollbar-width: thin; scrollbar-color: #a48f68 #10252b; }
+body.td-mode .quest-track .quest-goal { color: #d3ded3; font-size: .9em; }
+body.td-mode .quest-track > .quest-card { border-width: 1px !important; border-left-width: 2px !important; }
+body.td-mode .quest-track > .quest-card:nth-child(n) { display: block !important; }
+body.td-mode .quest-footer { gap: .4em; }
+body.td-mode .quest-footer button { min-height: 2.3em; }
+body.td-mode .actionbar { padding: .6cqh .8cqh !important; border-width: 1px !important; border-radius: 1cqh !important; background: #0e2029f0 !important; box-shadow: 0 3px 16px #0005 !important; }
+body.td-mode .slot, body.td-mode #skillbar > div { border-radius: .7cqh !important; border-width: 1px !important; }
+body.td-mode .slot .k { color: #ede2c5; background: #071519b8; border-radius: .35cqh; padding: 0 .3cqh; }
+body.td-mode #chat .cb-frame { border-width: 1px; border-radius: .8cqh; background: #0a1c24df !important; }
+body.td-mode #toasts { top: 13cqh !important; max-width: 46cqh; font-size: 1.8cqh; }
+body.td-mode #toasts .toast { max-width: 46cqh; background: #10252bf0; border-width: 1px; }
+body.td-mode .npc-talk { max-width: 34cqh; border-width: 1px; }
+body.td-mode #banner { top: 2cqh !important; max-width: 44cqh; font-size: 1.8cqh !important; border: 1px solid #c5ac7260; }
+body.td-mode button:focus-visible { outline: 2px solid #eed29a; outline-offset: 2px; }
+body.td-mode .px-ico { image-rendering: auto; }
+@media (max-height: 540px) {
+  body.td-mode { --mm-w: 23cqh; }
+  body.td-mode .pf { width: 32cqh !important; }
+  body.td-mode .quest-track { max-height: 20cqh !important; font-size: 1.9cqh !important; }
+  body.td-mode #toasts { font-size: 2cqh; }
+}
+body.td-mode.touch .slot, body.td-mode.touch .hud-buttons button { min-width: 32px; min-height: 32px; }
+body.td-mode.touch .quest-track .quest-footer button { min-height: 32px; }
+@media (prefers-reduced-motion: reduce) {
+  body.td-mode #td-hud .td-events .ev.boss.soon { animation: none; }
+  body.td-mode button { transition: none !important; }
+}

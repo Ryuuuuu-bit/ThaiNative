@@ -17,7 +17,9 @@
   <link href="https://fonts.googleapis.com/css2?family=Mitr:wght@400;500;600&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="css/style.css?v=hud17" />
   <link rel="stylesheet" href="css/hud.css?v=jade14" />
+  <link rel="stylesheet" href="css/entrance.css?v=1" />
   <link rel="stylesheet" href="css/jade-theme.css?v=1" />
+  <link rel="stylesheet" href="css/world-hud.css?v=1" />
   <link rel="stylesheet" href="css/game-hud.css?v=1" />
   <link rel="stylesheet" href="css/plaza-theme.css?v=1" />
   <link rel="preload" href="assets/title/ayutthaya-jade-v1.png" as="image" />
@@ -62,17 +64,7 @@
           <h1 class="logo big">ThaiNative <span class="logo-online">Online</span><small>ไทยเนทีฟ ออนไลน์ · ตำนานผีไทย</small></h1>
           <p class="tagline">ท่องกรุงศรีอยุธยา ปราบภูตผี สร้างตำนานของเจ้า</p>
           <div class="entrance-divider" aria-hidden="true">◆</div>
-          <!-- ตัวอย่างเรื่องราว (animatic) · กด ⛶ = ขยายจอ · เข้าเกมแล้วหยุดเอง -->
-          <figure class="trailer" id="trailer">
-            <figcaption class="tr-head">
-              <span class="tr-tag">🎬 ตัวอย่างเรื่องราว</span>
-              <b>ตอนที่ 0 · 2:52 นาที</b>
-              <button type="button" class="tr-btn" id="tr-expand" title="ขยายจอ (Esc = ย่อกลับ)" aria-label="ขยายจอ">⛶</button>
-            </figcaption>
-            <div class="tr-screen"><iframe id="tr-frame" title="ตัวอย่างเรื่องราว ThaiNative ตอนที่ 0" src="story/animatic.html?embed=1&amp;poster=110" loading="lazy" allow="autoplay"></iframe></div>
-          </figure>
         </div>
-        <div class="tr-backdrop hidden" id="tr-backdrop"></div>
         <div class="auth-box panel thai-frame">
           <p class="auth-kicker">ยินดีต้อนรับสู่ ThaiNative</p>
           <div class="plaque">เปิดประตูสู่กรุงศรีฯ</div>
@@ -429,10 +421,6 @@
         <p class="hint">ลงเป็นปาร์ตี้ได้ 1–6 คน (สมาชิกต้องยืนใกล้ประตู) · ฆ่าผีให้หมดชั้นบันไดลงถึงจะเปิด · ผ่านบอสทุก 10 ชั้นได้จุดเริ่มใหม่ · ชั้นลงท้าย 5 มีหีบเงิน บอสมีหีบทอง (วันละครั้งต่อบอส) · ตั้งแต่ชั้น 30 ลงไปเป็นปาร์ตี้หลายคน ผีจะแกร่งขึ้นตามจำนวนคนและความลึก</p>
       </section>
 
-      <section id="gd-panel" class="panel window hidden">
-        <header>☠️ ดันเจี้ยนสี่ผีป่าช้า <button class="close">✕</button></header>
-        <div id="gd-body"></div>
-      </section>
 
       <!-- ตั้งค่า (ESC) -->
       <section id="settings-panel" class="panel window hidden">

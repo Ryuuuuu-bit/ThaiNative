@@ -26,8 +26,8 @@ export class WorldBossUI {
     ($('#td-hud') || document.body).appendChild(hud); this.hud = hud;
     hud.querySelector('.wb-go').onclick = () => this.go();
     // ย่อประกาศ: จำไว้ต่อรอบ (รอบใหม่ขยายให้เห็นอีกครั้ง) · แตะป้ายเล็กเพื่อขยายกลับ
-    hud.querySelector('.wb-min').onclick = (e) => { e.stopPropagation(); this.minAt = this.st.at; this.forceAnn = false; this.s.sfx?.play('click'); this.refresh(); };
-    hud.querySelector('.wb-pill').onclick = (e) => { e.stopPropagation(); this.minAt = null; this.s.sfx?.play('click'); this.refresh(); };
+    hud.querySelector('.wb-min').onclick = (e) => { e.stopPropagation(); this.expandedAt = null; this.s.sfx?.play('click'); this.refresh(); };
+    hud.querySelector('.wb-pill').onclick = (e) => { e.stopPropagation(); this.expandedAt = this.st.at; this.s.sfx?.play('click'); this.refresh(); };
     hud.querySelector('.wb-leave').onclick = () => this.leave();
     this.timer = setInterval(() => this.refresh(), 500);
     scene.events.once('shutdown', () => this.destroy());
@@ -77,12 +77,10 @@ export class WorldBossUI {
   refresh() {
     const S = this.st, now = this.now, H = this.hud;
     const ann = H.querySelector('.wb-ann'), bar = H.querySelector('.wb-bar');
-    const inGd = !!this.s.M?.gd && !this.forceAnn;                                 // ในห้องบอสผี: ไม่เด้งประกาศกลางจอ (แจ้งในแชตแทน)
-    if (inGd && (S.state === 'open' || S.state === 'fight') && this._chatAt !== S.at) { this._chatAt = S.at; this.s.ui.chat?.({ name: '🌑 พระราหู', text: S.state === 'open' ? 'ลานสุริยคราสเปิดแล้ว · ดูเวลาที่มินิแมพ' : 'กำลังสู้กับพระราหูที่ลานสุริยคราส' }); }
-    const active = !this.here && !inGd && (S.state === 'open' || S.state === 'fight'), mini = active && this.minAt === S.at;
+    const active = !this.here && (S.state === 'open' || S.state === 'fight'), mini = active && this.expandedAt !== S.at;
     const showAnn = active && !mini, pill = H.querySelector('.wb-pill');
     ann.classList.toggle('hidden', !showAnn);
-    pill.classList.add('hidden');                                                  // ย่อแล้ว = ไปอยู่แถวราหูในมินิแมพ (ไม่ลอยกลางจอ)
+    pill.classList.toggle('hidden', !mini);
     if (mini) pill.querySelector('b').textContent = S.state === 'open' ? `ราหู ${mmss(S.at - now)}` : `ราหู ${S.maxHp ? Math.round(S.hp / S.maxHp * 100) : 100}% · ${mmss(S.fightEnd - now)}`;
     if (showAnn) ann.querySelector('small').textContent = S.state === 'open' ? `ลงมาในอีก ${mmss(S.at - now)} · วาร์ปรอที่ค่ายรอคราสได้เลย` : `กำลังสู้อยู่! เลือดเหลือ ${S.maxHp ? Math.round(S.hp / S.maxHp * 100) : 100}% · เหลือเวลา ${mmss(S.fightEnd - now)}`;
     const showBar = this.here && S.state !== 'idle';

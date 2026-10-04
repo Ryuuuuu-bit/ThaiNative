@@ -1,3 +1,4 @@
+import { worldUiIcon } from './WorldIcons.js';
 import { ITEMS, baseItemId, WTYPE_JOB } from '/shared/data/items.js';
 // ตัวช่วยเล็กๆ ที่ใช้หลายที่
 
@@ -12,7 +13,7 @@ export function makeText(scene, x, y, text, style = {}) {
     fontSize: '8px',
     color: '#ffffff',
     stroke: '#000000',
-    strokeThickness: 3,
+    strokeThickness: 1,
     fontStyle: '500',
     shadow: { offsetX: 0, offsetY: 1, color: '#000', blur: 2, fill: true, stroke: true },
     resolution: 4,
@@ -28,7 +29,9 @@ export const rand = (a, b) => a + Math.floor(Math.random() * (b - a + 1));
 
 // ---------------- ไอคอนภาพ (PixelLab) แทนอีโมจิ ----------------
 // BootScene ใส่รายการไอคอนจาก manifest ไว้ที่ ICONS  (it_<itemId>, sk_<skillId>)
-export const ICONS = {};
+export const ICONS = new Proxy({}, { get(target, key) {
+  return typeof key === 'string' && key.startsWith('ui_') ? worldUiIcon(key.slice(3)) || target[key] : target[key];
+} });
 const ITEM_ALIAS = { reskill_weapon: 'skin_scroll',
   elixir_ghost: 'herb_mushroom', food_nomai: 'herb_bamboo' };
 

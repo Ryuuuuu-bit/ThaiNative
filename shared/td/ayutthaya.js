@@ -79,7 +79,7 @@ function buildTown() {
   rect(42, 67, 80, 68, T.STONE); rect(81, 67, 92, 68, T.BRICK);                      // B ถนนคนเดินหัวรอ → ซอยช่างเหล็ก → สะพานข้ามคลอง
   rect(40, 38, 41, 84, T.ROAD); rect(79, 38, 80, 84, T.ROAD);                        // ซอยดินเหนือ–ใต้
   rect(26, 78, 57, 79, T.ROAD); rect(62, 78, 92, 79, T.ROAD);                        // ซอยชุมชนใต้
-  disc(C.x - 0.5, C.y - 0.5, 8.5, T.STONE); disc(C.x - 0.5, C.y - 0.5, 9.5, T.BRICK, 8.5);   // ลานน้ำพุ + ขอบอิฐ
+  disc(C.x - 0.5, C.y - 0.5, 10.5, T.STONE); disc(C.x - 0.5, C.y - 0.5, 11.5, T.BRICK, 10.5);   // ลานน้ำพุ + ขอบอิฐ
   // ประตู + สะพาน
   rect(58, 86, 61, 97, T.WOOD); rect(58, 91, 61, 91, T.STONE);
   rect(8, 48, 18, 51, T.WOOD); rect(101, 48, 111, 51, T.WOOD);
@@ -141,17 +141,17 @@ function buildTown() {
   const free = (x0, y0, x1, y1) => { for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) if (!inMap(x, y) || occ[y][x] || !isIsland(x, y)) return false; return true; };
 
   // === A ลานน้ำพุกลางเมือง (จุดนัดพบแบบ RO) ===
-  P('env/b_fountain', C.x, C.y + 3, { foot: [5, 3], scale: 1.6, alt: 'env/p_lotus', altScale: 1.9, label: 'น้ำพุนาคราช', glow: [-30, 60, 0xa8e0ff, 0.6] });
-  for (const [dx, dy] of [[-7, -5], [7, -5], [-7, 6], [7, 6]]) small('p_lanternpole', C.x + dx, C.y + dy, { glow: LAMP, alt: 'env/p_lantern' });
-  P('env/p_spirit', 53, 45, { foot: [2, 1], scale: 1.1, alt: 'spirit_house', altScale: 1, label: 'ศาลหลักเมือง', glow: [-20, 30, 0xffd27a, 0.6] });
+  P('env/b_fountain', C.x + 7, C.y - 5, { foot: [3, 2], scale: 1.0, alt: 'env/p_lotus', altScale: 1.9, label: 'น้ำพุนาคราช', glow: [-30, 60, 0xa8e0ff, 0.6] });
+  for (const [dx, dy] of [[-10, -6], [10, -6], [-10, 7], [10, 7]]) small('p_lanternpole', C.x + dx, C.y + dy, { glow: LAMP, alt: 'env/p_lantern' });
+  P('env/p_spirit', 49, 45, { foot: [2, 1], scale: 1.1, alt: 'spirit_house', altScale: 1, label: 'ศาลหลักเมือง', glow: [-20, 30, 0xffd27a, 0.6] });
   // ม้านั่งวงรอบลาน · แปลงดอกลีลาวดี · ป้ายประกาศค่าหัวข้างผู้ใหญ่ชัย
-  for (const [dx, dy] of [[-9, -1], [9, -1], [-9, 4], [9, 4], [-4, -8], [4, -8]]) small('p_bench', C.x + dx, C.y + dy);
-  for (const [dx, dy] of [[-6, -8], [6, -8], [-8, -3], [8, -3]]) deco('p_frangipani', C.x + dx, C.y + dy);
+  for (const [dx, dy] of [[-11, -1], [11, -1], [-11, 5], [11, 5]]) small('p_bench', C.x + dx, C.y + dy);
+  for (const [dx, dy] of [[-7, -10], [7, -10], [-11, -4], [11, -4]]) deco('p_frangipani', C.x + dx, C.y + dy);
   P('env/p_board', 71, 59, { foot: [2, 1], scale: 0.9, alt: 'bounty_board', altScale: 1, label: 'ป้ายประกาศค่าหัว' });
   // ฤๅษีเฝ้าประตูมิติ (ที่เดิม): ศาลเล็ก + เทียนวงแสง
   small('p_spirit', 53, 57, { scale: 0.8, glow: [-16, 40, 0xd2b4de, 0.9] });
   for (const [x, y] of [[52, 58], [54, 58], [56, 59]]) deco('p_candle', x, y, { glow: [-6, 14, 0xffc46b, 0.5] });
-  for (let y = C.y - 12; y <= C.y + 12; y++) for (let x = C.x - 12; x <= C.x + 12; x++) if (Math.hypot(x - C.x + 0.5, y - C.y + 0.5) <= 11.5) reserve(x, y, x, y);
+  for (let y = C.y - 14; y <= C.y + 14; y++) for (let x = C.x - 14; x <= C.x + 14; x++) if (Math.hypot(x - C.x + 0.5, y - C.y + 0.5) <= 13.5) reserve(x, y, x, y);
   reserve(51, 55, 57, 60); reserve(66, 56, 73, 60);
 
   // === H พระราชวังหลวง (เหนือ) ===
@@ -572,7 +572,6 @@ export function buildLayout() {
   P('env/b_prang_l', 198, 146, { foot: [2, 2], scale: 1.1, tint: 0x6b5a7a, label: 'ประตูสุสานใต้ดิน', glow: [-40, 70, 0xb266ff, 1] });
   for (const x of [195, 201]) small('p_torch2', x, 146, { glow: [-22, 46, 0xb266ff, 1.1] });
   deco('p_campfire', 201, 151, { scale: 1.1, glow: [-10, 70, 0xff8a3c, 1.1] });
-  npcs.push({ id: 'ghostdg', key: 'npc_horluang', x: 205 * TILE, y: 152 * TILE, nameTh: 'หลวงตาเฝ้าป่าช้า', role: 'ดันเจี้ยนสี่ผีป่าช้า · ปาร์ตี้ 1–6 คน', color: '#e8c38a', lines: ['ผีสี่ตนนี้ร้ายนัก เตรียมเทียนนำวิญญาณให้พร้อมก่อนลงลาน', 'ผีตายโหงกลัวสายสิญจน์ ยืนให้ครบทุกหลักไม้แล้วมันจะขยับไม่ได้', 'ห้องอื่นอาตมายังสวดเตรียมลานไม่เสร็จ รออีกหน่อยนะโยม'] });
   npcs.push({ id: 'crypt', key: 'npc_sapparer', x: 195 * TILE, y: 149 * TILE, nameTh: 'สัปเหร่อเฒ่า', role: 'สุสานใต้ดิน 100 ชั้น', color: '#c39bd3', lines: ['ข้างล่างนั่นลึกร้อยชั้น ลงเป็นปาร์ตี้จะรอดกว่านะ', 'ฆ่าผีให้หมดชั้น บันไดลงถึงจะเปิด', 'ทุกสิบชั้นมีเจ้าที่เฝ้าอยู่ ผ่านได้ก็จำทางไว้เริ่มใหม่ได้'] });
   // บัว/เรือ/ต้นไม้ริมบึง
   for (const [cx, cy, r] of ponds) for (let i = 0; i < r; i++) { const a = rnd() * 6.28, d = rnd() * (r - 1); deco(rnd() < 0.5 ? 'p_lotus' : 'p_lotus2', Math.round(cx + Math.cos(a) * d), Math.round(cy + Math.sin(a) * d), { depth: 1 }); }

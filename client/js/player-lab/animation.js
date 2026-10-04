@@ -1,12 +1,12 @@
+import { frameIndexAt } from './frame-timing.js';
 export const DIRECTIONS = ['south','south-east','east','north-east','north','north-west','west','south-west'];
 export const CLIPS = { idle:{frames:4,fps:5,loop:true}, walk:{frames:6,fps:10,loop:true}, attack:{frames:6,fps:12,loop:false}, die:{frames:7,fps:8,loop:false} };
 export function frameAt(time, clip) {
-  const frame = Math.max(0, Math.floor(time * clip.fps));
-  return clip.loop ? frame % clip.frames : Math.min(frame,clip.frames-1);
+  return frameIndexAt(time * 1000, clip.frames, clip.fps, clip.loop, clip.durations);
 }
 export function directionClip(clip, direction) {
-  if(!clip.directionFrames&&!clip.directionFps)return clip;
-  return {...clip,frames:clip.directionFrames?.[direction]??clip.frames,fps:clip.directionFps?.[direction]??clip.fps};
+  if(!clip.directionFrames&&!clip.directionFps&&!clip.directionDurations)return clip;
+  return {...clip,frames:clip.directionFrames?.[direction]??clip.frames,fps:clip.directionFps?.[direction]??clip.fps,durations:clip.directionDurations?.[direction]??clip.durations};
 }
 // World heading is clockwise from +Z. Camera azimuth changes the visible sprite row.
 export function viewDirection(heading, cameraAzimuth) {
