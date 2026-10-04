@@ -7,7 +7,7 @@ import { mobAtkMul, mobExp, expLevelMul } from '/shared/stats.js';
 import { MONSTERS } from '/shared/data/monsters.js';
 import { ITEMS } from '/shared/data/items.js';
 import { CARD_OF_MON, CARD_BY_ID, CARD_DROP, CARD_SLOT_TH, cardText } from '/shared/data/cards.js';
-import { TD_MAPS, TD_MAP_IDS } from '/shared/td/maps.js';
+import { TD_MAPS, TD_MAP_IDS, EXPANSIONS_ENABLED } from '/shared/td/maps.js';
 import { CRYPT_ZONES } from '/shared/data/crypt.js';
 import { WB_TIERS, WB_STONE, WB_MIN_SHARE, WB_FIGHT_MS, wbReward } from '/shared/data/worldboss.js';
 import { FISH_BY_MAP } from '/shared/data/village.js';
@@ -39,7 +39,7 @@ function build() {
     }
   }
   // สุสานใต้ดิน (ชั้นละ 10)
-  CRYPT_ZONES.forEach((Z, i) => {
+  if(EXPANSIONS_ENABLED)CRYPT_ZONES.forEach((Z, i) => {
     const f0 = i * 10 + 1, f1 = i * 10 + 10;
     for (const id of Z.mobs || []) if (MONSTERS[id]) put(id, { map: 'crypt', mapTh: 'สุสานใต้ดิน', icon: '💀', zone: `f${f0}`, zoneTh: `ชั้น ${f0}–${f1 - 1} · ${Z.name}`, n: 0, crypt: true });
     if (Z.boss && MONSTERS[Z.boss]) put(Z.boss, { map: 'crypt', mapTh: 'สุสานใต้ดิน', icon: '💀', zone: `b${f1}`, zoneTh: `บอสชั้น ${f1} · ${Z.bossName || Z.name}`, n: 0, crypt: true, cryptBoss: true });
@@ -89,7 +89,7 @@ export class GuideBook {
     build();
     if (this.tab === 'drop') this.tab = 'mob';                     // แท็บค้นหาของดรอปเอาออกแล้ว (ค้นชื่อของได้ในช่องค้นหาของแท็บผี/บอส)
     const tabs = [['mob', '👻 ผี'], ['boss', '👑 บอส'], ['fish', '🎣 ปลา']];
-    const maps = [['all', 'ทุกแมพ'], ...TD_MAP_IDS.filter((m) => TD_MAPS[m]).map((m) => [m, `${TD_MAPS[m].icon || ''} ${TD_MAPS[m].nameTh}`]), ['crypt', '💀 สุสานใต้ดิน']];
+    const maps = [['all', 'ทุกพื้นที่'], ...TD_MAP_IDS.filter((m) => TD_MAPS[m]).map((m) => [m, `${TD_MAPS[m].icon || ''} ${TD_MAPS[m].nameTh}`]), ...(EXPANSIONS_ENABLED ? [['crypt', '💀 สุสานใต้ดิน']] : [])];
     const head = `<div class="gb-tabs">${tabs.map(([k, l]) => `<button class="gb-tab${this.tab === k ? ' on' : ''}" data-gtab="${k}">${l}</button>`).join('')}</div>
       <div class="gb-filter">${this.tab !== 'drop' ? `<select class="gb-map">${maps.map(([k, l]) => `<option value="${k}"${this.map === k ? ' selected' : ''}>${esc(l)}</option>`).join('')}</select>` : ''}
         <input type="search" class="gb-q" placeholder="${this.tab === 'fish' ? '🔍 ชื่อปลา' : '🔍 ชื่อผี หรือของที่ดรอป'}" value="${esc(this.q)}"></div>`;

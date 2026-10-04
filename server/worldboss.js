@@ -35,13 +35,14 @@ export function setupWorldBoss(io, players, { td, hurtPlayer, queueSync, social,
     nextSkill: {}, gcd: 0, crystals: [], warned1: false, online: 0, target: null, face: Math.PI / 2,
   };
   let seq = 0;
-  const boss = () => W().mobs.find((m) => m.wb === 'boss');
+  const boss = () => W()?.mobs.find((m) => m.wb === 'boss');
   const inArena = (p) => p && p.world === 'td' && p.tmap === WB_MAP && !p.dead && !W().inTown(p.tx, p.ty);
   const fighters = () => td.playersIn(WB_MAP).filter(inArena);
   const pos = (p) => ({ x: p.tx, y: p.ty });
   const pct = (p, k) => Math.max(1, Math.round(p.maxHp * k));
 
   function status() {
+    if(!W())return {state:'disabled',at:0,now:Date.now()};
     const b = boss();
     return {
       state: S.state, at: S.at, fightEnd: S.fightEnd, closeAt: S.closeAt, phase: S.phase, lv: S.lv || 150, tier: S.tier?.n || 5, tierTh: S.tier?.nameTh || '',
@@ -86,6 +87,7 @@ export function setupWorldBoss(io, players, { td, hurtPlayer, queueSync, social,
   }).catch(() => {});
 
   function go(p) {
+    if(!W())return {ok:false,msg:'ลานสุริยคราสพักไว้ระหว่างพัฒนาอโยธยา'};
     if (!p || p.world !== 'td') return { ok: false, msg: 'ยังไม่ได้อยู่ในโลก' };
     if (S.state !== 'open' && S.state !== 'fight') return { ok: false, msg: S.state === 'ended' ? 'การต่อสู้จบแล้ว ลานกำลังปิด' : 'ลานสุริยคราสยังไม่เปิด' };
     if (Date.now() - (p.tdWarpAt || 0) < 3000) return { ok: false, msg: 'เพิ่งวาร์ปมา รอสักครู่' };
@@ -385,6 +387,7 @@ export function setupWorldBoss(io, players, { td, hurtPlayer, queueSync, social,
   // ------------------------------------------------------------
   let last = Date.now(), pushT = 0;
   function tick() {
+    if(!W())return;
     const now = Date.now(), dt = Math.min(0.5, (now - last) / 1000); last = now;
     if (S.state === 'idle' && now >= S.at - WB_ANNOUNCE_MS) open(S.at);
     if (S.state === 'open') {
@@ -459,12 +462,13 @@ export function setupWorldBoss(io, players, { td, hurtPlayer, queueSync, social,
     status,
     mvpOf: () => (S.mvp && S.mvp.until > Date.now() ? S.mvp : null),
     onConnection(socket) {
-      socket.emit('wb:status', status());
+      if(W())socket.emit('wb:status', status());
       socket.on('wb:go', (d, cb) => { const r = go(players.get(socket.id)); if (typeof cb === 'function') cb(r); });
       socket.on('wb:leave', (d, cb) => { const ok = back(players.get(socket.id)); if (typeof cb === 'function') cb({ ok }); });
     },
     /** GM: /gm rahu [open|now|end|kill|close] */
     gm(cmd) {
+      if(!W())return 'ลานสุริยคราสพักไว้ระหว่างพัฒนาอโยธยา';
       const now = Date.now();
       if (cmd === 'open' || !cmd) { if (S.state === 'idle') open(now + 60e3); else S.at = now + 60e3; return 'เปิดลานแล้ว · บอสเกิดใน 1 นาที'; }
       if (cmd === 'now') { if (S.state === 'fight' || S.state === 'ended') return 'กำลังมีรอบอยู่ (ใช้ /gm rahu close ก่อน)'; if (S.state === 'idle') open(now); startFight(); return 'พระราหูเกิดแล้ว'; }

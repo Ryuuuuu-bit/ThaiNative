@@ -3,7 +3,7 @@ import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import vm from 'node:vm';
 import * as THREE from 'three';
-import { getMap, TD_MAP_IDS } from '../shared/td/maps.js';
+import { getArchivedMap as getMap, ALL_TD_MAP_IDS as TD_MAP_IDS } from '../shared/td/maps.js';
 import { MONSTERS } from '../shared/data/monsters.js';
 import { TILE, CENTER, SPAWN, OX, T } from '../shared/td/ayutthaya.js';
 import { propKind, actorKind } from '../client/js/topdown/VisualAssets.js';

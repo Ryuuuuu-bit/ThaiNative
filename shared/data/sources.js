@@ -55,6 +55,7 @@ function build() {
   for (const r of FORGE) add(r.out, { kind: 'craft', ic: '⚒️', text: `สร้างที่ลุงดำ · ฿${r.fee.toLocaleString()}`, sub: need(r.need) });
   // 5) ตกปลา / เก็บสมุนไพร
   for (const [mapId, list] of Object.entries(FISH_BY_MAP)) {                  // ปลาประจำแดน: บอกแดนที่ตกได้
+    if(!TD_MAPS[mapId])continue;
     const fw = list.reduce((a, f) => a + f.w, 0), where = `ริมน้ำ${TD_MAPS[mapId]?.nameTh || mapId}`;
     for (const f of list) if (f.id !== 'junk_boot' || mapId === 'ayutthaya') add(f.id, { kind: 'life', ic: '🎣', text: `ตกปลา${f.night ? 'ตอนกลางคืน' : ''}${f.legend ? ' · ✦ ปลาตำนาน' : ''} · ~${pctTxt(f.w / fw)}`, sub: where });
   }

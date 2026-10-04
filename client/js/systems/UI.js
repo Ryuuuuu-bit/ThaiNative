@@ -175,11 +175,12 @@ export class UI {
     const show = force ?? el.classList.contains('hidden');
     const was = !el.classList.contains('hidden');
     el.classList.toggle('hidden', !show);
+    this._guard?.();
     if (show !== was) this.scene.sfx?.play(show ? 'open' : 'close');
     if (show) this.refreshPanels();
   }
 
-  closeAll() { document.querySelectorAll('.window:not(#trade-panel)').forEach((w) => w.classList.add('hidden')); $('#player-menu')?.classList.add('hidden'); }
+  closeAll() { document.querySelectorAll('.window:not(#trade-panel)').forEach((w) => w.classList.add('hidden')); $('#player-menu')?.classList.add('hidden'); this._guard?.(); }
   anyOpen() { return [...document.querySelectorAll('.window:not(#trade-panel)'), $('#player-menu')].some((w) => w && !w.classList.contains('hidden')); }
 
   // ---------------- HUD (อัปเดตเมื่อค่าเปลี่ยนเท่านั้น) ----------------

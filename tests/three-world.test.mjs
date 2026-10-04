@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import {readFile} from 'node:fs/promises';
 import * as THREE from 'three';
 import {frameQuad,graphicsBounds,WORLD_TILT} from '../client/js/topdown/ThreeWorldMath.js';
-import {TD_MAP_IDS,getMap} from '../shared/td/maps.js';
+import {ALL_TD_MAP_IDS as TD_MAP_IDS,getArchivedMap as getMap} from '../shared/td/maps.js';
 import {TILE} from '../shared/td/ayutthaya.js';
 import {T} from '../shared/td/ayutthaya.js';
 import {GD_BOSSES,GD_DIFFS} from '../shared/data/ghostdg.js';

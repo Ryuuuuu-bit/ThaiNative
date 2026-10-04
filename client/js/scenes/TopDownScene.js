@@ -15,6 +15,7 @@ import { bakeCharacter } from '../gfx/SpriteFactory.js';
 import { bakeFx, popupNumber, hitSpark, yantCircle, squash } from '../gfx/Fx.js';
 import { makeText, gmStyle, uiIcon, itemIcon as itemIconHtml, ICONS, EMO_ICON } from '../systems/util.js';
 import { sound } from '../systems/Sound.js';
+import { GameHud } from '../systems/GameHud.js';
 import { loadSettings, saveSettings } from '../systems/Settings.js';
 import { saveCharacter } from '../systems/Character.js';
 import { UI, rarityOf, npcPortrait } from '../systems/UI.js';
@@ -114,6 +115,7 @@ export class TopDownScene extends Phaser.Scene {
       cam.shake = (d, i, ...r) => (this.settings?.fxShake === false ? cam : shake(d, i, ...r));
       cam.flash = (d, rr, g, b, ...r) => (this.settings?.fxFlash === 'off' ? cam : flash(this.settings?.fxFlash === 'soft' ? d * 0.4 : d, rr, g, b, ...r)); }
     this.visitedMaps = Array.isArray(char.tdMaps) && char.tdMaps.length ? [...char.tdMaps] : ['ayutthaya'];
+    if(char.tdMap&&validMap(char.tdMap)!==char.tdMap){char.tdMap='ayutthaya';char.tdPos={...getMap('ayutthaya').spawn};char.tdMapV=2;}
     this.setMapDef(validMap(char.tdMap));
     this.remotes = new Map();
     this.shadows = [];
@@ -157,6 +159,7 @@ export class TopDownScene extends Phaser.Scene {
     catch (error) { console.error('Three.js world initialization failed', error); this.ui.toast('เปิดฉาก 2.5D ไม่สำเร็จ กรุณาตรวจ WebGL แล้วรีเฟรช', 'warn'); }
     this.zone = null;
     this.ui.updateHud();
+    this.gameHud = new GameHud(this);
     this.setupNetwork();
     this.time.delayedCall(2500, () => this.cosRefundNotice());          // เคยมีชุดแต่งตัว → แจ้งยอดเงินที่คืน
     if ((this.player?.char?.level || 1) > 3) this.ui.news?.autoOpen();   // มีข่าวใหม่ → เปิดกระดานข่าวครั้งเดียว · ตัวใหม่ (Lv.1–3) ให้เห็นการแนะนำก่อน

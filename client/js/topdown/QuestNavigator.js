@@ -96,6 +96,7 @@ export class QuestNavigator {
   }
 
   resolve(q, state) {
+    if(q.realm&&!TD_MAPS[q.realm]){this.status('พื้นที่เควสนี้พักไว้ระหว่างพัฒนาอโยธยา');return null;}
     const s = this.s, p = s.player, candidates = [];
     if (state === 'open' || state === 'ready') {
       const giver = questGiver(q);

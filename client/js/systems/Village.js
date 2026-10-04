@@ -323,7 +323,7 @@ export class Village {
   renderQuestList(el, giver) {
     const c = this.char, Q = c.quests, order = { ready: 0, active: 1, open: 2, locked: 3, done: 4 };
     const mine = (q) => questGiver(q) === giver || (giver === 'quest' && q.id in Q.active);
-    const all = QUESTS.filter(mine).map((q) => ({ q, st: this.questState(q) })).sort((a, b) => (order[a.st] - order[b.st]) || (a.q.lv - b.q.lv));
+    const all = QUESTS.filter(mine).filter(q=>!q.realm||TD_MAPS[q.realm]||q.id in Q.active).map((q) => ({ q, st: this.questState(q) })).sort((a, b) => (order[a.st] - order[b.st]) || (a.q.lv - b.q.lv));
     // รายการยาว (เควสถึง Lv.150): ที่ยังล็อกโชว์แค่ 3 เควสถัดไป · ที่ทำแล้วยุบเป็นบรรทัดเดียว
     const locked = all.filter((x) => x.st === 'locked'), done = all.filter((x) => x.st === 'done');
     const list = all.filter((x) => x.st !== 'locked' && x.st !== 'done').concat(locked.slice(0, 3));

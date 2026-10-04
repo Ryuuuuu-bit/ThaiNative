@@ -21,7 +21,7 @@ import { addItem } from '../shared/economy.js';
 import { ITEMS } from '../shared/data/items.js';
 import { NPC_BY_ID } from '../shared/data/npcs.js';
 import { TILE, T, OX } from '../shared/td/ayutthaya.js';
-import { TD_MAPS, TD_MAP_IDS, EVENT_MAPS, DEFAULT_MAP, getMap, validMap, arrivalPoint, RESPAWN_WAIT_MS } from '../shared/td/maps.js';
+import { TD_MAPS, TD_MAP_IDS, EVENT_MAPS, DEFAULT_MAP, getMap, validMap, arrivalPoint, RESPAWN_WAIT_MS, EXPANSIONS_ENABLED } from '../shared/td/maps.js';
 import { MAX_LEVEL, mobExp, mobAtkMul, attackInterval, buffAspd } from '../shared/stats.js';
 import { PARTY } from '../shared/constants.js';
 /** ระยะส่งสถานะผีรอบตัวผู้เล่น (px โลก) — ใหญ่กว่าจอ (zoom 1.5 · จอ 2048×1152 ≈ ครึ่ง 683×384) ให้ผีโผล่/หายนอกจอ */
@@ -376,6 +376,7 @@ export function setupTD(io, players, opts = {}) {
   }
 
   function enter(socket, p) {
+    if(p.save.tdMap&&validMap(p.save.tdMap)!==p.save.tdMap){p.save.tdMap=DEFAULT_MAP;p.save.tdPos={...TD_MAPS[DEFAULT_MAP].spawn};p.save.tdMapV=TD_MAP_V;}
     if (p.save.tdPos && (p.save.tdMapV || 1) < TD_MAP_V) p.save.tdPos = { x: p.save.tdPos.x + OX * TILE, y: p.save.tdPos.y };   // เซฟก่อนขยายแผนที่
     p.save.tdMapV = TD_MAP_V;
     for (const id of Object.keys(worlds)) socket.leave(tdRoom(id));
@@ -999,6 +1000,7 @@ export function setupTD(io, players, opts = {}) {
     move(p, to, pos, how = 'npc') { const sk = io.sockets.sockets.get(p.id); if (!sk || p.world !== 'td') return false; if (!worlds[to]) { pos = isCrypt(to) ? { ...GATE } : null; to = 'ayutthaya'; } moveMap(sk, p, to, pos || { ...getMap(to).spawn }, how); return true; },
     /** GM: วาร์ปไปแมพไหนก็ได้ (ทดสอบ) */
     gmWarp(p, socket, to) {
+      if(!EXPANSIONS_ENABLED&&!TD_MAPS[to])return false;
       const cf = /^crypt:?(\d+)$/.exec(to);                                     // /map crypt:15 → ห้องสุสานเดี่ยวชั้น 15 (ทดสอบ)
       if (cf && p.world === 'td') { openCrypt([p], Math.min(CRYPT.floors, Math.max(1, +cf[1])), `s${p.id}`); return true; }
       if (to === 'ghostdg' && p.world === 'td') { const g = gdGate(); this.gmTeleport(p, 'ayutthaya', { x: g.x + (Math.random() - 0.5) * 60, y: g.y + Math.random() * 20 }); return true; }   // /gm map ghostdg → หน้าหลวงตาเฝ้าป่าช้า
@@ -1023,11 +1025,12 @@ export function setupTD(io, players, opts = {}) {
       socket.on('td:hit', (d) => { const p = players.get(socket.id); if (p && p.world === 'td') W(p).onHit(p, d); });
       socket.on('td:respawn', () => onRespawn(socket));
       socket.on('td:warp', (d) => onWarp(socket, d));
-      socket.on('crypt:info', () => cryptInfo(socket));
-      socket.on('crypt:enter', (d) => cryptEnter(socket, d));
-      socket.on('crypt:go', (d) => cryptGo(socket, d));
-      socket.on('gd:info', () => gdInfo(socket));
-      socket.on('gd:enter', (d) => gdEnter(socket, d));
+      const paused=(event)=>socket.emit(event,{msg:'พื้นที่นี้พักไว้ระหว่างพัฒนาอโยธยา'});
+      socket.on('crypt:info', () => EXPANSIONS_ENABLED ? cryptInfo(socket) : paused('crypt:fail'));
+      socket.on('crypt:enter', (d) => EXPANSIONS_ENABLED ? cryptEnter(socket,d) : paused('crypt:fail'));
+      socket.on('crypt:go', (d) => EXPANSIONS_ENABLED ? cryptGo(socket,d) : paused('crypt:fail'));
+      socket.on('gd:info', () => EXPANSIONS_ENABLED ? gdInfo(socket) : paused('gd:fail'));
+      socket.on('gd:enter', (d) => EXPANSIONS_ENABLED ? gdEnter(socket,d) : paused('gd:fail'));
       socket.on('gd:leave', () => gdLeave(socket));
     },
     onLeave(p) { if (p.world === 'td') { W(p).forget(p); io.to(tdRoom(mapOf(p))).emit('td:left', p.id); } },

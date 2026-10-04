@@ -66,7 +66,10 @@ function densify(L, mult, M) {
   return L;
 }
 
-export const TD_MAP_IDS = ['ayutthaya', 'himmaphan', 'nagaphop', 'naraka', 'dusit', 'sumeru', 'suriya'];
+export const ALL_TD_MAP_IDS = ['ayutthaya', 'himmaphan', 'nagaphop', 'naraka', 'dusit', 'sumeru', 'suriya'];
+// Develop Ayutthaya first. Archived definitions and saved progress remain available for later phases.
+export const EXPANSIONS_ENABLED = false;
+export const TD_MAP_IDS = EXPANSIONS_ENABLED ? ALL_TD_MAP_IDS : ['ayutthaya'];
 /** แมพอีเวนต์ (ไม่อยู่ในรายการวาร์ป/ประตูมิติ · เข้าได้เฉพาะช่วงอีเวนต์) */
 export const EVENT_MAPS = new Set(['suriya']);
 export const DEFAULT_MAP = 'ayutthaya';
@@ -91,7 +94,7 @@ function realmEntry(def) {
   };
 }
 
-export const TD_MAPS = {
+export const ARCHIVED_TD_MAPS = {
   ayutthaya: {
     id: 'ayutthaya', nameTh: 'กรุงศรีอยุธยา', icon: '🏯', lv: [1, 30], reqLv: 1, W: MAP_W, H: MAP_H, sub: 'Lv.1–30 · เมืองหลวง', color: '#f7dc6f',
     music: null, noFish: false, style: {}, realm: false,
@@ -100,7 +103,15 @@ export const TD_MAPS = {
     zoneAtTile,
     zoneAt: (x, y) => zoneAtTile(Math.floor(x / TILE), Math.floor(y / TILE)),
     inSafe: inTownXY,
-    layout() { return (cache.ayutthaya ||= densify(buildLayout(), MOB_DENSITY.ayutthaya, this)); },
+    layout() {
+      if(!cache.ayutthaya){
+        const layout=densify(buildLayout(),MOB_DENSITY.ayutthaya,this);
+        cache.ayutthaya=EXPANSIONS_ENABLED?layout:{...layout,portals:[],
+          npcs:layout.npcs.filter(n=>!['warp','crypt','ghostdg'].includes(n.id)),
+          props:layout.props.map(p=>p.label==='ประตูสุสานใต้ดิน'?{...p,label:'ปรางค์วัดร้าง'}:p)};
+      }
+      return cache.ayutthaya;
+    },
   },
   ...Object.fromEntries(Object.values(REALMS).map((d) => [d.id, realmEntry(d)])),
   suriya: {
@@ -113,10 +124,12 @@ export const TD_MAPS = {
     layout() { return (cache.suriya ||= buildArena()); },
   },
 };
+export const TD_MAPS=Object.fromEntries(TD_MAP_IDS.map(id=>[id,ARCHIVED_TD_MAPS[id]]));
 
 /** สุสานใต้ดิน: รหัส crypt:<ชั้น>:<คน>:<ห้อง> สร้างรายการแมพตามชั้น (ไม่อยู่ใน TD_MAPS) */
-export const getMap = (id) => TD_MAPS[id] || cryptMap(id) || gdMap(id) || TD_MAPS[DEFAULT_MAP];   // + ดันเจี้ยนสี่ผีป่าช้า (gd:…)
-export const validMap = (id) => (TD_MAPS[id] || cryptMap(id) || gdMap(id) ? id : DEFAULT_MAP);
+export const getArchivedMap = (id) => ARCHIVED_TD_MAPS[id] || cryptMap(id) || gdMap(id) || TD_MAPS[DEFAULT_MAP];
+export const getMap = (id) => TD_MAPS[id] || (EXPANSIONS_ENABLED && (cryptMap(id) || gdMap(id))) || TD_MAPS[DEFAULT_MAP];
+export const validMap = (id) => (TD_MAPS[id] || (EXPANSIONS_ENABLED && (cryptMap(id) || gdMap(id))) ? id : DEFAULT_MAP);
 
 /** จุดโผล่เมื่อผ่านประตูมิติจาก from → to (หน้าประตูฝั่งตรงข้าม) · ไม่มีคู่ = จุดเกิดของแมพ */
 export function arrivalPoint(from, to) {

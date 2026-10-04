@@ -97,6 +97,10 @@ export class TouchControls {
     });
     stick.addEventListener('pointermove', (e) => { if (e.pointerId === this.pid) move(e); });
     stick.addEventListener('pointerup', end); stick.addEventListener('pointercancel', end);
+    stick.addEventListener('lostpointercapture',end);
+    this.resetStick=()=>{this.pid=null;this.vec=null;knob.style.transform='';stick.classList.remove('on');};
+    this.hideStick=()=>{if(document.hidden)this.resetStick();};
+    window.addEventListener('blur',this.resetStick);document.addEventListener('visibilitychange',this.hideStick);
 
     // ---------- ปุ่มโจมตี / คุย ----------
     const atk = root.querySelector('#t-atk');
@@ -141,6 +145,7 @@ export class TouchControls {
     document.body.classList.remove('m-hud', 'hb-p2');
     document.removeEventListener('touchmove', this.noGesture);
     document.removeEventListener('gesturestart', this.noGesture);
+    window.removeEventListener('blur',this.resetStick);document.removeEventListener('visibilitychange',this.hideStick);
     this.root?.remove();
   }
 }
