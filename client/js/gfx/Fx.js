@@ -131,8 +131,11 @@ const NUM = {
 };
 const DMG_KINDS = new Set(['normal', 'crit', 'miss', 'taken', 'poison']);
 /** Start floating text above the visible target; keep its ground anchor fixed as it rises. */
+export function effectHeight(target) {
+  return target.worldLabelHeight || spriteTopHeight(target) || 30;
+}
 export function popupAbove(scene, target, text, kind = 'normal', opts = {}) {
-  const height = target.worldLabelHeight || spriteTopHeight(target);
+  const height = effectHeight(target);
   return popupNumber(scene, target.x + (opts.offsetX || 0), target.y - height - (opts.gap ?? 14), text, kind, { ...opts, groundY: target.y });
 }
 export function popupNumber(scene, x, y, text, kind = 'normal', opts = {}) {
@@ -160,17 +163,20 @@ export function popupNumber(scene, x, y, text, kind = 'normal', opts = {}) {
 }
 
 /** ประกายกระทบ: ดาว 4 แฉก + วงแหวนขยาย + เศษประกาย */
-export function hitSpark(scene, x, y, { crit = false, tint = 0xffffff, dir = 1 } = {}) {
+export function hitSpark(scene, x, y, { crit = false, tint = 0xffffff, dir = 1, groundY = y } = {}) {
   const star = scene.add.image(x, y, 'fx_spark').setDepth(D(scene, 45)).setBlendMode(Phaser.BlendModes.ADD).setTint(crit ? 0xffd35c : tint).setScale(crit ? 1.3 : 0.8).setAngle(Math.random() * 90);
+  star.worldAnchorY=groundY;
   scene.tweens.add({ targets: star, scale: crit ? 2.2 : 1.4, alpha: 0, angle: star.angle + 45, duration: crit ? 260 : 170, ease: 'Cubic.easeOut', onComplete: () => star.destroy() });
   if (crit) {
     const ring = scene.add.image(x, y, 'fx_ring').setDepth(D(scene, 45)).setBlendMode(Phaser.BlendModes.ADD).setTint(0xffd35c).setScale(0.2);
+    ring.worldAnchorY=groundY;
     scene.tweens.add({ targets: ring, scale: 1.1, alpha: 0, duration: 300, ease: 'Cubic.easeOut', onComplete: () => ring.destroy() });
   }
   const em = scene.add.particles(x, y, 'particle', {
     speed: { min: 40, max: crit ? 160 : 100 }, angle: { min: dir > 0 ? -60 : 120, max: dir > 0 ? 60 : 240 }, lifespan: 300, gravityY: 300,
     scale: { start: crit ? 0.9 : 0.6, end: 0 }, tint: crit ? [0xffd35c, 0xfff2b0, 0xff9f43] : [0xffffff, 0xfff2b0], quantity: crit ? 12 : 6, emitting: false, blendMode: 'ADD',
   }).setDepth(D(scene, 44));
+  em.worldAnchorY=groundY;
   em.explode(crit ? 12 : 6);
   scene.time.delayedCall(400, () => em.destroy());
 }
@@ -181,15 +187,19 @@ export function yantCircle(scene, x, y, { tint = 0xffe9a6, size = 60, ms = 1200,
   // หมุนภาพในคอนเทนเนอร์ที่ถูกบีบแนวตั้ง → วงยันต์นอนราบกับพื้นแบบมีมุมมอง
   const img = scene.add.image(0, 0, 'fx_yant').setBlendMode(Phaser.BlendModes.ADD).setTint(tint).setDisplaySize(size, size);
   const ring = scene.add.container(x, y0, [img]).setDepth(D(scene, 9)).setScale(1, 0.34).setAlpha(0);
+  ring.worldGroundEffect=true;ring.worldGroundAspect=.34;
   scene.tweens.add({ targets: ring, alpha: 0.95, duration: 150 });
   scene.tweens.add({ targets: img, angle: 120, duration: ms, ease: 'Sine.easeInOut' });
   scene.tweens.add({ targets: ring, alpha: 0, duration: 300, delay: ms - 300, onComplete: () => ring.destroy() });
   const glow = scene.add.image(x, y0, 'fx_glow').setDepth(D(scene, 8.9)).setBlendMode(Phaser.BlendModes.ADD).setTint(tint).setDisplaySize(size * 1.2, size * 0.5).setAlpha(0.35);
+  glow.worldGroundEffect=true;glow.worldGroundAspect=.5/1.2;
   scene.tweens.add({ targets: glow, alpha: 0, duration: ms, onComplete: () => glow.destroy() });
   if (rise) {                                                        // เสาแสงขึ้นฟ้า (เลเวลอัป)
-    const beam = scene.add.image(x, y0, 'fx_glow').setDepth(D(scene, 9)).setBlendMode(Phaser.BlendModes.ADD).setTint(tint).setDisplaySize(44, 140).setOrigin(0.5, 1).setAlpha(0.95);
+    const beam = scene.add.image(x, y0, 'fx_glow').setDepth(D(scene, 45)).setBlendMode(Phaser.BlendModes.ADD).setTint(tint).setDisplaySize(44, 140).setOrigin(0.5, 1).setAlpha(0.95);
+    beam.worldAnchorY=y;
     scene.tweens.add({ targets: beam, displayHeight: 230, displayWidth: 20, alpha: 0, duration: 1100, ease: 'Cubic.easeOut', onComplete: () => beam.destroy() });
-    const ring2 = scene.add.image(x, y0 - 14, 'fx_ring').setDepth(D(scene, 9)).setBlendMode(Phaser.BlendModes.ADD).setTint(tint).setScale(0.3, 0.12).setAlpha(0.9);
+    const ring2 = scene.add.image(x, y0 - 14, 'fx_ring').setDepth(D(scene, 45)).setBlendMode(Phaser.BlendModes.ADD).setTint(tint).setScale(0.3, 0.12).setAlpha(0.9);
+    ring2.worldAnchorY=y;
     scene.tweens.add({ targets: ring2, scaleX: 2.4, scaleY: 0.9, alpha: 0, duration: 700, ease: 'Cubic.easeOut', onComplete: () => ring2.destroy() });
     const em = scene.add.particles(x, y0 - 10, 'particle', {
       x: { min: -14, max: 14 }, speedY: { min: -120, max: -50 }, speedX: { min: -8, max: 8 }, lifespan: 900, scale: { start: 0.7, end: 0 },

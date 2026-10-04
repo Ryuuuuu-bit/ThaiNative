@@ -304,6 +304,12 @@ export class ThreeWorld {
       for(const p of o.alive){
         if(p.alpha<=0||!p.frame)continue;
         const proxy=p._threeProxy||(p._threeProxy={type:'Image',visible:true,originX:.5,originY:.5});
+        // Particle coordinates include vertical drift. Capture the emitter ground
+        // anchor once per life, including pooled particles and moving trails.
+        if(proxy._life===undefined||p.lifeCurrent>proxy._life){
+          proxy.worldAnchorY=o.worldAnchorY??(o.follow?.worldAnchorY??o.follow?.y??transform.ty);
+        }
+        proxy._life=p.lifeCurrent;
         Object.assign(proxy,{x:transform.a*p.x+transform.c*p.y+transform.tx,y:transform.b*p.x+transform.d*p.y+transform.ty,
           scaleX:p.scaleX*o.scaleX,scaleY:p.scaleY*o.scaleY,rotation:p.rotation,frame:p.frame,
           displayOriginX:p.frame.realWidth/2,displayOriginY:p.frame.realHeight/2,alpha:p.alpha*o.alpha,tintTopLeft:p.tint,
@@ -346,9 +352,14 @@ export class ThreeWorld {
       e.aura.scale.set(diameter,diameter,1);e.aura.material.uniforms.time.value=performance.now()/1000;
     }
     const flat=(root.depth??0)<1 || this.s.shadows?.some(sh=>sh.img===o);
+    const groundEffect=root.worldGroundEffect===true;
+    const onGround=flat||groundEffect;
+    const effect=o.blendMode===Phaser.BlendModes.ADD||groundEffect||((root.depth??0)>=99980&&o.type!=='Text');
+    // Fading glows must retain their soft edges; sprite alpha cutouts stay crisp.
+    if(e.material.isMeshBasicMaterial)e.material.alphaTest=effect?0:.12;
     const screen=root.scrollFactorX===0&&root.scrollFactorY===0;
     const overlay=o.type==='Text'||(root.depth??0)>=99980;
-    e.material.depthWrite=!overlay&&!screen&&o.blendMode!==Phaser.BlendModes.ADD;
+    e.material.depthWrite=!overlay&&!screen&&!effect;
     e.material.depthTest=!overlay&&!screen;
     const target=screen?this.overlay:this.world;if(e.mesh.parent!==target)target.add(e.mesh);
     const matrix=o.getWorldTransformMatrix?.();
@@ -358,20 +369,30 @@ export class ThreeWorld {
     const sx=matrix?Math.hypot(matrix.a,matrix.b):(o.scaleX??1),sy=matrix?Math.hypot(matrix.c,matrix.d):(o.scaleY??1);
     const angle=matrix?Math.atan2(matrix.b,matrix.a):(o.rotation||0);
     e.mesh.visible=true;e.mesh.scale.set(sx,sy,1);
+    const groundAspect=groundEffect?(root.worldGroundAspect||1):1;
+    const affine=!!(matrix&&o.parentContainer);
+    if(affine){
+      // Preserve shear from a rotating child inside a flattened container.
+      // Decomposing this matrix into just rotation + scales distorted the rune.
+      for(let i=0;i<q.positions.length;i+=3){const px=q.positions[i],py=q.positions[i+1];q.positions[i]=matrix.a*px-matrix.c*py;q.positions[i+1]=(-matrix.b*px+matrix.d*py)/groundAspect;}
+      e.geometry.attributes.position.array.set(q.positions);e.geometry.attributes.position.needsUpdate=true;e.geometry.computeBoundingSphere();
+      e.mesh.scale.set(1,1,1);
+    }else if(groundEffect)e.mesh.scale.y/=groundAspect;
     if(screen){
       const zoom=this.s.cameras.main.zoom;e.mesh.position.set(x*zoom,y*zoom,root.depth/100);
-      e.mesh.scale.set(sx*zoom,-sy*zoom,1);e.mesh.quaternion.identity();e.mesh.rotateZ(-angle);
-    }else if(flat){
-      e.mesh.position.set(x,.02+(root.depth||0)*.04,y);e.mesh.quaternion.setFromAxisAngle(new THREE.Vector3(1,0,0),-Math.PI/2);e.mesh.rotateZ(-angle);
+      e.mesh.scale.set((affine?1:sx)*zoom,-(affine?1:sy)*zoom,1);e.mesh.quaternion.identity();if(!affine)e.mesh.rotateZ(-angle);
+    }else if(onGround){
+      e.mesh.position.set(x,groundEffect ? .24 : .02+(root.depth||0)*.04,y);e.mesh.quaternion.setFromAxisAngle(new THREE.Vector3(1,0,0),-Math.PI/2);if(!affine)e.mesh.rotateZ(-angle);
     }else{
       // Labels retain their pixel offset above the entity's ground anchor.
-      const anchor=root.worldAnchorY ?? (root.depth>1&&root.depth<50000?root.depth:y);
+      const graphicsAnchor=o.type==='Graphics'&&e.bounds?y+(e.bounds.y+e.bounds.height)*sy:undefined;
+      const anchor=root.worldAnchorY ?? graphicsAnchor ?? (root.depth>1&&root.depth<50000?root.depth:y);
       e.mesh.position.set(x,0,anchor);e.mesh.quaternion.copy(this.camera.quaternion);
       // Depth is the foot coordinate for sprites; high-depth effects use their own location.
       e.mesh.position.addScaledVector(new THREE.Vector3(0,1,0).applyQuaternion(this.camera.quaternion),anchor-y);
-      e.mesh.rotateZ(-angle);
+      if(!affine)e.mesh.rotateZ(-angle);
     }
-    e.mesh.renderOrder=screen?root.depth:overlay?1000+(root.depth||0)/100000:flat?root.depth||0:1;
+    e.mesh.renderOrder=screen?root.depth:overlay?1000+(root.depth||0)/100000:onGround ? .98 : 1;
   }
 
   render() {

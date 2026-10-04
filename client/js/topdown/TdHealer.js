@@ -4,7 +4,7 @@
 //  ▸ ภาพสายใย/เมล็ด/ตัวเลขรักษา มาจาก server (td:tether · td:seed · td:heal) ให้ทุกคนเห็นเหมือนกัน
 //  ▸ ออฟไลน์: รักษาตัวเองในเครื่อง
 // ============================================================
-import { popupNumber } from '../gfx/Fx.js';
+import { popupNumber, popupAbove, effectHeight } from '../gfx/Fx.js';
 
 const TOP = 99985;
 const ADD = () => Phaser.BlendModes.ADD;
@@ -122,14 +122,14 @@ export class HealerKit {
   // ---------------- เหตุการณ์จาก server ----------------
   healFx({ id, amt, fx, over }) {
     const o = this.sprOf(id); if (!o || o.visible === false) return;
-    const s = this.s, F = this.fx, h = o.displayHeight || 40;
-    if (!over || fx === 'revive') popupNumber(s, o.x, o.y - h - 12, `+${amt}`, 'heal');
+    const s = this.s, F = this.fx, h = effectHeight(o);
+    if (!over || fx === 'revive') popupAbove(s, o, `+${amt}`, 'heal', {gap:12});
     if (fx === 'vine') { F.sparks(o.x, o.y - h * 0.5, { n: 3, tint: GREEN, speed: [15, 45], life: 500, scale: 0.2, gravity: -40 }); return; }
     if (fx === 'pill') { F.glow(o.x, o.y - h * 0.5, { size: 40, tint: 0x9dff6a, ms: 320 }); this.leaves(o.x, o.y - h * 0.5, 6, 30); return; }
     if (fx === 'bloom' || fx === 'bloomNow') {
       this.clearSprout(id, true);
       F.pillar(o.x, o.y, { tint: PINK, h: 120, ms: 900, w: 34 }); F.glow(o.x, o.y - h - 8, { size: 90, tint: 0xffffff, ms: 420 });
-      const fl = F.img(o.x, o.y - h - 6, 'sk_lotus', { add: false, depth: TOP + 1 }).setOrigin(0.5, 0.8).setScale(0.1);
+      const fl = F.img(o.x, o.y - h - 6, 'sk_lotus', { add: false, depth: TOP + 1 }).setOrigin(0.5, 0.8).setScale(0.1);fl.worldAnchorY=o.y;
       F.tween({ targets: fl, scale: 0.7, duration: 360, ease: 'Back.easeOut' });
       F.tween({ targets: fl, alpha: 0, y: fl.y - 18, delay: 700, duration: 450, onComplete: () => fl.destroy() });
       F.petals(o.x, o.y, { n: 14, tint: 0xffc6e0, r: 34, fall: false, ms: 1300 }); F.stars(o.x, o.y - h, { n: 8, tint: GOLD, r: 26, size: 14, up: 24 });
@@ -139,7 +139,7 @@ export class HealerKit {
     if (fx === 'khwan' || fx === 'revive') {
       F.pillar(o.x, o.y, { tint: GOLD, h: 170, ms: 1300, w: 40 }); F.stars(o.x, o.y - 20, { n: 10, tint: GOLD, r: 22, size: 16, up: 40 });
       F.aura(o, { tint: GOLD, ms: 2800 });
-      if (fx === 'revive') { popupNumber(s, o.x, o.y - h - 34, 'ฟื้นคืนชีพ!', 'crit'); F.flash(200, GOLD, 0.25); F.shock(o.x, o.y, { r: 60, tint: GOLD, ms: 600 }); }
+      if (fx === 'revive') { popupAbove(s, o, 'ฟื้นคืนชีพ!', 'crit', {gap:34}); F.flash(200, GOLD, 0.25); F.shock(o.x, o.y, { r: 60, tint: GOLD, ms: 600 }); }
       return;
     }
     if (fx === 'mortar') { F.aura(o, { tint: GREEN, ms: 1600, motes: 'hl_leaf' }); F.stars(o.x, o.y - 18, { n: 5, tint: GREEN, r: 16, size: 12, up: 18 }); return; }
@@ -161,8 +161,9 @@ export class HealerKit {
     const pt = (k, P0, P1, C, w) => { const i = 1 - k; return { x: i * i * P0.x + 2 * i * k * C.x + k * k * P1.x, y: i * i * P0.y + 2 * i * k * C.y + k * k * P1.y + Math.sin(k * 12 + w) * 2 }; };
     const draw = () => {
       if (!a.active || !b.active || s.time.now > end + 500) return stop(false);
-      const P0 = { x: a.x + 6, y: a.y - (a.displayHeight || 40) * 0.55 }, P1 = { x: b.x, y: b.y - (b.displayHeight || 40) * 0.5 };
+      const P0 = { x: a.x + 6, y: a.y - effectHeight(a) * 0.55 }, P1 = { x: b.x, y: b.y - effectHeight(b) * 0.5 };
       const d = dist(P0, P1), near = d < 100, C = { x: (P0.x + P1.x) / 2, y: (P0.y + P1.y) / 2 - 18 - d * 0.08 }, w = s.time.now / 160;
+      g.worldAnchorY=gl.worldAnchorY=Math.max(a.y,b.y);
       g.clear(); gl.clear();
       const far = d > 200, col = far ? 0xd4c34a : 0x3cb043, colL = far ? 0xfff08a : 0x9dff6a;
       for (const [off, lw, c] of [[0, near ? 3 : 2, col], [Math.PI, 1.5, colL]]) {
@@ -173,9 +174,9 @@ export class HealerKit {
       gl.lineStyle(near ? 8 : 5, GREEN, near ? 0.28 : 0.16); gl.beginPath();
       for (let k = 0; k <= 1.001; k += 0.1) { const q = pt(k, P0, P1, C, w); k ? gl.lineTo(q.x, q.y) : gl.moveTo(q.x, q.y); }
       gl.strokePath();
-      leaves.forEach((l, i) => { const k = (i + 0.5) / leaves.length, q = pt(k, P0, P1, C, w); l.setPosition(q.x, q.y).setRotation(Math.sin(w + i) * 0.8 + (i % 2 ? 0.6 : -0.6)).setVisible(!far || i % 2 === 0); });
-      flowers.forEach((f, i) => { const q = pt(0.33 + i * 0.34, P0, P1, C, w); f.setPosition(q.x, q.y - 2).setVisible(near); });
-      drops.forEach((dr, i) => { const k = ((s.time.now - t0) / 700 + i / drops.length) % 1, q = pt(k, P0, P1, C, w); dr.setPosition(q.x, q.y); });
+      leaves.forEach((l, i) => { const k = (i + 0.5) / leaves.length, q = pt(k, P0, P1, C, w); l.worldAnchorY=g.worldAnchorY;l.setPosition(q.x, q.y).setRotation(Math.sin(w + i) * 0.8 + (i % 2 ? 0.6 : -0.6)).setVisible(!far || i % 2 === 0); });
+      flowers.forEach((f, i) => { const q = pt(0.33 + i * 0.34, P0, P1, C, w); f.worldAnchorY=g.worldAnchorY;f.setPosition(q.x, q.y - 2).setVisible(near); });
+      drops.forEach((dr, i) => { const k = ((s.time.now - t0) / 700 + i / drops.length) % 1, q = pt(k, P0, P1, C, w); dr.worldAnchorY=g.worldAnchorY;dr.setPosition(q.x, q.y); });
     };
     const ev = s.time.addEvent({ delay: 16, loop: true, callback: draw });
     const stop = (snapped) => {
@@ -184,6 +185,7 @@ export class HealerKit {
       this.vines.delete(id);
     };
     const ring = F.img(b.x, b.y, 'sk_rune', { tint: GREEN, depth: 0.96, alpha: 0.7 }).setDisplaySize(34, 12);
+    ring.worldGroundEffect=true;ring.worldGroundAspect=12/34;
     s.time.addEvent({ delay: 16, repeat: Math.ceil((ms || 6000) / 16), callback: () => ring.active && ring.setPosition(b.x, b.y).setAngle(ring.angle + 2) });
     s.time.delayedCall(ms || 6000, () => ring.destroy());
     this.vines.set(id, { stop: (sn) => { if (ring.active) ring.destroy(); stop(sn); } });
@@ -196,7 +198,8 @@ export class HealerKit {
     const s = this.s, F = this.fx, t0 = s.time.now;
     const sp = F.img(o.x, o.y, 'hl_sprout', { add: false, depth: o.y + 1 }).setOrigin(0.5, 1).setScale(0.15);
     const root = F.img(o.x, o.y, 'fx_glow', { tint: GREEN, depth: 0.96, alpha: 0.5 }).setDisplaySize(40, 12);
-    const g = s.add.graphics().setDepth(0.97);
+    root.worldGroundEffect=true;root.worldGroundAspect=12/40;
+    const g = s.add.graphics().setDepth(0.97);g.worldGroundEffect=true;
     F.tween({ targets: sp, scale: 0.9, duration: ms || 4000, ease: 'Sine.easeIn' });
     const ev = s.time.addEvent({ delay: 16, loop: true, callback: () => {
       if (!o.active) return;
@@ -243,7 +246,7 @@ export class HealerKit {
         let from = hand;
         chain.forEach((n, i) => at(i * 220, () => {
           const tgt = n.spr; if (!tgt?.active) return;
-          const to = { x: tgt.x, y: tgt.y - (tgt.displayHeight || 30) * 0.5 };
+          const to = { x: tgt.x, y: tgt.y - effectHeight(tgt) * 0.5 };
           const f0 = from; from = to;
           // เส้นทางลม + ลูกกลอนหมุน
           const g = s.add.graphics().setDepth(TOP - 1).setBlendMode(ADD()); g.lineStyle(1.5, 0xc8ffd0, 0.5); g.beginPath();

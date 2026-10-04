@@ -7,7 +7,7 @@ import { SKILL_BY_ID, skillStats, SKILL_SLOTS, isItemSlot, skillUsable, skillWea
 import { JOBS } from '/shared/data/classes.js';
 import { getDerived } from '/shared/character.js';
 import { skillCooldown } from '/shared/stats.js';
-import { popupNumber, popupAbove, yantCircle } from '../gfx/Fx.js';
+import { popupNumber, popupAbove, effectHeight, yantCircle } from '../gfx/Fx.js';
 import { dirFromVector } from './Dir8.js';
 import { TILE, MAP_W, MAP_H } from '/shared/td/ayutthaya.js';
 import { HealerKit, HEAL_TINT } from './TdHealer.js';
@@ -146,6 +146,7 @@ export class GrandFx {
   mandala(x, y, { size = 120, tint = 0xffffff, ms = 1600, spin = 60, alpha = 0.9, key = 'vfx_mandala', depth } = {}) {
     if (!this.has(key)) return this.rune(x, y, { size, tint, ms, spin });
     const c = this.s.add.container(x, y).setDepth(depth ?? y - 2).setScale(1, 0.5);
+    c.worldGroundEffect=true;c.worldGroundAspect=.5;
     const im = this.s.add.image(0, 0, key).setBlendMode(ADD()).setTint(tint).setAlpha(0);
     const glow = this.s.add.image(0, 0, key).setBlendMode(ADD()).setTint(tint).setAlpha(0);
     im.setDisplaySize(size * 0.2, size * 0.2); glow.setDisplaySize(size * 0.2, size * 0.2);
@@ -161,6 +162,7 @@ export class GrandFx {
     if (!this.has(key)) return null;
     const h = this.img(x, y, 'fx_glow', { tint: halo, alpha: 0 }).setDisplaySize(size * 1.6, size * 1.6).setDepth(depth - 1);
     const im = this.s.add.image(x, y, key).setDepth(depth).setAlpha(0).setScale(0.2 * size / 64);
+    im.worldAnchorY=y;h.worldAnchorY=y;
     if (add) im.setBlendMode(ADD()); if (tint !== 0xffffff) im.setTint(tint);
     const S = size / Math.max(im.width, im.height);
     this.tween({ targets: im, alpha: 1, scale: S, duration: 320, ease: 'Back.easeOut' });
@@ -169,6 +171,7 @@ export class GrandFx {
     this.tween({ targets: im, alpha: 0, delay: ms - 380, duration: 380, onComplete: () => { im.destroy(); h.destroy(); } });
     for (let k = 1; k <= trail; k++) this.s.time.delayedCall(k * 90, () => {        // ภาพติดตา
       const g = this.s.add.image(im.x, im.y, key).setScale(im.scaleX).setAlpha(0.35).setDepth(depth - 1).setBlendMode(ADD()).setTint(halo);
+      g.worldAnchorY=y;
       this.tween({ targets: g, alpha: 0, duration: 320, onComplete: () => g.destroy() });
     });
     return im;
@@ -186,21 +189,22 @@ export class GrandFx {
   get flashK() { const f = this.s.settings?.fxFlash; return f === 'off' ? 0 : f === 'soft' ? 0.3 : 1; }
   flash(ms = 120, c = 0xffffff, a = 0.55) {
     a *= this.flashK; if (!a) return;
-    const cam = this.s.cameras.main, v = cam.worldView;
-    const r = this.s.add.rectangle(v.centerX, v.centerY, v.width + 40, v.height + 40, c, a).setDepth(TOP + 10).setBlendMode(ADD());
+    const cam = this.s.cameras.main, z = cam.zoom || 1;
+    const r = this.s.add.rectangle(cam.width / (2*z), cam.height / (2*z), cam.width / z + 40, cam.height / z + 40, c, a).setScrollFactor(0).setDepth(TOP + 10).setBlendMode(ADD());
     this.tween({ targets: r, alpha: 0, duration: ms, onComplete: () => r.destroy() });
   }
   /** ท้องฟ้ามืดลงชั่วครู่ (สกิลใหญ่) */
   darken(ms = 900, c = 0x140a2a, a = 0.45) {
     a *= this.flashK ? Math.max(0.5, this.flashK) : 0; if (!a) return;
-    const v = this.s.cameras.main.worldView;
-    const r = this.s.add.rectangle(v.centerX, v.centerY, v.width * 1.6, v.height * 1.6, c, 0).setDepth(TOP - 20);
+    const cam = this.s.cameras.main, z = cam.zoom || 1;
+    const r = this.s.add.rectangle(cam.width / (2*z), cam.height / (2*z), cam.width / z + 40, cam.height / z + 40, c, 0).setScrollFactor(0).setDepth(TOP - 20);
     this.tween({ targets: r, fillAlpha: a, duration: 160, yoyo: true, hold: ms, onComplete: () => r.destroy() });
   }
 
   /** วงคลื่นกระแทกแบนราบกับพื้น */
   shock(x, y, { r = 60, tint = 0xffffff, ms = 420, depth = 0.95 } = {}) {
     const i = this.img(x, y, 'sk_shock', { tint, depth }).setDisplaySize(8, 4);
+    i.worldGroundEffect=true;i.worldGroundAspect=.5;
     this.tween({ targets: i, displayWidth: r * 2.2, displayHeight: r * 1.1, alpha: 0, duration: ms, ease: 'Cubic.easeOut', onComplete: () => i.destroy() });
   }
 
@@ -223,6 +227,7 @@ export class GrandFx {
 
   crack(x, y, { scale = 1, ms = 2200 } = {}) {
     const c = this.s.add.image(x, y, 'sk_crack').setDepth(0.92).setScale(scale * 0.3, scale * 0.3).setAlpha(0.95);
+    c.worldGroundEffect=true;
     this.tween({ targets: c, scale: scale, duration: 120, ease: 'Back.easeOut' });
     this.tween({ targets: c, alpha: 0, delay: ms, duration: 600, onComplete: () => c.destroy() });
   }
@@ -242,6 +247,7 @@ export class GrandFx {
   /** ฟ้าผ่า (เส้นหยักพร้อมกิ่ง) */
   lightning(x, y, { tint = 0x9fd8ff, h = 230 } = {}) {
     const g = this.s.add.graphics().setDepth(TOP + 2).setBlendMode(ADD());
+    g.worldAnchorY=y;
     const bolt = (x0, y0, x1, y1, w, a, seg) => {
       const pts = [[x0, y0]];
       for (let i = 1; i < seg; i++) { const t = i / seg; pts.push([x0 + (x1 - x0) * t + rand(-10, 10), y0 + (y1 - y0) * t]); }
@@ -288,6 +294,7 @@ export class GrandFx {
     list.unshift(g);
     if (inner) list.push(this.img(0, 0, 'sk_rune', { tint: 0xffffff, depth, alpha: 0.6 }).setDisplaySize(size * 0.55, size * 0.55));
     const c = this.s.add.container(x, y - 1, list).setDepth(depth).setScale(0.2, 0.07).setAlpha(0);
+    c.worldGroundEffect=true;c.worldGroundAspect=.36;
     this.tween({ targets: c, scaleX: 1, scaleY: 0.36, alpha, duration: 220, ease: 'Back.easeOut' });
     this.tween({ targets: a, angle: spin, duration: ms });
     if (list[2]) this.tween({ targets: list[2], angle: -spin * 1.5, duration: ms });
@@ -330,7 +337,7 @@ export class GrandFx {
       const a = (i / n) * Math.PI * 2 + Math.PI / 4, R = 38;
       const sx = t.x + Math.cos(a) * R, sy = t.y + Math.sin(a) * R * 0.45;
       const c = this.img(sx, sy, 'sk_chain', { tint, depth: TOP }).setOrigin(0, 0.5).setAlpha(0);
-      const ty = t.y - (t.displayHeight || 30) * 0.45, ang = Math.atan2(ty - sy, t.x - sx), len = Math.hypot(t.x - sx, ty - sy);
+      const ty = t.y - effectHeight(t) * 0.45, ang = Math.atan2(ty - sy, t.x - sx), len = Math.hypot(t.x - sx, ty - sy);
       c.setRotation(ang).setDisplaySize(4, 10);
       this.tween({ targets: c, displayWidth: len, alpha: 1, duration: 180, delay: i * 70, ease: 'Cubic.easeOut' });
       this.tween({ targets: c, alpha: 0.4, duration: 220, delay: 300 + i * 70, yoyo: true, repeat: Math.max(0, Math.floor(ms / 440) - 1) });
@@ -346,6 +353,7 @@ export class GrandFx {
     if (!spr) return;
     const o = spr.spr || spr;
     const g = this.img(o.x, o.y, 'fx_glow', { tint, depth: 0.97, alpha: 0.6 }).setDisplaySize(46, 16);
+    g.worldGroundEffect=true;g.worldGroundAspect=16/46;
     const e = this.s.add.particles(0, 0, motes, { follow: o, followOffset: { x: 0, y: -4 }, x: { min: -12, max: 12 }, speedY: { min: -70, max: -30 }, lifespan: 800, scale: { start: motes === 'fx_spark' ? 0.25 : 0.35, end: 0 }, alpha: { start: 0.9, end: 0 }, tint, frequency: 60, blendMode: 'ADD' }).setDepth(TOP - 2);
     const ev = this.s.time.addEvent({ delay: 16, loop: true, callback: () => g.setPosition(o.x, o.y).setAlpha(0.45 + Math.sin(this.s.time.now / 180) * 0.15) });
     this.s.time.delayedCall(ms, () => { ev.remove(); e.stop(); this.tween({ targets: g, alpha: 0, duration: 300, onComplete: () => g.destroy() }); this.s.time.delayedCall(900, () => e.destroy()); });
@@ -413,7 +421,7 @@ export class TdSkills {
   hit(m, sk, fxTint) {
     const s = this.s;
     if (!m?.alive) return;
-    this.fx.sparks(m.x, m.y - m.displayHeight * 0.5, { n: 6, tint: fxTint, speed: [40, 120], life: 300, scale: 0.25 });
+    this.fx.sparks(m.x, m.y - effectHeight(m) * 0.5, { n: 6, tint: fxTint, speed: [40, 120], life: 300, scale: 0.25 });
     // เอฟเฟกต์สถานะใหม่ (เลือดไหล/ไฟลุก/เชื่องช้า/เกราะแตก/อ่อนแรง) → ภาพประกอบตอนโดน
     const eff = sk.effect || {};
     if (eff.bleed) this.fx.sparks(m.x, m.y - 12, { n: 9, tint: 0xff5a5a, speed: [30, 100], life: 520, scale: 0.3, gravity: 140 });
@@ -567,7 +575,7 @@ export class TdSkills {
             H(m);
             fx.rune(m.x, m.y, { size: 70, tint, ms: 1900, spin: 160 });
             fx.chains(m, { tint, ms: 1700 });
-            const seal = fx.img(m.x, m.y - (m.displayHeight || 30) * 0.55, 'sk_paper', { tint: 0xffffff, add: false, depth: TOP + 3 }).setScale(2.2).setAlpha(0);
+            const seal = fx.img(m.x, m.y - effectHeight(m) * 0.55, 'sk_paper', { tint: 0xffffff, add: false, depth: TOP + 3 }).setScale(2.2).setAlpha(0);
             fx.tween({ targets: seal, scale: 1.2, alpha: 1, duration: 200, delay: 260, ease: 'Back.easeOut' });
             fx.tween({ targets: seal, alpha: 0, y: seal.y - 10, delay: 1600, duration: 300, onComplete: () => seal.destroy() });
             at(260, () => { fx.glow(m.x, m.y - 16, { size: 70, tint, ms: 380 }); fx.stars(m.x, m.y - 16, { n: 6, tint, r: 20, size: 14 }); });
@@ -1013,7 +1021,7 @@ export class TdSkills {
       return { m, t, off };
     }).filter((a) => a.t > 0 && a.t <= sk.range && a.off <= wide).sort((a, b) => a.t - b.t);
     const hits = pierce ? along : along.slice(0, 1);
-    if (!pierce && hits[0]) { ex = hits[0].m.x; ey = hits[0].m.y - hits[0].m.displayHeight * 0.5; }
+    if (!pierce && hits[0]) { ex = hits[0].m.x; ey = hits[0].m.y - effectHeight(hits[0].m) * 0.5; }
     const speed = sk.speed || 300;
     if (curve) {                                                   // โค้งแบบลูกไฟนาคา (จุดควบคุมตั้งฉากแนวยิง)
       const b = fx.img(sx, sy, key, { tint, add }).setScale(scale);
@@ -1077,7 +1085,7 @@ export class TdSkills {
   /** ดาวมึนวนเหนือหัวศัตรู */
   dizzy(m, ms = 1000) {
     const s = this.s, dots = [0, 1, 2].map(() => this.fx.img(m.x, m.y, 'sk_star4', { tint: 0xffe08a, depth: TOP + 2 }).setDisplaySize(9, 9));
-    let a = 0; const ev = s.time.addEvent({ delay: 16, loop: true, callback: () => { a += 0.14; dots.forEach((d, i) => { const k = a + i * 2.09; d.setPosition(m.x + Math.cos(k) * 10, m.y - (m.displayHeight || 30) - 2 + Math.sin(k) * 3); }); } });
+    let a = 0; const ev = s.time.addEvent({ delay: 16, loop: true, callback: () => { a += 0.14; dots.forEach((d, i) => { const k = a + i * 2.09; d.worldAnchorY=m.y;d.setPosition(m.x + Math.cos(k) * 10, m.y - effectHeight(m) - 2 + Math.sin(k) * 3); }); } });
     s.time.delayedCall(ms, () => { ev.remove(); dots.forEach((d) => d.destroy()); });
   }
 
@@ -1129,7 +1137,7 @@ export class TdSkills {
     if (sk.heal && !s.econ.server) {
       const d = p.derived, heal = Math.round(d.maxHp * sk.heal);
       p.char.hp = Math.min(d.maxHp, p.char.hp + heal);
-      if (sk.type !== 'party') popupNumber(s, p.x, p.y - 40, `+${heal}`, 'heal');   // สกิลปาร์ตี้แสดงตัวเลขเองใน healOn
+      if (sk.type !== 'party') popupAbove(s, p, `+${heal}`, 'heal');   // สกิลปาร์ตี้แสดงตัวเลขเองใน healOn
     }
     s.ui.toast?.(`${sk.nameTh}!`, '', 1400);
   }

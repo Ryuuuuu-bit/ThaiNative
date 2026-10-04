@@ -14,9 +14,10 @@ const dependency = new vm.SyntheticModule(Object.keys(dependencies), function ()
 }, { context });
 const source = new vm.SourceTextModule(readFileSync(new URL('../client/js/gfx/Fx.js', import.meta.url), 'utf8'), { context });
 await source.link(() => dependency); await source.evaluate();
-const { popupAbove } = source.namespace;
+const { popupAbove, effectHeight } = source.namespace;
 const scene = { settings:{}, tweens:{add(config){tweens.push(config);}} };
 const monster = {x:100,y:200,worldLabelHeight:32,displayHeight:120};
+assert.equal(effectHeight(monster),32,'skill contacts use the visible 3D body');
 const damage = popupAbove(scene, monster, '28');
 assert.equal(damage.y,154,'3D damage uses the rendered monster height, not the old sprite height');
 assert.equal(damage.worldAnchorY,200,'rising text keeps the original target ground position');
