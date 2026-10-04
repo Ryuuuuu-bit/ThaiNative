@@ -355,8 +355,8 @@ export class ThreeWorld {
     const groundEffect=root.worldGroundEffect===true;
     const onGround=flat||groundEffect;
     const effect=o.blendMode===Phaser.BlendModes.ADD||groundEffect||((root.depth??0)>=99980&&o.type!=='Text');
-    // Fading glows must retain their soft edges; sprite alpha cutouts stay crisp.
-    if(e.material.isMeshBasicMaterial)e.material.alphaTest=effect?0:.12;
+    // Fading glows and text retain soft edges; sprite alpha cutouts stay crisp.
+    if(e.material.isMeshBasicMaterial)e.material.alphaTest=effect||o.type==='Text'?0:.12;
     const screen=root.scrollFactorX===0&&root.scrollFactorY===0;
     const overlay=o.type==='Text'||(root.depth??0)>=99980;
     e.material.depthWrite=!overlay&&!screen&&!effect;

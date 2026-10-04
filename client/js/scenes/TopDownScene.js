@@ -1135,6 +1135,8 @@ export class TopDownScene extends Phaser.Scene {
     if (Number.isFinite(d.hp)) m.hp = d.hp;
     if (!mine && (this.settings?.otherDmg === false || !this.onScreen(m.x, m.y))) return;   // ของคนอื่น: นอกจอ/ปิดในตั้งค่า = อัปเดตเลือดอย่างเดียว
     if (!d.hit) { popupAbove(this, m, 'MISS', 'miss'); if (mine) this.sfx.play('miss'); return; }
+    // Some boss phase/heal events only synchronize HP and contain no hit damage.
+    if (!Number.isFinite(d.dmg) || d.dmg <= 0) return;
     if (d.dot) {                                                                         // ดาเมจต่อเนื่อง: พิษ/เลือดไหล/ไฟลุก (สีต่างกัน)
       const [ic, tint] = { bleed: ['🩸', 0xff7a6a], burn: ['🔥', 0xffb35c] }[d.dot] || ['☠', 0x9dff8a];
       popupAbove(this, m, `${ic}${d.dmg}`, 'poison', { offsetX: 6 }); m.setTint(tint); this.time.delayedCall(120, () => m.clearTint()); return;
