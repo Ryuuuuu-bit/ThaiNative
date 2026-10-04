@@ -126,6 +126,17 @@ export const ARCHIVED_TD_MAPS = {
 };
 export const TD_MAPS=Object.fromEntries(TD_MAP_IDS.map(id=>[id,ARCHIVED_TD_MAPS[id]]));
 
+/** Creature art currently needed by active top-down layouts, including their authored sprite fallbacks. */
+export function activeMonsterIds() {
+  const ids = new Set();
+  for (const mapId of TD_MAP_IDS) for (const spawn of TD_MAPS[mapId]?.layout().spawns || []) {
+    ids.add(spawn.id);
+    const fallback = MONSTERS[spawn.id]?.d8;
+    if (fallback) ids.add(fallback);
+  }
+  return ids;
+}
+
 /** สุสานใต้ดิน: รหัส crypt:<ชั้น>:<คน>:<ห้อง> สร้างรายการแมพตามชั้น (ไม่อยู่ใน TD_MAPS) */
 export const getArchivedMap = (id) => ARCHIVED_TD_MAPS[id] || cryptMap(id) || gdMap(id) || TD_MAPS[DEFAULT_MAP];
 export const getMap = (id) => TD_MAPS[id] || (EXPANSIONS_ENABLED && (cryptMap(id) || gdMap(id))) || TD_MAPS[DEFAULT_MAP];

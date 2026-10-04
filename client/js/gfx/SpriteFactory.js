@@ -385,11 +385,11 @@ function bakeEnvironment(scene) {
 }
 
 /** เรียกครั้งเดียวใน BootScene */
-export function generateAll(scene) {
+export function generateAll(scene, activeMonsterIds = Object.keys(MONSTERS)) {
   bakeEnvironment(scene);
   bakeProjectiles(scene);
   bakeNpc(scene);
-  Object.keys(MONSTERS).filter((id) => !MONSTERS[id].art && hasMonsterArt(id)).forEach((id) => bakeMonster(scene, id));   // บอสใหม่ใช้ภาพ 8 ทิศเท่านั้น
+  [...activeMonsterIds].filter((id) => MONSTERS[id] && !MONSTERS[id].art && hasMonsterArt(id)).forEach((id) => bakeMonster(scene, id)); // บอสใหม่ใช้ภาพ 8 ทิศเท่านั้น
 }
 
 // ------------------------------------------------------------

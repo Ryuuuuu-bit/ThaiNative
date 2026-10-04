@@ -7,7 +7,7 @@
 // ============================================================
 import { WORLD } from '../shared/constants.js';
 import { MONSTERS, MONSTER_IDS } from '../shared/data/monsters.js';
-import { MAPS, mapAt, REGIONS } from '../shared/data/maps.js';
+import { MAPS, mapAt, REGIONS, CLASSIC_WORLD_ENABLED } from '../shared/data/maps.js';
 import { rollDamage, mobExp } from '../shared/stats.js';
 import { combatDerived, attackSpec, blessingsOf, attackGate } from '../shared/character.js';
 import { dayPhase, dayIndex, moonOf, nightMods, isNight } from '../shared/data/world.js';
@@ -33,6 +33,7 @@ export function setupMobs(io, players, opts = {}) {
   const mobs = [];
   for (const id of MONSTER_IDS) {
     const d = MONSTERS[id];
+    if (!CLASSIC_WORLD_ENABLED) { for (let i = 0; i < (d.count ?? 2); i++) mobs.push(null); continue; } // Preserve legacy indices; only Ayutthaya TD spawns run.
     for (let i = 0; i < (d.count ?? 2); i++) {
       const map = MAPS[d.mapId];
       if (!map) { mobs.push(null); continue; }
