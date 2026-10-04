@@ -6,6 +6,7 @@
 import { sanitizeAppearance, weaponTier } from '/shared/data/appearance.js';
 import { bakeCharacter } from '../gfx/SpriteFactory.js';
 import { ITEMS } from '/shared/data/items.js';
+import { frameIndexAt } from '../player-lab/frame-timing.js';
 
 export const OUTFIT_IDS = ['mohom', 'ruenton', 'jongkraben', 'rajpatan', 'chaona', 'silk', 'warrior', 'hunter', 'isan', 'mahadlek'];
 /** โมเดลพื้นฐานตามเพศ/ชุดเริ่มต้น */
@@ -14,7 +15,11 @@ export const baseHeroId = (a) => `hero_${a.gender}_${OUTFIT_IDS[a.outfit] || 'mo
 export const HERO_V2 = { male: ['swordman', 'mage', 'archer', 'boxer', 'healer'] };
 export const isHeroV2 = (id) => typeof id === 'string' && id.startsWith('hero2_');
 /** โมเดลที่แสดง: มีชุดใหม่ของเพศ/อาชีพนี้ → hero2_<เพศ>_<อาชีพ>_t<ขั้น> · ไม่งั้นโมเดลพื้นฐานเดิม */
-export const heroId = (a) => a.gender==='female'&&a.job==='boxer'?'hero2_female_boxer_t1':(HERO_V2[a.gender]?.includes(a.job) ? `hero2_${a.gender}_${a.job}_t${a.wtier || weaponTier(a.weapon)}` : baseHeroId(a));
+export const heroId = (a, available = meta) => {
+  if(a.gender==='female'&&a.job==='boxer')return 'hero2_female_boxer_t1';
+  const id=`hero2_${a.gender}_${a.job}_t${a.wtier || weaponTier(a.weapon)}`;
+  return available?.[id]?.rosterReviewed || HERO_V2[a.gender]?.includes(a.job) ? id : baseHeroId(a);
+};
 /** ลำดับแถวในภาพ PixelLab */
 export const DIRS = ['south', 'south-east', 'east', 'north-east', 'north', 'north-west', 'west', 'south-west'];
 /** ลำดับหมุนตัวตามเข็มนาฬิกา (มองจากบน) */
@@ -97,13 +102,16 @@ export class HeroView {
       const loopable = anim === 'idle' || anim === 'walk';
       const ms0 = 1000 / (m.directionRates?.[anim]?.[row] || m.rates?.[anim] || RATE[anim] || 8);
       const ms = ms0, el = now - this.t0;
-      let i = Math.floor(el / ms);
-      i = loopable ? i % n : (i % (n + 6) >= n ? n - 1 : i % (n + 6));      // ท่าไม่วน: เล่นจบแล้วค้างครู่หนึ่งก่อนเล่นซ้ำ
+      const durations=m.cuts?.[anim]?.[row]?.map(c=>c.duration);
+      const timed=durations?.every(d=>Number.isFinite(d)&&d>0);
+      const total=timed?durations.reduce((sum,d)=>sum+d,0):n*ms;
+      const time=loopable?el:el%(total+6*ms); // Completed preview actions pause before repeating.
+      const i=frameIndexAt(time,n,1000/ms,loopable,timed?durations:undefined);
       const cut=m.cuts?.[anim]?.[row]?.[i];
       if(cut){
         const source=cut.source?heroImg(id,cut.source):im;
         if(!source.complete||!source.naturalWidth)return null;
-        return {src:source,sx:cut.x,sy:cut.y,sw:cut.w,sh:cut.h,hero:true,authored:true,pivot:cut.pivot,artScale:(cut.scale||m.clipScales[anim])*(m.renderScale??1)*(m.clipRenderScales?.[anim]??1)*(m.directionRenderScales?.[anim]?.[row]??1),flip:m.mirrors[anim][row]};
+        return {src:source,sx:cut.x,sy:cut.y,sw:cut.w,sh:cut.h,hero:true,authored:true,pivot:cut.pivot,foot:cut.foot??1,artScale:(cut.scale||m.clipScales?.[anim])*(m.renderScale??1)*(m.clipRenderScales?.[anim]??1)*(m.directionRenderScales?.[anim]?.[row]??1),flip:!!m.mirrors?.[anim]?.[row]};
       }
       return { src: im, sx: i * fw, sy: row * fh, sw: fw, sh: fh, hero: true, glow, v2: isHeroV2(id) };
     }
@@ -172,7 +180,7 @@ export class HeroView {
       if(f.authored){
         const s=this.scale*f.artScale*portraitScale;ctx.save();
         ctx.translate(W/2,H*.90);if(f.flip)ctx.scale(-1,1);
-        ctx.drawImage(f.src,f.sx,f.sy,f.sw,f.sh,-f.pivot*s,-f.sh*s,f.sw*s,f.sh*s);
+        ctx.drawImage(f.src,f.sx,f.sy,f.sw,f.sh,-f.pivot*s,-f.sh*f.foot*s,f.sw*s,f.sh*s);
         ctx.restore();return;
       }
       const s = this.scale * 72 / (f.v2 ? 96 : f.sw) * portraitScale, el = (now - this.t0) / 1000;

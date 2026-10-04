@@ -1,5 +1,9 @@
 import assert from 'node:assert/strict';
-import { dirFromVector, stableDir, playDir } from '../client/js/topdown/Dir8.js';
+import { dirFromVector, stableDir, playDir, spriteTopHeight } from '../client/js/topdown/Dir8.js';
+
+assert.equal(spriteTopHeight({frame:{y:152},displayOriginY:384,scaleY:.2,displayHeight:76.8}),46.400000000000006,'labels exclude empty atlas padding');
+assert.equal(spriteTopHeight({frame:{y:0},displayOriginY:48,scaleY:1,displayHeight:48}),48,'untrimmed sprites keep their visible height');
+assert.equal(spriteTopHeight({displayHeight:48}),48,'missing frame metadata keeps the previous fallback');
 
 for (const [x,y,dir] of [[0,1,'south'],[1,1,'south-east'],[1,0,'east'],[1,-1,'north-east'],[0,-1,'north'],[-1,-1,'north-west'],[-1,0,'west'],[-1,1,'south-west']]) {
   assert.equal(dirFromVector(x,y),dir);

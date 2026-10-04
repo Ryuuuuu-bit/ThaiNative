@@ -1,1 +1,30 @@
-[]
+[
+  {
+    "id": "hero2_male_mage_t1",
+    "model": "mage-male-pixel",
+    "base": "/assets/td/hero2_male_mage_t1",
+    "label": "จอมขมังเวทย์ · ชาย",
+    "note": "8 ทิศ · ยืน เดิน โจมตี ล้ม · ชุดและอาวุธรวมในภาพ"
+  },
+  {
+    "id": "hero2_female_mage_t1",
+    "model": "mage-female-pixel",
+    "base": "/assets/td/hero2_female_mage_t1",
+    "label": "จอมขมังเวทย์ · หญิง",
+    "note": "8 ทิศ · ยืน เดิน โจมตี ล้ม · ชุดและอาวุธรวมในภาพ"
+  },
+  {
+    "id": "hero2_male_swordman_t1",
+    "model": "swordman-male-pixel",
+    "base": "/assets/td/hero2_male_swordman_t1",
+    "label": "ขุนศึก · ชาย",
+    "note": "8 ทิศ · ยืน เดิน โจมตี ล้ม · ชุดและอาวุธรวมในภาพ"
+  },
+  {
+    "id": "hero2_female_swordman_t1",
+    "model": "swordman-female-pixel",
+    "base": "/assets/td/hero2_female_swordman_t1",
+    "label": "ขุนศึก · หญิง",
+    "note": "8 ทิศ · ยืน เดิน โจมตี ล้ม · ชุดและอาวุธรวมในภาพ"
+  }
+]

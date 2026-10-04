@@ -12,7 +12,7 @@ import { getDerived } from '/shared/character.js';
 import { attackInterval, buffAspd } from '/shared/stats.js';
 import { gainExp, PRESET_LABEL, presetInfo } from '/shared/charmodel.js';
 import { bakeCharacter } from '../gfx/SpriteFactory.js';
-import { bakeFx, popupNumber, hitSpark, yantCircle, squash } from '../gfx/Fx.js';
+import { bakeFx, popupNumber, popupAbove, hitSpark, yantCircle, squash } from '../gfx/Fx.js';
 import { makeText, gmStyle, uiIcon, itemIcon as itemIconHtml, ICONS, EMO_ICON } from '../systems/util.js';
 import { sound } from '../systems/Sound.js';
 import { GameHud } from '../systems/GameHud.js';
@@ -35,7 +35,7 @@ import { nightInfo } from '/shared/data/world.js';
 import { CRYPT_ZONES, lvOf } from '/shared/data/crypt.js';
 import { WorldBossUI } from '../topdown/WorldBoss.js';
 import { GhostDungeonUI } from '../topdown/GhostDungeon.js';
-import { hasDir8, resolveAct } from '../topdown/Dir8.js';
+import { hasDir8, resolveAct, spriteTopHeight } from '../topdown/Dir8.js';
 import { dirFromVector, stableDir, playDir, registerDir8, texKey, animKey, DIRS as D8_DIRS } from '../topdown/Dir8.js';
 import { TdSkills } from '../topdown/TdSkills.js';
 import { GEAR_TYPES, FLASK_SLOTS } from '/shared/data/slots.js';
@@ -600,7 +600,7 @@ export class TopDownScene extends Phaser.Scene {
 
   /** ตั้งโมเดล 8 ทิศของสไปรต์ตาม appearance (ชุดเต็มตัวโหลดทีหลัง ระหว่างนั้นใช้โมเดลพื้นฐาน) */
   applyHero(spr, a, onReady) {
-    const want = heroId(a), base = baseHeroId(a);
+    const want = heroId(a, this.d8meta), base = baseHeroId(a);
     spr._wantHero = want;
     if (want === base || hasDir8(this, want) || !this.d8meta?.[want]) { spr.d8id = this.d8meta?.[want] ? want : base; return; }
     spr.d8id = base;
@@ -1090,7 +1090,7 @@ export class TopDownScene extends Phaser.Scene {
   pvpDmg({ id, dmg, crit, miss } = {}) {
     const r = this.remotes.get(id);
     if (!r) return;
-    popupNumber(this, r.x, r.y - 34, miss ? 'MISS' : `${dmg}${crit ? '!' : ''}`, miss ? 'miss' : crit ? 'crit' : 'normal');
+    popupAbove(this, r.spr, miss ? 'MISS' : `${dmg}${crit ? '!' : ''}`, miss ? 'miss' : crit ? 'crit' : 'normal');
   }
 
   playerAttack(m, time) {
@@ -1133,12 +1133,12 @@ export class TopDownScene extends Phaser.Scene {
     const mine = d.by === 'me' || d.by === this.net?.selfId;
     if (Number.isFinite(d.hp)) m.hp = d.hp;
     if (!mine && (this.settings?.otherDmg === false || !this.onScreen(m.x, m.y))) return;   // ของคนอื่น: นอกจอ/ปิดในตั้งค่า = อัปเดตเลือดอย่างเดียว
-    if (!d.hit) { popupNumber(this, m.x, m.y - m.displayHeight, 'MISS', 'miss'); if (mine) this.sfx.play('miss'); return; }
+    if (!d.hit) { popupAbove(this, m, 'MISS', 'miss'); if (mine) this.sfx.play('miss'); return; }
     if (d.dot) {                                                                         // ดาเมจต่อเนื่อง: พิษ/เลือดไหล/ไฟลุก (สีต่างกัน)
       const [ic, tint] = { bleed: ['🩸', 0xff7a6a], burn: ['🔥', 0xffb35c] }[d.dot] || ['☠', 0x9dff8a];
-      popupNumber(this, m.x + 6, m.y - m.displayHeight, `${ic}${d.dmg}`, 'miss'); m.setTint(tint); this.time.delayedCall(120, () => m.clearTint()); return;
+      popupAbove(this, m, `${ic}${d.dmg}`, 'poison', { offsetX: 6 }); m.setTint(tint); this.time.delayedCall(120, () => m.clearTint()); return;
     }
-    popupNumber(this, m.x, m.y - m.displayHeight - 4, d.crit ? `${d.dmg}!` : `${d.dmg}`, d.crit ? 'crit' : 'normal');
+    popupAbove(this, m, d.crit ? `${d.dmg}!` : `${d.dmg}`, d.crit ? 'crit' : 'normal');
     hitSpark(this, m.x, m.y - m.displayHeight * 0.5, { crit: d.crit, dir: m.x >= this.player.x ? 1 : -1 });
     squash(this, m, d.crit ? 0.25 : 0.15, 90); m.setTintFill(d.crit ? 0xffd35c : 0xffffff); this.time.delayedCall(60, () => { m.clearTint(); m.setTint(d.crit ? 0xffe9a6 : 0xffd0d0); }); this.time.delayedCall(140, () => m.clearTint());
     if (mine) {
@@ -1219,9 +1219,9 @@ export class TopDownScene extends Phaser.Scene {
   onPlayerHit(d) {
     const p = this.player;
     p.hurtAt = Date.now();
-    if (!d.hit) { popupNumber(this, p.x, p.y - 34, 'MISS', 'miss'); return; }
+    if (!d.hit) { popupAbove(this, p, 'MISS', 'miss'); return; }
     if (Number.isFinite(d.hp)) p.char.hp = d.hp;
-    popupNumber(this, p.x, p.y - 34, `-${d.dmg}`, 'taken');
+    popupAbove(this, p, `-${d.dmg}`, 'taken');
     squash(this, p, 0.14, 90); p.setTint(0xff8a8a); this.time.delayedCall(120, () => p.clearTint());
     this.sfx.play('hurt'); this.cameras.main.shake(80, 0.002);
     this.ui.hudCache = '';
@@ -1580,7 +1580,7 @@ export class TopDownScene extends Phaser.Scene {
         const dx = this.tx - s.x, dy = this.ty - s.y;
         if (Math.hypot(dx, dy) > 120) s.setPosition(this.tx, this.ty); else { const k = Math.min(1, dt * 12); s.x += dx * k; s.y += dy * k; }
         if (this._lv !== this.level) { this._lv = this.level; tag.setText(label(this.level)); }
-        s.setDepth(s.y); tag.setPosition(s.x, s.y - s.displayHeight - 3).setDepth(s.y + 1); if (ttl.visible) ttl.setPosition(s.x, tag.y - tag.displayHeight).setDepth(s.y + 1);
+        s.setDepth(s.y); tag.setPosition(s.x, s.y - spriteTopHeight(s) - 3).setDepth(s.y + 1); if (ttl.visible) ttl.setPosition(s.x, tag.y - tag.displayHeight).setDepth(s.y + 1);
         playDir(s, this.anim, this.dir);
       },
       destroy: () => { this.weapons?.detach(s); s.destroy(); tag.destroy(); ttl.destroy(); sh.destroy(); this.shadows = this.shadows.filter((x) => x.obj !== s); },
@@ -1855,8 +1855,12 @@ export class TopDownScene extends Phaser.Scene {
       if (!this.econ.server && this.inTown() && p.char.hp < p.derived.maxHp) p.char.hp = Math.min(p.derived.maxHp, p.char.hp + p.derived.maxHp * 0.04 * dt);
     } else p.setVelocity(0, 0);
     p.setDepth(p.y);
-    this.nameTag.setPosition(p.x, p.y - p.displayHeight - 3);
-    if (this.titleTag?.visible) this.titleTag.setPosition(p.x, this.nameTag.y - this.nameTag.displayHeight);
+    this.nameTag.setPosition(p.x, p.y - spriteTopHeight(p) - 3);
+    this.nameTag.worldAnchorY = p.y;
+    if (this.titleTag?.visible) {
+      this.titleTag.setPosition(p.x, this.nameTag.y - this.nameTag.displayHeight);
+      this.titleTag.worldAnchorY = p.y;
+    }
     if (time > (this.nextAutoMenu || 0)) { this.nextAutoMenu = time + 1000; this.refreshAutoMenuCounts(); }
     if (time > (this.nextTalkPill || 0)) { this.nextTalkPill = time + 150; this.updateTalkPill(); this.refreshPresetBtn(); this.npcDlg?.update(); }
     if (this.tut?.on) { if (time > (this.nextTut || 0)) { this.nextTut = time + 120; this.tut.update(); } }

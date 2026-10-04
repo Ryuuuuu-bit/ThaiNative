@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import vm from 'node:vm';
+import { frameIndexAt } from '../client/js/player-lab/frame-timing.js';
 
 const manifest = JSON.parse(readFileSync(new URL('../client/assets/td/manifest.json', import.meta.url), 'utf8'));
 const context = vm.createContext({
@@ -11,6 +12,7 @@ const context = vm.createContext({
 const dependencies = {
   sanitizeAppearance: a => ({ ...a }), weaponTier: () => 1,
   bakeCharacter: () => { throw new Error('unexpected fallback'); }, ITEMS: {},
+  frameIndexAt,
 };
 const dependency = new vm.SyntheticModule(Object.keys(dependencies), function () {
   for (const [key, value] of Object.entries(dependencies)) this.setExport(key, value);
