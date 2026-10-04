@@ -1,0 +1,21 @@
+import assert from 'node:assert/strict';
+import {readFileSync} from 'node:fs';
+import vm from 'node:vm';
+const source=readFileSync(new URL('../client/js/scenes/TopDownScene.js',import.meta.url),'utf8').replace(/\r\n/g,'\n');
+const body=source.match(/  onMobDamage\(m, d\) \{([\s\S]*?)\n  \}\n\n  \/\*\*/)[1];
+const popups=[],sparks=[];
+const ctx=vm.createContext({popupAbove:(s,m,text,kind)=>popups.push({text,kind}),hitSpark:(...args)=>sparks.push(args),effectHeight:()=>32,squash(){},Number,Math});
+const onDamage=vm.compileFunction(body,['m','d'],{parsingContext:ctx});
+const scene={net:{selfId:'qa'},settings:{},player:{x:0},onScreen:()=>true,sfx:{play(){}},hitFeel(){},time:{delayedCall(){}}};
+const mob={x:10,y:20,hp:40,setTint(){},clearTint(){},setTintFill(){}};
+const hit=d=>onDamage.call(scene,mob,{by:'qa',...d});
+hit({hit:true,dmg:28,hp:12});assert.equal(mob.hp,12);assert.equal(popups.at(-1).text,'28');
+hit({hit:true,dmg:42,crit:true,hp:0});assert.equal(popups.at(-1).text,'42!');assert.equal(popups.at(-1).kind,'crit');
+hit({hit:false,dmg:0});assert.equal(popups.at(-1).text,'MISS');
+for(const dot of ['poison','bleed','burn']){hit({hit:true,dmg:7,dot,hp:5});assert.ok(popups.at(-1).text.endsWith('7'));assert.equal(popups.at(-1).kind,'poison');}
+const count=popups.length,burst=sparks.length;
+hit({hit:true,dmg:0,hp:80});assert.equal(mob.hp,80,'boss health synchronization is retained');
+for(const dmg of [undefined,NaN,Infinity,-1])hit({hit:true,dmg,hp:70});
+assert.equal(popups.length,count,'health-only or malformed events never print zero/undefined/NaN damage');assert.equal(sparks.length,burst,'health synchronization creates no fake impact');
+scene.settings.otherDmg=false;onDamage.call(scene,mob,{by:'other',hit:true,dmg:10,hp:60});assert.equal(mob.hp,60);assert.equal(popups.length,count,'hidden damage still updates HP');
+console.log('Normal, critical, MISS, poison/bleed/burn, health-only and hidden damage event checks passed.');
