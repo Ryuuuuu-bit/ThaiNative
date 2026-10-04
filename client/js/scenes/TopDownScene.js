@@ -624,7 +624,7 @@ export class TopDownScene extends Phaser.Scene {
       let o = null;                                                                     // ตัว NPC (สร้างท้ายฟังก์ชัน)
       const real = this.textures.exists(n.key), key = real ? n.key : 'npc_maekha';
       const spr = this.add.sprite(n.x, n.y, key, 'idle_0').setOrigin(0.5, 1).setDepth(n.y);
-      spr.legacyKey = key; spr.d8id = n.key; spr.npcVisual = { color: n.color || '#ead8b0' }; playDir(spr, 'idle', 'south');
+      spr.legacyKey = key; spr.d8id = n.key; spr.npcVisual = { id: n.id, color: n.color || '#ead8b0' }; playDir(spr, 'idle', 'south');
       this.addShadow(spr, 20);
       const plateTop = this.npcPlate(n, spr);
       spr.setInteractive({ useHandCursor: true });
@@ -700,7 +700,7 @@ export class TopDownScene extends Phaser.Scene {
 
   /** ป้ายชื่อ NPC: กรอบรักดำขอบทอง · บรรทัดบน = หน้าที่ (ไอคอน) · บรรทัดล่าง = ชื่อ */
   npcPlate(n, spr) {
-    const top = n.y - spr.displayHeight - 2;
+    const top = n.y - (spr.worldLabelHeight || 40) - 2;
     // ไอคอนหน้าที่: ภาพพิกเซล (PixelLab ui_*) ถ้ามี · ไม่มีไฟล์ = ใช้อีโมจิเดิม
     const emo = NPC_ICON[n.id] || '💬', ik = EMO_ICON[emo.replace(/\uFE0F/g, '')], url = ik && ICONS[`ui_${ik}`];
     const role = makeText(this, 0, 0, url ? n.role : `${emo} ${n.role}`, { fontSize: '6px', color: '#dccb9b' }).setOrigin(0.5, 1);
@@ -983,7 +983,7 @@ export class TopDownScene extends Phaser.Scene {
   }
 
   drawMob(m) {
-    const h = m.displayHeight;
+    const h = m.worldLabelHeight || m.displayHeight;
     m.label.setPosition(m.x, m.y - h - 6).setDepth(m.y + 1);
     m.hpBg.setPosition(m.x, m.y - h - 3).setDepth(m.y + 1);
     m.hpBar.setPosition(m.x - m.barW / 2, m.y - h - 3).setDepth(m.y + 1).width = m.barW * Math.max(0, m.hp / m.maxHp);

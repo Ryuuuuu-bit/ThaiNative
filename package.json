@@ -7,7 +7,7 @@
     "start": "node server/index.js",
     "dev": "node --watch server/index.js",
     "test": "node tests/combat.test.mjs && node tests/economy.test.mjs",
-    "test:world": "node tests/three-world.test.mjs",
+    "test:world": "node tests/world-quality.test.mjs && node tests/three-world.test.mjs && node --experimental-vm-modules tests/world-art.test.mjs",
     "test:entrance": "node --experimental-vm-modules tests/entrance.test.mjs && node --experimental-vm-modules tests/hero-portrait.test.mjs"
   },
   "license": "UNLICENSED",

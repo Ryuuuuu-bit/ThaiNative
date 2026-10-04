@@ -1,0 +1,24 @@
+{
+  "version": 1,
+  "style": "Ayutthaya fantasy 2.5D",
+  "materialAtlas": {
+    "file": "ayutthaya-materials-v1.png",
+    "layout": {
+      "topLeft": "grass",
+      "topRight": "limestone",
+      "bottomLeft": "teak",
+      "bottomRight": "clay roof"
+    },
+    "tool": "built-in image_gen",
+    "source": "exec-b7f66efa-2973-4a21-8eda-aafd5c4abb9c.png",
+    "prompt": "A production game environment material atlas, square image, strictly four equal square quadrants in a 2 by 2 grid, each quadrant must fill its full square edge to edge, absolutely no labels, text, gaps, borders, perspective, objects, cast shadows or vignette. Flat orthographic overhead texture surfaces. TOP LEFT: muted jade olive grass ground hand painted small soft patches, not individual tall blades, no flowers. TOP RIGHT: warm pale limestone paving in staggered medium rectangular blocks with delicate natural seams, subtle wear. BOTTOM LEFT: dark warm teak wood planks running horizontally with subtle grain. BOTTOM RIGHT: aged reddish warm clay roof tiles arranged in orderly overlapping rows with subtle grooves. Style coherent high quality hand painted stylized 3D Thai Ayutthaya fantasy game, restrained contrast and medium-scale detail, smoothly painted no pixel art. All four quadrants independently tile seamlessly. Neutral diffuse lighting, no baked directional shadows. This image will be used directly as a material texture atlas in the game."
+  },
+  "models": {
+    "environment": "../../js/topdown/AyutthayaCity.js",
+    "foliage": "../../js/topdown/GardenWorld.js",
+    "taxonomy": "../../js/topdown/VisualAssets.js",
+    "actors": "../../js/topdown/WorldActors.js"
+  },
+  "player": "Existing reviewed player animation atlas preserved.",
+  "reference": "User supplied forest screenshot: cool moonlight, warm lantern pools, layered vegetation. Camera and player atlas scale preserved."
+}

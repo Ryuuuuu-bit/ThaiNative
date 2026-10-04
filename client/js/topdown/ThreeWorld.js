@@ -3,6 +3,12 @@ import { createMonsterMaterial, createNpcMaterial, updateMonsterMaterial, create
 import { TILE, T } from '/shared/td/ayutthaya.js';
 import { WORLD_TILT, frameQuad, graphicsBounds } from './ThreeWorldMath.js';
 import { buildAyutthayaCity, buildWaterSurface, cityPropKind, disposeTerrain } from './AyutthayaCity.js';
+import { buildGroundSurface } from './WorldMaterials.js';
+import { actorKind } from './VisualAssets.js';
+import { WorldActors } from './WorldActors.js';
+import { buildGarden, updateGarden } from './GardenWorld.js';
+import { WorldQualityController, worldPixelRatio } from './WorldQuality.js';
+import { deviceClass } from '../systems/Screen.js';
 
 /** Three.js presentation of the live game scene, shared by every map.
  * Phaser still owns simulation, animation, multiplayer and the existing UI.
@@ -11,9 +17,12 @@ import { buildAyutthayaCity, buildWaterSurface, cityPropKind, disposeTerrain } f
 export class ThreeWorld {
   constructor(gameScene) {
     this.s=gameScene; this.entries=new Map(); this.textures=new Map(); this.frameNumber=0;
+    this.quality=new WorldQualityController(gameScene.settings?.worldQuality||'auto',{
+      mobile:deviceClass()!=='pc',memory:navigator.deviceMemory||0,cores:navigator.hardwareConcurrency||0});
     this.whiteCanvas=document.createElement('canvas');this.whiteCanvas.width=this.whiteCanvas.height=1;
     const white=this.whiteCanvas.getContext('2d');white.fillStyle='#fff';white.fillRect(0,0,1,1);
     this.world=new THREE.Scene(); this.world.background=new THREE.Color('#101922');
+    this.world.fog=new THREE.Fog(0x193c4b,1550,2650);
     this.overlay=new THREE.Scene();
     this.camera=new THREE.OrthographicCamera(-1,1,1,-1,1,8000);
     this.overlayCamera=new THREE.OrthographicCamera(0,1,0,1,-10000,10000);
@@ -22,7 +31,7 @@ export class ThreeWorld {
     this.renderer.autoClear=false;this.renderer.toneMapping=THREE.ACESFilmicToneMapping;this.renderer.toneMappingExposure=1.12;
     this.renderer.shadowMap.enabled=true;this.renderer.shadowMap.type=THREE.PCFShadowMap;
     this.canvas=this.renderer.domElement; this.canvas.dataset.renderer='three-world';
-    Object.assign(this.canvas.style,{position:'absolute',pointerEvents:'none',imageRendering:'pixelated'});
+    Object.assign(this.canvas.style,{position:'absolute',pointerEvents:'none',imageRendering:'auto'});
     this.gameCanvas=gameScene.game.canvas; this.oldOpacity=this.gameCanvas.style.opacity;
     this.gameCanvas.parentElement.appendChild(this.canvas);
     this.raycaster=new THREE.Raycaster(); this.ground=new THREE.Plane(new THREE.Vector3(0,1,0),0);
@@ -30,8 +39,9 @@ export class ThreeWorld {
     this.sky=new THREE.HemisphereLight(0xffefda,0x465b78,2);this.world.add(this.sky);
     const sun=this.sun=new THREE.DirectionalLight(0xffd6a0,1.5);sun.position.set(-600,1000,500);this.world.add(sun,sun.target);
     sun.shadow.mapSize.set(2048,2048);Object.assign(sun.shadow.camera,{left:-650,right:650,top:650,bottom:-650,near:1,far:2200});
-    sun.shadow.bias=-.0002;sun.shadow.normalBias=.5;
+    sun.shadow.bias=-.0002;sun.shadow.normalBias=.5;sun.shadow.radius=3;
     this.terrain=new THREE.Group();this.world.add(this.terrain);
+    this.actors=new WorldActors(this.world);
     this.rasterCamera=new Phaser.Cameras.Scene2D.Camera(0,0,1,1);
     this.rasterCamera.matrix.loadIdentity();this.rasterCamera.alpha=1;
     this.rasterCamera.addToRenderList=()=>{};
@@ -60,6 +70,9 @@ export class ThreeWorld {
       this.overlayCamera.right=w;this.overlayCamera.bottom=h;this.overlayCamera.updateProjectionMatrix();
     }
     const rect=this.gameCanvas.getBoundingClientRect(),parent=this.gameCanvas.parentElement.getBoundingClientRect();
+    // Render geometry at its displayed resolution, while sprite atlases retain nearest sampling.
+    const ratio=worldPixelRatio(w,rect.width,globalThis.devicePixelRatio||1,this.quality.profile);
+    if(this.pixelRatio!==ratio&&this.renderer.setPixelRatio){this.pixelRatio=ratio;this.renderer.setPixelRatio(ratio);}
     Object.assign(this.canvas.style,{left:`${rect.left-parent.left}px`,top:`${rect.top-parent.top}px`,width:`${rect.width}px`,height:`${rect.height}px`});
     const cx=cam.scrollX+w/2,cz=cam.scrollY+h/2;
     this.centerX=cx;this.centerZ=cz;
@@ -70,10 +83,15 @@ export class ThreeWorld {
     this.camera.position.set(cx,Math.sin(this.tilt)*1800,cz+radius);
     this.camera.lookAt(cx,0,cz);this.camera.updateProjectionMatrix();this.camera.updateMatrixWorld();
     this.sun.position.set(cx-500,1000,cz+350);this.sun.target.position.set(cx,0,cz);this.sun.target.updateMatrixWorld();
-    const light=this.s.atmo?.light??1;this.sun.intensity=.65+light*1.25;this.sky.intensity=.85+light*.45;
-    this.sun.color.setHex(light<.4?0x98b8e5:0xffdeb1);
+    const light=this.s.atmo?.light??1;this.sun.intensity=.85+light*.88;this.sky.intensity=1.05+light*.27;
+    this.sun.color.setHex(light<.4?0x8ebcdb:0xffe0b5);this.sky.color.setHex(light<.4?0x9ab9d0:0xd4e2d7);this.sky.groundColor.setHex(light<.4?0x3b6070:0x4b6151);
+    if(this.world?.fog){this.world.fog.color.setHex(light<.4?0x193c4b:0x9aafa3);this.world.fog.near=1550+light*250;this.world.fog.far=2650+light*500;}
     this.viewRadius=Math.hypot(this.camera.right,this.camera.top/Math.sin(this.tilt));
     if(this.city)for(const model of this.city.children){model.visible=Math.hypot(model.position.x-cx,model.position.z-cz)<this.viewRadius+230;}
+    updateGarden(this.garden,cx,cz,this.viewRadius,light,performance.now()/1000);
+    if(this.garden)for(const chunk of this.garden.userData.chunks){
+      if(chunk.userData.radius)chunk.visible=chunk.visible&&Math.hypot(chunk.position.x+128-cx,chunk.position.z+128-cz)<this.quality.profile.detailDistance+190;
+    }
   }
 
   worldPoint(x,y,out={}) {
@@ -87,10 +105,12 @@ export class ThreeWorld {
     output.length=0;
     const p=this.worldPoint(pointer.x,pointer.y);pointer.worldX=p.x;pointer.worldY=p.y;
     const candidates=objects.filter(o=>this.manager.inputCandidate(o,camera));
-    const meshes=candidates.map(o=>this.entries.get(o)?.mesh).filter(m=>m?.visible);
-    const hits=this.raycaster.intersectObjects(meshes,false);
+    const meshes=candidates.map(o=>this.actors.entries.get(o)?.root||this.entries.get(o)?.mesh).filter(m=>m?.visible);
+    const hits=this.raycaster.intersectObjects(meshes,true);
     for (const hit of hits) {
       const o=hit.object.userData.object;if(output.includes(o))continue;
+      if(!o)continue;
+      if(this.actors.entries.has(o)){output.push(o);continue;}
       const f=o.frame;if(!f||!hit.uv)continue;
       // Mesh UVs are atlas coordinates; map back to the authored frame rectangle.
       const sx=f.source.width,sy=f.source.height;
@@ -102,7 +122,7 @@ export class ThreeWorld {
   }
 
   rebuildTerrain() {
-    disposeTerrain(this.terrain);this.city=null;
+    disposeTerrain(this.terrain);this.city=null;this.garden=null;
     const s=this.s,w=s.mapW*TILE,h=s.mapH*TILE;
     this.world.background.set(s.M.crypt||s.M.gd?'#100d18':'#1b2c30');
     const base=new THREE.Mesh(new THREE.BoxGeometry(w,8,h),new THREE.MeshLambertMaterial({color:s.M.crypt||s.M.gd?0x272231:0x574637}));
@@ -118,9 +138,12 @@ export class ThreeWorld {
       const matrix=new THREE.Matrix4();tiles.forEach(([x,y],i)=>{matrix.makeTranslation((x+.5)*TILE,height/2,(y+.5)*TILE);wall.setMatrixAt(i,matrix);});
       wall.castShadow=true;wall.receiveShadow=true;this.terrain.add(wall);
     }
-    if(!s.M.crypt&&!s.M.gd){
-      this.city=buildAyutthayaCity(s.layout.props,s.M);this.terrain.add(this.city);
-    }
+    if(!s.M.crypt&&!s.M.gd){this.city=buildAyutthayaCity(s.layout.props,s.M);this.terrain.add(this.city);}
+    this.fadedModels=new Set();
+    this.groundSurface=buildGroundSurface(s.layout.ground,TILE,T,s.M.style,s.M);this.terrain.add(this.groundSurface);
+    this.buildBridgeRails(s.layout.ground);
+    this.garden=buildGarden(s.layout,TILE,T,s.M,this.quality?.profile);this.terrain.add(this.garden);
+    this.legacyLights=new Set(s.atmo?.lights?.map(l=>l.img)||[]);
     {
       const shadow=new THREE.Mesh(new THREE.PlaneGeometry(w,h),new THREE.ShadowMaterial({color:0x25313b,opacity:.36,depthWrite:false}));
       shadow.rotation.x=-Math.PI/2;shadow.position.set(w/2,.07,h/2);shadow.receiveShadow=true;shadow.renderOrder=.95;this.terrain.add(shadow);
@@ -129,6 +152,82 @@ export class ThreeWorld {
     if(this.sky)this.sky.intensity=s.M.id==='ayutthaya'?1.25:2;
     this.waterSurface=buildWaterSurface(s.layout.ground,TILE,T,s.M.style);if(this.waterSurface)this.terrain.add(this.waterSurface);
     this.mapId=s.M.id;
+    if(this.quality)this.applyQuality();
+  }
+
+  applyQuality() {
+    const profile=this.quality.profile;
+    if(this.renderer){
+      this.renderer.shadowMap.enabled=!!profile.shadowSize;
+      if(!profile.shadowSize&&this.sun.shadow.map){this.sun.shadow.dispose();this.sun.shadow.map=null;this.sun.shadow.mapPass=null;}
+      if(this.sun.shadow.mapSize.x!==profile.shadowSize&&profile.shadowSize){
+        this.sun.shadow.dispose();this.sun.shadow.map=null;this.sun.shadow.mapPass=null;
+        this.sun.shadow.mapSize.set(profile.shadowSize,profile.shadowSize);
+      }
+      this.sun.castShadow=!!profile.shadowSize;this.renderer.shadowMap.needsUpdate=true;
+    }
+    this.city?.traverse(mesh=>{
+      if(mesh.name==='Layered leafy canopy'){
+        mesh.userData.fullLeafCount??=mesh.count;
+        mesh.count=Math.ceil(mesh.userData.fullLeafCount*profile.leaves);
+      }
+    });
+    this.canvas?.setAttribute('data-quality',profile.name);
+  }
+
+  buildBridgeRails(ground) {
+    const positions=[];
+    const water=(x,y)=>[T.WATER,T.WATER2].includes(ground[y]?.[x]);
+    for(let y=0;y<ground.length;y++)for(let x=0;x<ground[y].length;x++){
+      if(ground[y][x]!==T.WOOD)continue;
+      if(water(x-1,y))positions.push([x*TILE,y*TILE,0]);
+      if(water(x+1,y))positions.push([(x+1)*TILE,y*TILE,0]);
+      if(water(x,y-1))positions.push([x*TILE,y*TILE,1]);
+      if(water(x,y+1))positions.push([x*TILE,(y+1)*TILE,1]);
+    }
+    if(!positions.length)return;
+    const material=new THREE.MeshStandardMaterial({color:0x765c41,roughness:.88});
+    const posts=new THREE.InstancedMesh(new THREE.CylinderGeometry(1.2,1.6,14,8),material,positions.length);
+    const rails=new THREE.InstancedMesh(new THREE.BoxGeometry(1.5,1.5,TILE),material,positions.length);
+    const m=new THREE.Matrix4(),rotation=new THREE.Quaternion(),scale=new THREE.Vector3(1,1,1);
+    positions.forEach(([x,z,horizontal],i)=>{
+      m.makeTranslation(x,7,z);posts.setMatrixAt(i,m);
+      rotation.setFromAxisAngle(new THREE.Vector3(0,1,0),horizontal?Math.PI/2:0);
+      m.compose(new THREE.Vector3(x+(horizontal?TILE/2:0),11,z+(horizontal?0:TILE/2)),rotation,scale);rails.setMatrixAt(i,m);
+    });
+    posts.castShadow=rails.castShadow=true;posts.receiveShadow=rails.receiveShadow=true;
+    this.terrain.add(posts,rails);
+  }
+
+  updateOcclusion() {
+    if(!this.city||this.frameNumber%8!==1)return;
+    const p=this.s.player,aim=new THREE.Vector3(p.x,Math.min(35,(p.displayHeight||44)*.55),p.y);
+    const direction=aim.clone().sub(this.camera.position),distance=direction.length();
+    const ray=new THREE.Raycaster(this.camera.position,direction.normalize(),0,distance-1);
+    const nearby=this.city.children.filter(model=>model.visible&&Math.hypot(model.position.x-p.x,model.position.z-p.y)<160);
+    const occluded=new Set();
+    for(const hit of ray.intersectObjects(nearby,true)){
+      let model=hit.object;while(model.parent&&model.parent!==this.city)model=model.parent;
+      if(model.parent===this.city)occluded.add(model);
+    }
+    for(const model of new Set([...this.fadedModels,...occluded])){
+      if(!model.userData.fadeMaterials){
+        const materials=new Map();model.traverse(part=>{
+          if(!part.isMesh)return;
+          if(!materials.has(part.material)){
+            const copy=part.material.clone();copy.onBeforeCompile=part.material.onBeforeCompile;
+            copy.customProgramCacheKey=part.material.customProgramCacheKey;copy.userData.wind=part.material.userData.wind;
+            materials.set(part.material,copy);
+          }
+          part.material=materials.get(part.material);
+        });model.userData.fadeMaterials=[...materials.values()];
+      }
+      for(const material of model.userData.fadeMaterials){
+        material.transparent=occluded.has(model);material.opacity=occluded.has(model)?.3:1;
+        material.depthWrite=!occluded.has(model);
+      }
+    }
+    this.fadedModels=occluded;
   }
 
   texture(source,repeat=false) {
@@ -180,6 +279,10 @@ export class ThreeWorld {
 
   draw(o,seen,parentAlpha=1,root=o) {
     if(!o.visible||o.alpha===0)return;
+    if(this.groundSurface&&o.texture?.key?.startsWith('td_ground_'))return;
+    if(this.city&&this.legacyLights?.has(o))return;
+    // Native moonlight and warm local lights replace the flat blue screen wash.
+    if(o===this.s.atmo?.night||o===this.s.atmo?.dusk)return;
     if(this.city&&o.cityProp&&cityPropKind(o.cityProp))return;
     // Cull distant map decorations before allocating/updating GPU objects.
     if(root.scrollFactorX!==0&&o.type!=='Graphics'&&o.type!=='ParticleEmitter'){
@@ -188,6 +291,10 @@ export class ThreeWorld {
       if(Math.hypot(root.x-centerX,root.y-centerY)>(this.viewRadius??Math.hypot(this.camera.right,this.camera.top/Math.sin(this.tilt??WORLD_TILT)))+Math.max(marginX,marginY)){
         const existing=this.entries.get(o);if(existing){existing.mesh.visible=false;if(existing.aura)existing.aura.visible=false;seen.add(o);}return;
       }
+    }
+    if(actorKind(o)){
+      this.actors.draw(o,performance.now()/1000,this.tilt,o===this.s.player?.target||o===this.s.hovered);
+      return;
     }
     if(o.type==='Container'){for(const child of o.list)this.draw(child,seen,parentAlpha*o.alpha,root);return;}
     if(o.type==='ParticleEmitter'){
@@ -265,10 +372,20 @@ export class ThreeWorld {
 
   render() {
     if(this.disposed||!this.s.player)return;
+    if(document.hidden){this.quality?.sample(performance.now(),false);return;}
+    if(this.quality){
+      const changed=this.quality.configure(this.s.settings?.worldQuality||'auto');
+      const adapted=this.quality.sample(performance.now());
+      if(changed||adapted){this.mapId=null;}
+    }
     this.frameNumber++;this.updateCamera();if(this.mapId!==this.s.M.id)this.rebuildTerrain();
+    this.updateOcclusion();
+    this.actors.begin();
     if(this.waterSurface)this.waterSurface.material.uniforms.time.value=performance.now()/1000;
+    for(const material of this.city?.userData.ownedMaterials||[])if(material.userData.wind){material.userData.wind.value=performance.now()/1000;material.emissiveIntensity=.1+(1-(this.s.atmo?.light??1))*.24;}
     for(const ripple of this.city?.userData.ripples||[]){const phase=(performance.now()/1800+ripple.userData.phase)%1;ripple.scale.setScalar(.7+phase*.5);}
     const seen=new Set();this.s.children.depthSort();for(const o of this.s.children.list)this.draw(o,seen);
+    this.actors.end();
     for(const [o,e] of this.entries)if(!seen.has(o)){
       e.mesh.removeFromParent();e.geometry.dispose();e.material.dispose();if(e.aura){e.aura.removeFromParent();e.aura.geometry.dispose();e.aura.material.dispose();}this.entries.delete(o);
       if(e.rasterCanvas){this.textures.get(e.rasterCanvas)?.texture.dispose();this.textures.delete(e.rasterCanvas);}
@@ -284,6 +401,7 @@ export class ThreeWorld {
     this.s.events.off('postupdate',this.render);this.s.cameras.main.getWorldPoint=this.oldWorldPoint;
     if(this.manager.hitTest===this.hitTest)this.manager.hitTest=this.oldHitTest;
     this.gameCanvas.style.opacity=this.oldOpacity;this.canvas.remove();
+    this.actors.dispose();
     for(const e of this.entries.values()){e.geometry.dispose();e.material.dispose();if(e.aura){e.aura.geometry.dispose();e.aura.material.dispose();}}
     for(const r of this.textures.values())r.texture.dispose();
     disposeTerrain(this.terrain);this.sun.shadow.dispose();

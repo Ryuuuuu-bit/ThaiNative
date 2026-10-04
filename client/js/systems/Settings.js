@@ -21,11 +21,12 @@ export const DEFAULT_SETTINGS = {
   otherFx: true,                // เอฟเฟกต์สกิลของผู้เล่นอื่น
   otherNames: true,             // ชื่อ/ฉายาผู้เล่นอื่นเหนือหัว (หัวแดงยังแสดงเสมอ)
   showFps: false,               // ตัวนับ FPS มุมจอ
+  worldQuality: 'auto',         // auto | low | balanced | high
   lootLog: 'all',               // บันทึกของที่ได้: all | rare (เฉพาะของดี) | off
 };
 
 /** โหมดลื่น: ปิดของหนัก ๆ ที่ไม่จำเป็น (เครื่องสเปกต่ำ/มือถือ/เปิดทิ้งทั้งวัน) */
-export const PERF_PRESET = { otherDmg: false, otherFx: false, fxShake: false, fxFlash: 'soft', otherSfx: 'soft', chatBubble: false };
+export const PERF_PRESET = { worldQuality: 'low', otherDmg: false, otherFx: false, fxShake: false, fxFlash: 'soft', otherSfx: 'soft', chatBubble: false };
 
 export function loadSettings() {
   try { return { ...DEFAULT_SETTINGS, ...JSON.parse(localStorage.getItem(KEY) || '{}') }; }

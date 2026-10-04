@@ -8,6 +8,13 @@
   --btn-red-1: #28776b; --btn-red-2: #174e48;
 }
 button, input, select { -webkit-tap-highlight-color: transparent; }
+#settings-panel .set-row > label small { display: block; color: var(--muted); font-size: .8em; margin-top: .2em; }
+#settings-panel label[for="set-quality"] { display: block; flex: 1; min-width: 0; padding-right: 12px; }
+#set-quality { max-width: 48%; }
+body.touch-dev #settings-panel select { min-height: 44px; }
+body.touch-dev #settings-panel [data-stab], body.touch-dev #settings-panel .foot button { min-height: 44px; }
+body.td-mode.touch #dock-toggle { min-width: 44px; min-height: 44px; }
+body.td-mode.touch.m-hud .t-fs { top: max(56px, calc(var(--hud-pad) + 14cqh)) !important; }
 button:focus-visible, a:focus-visible, [role="button"]:focus-visible {
   outline: 2px solid #eed5a0; outline-offset: 4px;
 }

@@ -759,6 +759,7 @@ export class UI {
       $('#set-flash').value = st.fxFlash || 'full'; $('#set-othersfx').value = st.otherSfx || 'full'; $('#set-loot').value = st.lootLog || 'all';
       $('#set-auto-hp').value = String(st.autoHp || 0); $('#set-auto-mp').value = String(st.autoMp || 0);
       $('#set-touch').value = String(st.touchSize || 0);
+      if ($('#set-quality')) $('#set-quality').value = st.worldQuality || 'auto';
       if (st.touchSize) document.body.style.setProperty('--ts', String(st.touchSize / 100)); else document.body.style.removeProperty('--ts');   // 0 = ค่าตามอุปกรณ์ (hud.css)
       document.querySelector('.minimap')?.classList.toggle('hidden', !!this.scene.td || st.minimap === false);   // มินิแมพโลกเก่า
       for (const id of ['td-minimap', 'mm-zoom']) document.getElementById(id)?.classList.toggle('hidden', st.minimap === false);   // มินิแมพ top-down
@@ -781,6 +782,7 @@ export class UI {
     on('#set-auto-hp', 'onchange', (t) => (st.autoHp = +t.value));
     on('#set-auto-mp', 'onchange', (t) => (st.autoMp = +t.value));
     on('#set-touch', 'onchange', (t) => (st.touchSize = +t.value));
+    on('#set-quality', 'onchange', (t) => (st.worldQuality = t.value));
     // แท็บ (จำแท็บล่าสุด)
     const tab = (k) => { document.querySelectorAll('#settings-panel [data-stab]').forEach((b) => b.classList.toggle('on', b.dataset.stab === k));
       document.querySelectorAll('#settings-panel [data-pane]').forEach((p) => p.classList.toggle('hidden', p.dataset.pane !== k)); try { localStorage.setItem('thainative_settab', k); } catch { /* */ } };

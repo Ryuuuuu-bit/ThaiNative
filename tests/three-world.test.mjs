@@ -4,11 +4,25 @@ import * as THREE from 'three';
 import {frameQuad,graphicsBounds,WORLD_TILT} from '../client/js/topdown/ThreeWorldMath.js';
 import {TD_MAP_IDS,getMap} from '../shared/td/maps.js';
 import {TILE} from '../shared/td/ayutthaya.js';
+import {T} from '../shared/td/ayutthaya.js';
 import {GD_BOSSES,GD_DIFFS} from '../shared/data/ghostdg.js';
+import {WORLD_QUALITY} from '../client/js/topdown/WorldQuality.js';
 
 // Import the browser module with the same Three build, resolving its URL imports.
 const url=new URL('../client/js/topdown/ThreeWorld.js',import.meta.url);
-const citySource=(await readFile(new URL('../client/js/topdown/AyutthayaCity.js',import.meta.url),'utf8')).replace('/vendor/three/three.module.js',new URL('../node_modules/three/build/three.module.js',import.meta.url).href);
+const threeURL=new URL('../node_modules/three/build/three.module.js',import.meta.url).href;
+const visualURL=new URL('../client/js/topdown/VisualAssets.js',import.meta.url).href;
+const materialSource=(await readFile(new URL('../client/js/topdown/WorldMaterials.js',import.meta.url),'utf8')).replace('/vendor/three/three.module.js',threeURL).replace('./VisualAssets.js',visualURL);
+const materialURL='data:text/javascript;base64,'+Buffer.from(materialSource).toString('base64');
+const staticSource=(await readFile(new URL('../client/js/topdown/StaticMeshes.js',import.meta.url),'utf8')).replace('/vendor/three/three.module.js',threeURL);
+const staticURL='data:text/javascript;base64,'+Buffer.from(staticSource).toString('base64');
+const actorSource=(await readFile(new URL('../client/js/topdown/WorldActors.js',import.meta.url),'utf8')).replace('/vendor/three/three.module.js',threeURL).replace('./VisualAssets.js',visualURL);
+const actorURL='data:text/javascript;base64,'+Buffer.from(actorSource).toString('base64');
+const {WorldActors}=await import(actorURL);
+const gardenSource=(await readFile(new URL('../client/js/topdown/GardenWorld.js',import.meta.url),'utf8')).replace('/vendor/three/three.module.js',new URL('../node_modules/three/build/three.module.js',import.meta.url).href);
+const gardenURL='data:text/javascript;base64,'+Buffer.from(gardenSource).toString('base64');
+const {buildGarden,updateGarden}=await import(gardenURL);
+const citySource=(await readFile(new URL('../client/js/topdown/AyutthayaCity.js',import.meta.url),'utf8')).replace('/vendor/three/three.module.js',threeURL).replace('./GardenWorld.js',gardenURL).replace('./WorldMaterials.js',materialURL).replace('./StaticMeshes.js',staticURL).replace('./VisualAssets.js',visualURL);
 const cityURL='data:text/javascript;base64,'+Buffer.from(citySource).toString('base64');
 const monsterSource=(await readFile(new URL('../client/js/topdown/MonsterLook.js',import.meta.url),'utf8')).replace('/vendor/three/three.module.js',new URL('../node_modules/three/build/three.module.js',import.meta.url).href);
 const monsterURL='data:text/javascript;base64,'+Buffer.from(monsterSource).toString('base64');
@@ -17,9 +31,23 @@ const source=(await readFile(url,'utf8'))
   .replace('/shared/td/ayutthaya.js',new URL('../shared/td/ayutthaya.js',import.meta.url).href)
   .replace('./MonsterLook.js',monsterURL)
   .replace('./AyutthayaCity.js',cityURL)
+  .replace('./GardenWorld.js',gardenURL)
+  .replace('./WorldMaterials.js',materialURL)
+  .replace('./VisualAssets.js',visualURL)
+  .replace('./WorldActors.js',actorURL)
+  .replace('./WorldQuality.js',new URL('../client/js/topdown/WorldQuality.js',import.meta.url).href)
+  .replace('../systems/Screen.js',new URL('../client/js/systems/Screen.js',import.meta.url).href)
   .replace('./ThreeWorldMath.js',new URL('../client/js/topdown/ThreeWorldMath.js',import.meta.url).href);
 const {ThreeWorld}=await import('data:text/javascript;base64,'+Buffer.from(source).toString('base64'));
 globalThis.Phaser={BlendModes:{ADD:1,MULTIPLY:2}};
+
+const sample={ground:Array.from({length:20},(_,y)=>Array.from({length:24},(_,x)=>x===12?T.ROAD:T.GRASS)),props:[{x:96,y:96,foot:[3,2],key:'house'},{x:80,y:80,glow:[-26,40,0xffc46b,1]}],npcs:[{x:48,y:48}]};
+const untouched=JSON.stringify(sample),garden=buildGarden(sample,TILE,T,{spawn:{x:32,y:32}});
+assert.equal(JSON.stringify(sample),untouched,'decorative planting never changes the playable map');
+for(const chunk of garden.userData.chunks){const p=chunk.children[0].geometry.attributes.position;for(let i=0;i<p.count;i+=3){const x=p.getX(i)+chunk.position.x,z=p.getZ(i)+chunk.position.z;assert.notEqual(Math.floor(x/TILE),12,'native planting leaves the road clear');assert.ok(Math.hypot(x-48,z-48)>18,'NPC interaction feet stay clear');}}
+updateGarden(garden,80,80,200,.05,2);assert.equal(garden.userData.lamps.length,6);assert.ok(garden.userData.lamps[0].intensity>0);
+updateGarden(garden,4000,4000,200,.05,2);assert.ok(garden.userData.lamps.every(l=>l.intensity===0),'distant lamps leave the fixed light pool idle');
+const underground=buildGarden(sample,TILE,T,{crypt:true});assert.equal(underground.children.length,0,'underground encounter layouts do not receive outdoor planting');
 
 const f={x:110,y:140,width:80,height:190,u0:.2,v0:.3,u1:.4,v1:.7};
 const normal=frameQuad(f,192,384),mirrored=frameQuad(f,192,384,true);
@@ -43,6 +71,7 @@ for(const [x,z] of [[800,600],[620,490],[960,710]]){
 
 // The production camera always returns to its fixed high angle, regardless of stale orbit values.
 const fixed=Object.create(ThreeWorld.prototype);fixed.yaw=2;fixed.pitchOffset=.2;
+fixed.quality={profile:WORLD_QUALITY.high};
 fixed.gameCanvas={getBoundingClientRect:()=>({left:0,top:0,width:960,height:540}),parentElement:{getBoundingClientRect:()=>({left:0,top:0})}};
 fixed.canvas={style:{}};fixed.renderer={setSize(){}};fixed.camera=new THREE.OrthographicCamera();fixed.overlayCamera=new THREE.OrthographicCamera();
 fixed.sun=new THREE.DirectionalLight();fixed.sky=new THREE.HemisphereLight();fixed.s={M:{id:'ayutthaya'},cameras:{main:{width:960,height:540,zoom:1.5,scrollX:320,scrollY:330}}};
@@ -63,7 +92,7 @@ for(const id of [...TD_MAP_IDS,...Array.from({length:100},(_,i)=>`crypt:${i+1}:$
   assert.equal(view.terrain.children.length,old.length,'map switching does not accumulate terrain');
 }
 
-view.entries=new Map();view.textures=new Map();view.frameNumber=1;view.overlay=new THREE.Scene();
+view.entries=new Map();view.textures=new Map();view.frameNumber=1;view.overlay=new THREE.Scene();view.actors=new WorldActors(view.world);view.tilt=WORLD_TILT;
 const image={width:256,height:256};
 const actor={type:'Sprite',visible:true,x:800,y:600,depth:600,alpha:1,
   scaleX:.2,scaleY:.2,displayOriginX:192,displayOriginY:384,
@@ -78,20 +107,13 @@ assert.equal(view.textures.size,1,'characters share their source texture rather 
 console.log('Three.js world: frame trims, pixel scales, pointer projection, all map families, transitions and GPU cleanup passed.');
 
 const ghost={...actor,def:{behavior:'flyer',palette:{glow:'#58d68d'}},spawn:{id:'krasue'},d8id:'mob_krasue',alive:true,mid:0};
-view.draw(ghost,new Set());const monsterEntry=view.entries.get(ghost);
-assert.ok(monsterEntry.material.isShaderMaterial);assert.equal(monsterEntry.mesh.scale.x,actor.scaleX);
-assert.equal(monsterEntry.material.uniforms.atlas.value,view.entries.get(actor).material.map,'monster rendering shares the original animation atlas');
-assert.equal(monsterEntry.mesh.castShadow,true);assert.equal(monsterEntry.aura.visible,true);
-ghost.alive=false;view.draw(ghost,new Set());assert.equal(monsterEntry.aura.visible,false,'death disables the living aura while preserving the death animation');
-ghost.tintFill=true;view.draw(ghost,new Set());assert.equal(monsterEntry.material.uniforms.fillTint.value,1,'hit flashes remain visible');
-console.log('Monster presentation: lighting, original size/atlas, alpha shadows, death and hit flash passed.');
-
-for(const d8id of ['npc_ruesi','hero_female_silk']){
-  const npc={...actor,d8id,npcVisual:{color:'#ead8b0'}};view.draw(npc,new Set());const e=view.entries.get(npc);
-  assert.equal(e.material.userData.npc,true,'service NPCs and walking townsfolk receive the same presentation');
-  assert.equal(e.mesh.castShadow,true);assert.equal(e.aura,undefined,'NPCs do not receive hostile monster auras');
-  assert.equal(e.mesh.scale.x,actor.scaleX);assert.equal(e.material.uniforms.atlas.value,view.entries.get(actor).material.map);
-  assert.ok(e.material.uniforms.rim.value<monsterEntry.material.uniforms.rim.value);
-}
-assert.equal(view.entries.get(actor).material.isMeshBasicMaterial,true,'player sprites keep their existing appearance');
-console.log('NPC presentation: service NPCs, walking townsfolk, original scale and atlas, soft lighting and shadows passed.');
+view.draw(ghost,new Set());const monsterEntry=view.actors.entries.get(ghost);
+assert.ok(monsterEntry.root.isGroup);assert.equal(monsterEntry.root.position.x,ghost.x);assert.equal(monsterEntry.root.position.z,ghost.y);
+assert.equal(mesh.scale.x,actor.scaleX,'the reviewed player atlas remains at its authored scale');
+assert.equal(view.entries.has(ghost),false,'a 3D monster does not also display its old sprite');
+ghost.alive=false;view.actors.draw(ghost,10,Math.PI/3);assert.equal(monsterEntry.root.visible,true,'death begins with a visible collapse');view.actors.draw(ghost,11,Math.PI/3);assert.equal(monsterEntry.root.visible,false,'death animation finishes before the simulation removes the corpse');
+ghost.alive=true;ghost.tintFill=true;ghost.tintTopLeft=0xffffff;view.actors.draw(ghost,12,Math.PI/3);assert.ok(monsterEntry.materials.skin.color.r>.7,'a damage flash remains readable');
+console.log('3D monster presentation: positions, player scale, death collapse and hit flash passed.');
+for(const d8id of ['npc_ruesi','hero_female_silk']){const npc={...actor,d8id,npcVisual:{id:'shop',color:'#ead8b0'}};view.draw(npc,new Set());const e=view.actors.entries.get(npc);assert.equal(e.kind,'npc');assert.equal(e.root.position.x,npc.x);assert.ok(npc.worldLabelHeight>0);assert.equal(view.entries.has(npc),false);}
+assert.equal(view.entries.get(actor).material.isMeshBasicMaterial,true,'player sprites keep their reviewed appearance');
+console.log('3D NPC presentation: service NPCs, walking townsfolk, positions and labels passed.');
