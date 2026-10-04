@@ -7,7 +7,7 @@ import { SKILL_BY_ID, skillStats, SKILL_SLOTS, isItemSlot, skillUsable, skillWea
 import { JOBS } from '/shared/data/classes.js';
 import { getDerived } from '/shared/character.js';
 import { skillCooldown } from '/shared/stats.js';
-import { popupNumber, yantCircle } from '../gfx/Fx.js';
+import { popupNumber, popupAbove, yantCircle } from '../gfx/Fx.js';
 import { dirFromVector } from './Dir8.js';
 import { TILE, MAP_W, MAP_H } from '/shared/td/ayutthaya.js';
 import { HealerKit, HEAL_TINT } from './TdHealer.js';
@@ -356,8 +356,8 @@ export class GrandFx {
     const o = spr?.spr || spr; if (!o) return;
     this.pillar(o.x, o.y, { tint, h: 80, ms: 700, w: 26, alpha: 0.8 });
     this.stars(o.x, o.y - 20, { n: 5, tint, r: 16, size: 12, ms: 700, up: 20 });
-    if (amount > 0) popupNumber(this.s, o.x, o.y - (o.displayHeight || 40) - 16, `+${amount}`, 'heal');
-    if (mp > 0) this.s.time.delayedCall(180, () => popupNumber(this.s, o.x + 10, o.y - (o.displayHeight || 40) - 8, `+${mp} MP`, 'mana'));
+    if (amount > 0) popupAbove(this.s, o, `+${amount}`, 'heal');
+    if (mp > 0) this.s.time.delayedCall(180, () => popupAbove(this.s, o, `+${mp} MP`, 'mana', { offsetX: 10 }));
   }
 
   /** กระสุนบิน + หางประกาย → คืน Promise ตอนถึงเป้า */
@@ -419,8 +419,8 @@ export class TdSkills {
     if (eff.bleed) this.fx.sparks(m.x, m.y - 12, { n: 9, tint: 0xff5a5a, speed: [30, 100], life: 520, scale: 0.3, gravity: 140 });
     if (eff.burn) this.poison(m.x, m.y, 0xffa040);
     if (eff.slow) this.fx.rune(m.x, m.y, { size: 42, tint: 0x7ec8ff, ms: 900, spin: 40, inner: false });
-    if (eff.armorBreak) { this.fx.shock(m.x, m.y - 10, { r: 26, tint: 0xffd35c, ms: 350 }); popupNumber(s, m.x, m.y - m.displayHeight - 4, 'เกราะแตก!', 'miss'); }
-    if (eff.weak) popupNumber(s, m.x, m.y - m.displayHeight - 4, 'อ่อนแรง', 'miss');
+    if (eff.armorBreak) { this.fx.shock(m.x, m.y - 10, { r: 26, tint: 0xffd35c, ms: 350 }); popupAbove(s, m, 'เกราะแตก!', 'miss'); }
+    if (eff.weak) popupAbove(s, m, 'อ่อนแรง', 'miss');
     if (s.econ.server) return s.net.send('td:hit', { mid: m.mid, sk: sk.id });
     const d = s.player.derived, magic = sk.kind === 'magic';
     const crit = Math.random() < (d.critRate || 0.05);

@@ -365,7 +365,7 @@ export class ThreeWorld {
       e.mesh.position.set(x,.02+(root.depth||0)*.04,y);e.mesh.quaternion.setFromAxisAngle(new THREE.Vector3(1,0,0),-Math.PI/2);e.mesh.rotateZ(-angle);
     }else{
       // Labels retain their pixel offset above the entity's ground anchor.
-      const anchor=root.depth>1&&root.depth<50000?root.depth:y;
+      const anchor=root.worldAnchorY ?? (root.depth>1&&root.depth<50000?root.depth:y);
       e.mesh.position.set(x,0,anchor);e.mesh.quaternion.copy(this.camera.quaternion);
       // Depth is the foot coordinate for sprites; high-depth effects use their own location.
       e.mesh.position.addScaledVector(new THREE.Vector3(0,1,0).applyQuaternion(this.camera.quaternion),anchor-y);

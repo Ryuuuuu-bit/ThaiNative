@@ -7,6 +7,7 @@
 // ============================================================
 import { WORLD } from '/shared/constants.js';
 import { makeText } from '../systems/util.js';
+import { spriteTopHeight } from '../topdown/Dir8.js';
 
 const TEX = {};
 /** วาดพื้นผิวลง canvas แล้วลงทะเบียนครั้งเดียว */
@@ -129,11 +130,17 @@ const NUM = {
   night:  { color: '#e2c8ff', size: 8, stroke: '#2a0a3a' },
 };
 const DMG_KINDS = new Set(['normal', 'crit', 'miss', 'taken', 'poison']);
+/** Start floating text above the visible target; keep its ground anchor fixed as it rises. */
+export function popupAbove(scene, target, text, kind = 'normal', opts = {}) {
+  const height = target.worldLabelHeight || spriteTopHeight(target);
+  return popupNumber(scene, target.x + (opts.offsetX || 0), target.y - height - (opts.gap ?? 14), text, kind, { ...opts, groundY: target.y });
+}
 export function popupNumber(scene, x, y, text, kind = 'normal', opts = {}) {
   if (scene.settings?.damageNumbers === false && DMG_KINDS.has(kind)) return;   // ตั้งค่า: ปิดตัวเลขดาเมจ (EXP/ฮีล ยังแสดง)
   const st = NUM[kind] || NUM.normal;
   const t = makeText(scene, x + (Math.random() * 10 - 5), y, text, { fontSize: `${st.size}px`, color: st.color, stroke: st.stroke, strokeThickness: kind === 'crit' ? 4 : 3, fontStyle: '700' })
     .setOrigin(0.5).setDepth(D(scene, 50));
+  if (Number.isFinite(opts.groundY)) t.worldAnchorY = opts.groundY;
   const dir = opts.dir ?? (Math.random() < 0.5 ? -1 : 1);
   if (kind === 'crit') {
     t.setScale(0.4);

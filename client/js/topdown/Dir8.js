@@ -29,6 +29,13 @@ export function stableDir(vx, vy, prev = 'south') {
 export const texKey = (id, anim) => `td:${id}:${anim}`;
 export const animKey = (id, anim, dir) => `td:${id}:${anim}:${dir}`;
 
+/** Visible artwork above the sprite origin, excluding trimmed atlas padding. */
+export function spriteTopHeight(sprite) {
+  const frame = sprite.frame;
+  if (!frame || !Number.isFinite(sprite.displayOriginY)) return sprite.displayHeight || 0;
+  return Math.max(0, sprite.displayOriginY - (frame.y || 0)) * Math.abs(sprite.scaleY ?? 1);
+}
+
 /**
  * ลงทะเบียน animation จาก spritesheet 8 แถว
  * @param spec { id, anims: { walk: { frames: 6, rate: 10, loop: true }, ... }, frame: { w, h } }
@@ -61,7 +68,8 @@ export function registerDir8(scene, spec) {
             frame.setTrim(canvas,canvas,canvas/2-cut.pivot,canvas-32-cut.h*(cut.foot??1),cut.w,cut.h);
           } else target.add(name, 0, k * fw, row * fh, fw, fh);
         }
-        frames.push({ key: frameKey, frame: name });
+        const duration=cut?.duration;
+        frames.push({ key: frameKey, frame: name, ...(duration ? { duration } : {}) });
       }
       const ak = animKey(spec.id, anim, dir);
       if (!scene.anims.exists(ak)) scene.anims.create({ key: ak, frames, frameRate: a.directionRates?.[row] || a.rate || 8, repeat: a.loop ? -1 : 0 });
@@ -89,6 +97,9 @@ function setLook(sprite, d8) {
   if(artMeta?.mirrors)sprite.setFlipX(!!artMeta.mirrors[clip]?.[DIRS.indexOf(sprite.dir)]);
   const clipScale=(artMeta?.cuts?.[clip]?.[DIRS.indexOf(sprite.dir)]?.[0]?.scale||artMeta?.clipScales?.[clip])*(artMeta?.directionRenderScales?.[clip]?.[DIRS.indexOf(sprite.dir)]??1);
   if(clipScale&&sprite._artScale!==clipScale){sprite._look=null;sprite._artScale=clipScale;}
+  // A clip can share its source scale with walk while using a different render multiplier.
+  const renderScale=(artMeta?.renderScale??1)*(artMeta?.clipRenderScales?.[clip]??1)*(sprite.scaleMul||1);
+  if(sprite._artRenderScale!==renderScale){sprite._look=null;sprite._artRenderScale=renderScale;}
   const look = d8 ? sprite.d8id : false;                                     // เปลี่ยนโมเดล (เช่น สลับอาชีพ/ขั้นอาวุธ) ขนาดเฟรมต่างกัน → คิดสเกล/กล่องชนใหม่ด้วย
   if (sprite._d8 === d8 && sprite._look === look) return;
   sprite._d8 = d8; sprite._look = look;

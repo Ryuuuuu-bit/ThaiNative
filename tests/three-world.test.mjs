@@ -107,6 +107,13 @@ actor.frame={...actor.frame,width:110,u0:.4,u1:.8};view.draw(actor,new Set());
 assert.equal(view.entries.get(actor).mesh,mesh,'animation reuses its mesh');
 assert.equal(mesh.geometry.attributes.uv.array[0],Math.fround(.4),'atlas UVs change with the current attack frame');
 assert.equal(view.textures.size,1,'characters share their source texture rather than copying each atlas frame');
+const floating={...actor,x:800,y:550,depth:100050,worldAnchorY:600};
+view.draw(floating,new Set());
+const floatingMesh=view.entries.get(floating).mesh;
+const up=new THREE.Vector3(0,1,0).applyQuaternion(view.camera.quaternion);
+assert.ok(floatingMesh.position.distanceTo(new THREE.Vector3(800,0,600).addScaledVector(up,50))<1e-8,'combat text uses the target ground anchor');
+const beforeFloat=floatingMesh.position.clone();floating.y-=24;view.draw(floating,new Set());
+assert.ok(floatingMesh.position.clone().sub(beforeFloat).distanceTo(up.clone().multiplyScalar(24))<1e-8,'damage rises vertically in camera space without depth drift');
 console.log('Three.js world: frame trims, pixel scales, pointer projection, all map families, transitions and GPU cleanup passed.');
 
 const ghost={...actor,def:{behavior:'flyer',palette:{glow:'#58d68d'}},spawn:{id:'krasue'},d8id:'mob_krasue',alive:true,mid:0};
