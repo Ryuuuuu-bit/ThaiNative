@@ -159,3 +159,62 @@ body.td-mode.touch #hud .expbar { height:3px !important; }
   body.m-hud #skillbar.t-arc .skill:nth-child(5n+5) { right:10px !important; bottom:19px !important; }
 }
 @media(prefers-reduced-motion:reduce) { body.td-mode button { transition:none !important; } }
+
+/* Gameplay is a fixed viewport; focusing controls must not scroll the document. */
+body.td-mode { position:fixed; inset:0; overflow:clip; }
+
+/* Settings owns four rows. Only the body scrolls, including when a switch takes focus. */
+body.td-mode #ui #settings-panel.window {
+  display:grid; grid-template-rows:auto auto minmax(0,1fr) auto;
+  top:50% !important; left:50%; transform:translate(-50%,-50%);
+  width:min(640px,calc(100% - 24px)); min-width:0 !important; max-width:calc(100% - 24px) !important;
+  height:min(600px,calc(100cqh - 24px)); max-height:calc(100cqh - 24px) !important;
+  padding:0; overflow:hidden; overflow:clip; font-size:14px; line-height:1.55;
+  animation:none; border-radius:14px;
+}
+#settings-panel > header { position:static; margin:0; padding:10px 18px; font-size:20px; min-height:64px; border-radius:0; }
+#settings-panel > header::after { display:none; }
+body.td-mode #ui #settings-panel > header .close { width:40px; height:40px; min-width:44px; min-height:44px; font-size:20px; }
+#settings-panel > .set-tabs { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:4px; margin:0; padding:8px 16px; background:#0b2226; }
+#settings-panel .set-tabs button { min-width:0; min-height:44px; padding:6px 8px; font-size:13px; border-radius:7px; box-shadow:none; }
+#settings-panel .set-tabs button.on { color:#eddbac; background:#335b4e; border-color:#d1b47a70; font-weight:500; }
+#settings-panel > .set-body { position:relative; min-height:0; min-width:0; overflow:auto; padding:16px; overscroll-behavior:contain; scrollbar-gutter:stable; scrollbar-width:thin; scrollbar-color:#749883 #102a2c; }
+#settings-panel .set-pane { min-width:0; }
+#settings-panel .set-group { margin:0 0 12px; padding:12px 14px; border:1px solid #b8c9b621; border-radius:9px; }
+#settings-panel .set-group:last-child { margin-bottom:0; }
+#settings-panel .set-group h4 { margin:0 0 8px; padding:0; border:0; font-size:12px; font-weight:500; color:#cfb984; opacity:1; }
+#settings-panel .set-row, #settings-panel .set-sw { min-height:48px; font-size:13px; gap:12px; padding:8px 0; }
+#settings-panel .set-row { grid-template-columns:minmax(0,1fr) minmax(128px,42%); }
+#settings-panel .set-row > :only-child { grid-column:1/-1; }
+#settings-panel .set-row.vol { grid-template-columns:minmax(130px,1fr) minmax(72px,1fr) 28px; }
+#settings-panel .set-row > span small, #settings-panel .set-row > label small, #settings-panel .set-sw small { font-size:11px; line-height:1.55; color:#abc1b5; opacity:1; margin-top:3px; }
+#settings-panel .set-row select { width:100%; min-width:0; max-width:100%; min-height:40px; font-size:12px; padding:6px 9px; }
+#settings-panel .set-row input[type=range] { min-width:0; min-height:36px; }
+#settings-panel .set-row.vol label { min-height:40px; }
+#settings-panel .set-sw { position:relative; }
+#settings-panel .set-sw input { inset-inline-end:0; top:50%; width:1px; height:1px; margin:0; transform:translateY(-50%); }
+#settings-panel .set-sw i { width:40px; height:24px; background:#29443d; border-color:#90b0a452; }
+#settings-panel .set-sw i::after { top:3px; left:3px; width:16px; height:16px; background:#a2b9ad; }
+#settings-panel .set-sw input:checked + i { background:#3c8570; border-color:#a6c8ab; }
+#settings-panel .set-sw input:checked + i::after { transform:translateX(16px); background:#f1ead3; }
+#settings-panel > .set-row.foot { display:flex; flex-wrap:nowrap; gap:8px; margin:0; padding:12px 16px; border-top:1px solid #c9ad7530; background:#0c2227; }
+#settings-panel > .set-row.foot button { min-height:44px; padding:8px 14px; font-size:12px; border-width:1px; border-radius:7px; box-shadow:none; white-space:nowrap; }
+#settings-panel > .set-row.foot #set-close { background:#276659; border-color:#bca26b; color:#f2e8ca; }
+@media(max-width:560px) {
+  body.td-mode #ui #settings-panel.window { width:calc(100% - 16px); max-width:calc(100% - 16px) !important; height:calc(100cqh - 16px); max-height:calc(100cqh - 16px) !important; }
+  #settings-panel > header { min-height:52px; padding:4px 12px; font-size:18px; }
+  #settings-panel > .set-tabs { padding:4px 8px; }
+  #settings-panel > .set-body { padding:10px; }
+  #settings-panel .set-group { padding:10px; }
+  #settings-panel .set-row { grid-template-columns:minmax(0,1fr) minmax(110px,44%); gap:8px; }
+  #settings-panel .set-row.vol { grid-template-columns:minmax(0,1fr) 28px; }
+  #settings-panel .set-row.vol label { grid-column:1/-1; }
+  #settings-panel > .set-row.foot { gap:6px; padding:8px; }
+  #settings-panel > .set-row.foot button { padding:6px 9px; font-size:11px; }
+}
+@media(max-height:480px) and (min-width:561px) {
+  #settings-panel > header { min-height:52px; padding:4px 16px; font-size:18px; }
+  #settings-panel > .set-tabs { padding:4px 12px; }
+  #settings-panel > .set-body { padding:10px 12px; }
+  #settings-panel > .set-row.foot { padding:8px 12px; }
+}

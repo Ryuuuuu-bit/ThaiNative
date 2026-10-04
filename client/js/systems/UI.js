@@ -786,7 +786,9 @@ export class UI {
     on('#set-quality', 'onchange', (t) => (st.worldQuality = t.value));
     // แท็บ (จำแท็บล่าสุด)
     const tab = (k) => { document.querySelectorAll('#settings-panel [data-stab]').forEach((b) => b.classList.toggle('on', b.dataset.stab === k));
-      document.querySelectorAll('#settings-panel [data-pane]').forEach((p) => p.classList.toggle('hidden', p.dataset.pane !== k)); try { localStorage.setItem('thainative_settab', k); } catch { /* */ } };
+      document.querySelectorAll('#settings-panel [data-pane]').forEach((p) => p.classList.toggle('hidden', p.dataset.pane !== k));
+      $('#settings-panel .set-body').scrollTop = 0;
+      try { localStorage.setItem('thainative_settab', k); } catch { /* */ } };
     document.querySelectorAll('#settings-panel [data-stab]').forEach((b) => (b.onclick = () => { this.scene.sfx.play('click'); tab(b.dataset.stab); }));
     try { const k = localStorage.getItem('thainative_settab'); if (k) tab(k); } catch { /* */ }
     // โหมดลื่น / คืนค่าเริ่มต้น (เก็บรายการผีของ Auto ไว้)
