@@ -6,6 +6,7 @@ import { buildAyutthayaCity, buildWaterSurface, cityPropKind, disposeTerrain } f
 import { buildGroundSurface } from './WorldMaterials.js';
 import { actorKind } from './VisualAssets.js';
 import { WorldActors } from './WorldActors.js';
+import { installPlazaArt, updatePlazaArt, inPaintedPlaza } from './PlazaArt.js';
 import { buildGarden, updateGarden } from './GardenWorld.js';
 import { WorldQualityController, worldPixelRatio } from './WorldQuality.js';
 import { deviceClass } from '../systems/Screen.js';
@@ -138,7 +139,7 @@ export class ThreeWorld {
       const matrix=new THREE.Matrix4();tiles.forEach(([x,y],i)=>{matrix.makeTranslation((x+.5)*TILE,height/2,(y+.5)*TILE);wall.setMatrixAt(i,matrix);});
       wall.castShadow=true;wall.receiveShadow=true;this.terrain.add(wall);
     }
-    if(!s.M.crypt&&!s.M.gd){this.city=buildAyutthayaCity(s.layout.props,s.M);this.terrain.add(this.city);}
+    if(!s.M.crypt&&!s.M.gd){this.city=buildAyutthayaCity(s.layout.props,s.M);installPlazaArt(this.city,s.M,this.quality?.profile);this.terrain.add(this.city);}
     this.fadedModels=new Set();
     this.groundSurface=buildGroundSurface(s.layout.ground,TILE,T,s.M.style,s.M);this.terrain.add(this.groundSurface);
     this.buildBridgeRails(s.layout.ground);
@@ -292,7 +293,8 @@ export class ThreeWorld {
         const existing=this.entries.get(o);if(existing){existing.mesh.visible=false;if(existing.aura)existing.aura.visible=false;seen.add(o);}return;
       }
     }
-    if(actorKind(o)){
+    const paintedNpc=this.s.M.id==='ayutthaya' && actorKind(o)==='npc' && o.frame && inPaintedPlaza(o.x,o.y);
+    if(actorKind(o) && !paintedNpc){
       this.actors.draw(o,performance.now()/1000,this.tilt,o===this.s.player?.target||o===this.s.hovered);
       return;
     }
@@ -351,6 +353,8 @@ export class ThreeWorld {
     const target=screen?this.overlay:this.world;if(e.mesh.parent!==target)target.add(e.mesh);
     const matrix=o.getWorldTransformMatrix?.();
     let x=matrix?.tx??o.x,y=matrix?.ty??o.y;
+    const paintedLabel=this.city?.userData.paintedLabels?.get(o.cityPropLabel);
+    if(paintedLabel?.userData.paintedReady)y=o.cityPropLabel.y-paintedLabel.userData.paintedLabelHeight-3;
     const sx=matrix?Math.hypot(matrix.a,matrix.b):(o.scaleX??1),sy=matrix?Math.hypot(matrix.c,matrix.d):(o.scaleY??1);
     const angle=matrix?Math.atan2(matrix.b,matrix.a):(o.rotation||0);
     e.mesh.visible=true;e.mesh.scale.set(sx,sy,1);
@@ -380,6 +384,7 @@ export class ThreeWorld {
     }
     this.frameNumber++;this.updateCamera();if(this.mapId!==this.s.M.id)this.rebuildTerrain();
     this.updateOcclusion();
+    updatePlazaArt(this.city,this.s.atmo?.light??1,performance.now()/1000);
     this.actors.begin();
     if(this.waterSurface)this.waterSurface.material.uniforms.time.value=performance.now()/1000;
     for(const material of this.city?.userData.ownedMaterials||[])if(material.userData.wind){material.userData.wind.value=performance.now()/1000;material.emissiveIntensity=.1+(1-(this.s.atmo?.light??1))*.24;}

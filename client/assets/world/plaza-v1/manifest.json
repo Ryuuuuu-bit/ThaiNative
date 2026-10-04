@@ -1,0 +1,30 @@
+{
+  "version": 1,
+  "created": "2026-10-04",
+  "tool": "built-in image_gen",
+  "reference": "User-supplied ornate Ayutthaya RPG town image, used for art direction.",
+  "style": "Detailed illustrated Thai architecture, warm ivory, terracotta, aged gold, jade foliage; fixed elevated camera.",
+  "delivery": "WebP quality 90, alpha quality 100; original generated PNGs preserved in the local source archive. No recoloring, compositing or cropping.",
+  "assets": [
+    {
+      "file": "temple.webp",
+      "use": "Medicine hall west of the central lotus court",
+      "prompt": "Use case: stylized-concept. Production game asset, NOT a screenshot or a mockup. Create a single freestanding ornate Ayutthaya Thai Buddhist viharn temple sprite, on a genuinely transparent background. High-detail hand-painted pixel-informed 2.5D RPG environment art: warm ivory aged plaster, carved golden Thai gable and chofa finials, layered terracotta red roof tiles with individual texture, dark wooden central door with gold carving, low broad pale stone stairway and paired small stone guardian lions, small carved balustrade. Exquisite cohesive crisp illustrated detail with dark warm edge definition, no blur, no photographic rendering, no low-poly primitive look. Fixed orthographic game camera looking down about 55 degrees from the south, facade faces camera with a little right-side visible, straight vertical walls, compatible with a top-down 2.5D game. Building occupies 90% of image with generous transparent margin so every roof finial is fully contained. Whole building including small foundation plinth, isolated; no ground tile, no landscape, no people, no other buildings, no text or HUD, no drop shadow outside its base. Soft warm daylight from upper left, ambient occlusion baked into carvings. Building width roughly equals overall height. Intended as one reusable layered sprite for an original Thai fantasy game. Transparent canvas."
+    },
+    {
+      "file": "shop.webp",
+      "use": "Four existing shophouses along the town market",
+      "prompt": "Use case: stylized-concept. Production 2.5D RPG game asset on a genuinely transparent background: one beautiful freestanding traditional Thai Ayutthaya merchant shop, entire structure fully visible, crisp hand-painted detailed illustrated sprite. A dark teak timber little shop under a tiered terracotta tiled roof with small gold Thai finials; pale cream fabric canopy across the front; red textile hanging on one side; many finely drawn clay pots, herb baskets, small woven sacks, rolled mats and wooden chests carefully arranged under the awning. One empty wooden signboard hangs above awning, NO writing. No human or animal. Match an ornate ivory-and-gold Thai temple game art style, dark fine outlines, rich aged material texture, warm ochre and jade green accents, distinct roof tiles. Fixed orthographic elevated camera from south looking down 50 degrees; visible front and small right side, no perspective convergence. Whole object with a compact stone doorstep at bottom, bottom edge marks ground contact, transparent generous margin, no isolated loose props outside building, no cast shadow outside its base, NO surrounding scenery or floor tile, no sky, no UI, no letters, no watermark. Wide 4:3 building silhouette. Detailed polished RPG asset, NOT low poly, not photograph, not blurry."
+    },
+    {
+      "file": "tree.webp",
+      "use": "Broadleaf trees within the bounded prototype area",
+      "prompt": "Production game sprite, one majestic tropical tamarind tree with dense rounded irregular crown and twisting brown trunk, a few tiny white blossoms and sunlit golden green leaves, roots with small ferns. Hand painted 2.5D RPG environment illustration with crisp tiny leaf detail, warm dark fine outlines, believable carved bark, richly textured foliage with shaded jade-green under-leaves and olive sunlit tips. Match ornate Thai Ayutthaya RPG buildings. Fixed elevated orthographic camera about 50 degrees looking down, whole tree isolated on genuinely transparent background, trunk base at bottom center; tall broad canopy fully contained with transparent margins. No ground tile, no sky, no scenery, no people, no text, no blurry circles or low poly shapes. Small soft contact shadow only directly beneath roots. Useful as reusable tree sprite for walking in front or behind."
+    },
+    {
+      "file": "fountain.webp",
+      "use": "Central lotus fountain with a subtle runtime water shimmer",
+      "prompt": "Production game asset, ornate Thai Ayutthaya lotus fountain on genuinely transparent background. Single isolated low circular ivory limestone pool, faceted octagonal outer step, carved gold trim, deep jade turquoise water with floating lily pads and small pink lotus blossoms. In center a sculpted white stone lotus flower supports an elegant thin gilded Thai spire, delicate thin streams of water into pool. Tiny ferns and small white flowers in 4 pots symmetrically around rim. Whole fountain and compact stone foundation isolated, transparent empty margins, NO floor tile or scene, NO people, NO text. Crisp high-detail hand-painted 2.5D RPG sprite, warm ivory stone, aged moss, fine dark outlines and warm sunlight upper left. Fixed orthographic elevated game camera looking down 55 degrees, clearly see ellipse pool from above and front rim. Width twice height, squat fountain that will not dominate player characters. No photographic or low-poly style."
+    }
+  ]
+}

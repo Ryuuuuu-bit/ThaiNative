@@ -31,6 +31,7 @@ export function buildGroundSurface(ground, TILE, T, style = {}, map = {}) {
   const group = new THREE.Group(); group.name = 'Painted world surfaces';
   const colors = { grass: 0x7c9476, stone: 0xc9bba0, wood: 0xad8a65,
     roof: 0xb18b71, sand: 0xc7b38e, road: 0xaa9271, paddy: 0x8c9d67 };
+  if(map.id==='ayutthaya')colors.stone=0xf0dfc2;
   if(map.crypt||map.gd){colors.stone=0x737b85;colors.road=0x655e68;colors.sand=0x8b8581;}
   const materials = Object.fromEntries(Object.entries(colors).map(([key, color]) =>
     [key, new THREE.MeshStandardMaterial({ color, roughness: .94 })]));

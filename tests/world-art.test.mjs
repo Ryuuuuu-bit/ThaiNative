@@ -114,4 +114,58 @@ assert.ok(Math.abs(recovered.x-hero.x)<1e-5&&Math.abs(recovered.y-hero.y)<1e-5,'
 scene.children.list=[hero];renderer.render();assert.equal(renderer.actors.entries.size,0,'map removal cleans actor entries');
 renderer.dispose();assert.equal(canvas.style.opacity,'1');assert.equal(input.hitTest,originalHitTest);
 assert.ok(renderer.renderer.disposed);assert.ok(images.every(i=>i.onload===null));
+
+// The plaza upgrade must remain navigable, survive failed/late image loads,
+// share textures between repeated buildings, and obey the mobile texture budget.
+const visited=new Set(),queue=[[SPAWN.x/TILE,SPAWN.y/TILE]];
+for(let i=0;i<queue.length;i++){
+  const [x,y]=queue[i],key=`${x},${y}`;
+  if(visited.has(key)||town.solid[y]?.[x]!==false)continue;
+  visited.add(key);
+  for(const [dx,dy]of [[1,0],[-1,0],[0,1],[0,-1]])if(!visited.has(`${x+dx},${y+dy}`))queue.push([x+dx,y+dy]);
+}
+for(const npc of town.npcs)assert.ok(visited.has(`${Math.floor(npc.x/TILE)},${Math.floor(npc.y/TILE)}`),`${npc.id}: reachable from spawn after widening the medicine hall`);
+const {installPlazaArt,updatePlazaArt,plazaAsset}=cache.get(path.resolve('client/js/topdown/PlazaArt.js')).namespace;
+assert.equal(plazaAsset({key:'env/b_shophouse_1',x:100,y:100}),null,'art pass does not replace distant map zones');
+const imageStart=images.length,plaza=buildAyutthayaCity(town.props,{id:'ayutthaya'});
+const layoutBefore=JSON.stringify(town);
+installPlazaArt(plaza,{id:'ayutthaya'},{name:'low'});
+assert.equal(JSON.stringify(town),layoutBefore,'installing art never mutates shared map data');
+const artImages=images.slice(imageStart).filter(i=>i.src?.includes('/plaza-v1/'));
+assert.equal(artImages.length,4,'only four original assets load for repeated scenery');
+const replacements=plaza.userData.paintedModels;
+assert.ok(replacements.length>4);
+for(const model of replacements){assert.equal(model.userData.paintedMesh.visible,false);assert.ok(model.children.some(c=>c!==model.userData.paintedMesh&&c.visible),'native fallback stays visible while loading');}
+const lateCallback=artImages[0].onload;
+for(const image of artImages){image.naturalWidth=2048;image.naturalHeight=1536;image.onload();}
+for(const model of replacements){
+  const mesh=model.userData.paintedMesh;assert.ok(mesh.visible);assert.equal(model.userData.paintedReady,true);
+  assert.ok(Math.max(mesh.material.map.image.width,mesh.material.map.image.height)<=512,'low profile texture cap');
+  assert.ok(model.children.filter(c=>c!==mesh).every(c=>!c.visible),'fallback is hidden only after successful load');
+}
+const shops=replacements.filter(m=>m.userData.paintedArt==='shop');
+assert.ok(shops.length>1);assert.equal(shops[0].userData.paintedMesh.material.map,shops[1].userData.paintedMesh.material.map,'shops share GPU texture');
+updatePlazaArt(plaza,.1,2);assert.ok(shops[0].userData.paintedMesh.material.color.r<1,'painted art follows night lighting');
+const camera3=new THREE.OrthographicCamera(-400,400,300,-300,1,8000);
+camera3.position.set(1856,Math.sin(Math.PI/3)*1800,800+900);camera3.lookAt(1856,0,800);camera3.updateMatrixWorld();
+const artNormal=new THREE.Vector3(0,0,1).applyEuler(shops[0].userData.paintedMesh.rotation);
+assert.ok(artNormal.dot(new THREE.Vector3(0,0,1).applyQuaternion(camera3.quaternion))>.999,'painted geometry faces the locked game camera');
+disposeTerrain(plaza);lateCallback();assert.equal(plaza.children.length,0,'late load cannot resurrect a disposed plaza');
+assert.ok(artImages.every(i=>i.onload===null&&i.onerror===null));
+
+// NPCs in the painted plaza use their animated sprite atlas and remain clickable.
+const spriteNpc={...hero,npcVisual:{id:'shop'},x:1760,y:1056,depth:1056,
+  frame:{...frame,cutX:0,cutY:0,cutWidth:16,cutHeight:32,source:{image:{width:16,height:32},width:16,height:32}}};
+scene.M={id:'ayutthaya'};scene.player={...hero,x:1856,y:928,depth:928};
+scene.children.list=[scene.player,spriteNpc];camera.scrollX=1856-480;camera.scrollY=928-270;
+input.pointWithinHitArea=(o,x,y)=>Number.isFinite(x)&&Number.isFinite(y)&&Math.abs(x)<=8&&y>=-32&&y<=0;
+const spriteWorld=new ThreeWorld(scene);
+assert.ok(spriteWorld.entries.has(spriteNpc),'plaza NPC uses its authored atlas');
+assert.ok(!spriteWorld.actors.entries.has(spriteNpc),'no duplicate primitive NPC');
+spriteWorld.world.updateMatrixWorld(true);
+const spriteCenter=spriteWorld.entries.get(spriteNpc).mesh.localToWorld(new THREE.Vector3(0,16,0)).project(spriteWorld.camera);
+const spriteHit=input.hitTest({x:(spriteCenter.x+1)*480,y:(1-spriteCenter.y)*270},[spriteNpc],camera,[]);
+assert.equal(spriteHit[0],spriteNpc,'clicking the painted NPC still opens its real game interaction');
+spriteWorld.dispose();assert.equal(input.hitTest,originalHitTest);
 console.log(`World art validated: ${totalProps} props across ${reviewMapIds.length} maps, ${monsterCount} monster designs, ${town.npcs.length} NPCs, targeting and cleanup.`);
+console.log('Painted plaza: NPC routes, async fallback, shared textures, low-profile memory cap, camera alignment and cleanup passed.');

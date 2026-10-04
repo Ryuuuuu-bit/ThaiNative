@@ -470,7 +470,10 @@ export class TopDownScene extends Phaser.Scene {
         this.add.ellipse(p.x, p.y - eh * 0.45, w * 0.5, eh, 0x000000, 0.24).setDepth(0.6);
         (this.fadeTrees ||= []).push(img);
       } else if (p.foot?.[0] && key !== 'boat') this.add.ellipse(p.x, p.y - 1, img.displayWidth * (env ? 0.7 : 0.8), env ? Math.min(12, img.displayWidth * 0.18) : 7, 0x000000, 0.22).setDepth(0.6);
-      if (p.label) makeText(this, p.x, p.y - img.displayHeight - 3, p.label, { fontSize: '6px', color: '#f7dc6f' }).setOrigin(0.5, 1).setDepth(p.y + 1);
+      if (p.label) {
+        const label = makeText(this, p.x, p.y - img.displayHeight - 3, p.label, { fontSize: '6px', color: '#f7dc6f' }).setOrigin(0.5, 1).setDepth(p.y + 1);
+        label.cityPropLabel = p;
+      }
       if (p.warp) this.warpGate = { x: p.x, y: p.y };
     }
     const bigLabel = (x, y, text, color) => makeText(this, x * TILE, y * TILE, text, { fontSize: '10px', color }).setOrigin(0.5).setDepth(9000).setAlpha(0.8);

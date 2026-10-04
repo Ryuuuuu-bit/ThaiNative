@@ -211,7 +211,7 @@ function buildTown() {
   for (const x of [34, 38]) deco('p_candle', x, 40, { glow: [-6, 14, 0xffc46b, 0.5] });
   reserve(17, 39, 39, 46); reserve(17, 51, 39, 72);
   // ศาลาโอสถหมอพร: ลานอิฐของตัวเอง แปลงสมุนไพร บ่อน้ำ ครกยา
-  P('env/b_pavilion', 47, 56, { foot: [4, 2], scale: 0.6, label: 'ศาลาโอสถ', glow: [-20, 40, 0x7dffb0, 0.5] });
+  P('env/b_pavilion', 47, 56, { foot: [8, 3], scale: 0.6, label: 'ศาลาโอสถ', glow: [-20, 40, 0xffd9a0, 0.5] });
   for (let x = 43; x <= 49; x += 2) deco(x % 4 === 1 ? 'p_shrub' : 'p_plants', x, 59);
   small('p_well', 49, 58); small('p_mortar', 45, 55, { alt: 'env/p_pots' }); small('p_jar', 42, 58); small('p_pots2', 50, 54, { alt: 'env/p_pots' });
   small('p_stonelantern', 42, 54, { glow: [-10, 18, 0x7dffb0, 0.5] }); small('p_stonelantern', 50, 60, { glow: [-10, 18, 0x7dffb0, 0.5] });

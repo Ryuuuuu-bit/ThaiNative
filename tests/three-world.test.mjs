@@ -26,6 +26,8 @@ const citySource=(await readFile(new URL('../client/js/topdown/AyutthayaCity.js'
 const cityURL='data:text/javascript;base64,'+Buffer.from(citySource).toString('base64');
 const monsterSource=(await readFile(new URL('../client/js/topdown/MonsterLook.js',import.meta.url),'utf8')).replace('/vendor/three/three.module.js',new URL('../node_modules/three/build/three.module.js',import.meta.url).href);
 const monsterURL='data:text/javascript;base64,'+Buffer.from(monsterSource).toString('base64');
+const plazaSource=(await readFile(new URL('../client/js/topdown/PlazaArt.js',import.meta.url),'utf8')).replace('/vendor/three/three.module.js',threeURL);
+const plazaURL='data:text/javascript;base64,'+Buffer.from(plazaSource).toString('base64');
 const source=(await readFile(url,'utf8'))
   .replace('/vendor/three/three.module.js',new URL('../node_modules/three/build/three.module.js',import.meta.url).href)
   .replace('/shared/td/ayutthaya.js',new URL('../shared/td/ayutthaya.js',import.meta.url).href)
@@ -35,6 +37,7 @@ const source=(await readFile(url,'utf8'))
   .replace('./WorldMaterials.js',materialURL)
   .replace('./VisualAssets.js',visualURL)
   .replace('./WorldActors.js',actorURL)
+  .replace('./PlazaArt.js',plazaURL)
   .replace('./WorldQuality.js',new URL('../client/js/topdown/WorldQuality.js',import.meta.url).href)
   .replace('../systems/Screen.js',new URL('../client/js/systems/Screen.js',import.meta.url).href)
   .replace('./ThreeWorldMath.js',new URL('../client/js/topdown/ThreeWorldMath.js',import.meta.url).href);

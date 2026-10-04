@@ -1,0 +1,65 @@
+/* Ivory stone, dark lacquer and aged gold: the first Ayutthaya art pass.
+   Layout and touch target sizes remain owned by game-hud.css. */
+body.td-mode {
+  --hud-line:#b99450b8;
+  --hud-bg:linear-gradient(150deg,#202b25f5,#0c1717f2);
+  --hud-shadow:0 4px 14px #0007,inset 0 0 0 2px #121a18,inset 0 0 0 3px #8e70394d;
+}
+body.td-mode :is(.pf,#mm-frame,.actionbar,#chat) {
+  border-color:#b99553 !important;
+  border-radius:5px !important;
+  box-shadow:var(--hud-shadow) !important;
+}
+body.td-mode .pf {
+  background:var(--hud-bg) !important;
+  border-width:2px !important;
+}
+body.td-mode .pf-portrait {
+  border:2px solid #c8a460;
+  border-radius:4px;
+  background:radial-gradient(ellipse at 45% 25%,#75613d,#24352d 65%,#101b1b);
+  box-shadow:inset 0 0 0 2px #111a18;
+}
+body.td-mode .pf .lv-tag { color:#f0d18a; background:#b18c3b20; }
+body.td-mode .pf .bar { border-color:#927451; border-radius:2px; background:#070f13; }
+body.td-mode .bar.hp > #hud-hp-fill { background:linear-gradient(#d7463c,#a32426 60%,#7d2129); box-shadow:inset 0 1px #ffb9a270; }
+body.td-mode .bar.mp > #hud-mp-fill { background:linear-gradient(#398bcc,#1c599d 65%,#17406e); box-shadow:inset 0 1px #c0eeff80; }
+body.td-mode .pf .bar span { color:#fff5de; text-shadow:0 1px 2px #000; }
+body.td-mode .hud-right .zone { color:#f1d492; background:#101b19; border-bottom:1px solid #ad8a4966; }
+body.td-mode #mm-frame { background:#15231e; }
+body.td-mode #td-hud .td-events .ev { border-color:#a8874a80; background:#14201eea; border-radius:4px; }
+body.td-mode .quest-track div { border:1px solid #a8874a90 !important; border-radius:4px !important; background:linear-gradient(135deg,#202a22ed,#101a19e6) !important; }
+body.td-mode .quest-card .quest-goal { color:#eadbb9; }
+body.td-mode .hud-icon { color:#e5c47b; filter:drop-shadow(0 1px 1px #0009); }
+body.td-mode :is(#dock-toggle,.flask-btn),
+body.td-mode #hud > #game-menu.hud-buttons.dock.open button {
+  border-color:#b78f4b !important; border-radius:4px !important;
+  background:linear-gradient(145deg,#303b2b,#111d1b) !important;
+  box-shadow:inset 0 0 0 2px #0d1718,inset 0 0 0 3px #a9863933 !important;
+}
+body.td-mode #hud > #game-menu.hud-buttons.dock.open { border-color:#b78f4b !important; border-radius:6px !important; background:#14211cf7 !important; }
+body.td-mode .hud-menu-label { color:#efe1bf; }
+body.td-mode .actionbar { background:linear-gradient(#17231ee8,#091310f2); }
+body.td-mode .actionbar .skill,body.td-mode .actionbar .slot,
+body.td-mode.touch #skillbar.t-arc .skill {
+  border:2px solid #ba934f !important; border-radius:4px !important;
+  background:radial-gradient(ellipse at 50% 25%,#415137,#13221e 72%) !important;
+  box-shadow:inset 0 0 0 1px #070f13,inset 0 0 0 2px #dec58e30,0 2px 5px #0007 !important;
+}
+body.td-mode .skill.empty { opacity:.55; }
+body.td-mode .skill .k,body.td-mode .slot .k { border:1px solid #ac874969; border-radius:2px; background:#0d1715ee; color:#ffe5a4; }
+body.td-mode #hud .expbar { height:5px !important; border:1px solid #977a43; background:#0c1a17; }
+body.td-mode #hud .expbar > i { background:linear-gradient(#f0d178,#ac792d); }
+body.td-mode #hud .expbar span { color:#f3d78e; opacity:1; }
+body.td-mode .development-chip { color:#e5d0a2; border-color:#b38e4859; background:#16251dcc; border-radius:4px; }
+body.td-mode .t-stick { border-color:#b1915659 !important; }
+body.td-mode .t-knob { border-color:#d4b57088 !important; background:radial-gradient(circle at 35% 30%,#beae76d9,#4d583edf) !important; }
+body.td-mode.touch.m-hud .t-atk { border:2px solid #d1ab60; background:radial-gradient(circle at 40% 25%,#766741,#3b492d 60%,#16251f); box-shadow:inset 0 0 0 4px #17261ccc,0 4px 16px #0006; }
+@media(min-width:1000px) {
+  body.td-mode:not(.touch) .pf { width:292px !important; }
+  body.td-mode:not(.touch) .pf-under { width:292px; }
+  body.td-mode:not(.touch) .pf-portrait { width:54px; height:64px; }
+  body.td-mode:not(.touch) .pf-name { font-size:14px; }
+  body.td-mode:not(.touch) .pf .bar { height:14px; }
+  body.td-mode:not(.touch) .pf .bar span { font-size:10px; line-height:12px; }
+}
