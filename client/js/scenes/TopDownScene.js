@@ -12,7 +12,7 @@ import { getDerived } from '/shared/character.js';
 import { attackInterval, buffAspd } from '/shared/stats.js';
 import { gainExp, PRESET_LABEL, presetInfo } from '/shared/charmodel.js';
 import { bakeCharacter } from '../gfx/SpriteFactory.js';
-import { bakeFx, popupNumber, popupAbove, hitSpark, yantCircle, squash } from '../gfx/Fx.js';
+import { bakeFx, popupNumber, popupAbove, effectHeight, hitSpark, yantCircle, squash } from '../gfx/Fx.js';
 import { makeText, gmStyle, uiIcon, itemIcon as itemIconHtml, ICONS, EMO_ICON } from '../systems/util.js';
 import { sound } from '../systems/Sound.js';
 import { GameHud } from '../systems/GameHud.js';
@@ -1122,7 +1122,8 @@ export class TopDownScene extends Phaser.Scene {
 
   shootFx(p, m) {
     const b = this.add.image(p.x, p.y - 18, 'fx_spark').setScale(0.5).setDepth(99990).setTint(0xffe27a);
-    this.tweens.add({ targets: b, x: m.x, y: m.y - m.displayHeight * 0.5, duration: 160, onComplete: () => b.destroy() });
+    b.worldAnchorY=p.y;
+    this.tweens.add({ targets: b, worldAnchorY:m.y, x: m.x, y: m.y - effectHeight(m) * 0.5, duration: 160, onComplete: () => b.destroy() });
   }
 
   /** อยู่ในจอ (เผื่อขอบ) — เอฟเฟกต์ของคนอื่นนอกจอไม่ต้องวาด (คนออโต้เยอะ = วัตถุหลักร้อยต่อวินาที) */
@@ -1139,7 +1140,7 @@ export class TopDownScene extends Phaser.Scene {
       popupAbove(this, m, `${ic}${d.dmg}`, 'poison', { offsetX: 6 }); m.setTint(tint); this.time.delayedCall(120, () => m.clearTint()); return;
     }
     popupAbove(this, m, d.crit ? `${d.dmg}!` : `${d.dmg}`, d.crit ? 'crit' : 'normal');
-    hitSpark(this, m.x, m.y - m.displayHeight * 0.5, { crit: d.crit, dir: m.x >= this.player.x ? 1 : -1 });
+    hitSpark(this, m.x, m.y - effectHeight(m) * 0.5, { crit: d.crit, dir: m.x >= this.player.x ? 1 : -1, groundY: m.y });
     squash(this, m, d.crit ? 0.25 : 0.15, 90); m.setTintFill(d.crit ? 0xffd35c : 0xffffff); this.time.delayedCall(60, () => { m.clearTint(); m.setTint(d.crit ? 0xffe9a6 : 0xffd0d0); }); this.time.delayedCall(140, () => m.clearTint());
     if (mine) {
       this.sfx.play(d.crit ? 'crit' : 'hit');
@@ -1293,7 +1294,7 @@ export class TopDownScene extends Phaser.Scene {
 
   /** ตัวเลขฟื้นฟูลอยเหนือหัว (HP เขียว · MP ฟ้า) */
   popHeal(t, text, kind = 'hp') {
-    const o = t.spr || t; popupNumber(this, o.x, o.y - (o.displayHeight || 40) - 16, text, kind === 'mp' ? 'mana' : 'heal');
+    const o = t.spr || t; popupAbove(this, o, text, kind === 'mp' ? 'mana' : 'heal', {gap:16});
   }
 
   /** ดื่มขวดยา (Q = ช่อง 1 · E = ช่อง 2) · ประจุเติมจากการฆ่าผี · กลับเมือง = เต็ม */
