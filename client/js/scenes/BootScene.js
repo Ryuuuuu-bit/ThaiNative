@@ -6,6 +6,7 @@ import { ITEMS } from '/shared/data/items.js';
 import { generateAll, bakeRigMonster } from '../gfx/SpriteFactory.js';
 import { MONSTER_RIG, tintedCopy, fitHeight } from '../gfx/Rig.js';
 import { MONSTERS } from '/shared/data/monsters.js';
+import { activeMonsterIds, getMap, DEFAULT_MAP } from '/shared/td/maps.js';
 import { ICONS, watchEmoji } from '../systems/util.js';
 import { showAuth } from '../systems/AuthScreen.js';
 
@@ -18,20 +19,26 @@ export class BootScene extends Phaser.Scene {
 
   create() {
     const manifest = this.cache.json.get('manifest') || {};
-    const bases = manifest.monsterBases || {};
+    const activeMobs = activeMonsterIds();
+    const activeEnv = new Set();
+    for (const prop of getMap(DEFAULT_MAP).layout().props || []) {
+      if (prop.key?.startsWith('env/')) activeEnv.add(prop.key);
+      if (prop.alt?.startsWith('env/')) activeEnv.add(prop.alt);
+    }
+    const bases = Object.fromEntries(Object.entries(manifest.monsterBases || {}).filter(([id]) => activeMobs.has(id)));
     Object.assign(ICONS, manifest.icons || {});
     watchEmoji();                                                   // อีโมจิบน HUD → ไอคอนพิกเซล
     const entries = [
       // ผี/บอสที่มีภาพต้นฉบับ → ใช้หุ่นตัดต่อ (Rig) แทน spritesheet เก่า
-      ...Object.entries(manifest.monsters || {}).filter(([id]) => !bases[id]).map(([id, e]) => ({ ...e, key: `mon_${id}`, monsterId: id })),
+      ...Object.entries(manifest.monsters || {}).filter(([id]) => activeMobs.has(id) && !bases[id]).map(([id, e]) => ({ ...e, key: `mon_${id}`, monsterId: id })),
       ...Object.entries(manifest.npc || {}).filter(([key]) => !bases[key]).map(([key, e]) => ({ ...e, key })),
-      ...Object.entries(manifest.bosses || {}).filter(([id]) => !bases[id]).map(([id, e]) => ({ ...e, key: `boss_${id}` })),
+      ...Object.entries(manifest.bosses || {}).filter(([id]) => activeMobs.has(id) && !bases[id]).map(([id, e]) => ({ ...e, key: `boss_${id}` })),
     ];
     Object.entries(bases).forEach(([id, file]) => this.load.image(`mbase_${id}`, file));
     entries.forEach((e) => this.load.spritesheet(e.key, e.file, { frameWidth: e.frameWidth, frameHeight: e.frameHeight }));
     // ภาพต้นฉบับตัวละครผู้เล่น (ย้อมสี + สร้างท่าทางตอนสร้างตัวละคร)
     // ฉากเมือง: บ้านเรือนไทย วัด ศาลา แผงตลาด ฉากหลัง
-    Object.entries(manifest.env || {}).forEach(([k, file]) => this.load.image(k, file));
+    Object.entries(manifest.env || {}).filter(([k]) => activeEnv.has(k)).forEach(([k, file]) => this.load.image(k, file));
     Object.entries(manifest.icons || {}).filter(([k]) => /^it_(pla_|kung|junk|herb_|rice_)/.test(k) || ITEMS[k.slice(3)]?.type === 'weapon').forEach(([k, file]) => this.load.image(`ico_${k}`, file));
     // อาวุธที่ไม่มีไอคอนของตัวเองแต่ยืมภาพ (art) เช่น ไม้เท้าเถาบอระเพ็ด · ชุดสุริยคราส → โหลดเป็น ico_it_<id> ให้ถือในมือได้
     for (const [id, it] of Object.entries(ITEMS)) {
@@ -51,12 +58,12 @@ export class BootScene extends Phaser.Scene {
         if (this.textures.exists(`mbase_${id}`) && MONSTER_RIG[id]) bake(id, this.textures.get(`mbase_${id}`).getSourceImage());
       }
       // ผีที่ยังไม่มีภาพจริง → ใช้ภาพตัวแทน (ย้อมสีจากผีตัวอื่น)
-      for (const id of Object.keys(MONSTERS)) {
+      for (const id of activeMobs) {
         const fb = MONSTER_RIG[id]?.fallback;
         if (bases[id] || !fb || !this.textures.exists(`mbase_${fb.from}`)) continue;
         bake(id, tintedCopy(this.textures.get(`mbase_${fb.from}`).getSourceImage(), fb.tint, fb.scale));
       }
-      generateAll(this);           // สร้างเฉพาะภาพที่ยังไม่มี
+      generateAll(this, activeMobs); // bake เฉพาะผีที่เกิดในแผนที่ซึ่งเปิดใช้อยู่
       this.goNext();
     });
     this.load.start();             // ถ้าไม่มีอะไรให้โหลด จะ complete ทันที

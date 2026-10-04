@@ -85,8 +85,12 @@ const dungeon = {
   minLv: 5, respawnX: dgX + 90, arriveX: dgX + 110, safeEndX: dgX + 180, gates: [{ x: dgX + 32 }], noTravel: true,
 };
 
-export const MAP_LIST = [village, ...hunts, arena, dungeon];
-export const MAPS = Object.fromEntries(MAP_LIST.map((m) => [m.id, m]));
+export const ARCHIVED_MAP_LIST = [village, ...hunts, arena, dungeon];
+// The playable project starts in Ayutthaya. Keep legacy definitions addressable
+// for economy/data migrations, but do not expose or simulate their world maps.
+export const CLASSIC_WORLD_ENABLED = false;
+export const MAP_LIST = CLASSIC_WORLD_ENABLED ? ARCHIVED_MAP_LIST : [village];
+export const MAPS = Object.fromEntries(ARCHIVED_MAP_LIST.map((m) => [m.id, m]));
 export const HUNT_MAPS = hunts;
 
 // ตรวจว่าค่าคงที่โลกตรงกับจำนวนแมพ
@@ -133,6 +137,7 @@ for (const R of Object.values(REGIONS)) {
 }
 
 export function mapAt(x) {
+  if (!CLASSIC_WORLD_ENABLED) return village;
   if (x < HUNT_X0 - 35) return village;
   if (x >= dungeon.minX - 35) return dungeon;
   if (x >= arena.minX - 35) return arena;
