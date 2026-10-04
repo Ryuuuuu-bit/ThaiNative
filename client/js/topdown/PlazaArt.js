@@ -13,8 +13,7 @@ export function plazaAsset(prop) {
   if (key === 'env/b_pavilion' && prop.x === 1648 && prop.y === 896)
     return { name: 'temple', width: 144, aspect: 1, anchor: .96 };
   if (/b_shophouse/.test(key)) return { name: 'shop', width: fw * 19, aspect: 4 / 3, anchor: .975 };
-  if (prop.tree && !/palm|bamboo/.test(key))
-    return { name: 'tree', width: Math.min(112, 72 + (prop.scale || 1) * 24), aspect: .93, anchor: .97 };
+  // Trees keep their volumetric canopy, including inside the illustrated plaza.
   return null;
 }
 

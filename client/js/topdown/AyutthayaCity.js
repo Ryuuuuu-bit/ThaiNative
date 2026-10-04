@@ -1,6 +1,6 @@
 ﻿import * as THREE from '/vendor/three/three.module.js';
 
-import { leafMaterial, addTreeCanopy } from './GardenWorld.js';
+import { leafMaterial, addTreeCanopy, loadFoliageArt, treeCanopyKind } from './GardenWorld.js';
 import { propKind } from './VisualAssets.js';
 import { loadWorldMaterials } from './WorldMaterials.js';
 import { bakeStaticMeshes } from './StaticMeshes.js';
@@ -15,7 +15,8 @@ export function buildAyutthayaCity(props,map={}) {
   if(map.crypt||map.gd){palette.plaster=0xa49cab;palette.stone=0x6b6b7c;palette.wood=0x605447;palette.roof=0x665666;}
   if(map.id==='sumeru'){palette.roof=0x4f587c;palette.plaster=0xbbbccc;palette.leaf=0x61758e;}
   const materials=Object.fromEntries(Object.entries(palette).map(([name,color])=>[name,new THREE.MeshStandardMaterial({color,roughness:name==='water'?.24:.86,metalness:name==='gold'?.55:name==='water'?.18:0,flatShading:false,emissive:name==='window'?0xa66123:0,emissiveIntensity:.28})]));
-  materials.foliage=leafMaterial(map.id==='naraka'?0xc8b4cb:0xd4e4c4);
+  materials.foliage=leafMaterial(map.id==='naraka'?0xc8b4cb:0xffffff);
+  materials.pine=leafMaterial(0xe3ede2);
   materials.blossom=leafMaterial(0xffd0d2);materials.autumn=leafMaterial(0xe1d2a1);
   materials.lamp=new THREE.MeshStandardMaterial({color:0xffe5b3,emissive:0xffb15c,emissiveIntensity:2.5,roughness:.4});
   city.userData.ownedMaterials=Object.values(materials);
@@ -32,7 +33,8 @@ export function buildAyutthayaCity(props,map={}) {
     const texture=new THREE.CanvasTexture(c);texture.colorSpace=THREE.SRGBColorSpace;texture.wrapS=texture.wrapT=THREE.RepeatWrapping;texture.anisotropy=4;
     materials[name].map=texture;
   }
-  city.userData.cancelTextureLoad=loadWorldMaterials(materials);
+  const cancelWorld=loadWorldMaterials(materials),cancelFoliage=loadFoliageArt(materials);
+  city.userData.cancelTextureLoad=()=>{cancelWorld();cancelFoliage();};
   const templates=new Map();
   const add=(group,geometry,material,x,y,z)=>{const m=new THREE.Mesh(geometry,materials[material]);m.position.set(x,y,z);m.castShadow=material!=='water';m.receiveShadow=true;group.add(m);return m;};
   const box=(g,w,h,d,mat,x,y,z)=>add(g,new THREE.BoxGeometry(w,h,d),mat,x,y,z);
@@ -51,7 +53,8 @@ export function buildAyutthayaCity(props,map={}) {
   };
   for(const p of props||[]) {
     const kind=cityPropKind(p);if(!kind)continue;
-    const templateKey=[kind,p.key,p.scale||1,...(p.foot||[])].join(':');
+    const canopyKind=treeCanopyKind(p,map);
+    const templateKey=[kind,canopyKind,p.key,p.scale||1,...(p.foot||[])].join(':');
     if(templates.has(templateKey)){const copy=templates.get(templateKey).clone();copy.position.set(p.x,0,p.y);copy.userData.prop=p;city.add(copy);continue;}
     const g=new THREE.Group();g.position.set(p.x,0,p.y);g.userData.prop=p;g.userData.kind=kind;
     const sc=p.scale||1,fw=p.foot?.[0]||4,fd=p.foot?.[1]||2;
@@ -63,7 +66,7 @@ export function buildAyutthayaCity(props,map={}) {
       }else if(/palm/.test(p.key)){
         for(let i=0;i<7;i++){const a=i*Math.PI*2/7;const leaf=add(g,new THREE.SphereGeometry(1,6,4),'leaf',Math.sin(a)*r*.6,h*.85,-5+Math.cos(a)*r*.6);leaf.scale.set(6,3,r);leaf.rotation.y=a;leaf.rotation.x=.18;}
       }else{
-        addTreeCanopy(g,p,h,r,materials);
+        addTreeCanopy(g,p,h,r,materials,canopyKind);
         if(/bamboo/.test(p.key)){
           const segments=[],dummy=new THREE.Object3D();for(let i=0;i<4;i++){const x=(i-1.5)*5,z=-5+i%2*4,H=h*(.7+i*.06);segments.push([x,H/2,z,1.35,H]);for(let y=8;y<H;y+=12)segments.push([x,y,z,1.9,.8]);}
           const stems=new THREE.InstancedMesh(new THREE.CylinderGeometry(1,1,1,6),materials.leaf,segments.length);segments.forEach(([x,y,z,r,H],i)=>{dummy.position.set(x,y,z);dummy.scale.set(r,H,r);dummy.updateMatrix();stems.setMatrixAt(i,dummy.matrix);});stems.castShadow=true;stems.receiveShadow=true;g.add(stems);

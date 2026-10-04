@@ -23,7 +23,70 @@ export function leafMaterial(color=0xd4e4c4) {
   return m;
 }
 
-export function addTreeCanopy(group,prop,h,r,materials) {
+// Update existing texture objects so occlusion-material clones also receive the
+// finished art. Failed downloads leave the procedural leaves usable.
+export function loadFoliageArt(materials) {
+  if(typeof Image==='undefined'||typeof document==='undefined')return ()=>{};
+  const image=new Image();let disposed=false;
+  image.onload=()=>{
+    if(disposed||!image.naturalWidth||!image.naturalHeight)return;
+    const cell=image.naturalWidth/2;
+    for(const [i,name]of ['foliage','pine'].entries()){
+      const canvas=document.createElement('canvas');canvas.width=canvas.height=512;
+      const ctx=canvas.getContext('2d');if(!ctx)continue;
+      ctx.drawImage(image,i*cell,0,cell,image.naturalHeight,0,0,512,512);
+      const material=materials[name];material.map.image=canvas;material.map.needsUpdate=true;
+    }
+  };
+  image.onerror=()=>{};image.src='/assets/world/foliage-v2.webp';
+  return ()=>{disposed=true;image.onload=image.onerror=null;};
+}
+
+export function treeCanopyKind(prop,map={}) {
+  if(/bamboo/.test(prop.key))return 'bamboo';
+  if(/pine|conifer/.test(prop.key))return 'pine';
+  // Small stands on the wooded outskirts; retain the town's tropical trees.
+  if(map.id==='ayutthaya'&&prop.x<1400&&!/pink|golden|palm|dead|burn/.test(prop.key)
+    &&gardenHash(Math.round(prop.x),Math.round(prop.y),71)<.32)return 'pine';
+  return 'broadleaf';
+}
+
+export function addTreeCanopy(group,prop,h,r,materials,kind='broadleaf') {
+  if(kind==='bamboo'||/pink|golden/.test(prop.key))return addBranchletCanopy(group,prop,h,r,materials);
+  const pine=kind==='pine',count=pine?72:84;
+  let geometry=materials.crownCard;
+  if(!geometry){
+    geometry=materials.crownCard=new THREE.PlaneGeometry(1,1,3,3);
+    const positions=geometry.attributes.position;
+    for(let i=0;i<positions.count;i++)positions.setZ(i,.16*(1-4*positions.getX(i)**2)*(1-4*positions.getY(i)**2));
+    geometry.computeVertexNormals();
+  }
+  const canopy=new THREE.InstancedMesh(geometry,pine?materials.pine:materials.foliage,count);
+  const dummy=new THREE.Object3D(),tint=new THREE.Color();
+  for(let i=0;i<count;i++){
+    // Interleaving the height tiers preserves the entire silhouette at low LOD.
+    const tier=i%6,t=tier/5,a=i*2.3999632297;
+    const jitter=gardenHash(i,Math.round(prop.x),23);
+    if(pine){
+      const radius=r*(.78-.65*t),reach=radius*(.28+jitter*.34);
+      dummy.position.set(Math.cos(a)*reach,h*(.34+.65*t),Math.sin(a)*reach-5);
+      dummy.rotation.set(-Math.PI*.34,a,0);
+      dummy.scale.set(radius*1.5,radius*1.9,Math.max(1,radius*.3));
+    }else{
+      const radius=r*Math.sqrt(Math.max(.12,1-(t-.45)**2*2.7));
+      const reach=radius*(.25+jitter*.48);
+      dummy.position.set(Math.cos(a)*reach,h*(.58+.42*t),Math.sin(a)*reach-5);
+      dummy.rotation.set(-Math.PI*(.23+.23*jitter),a,(jitter-.5)*.35);
+      const size=r*(.9+jitter*.34);dummy.scale.set(size,size,Math.max(1,size*.28));
+    }
+    dummy.updateMatrix();canopy.setMatrixAt(i,dummy.matrix);
+    tint.setRGB(.79+jitter*.21,.84+jitter*.16,.76+jitter*.22);canopy.setColorAt(i,tint);
+  }
+  canopy.name='Layered leafy canopy';canopy.userData.canopyKind=kind;
+  canopy.castShadow=canopy.receiveShadow=true;canopy.computeBoundingSphere();group.add(canopy);
+}
+
+function addBranchletCanopy(group,prop,h,r,materials) {
   const bamboo=/bamboo/.test(prop.key),pink=/pink/.test(prop.key),gold=/golden/.test(prop.key);
   const count=bamboo?108:144,geometry=materials.leafCard||(materials.leafCard=new THREE.PlaneGeometry(1,1));
   const material=pink?materials.blossom:gold?materials.autumn:materials.foliage;

@@ -1,0 +1,20 @@
+{
+  "version": 2,
+  "tool": "Built-in ImageGen",
+  "created": "2026-10-04",
+  "asset": "foliage-v2.webp",
+  "sourceSize": [
+    1774,
+    887
+  ],
+  "runtimeCellSize": [
+    512,
+    512
+  ],
+  "cells": [
+    "broadleaf",
+    "conifer"
+  ],
+  "scope": "Original green foliage inspired by the user's tree silhouette reference. No snow, copied game assets or map collision changes.",
+  "prompt": "Production game foliage texture atlas, a single wide 2:1 image with exactly two equal square cells arranged left and right, genuine transparent background. Each cell has generous clear transparent margins and the motifs do not touch or overlap across the middle. LEFT CELL: one compact irregular rounded cluster of many overlapping small broad oval tropical leaves, dense opaque heart with a beautiful scalloped leafy silhouette, about sixty leaves in soft stylized sage, forest green and olive, very few gaps in the center. RIGHT CELL: one spreading triangular fan of evergreen pine foliage, overlapping short feathery needle sprays arranged on small branching twigs, dense opaque center, tapering pointed tips, rich forest green with muted sage highlights. Both motifs centered in their respective cells, occupy 85 percent of each cell. Hand-painted stylized anime RPG game foliage, soft broad value groups with clear readable shapes, lightly painted highlights, no tiny noisy veins. Neutral diffuse lighting, NO cast shadows, NO trunk, NO whole trees, NO pots, NO scenery, NO snow, NO text or labels or border or grid, NO black or white backdrop. These are albedo-with-alpha foliage cards to be layered in an actual 3D tree and lit by the game engine. All foliage fully contained. Exactly two equal square cells on transparent canvas."
+}

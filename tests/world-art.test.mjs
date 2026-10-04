@@ -128,11 +128,34 @@ for(const npc of town.npcs)assert.ok(visited.has(`${Math.floor(npc.x/TILE)},${Ma
 const {installPlazaArt,updatePlazaArt,plazaAsset}=cache.get(path.resolve('client/js/topdown/PlazaArt.js')).namespace;
 assert.equal(plazaAsset({key:'env/b_shophouse_1',x:100,y:100}),null,'art pass does not replace distant map zones');
 const imageStart=images.length,plaza=buildAyutthayaCity(town.props,{id:'ayutthaya'});
+const foliageImage=images.slice(imageStart).find(i=>i.src?.endsWith('/foliage-v2.webp'));
+assert.ok(foliageImage,'one foliage atlas request per city');
+const crowns=[];plaza.traverse(o=>{if(o.userData.canopyKind)crowns.push(o);});
+for(const kind of ['pine','broadleaf']){
+  const matching=crowns.filter(o=>o.userData.canopyKind===kind);
+  assert.ok(matching.length>1,`${kind}: present in the real Ayutthaya layout`);
+  assert.equal(matching[0].material.map,matching[1].material.map,'repeated crowns share their texture');
+  const crown=matching[0],matrix=new THREE.Matrix4(),samples=[];
+  for(let i=0;i<crown.count;i++){crown.getMatrixAt(i,matrix);const p=new THREE.Vector3(),q=new THREE.Quaternion(),s=new THREE.Vector3();matrix.decompose(p,q,s);samples.push({height:p.y,width:s.x});}
+  const low=samples.slice(0,Math.ceil(samples.length*.4));
+  assert.equal(Math.min(...low.map(p=>p.height)),Math.min(...samples.map(p=>p.height)),'low quality retains the bottom tier');
+  assert.equal(Math.max(...low.map(p=>p.height)),Math.max(...samples.map(p=>p.height)),'low quality retains the crown tip');
+  if(kind==='pine')assert.ok(samples[0].width>samples[5].width*3,'conifer tapers toward its tip');
+  assert.ok(crown.castShadow&&crown.receiveShadow,'foliage participates in real lighting');
+}
+const crownMap=crowns[0].material.map,occlusionCopy=crowns[0].material.clone();
+assert.equal(crownMap.image.width,256,'procedural foliage remains available before the atlas loads');
+const lateFoliage=foliageImage.onload;foliageImage.naturalWidth=1774;foliageImage.naturalHeight=887;foliageImage.onload();
+assert.equal(crownMap.image.width,512);assert.equal(crownMap.image.height,512);
+assert.equal(occlusionCopy.map,crownMap,'already faded crowns receive the loaded image without stale textures');
+occlusionCopy.dispose();
 const layoutBefore=JSON.stringify(town);
 installPlazaArt(plaza,{id:'ayutthaya'},{name:'low'});
 assert.equal(JSON.stringify(town),layoutBefore,'installing art never mutates shared map data');
 const artImages=images.slice(imageStart).filter(i=>i.src?.includes('/plaza-v1/'));
-assert.equal(artImages.length,4,'only four original assets load for repeated scenery');
+assert.equal(artImages.length,3,'three building assets load; trees retain their volumetric canopy');
+assert.ok(crowns.every(c=>c.visible),'plaza artwork never hides the 3D crowns');
+assert.equal(plazaAsset({tree:true,key:'env/t_tamarind',x:1800,y:900}),null);
 const replacements=plaza.userData.paintedModels;
 assert.ok(replacements.length>4);
 for(const model of replacements){assert.equal(model.userData.paintedMesh.visible,false);assert.ok(model.children.some(c=>c!==model.userData.paintedMesh&&c.visible),'native fallback stays visible while loading');}
@@ -151,6 +174,7 @@ camera3.position.set(1856,Math.sin(Math.PI/3)*1800,800+900);camera3.lookAt(1856,
 const artNormal=new THREE.Vector3(0,0,1).applyEuler(shops[0].userData.paintedMesh.rotation);
 assert.ok(artNormal.dot(new THREE.Vector3(0,0,1).applyQuaternion(camera3.quaternion))>.999,'painted geometry faces the locked game camera');
 disposeTerrain(plaza);lateCallback();assert.equal(plaza.children.length,0,'late load cannot resurrect a disposed plaza');
+lateFoliage();assert.equal(foliageImage.onload,null,'map disposal cancels pending foliage loads');
 assert.ok(artImages.every(i=>i.onload===null&&i.onerror===null));
 
 // NPCs in the painted plaza use their animated sprite atlas and remain clickable.

@@ -408,7 +408,7 @@ export class ThreeWorld {
     updatePlazaArt(this.city,this.s.atmo?.light??1,performance.now()/1000);
     this.actors.begin();
     if(this.waterSurface)this.waterSurface.material.uniforms.time.value=performance.now()/1000;
-    for(const material of this.city?.userData.ownedMaterials||[])if(material.userData.wind){material.userData.wind.value=performance.now()/1000;material.emissiveIntensity=.1+(1-(this.s.atmo?.light??1))*.24;}
+    for(const material of this.city?.userData.ownedMaterials||[])if(material.userData.wind){material.userData.wind.value=performance.now()/1000;material.emissiveIntensity=.025+(1-(this.s.atmo?.light??1))*.06;}
     for(const ripple of this.city?.userData.ripples||[]){const phase=(performance.now()/1800+ripple.userData.phase)%1;ripple.scale.setScalar(.7+phase*.5);}
     const seen=new Set();this.s.children.depthSort();for(const o of this.s.children.list)this.draw(o,seen);
     this.actors.end();
